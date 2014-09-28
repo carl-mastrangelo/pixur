@@ -33,7 +33,12 @@ func (s *Server) setup(c *Config) error {
  
   s.s = new(http.Server)
   s.s.Addr = c.HttpSpec
-  s.s.Handler =  http.NewServeMux()
+  mux := http.NewServeMux()
+  s.s.Handler = mux
+  // Static 
+  mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+  
+  // index handler
   s.registerHandler("/", s.indexHandler)
   return nil
 }
