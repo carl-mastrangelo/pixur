@@ -8,12 +8,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var (
-)
-
 type Config struct {
 	MysqlConfig string `json:"mysql_config"`
 	HttpSpec    string `json:"spec"`
+}
+
+type Pic struct {
+  Id int64 `mysql:"id"`
+  FileSize int64 `mysql:"file_size"`
 }
 
 type Server struct {
