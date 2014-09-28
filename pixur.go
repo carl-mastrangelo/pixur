@@ -1,13 +1,14 @@
 package pixur
 
 import (
- "log"
-
 	"database/sql"
-  "html/template"
 	"net/http"
+  "log"
 
 	_ "github.com/go-sql-driver/mysql"
+)
+
+var (
 )
 
 type Config struct {
@@ -20,20 +21,6 @@ type Server struct {
   s *http.Server
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-  tpl, err := template.ParseFiles("tpl/index.html")
-  if err != nil {
-    log.Println(err)
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-  if err := tpl.Execute(w, nil); err != nil {
-    log.Println(err)
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-}
-
 func (s *Server) setup(c *Config) error {
 	db, err := sql.Open("mysql", c.MysqlConfig)
 	if err != nil {
@@ -43,13 +30,22 @@ func (s *Server) setup(c *Config) error {
 		return err
 	}
 	s.db = db
-  
+ 
   s.s = new(http.Server)
   s.s.Addr = c.HttpSpec
-  mux := http.NewServeMux()
-  s.s.Handler = mux
-  mux.HandleFunc("/", indexHandler)
+  s.s.Handler =  http.NewServeMux()
+  s.registerHandler("/", s.indexHandler)
   return nil
+}
+
+func (s *Server) registerHandler(path string, 
+    handler func(http.ResponseWriter, *http.Request) error) {
+  s.s.Handler.(*http.ServeMux).HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+    if err := handler(w, r); err != nil {
+      log.Println("Error in handler: ", err)
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+  })
 }
 
 func (s *Server) StartAndWait(c *Config) error {
