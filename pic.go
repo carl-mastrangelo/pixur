@@ -1,5 +1,8 @@
 package pixur
 
+import (
+  "fmt"
+)
 
 type Pic struct {
 	Id       int64 `db:"id"`
@@ -19,3 +22,6 @@ func (p *Pic) PointerMap() map[string]interface{} {
   }
 }
 
+func (p *Pic) RelativeURL() string {
+  return fmt.Sprintf("pix/%d.%s", p.Id, p.Mime.Ext())
+}

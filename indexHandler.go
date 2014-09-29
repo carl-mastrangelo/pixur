@@ -2,9 +2,8 @@ package pixur
 
 import (
 	"database/sql"
-	_ "fmt"
+	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"html/template"
@@ -15,19 +14,15 @@ type indexParams struct {
 }
 
 func FetchPics(db *sql.DB) ([]*Pic, error) {
-	typ := reflect.TypeOf(Pic{})
-	var columnNames = make([]string, 0, typ.NumField())
-	var columnIndicies = make([]int, 0, typ.NumField())
-	for i := 0; i < typ.NumField(); i++ {
-		if columnName := typ.Field(i).Tag.Get("db"); columnName != "" {
-			columnNames = append(columnNames, "`"+columnName+"`")
-			columnIndicies = append(columnIndicies, i)
-		}
-	}
+  var columnNameMap = (&Pic{}).PointerMap()
+  
+  var columnNames = make([]string, 0, len(columnNameMap))
+	for name, _ := range columnNameMap {
+    columnNames = append(columnNames, name)
+  }
 
-	flatColumnNames := strings.Join(columnNames, ",")
-
-	rows, err := db.Query("SELECT " + flatColumnNames + " FROM pix;")
+  stmt := fmt.Sprintf("SELECT %s FROM pix;", strings.Join(columnNames, ","))
+	rows, err := db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -36,10 +31,11 @@ func FetchPics(db *sql.DB) ([]*Pic, error) {
 	var pics []*Pic
 	for rows.Next() {
 		var p = new(Pic)
-		val := reflect.Indirect(reflect.ValueOf(p))
-		var rawRowValues = make([]interface{}, 0, len(columnIndicies))
-		for _, columnIndex := range columnIndicies {
-			rawRowValues = append(rawRowValues, val.Field(columnIndex).Addr().Interface())
+    pmap := p.PointerMap()
+    
+		var rawRowValues = make([]interface{}, 0, len(columnNames))
+		for _, columnName := range columnNames {
+			rawRowValues = append(rawRowValues, pmap[columnName])
 		}
 		if err := rows.Scan(rawRowValues...); err != nil {
 			return nil, err

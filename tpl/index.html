@@ -9,7 +9,7 @@
 <body>
   <ul>
     {{ range .Pics }}
-      <li>{{.Id}}</li>
+      <li><img src="{{.RelativeURL }}" /> </li>
     {{end}}
   </ul>
   <form action="api/createPic" method="post" enctype="multipart/form-data">
