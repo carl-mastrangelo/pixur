@@ -2,10 +2,10 @@ package pixur
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
-  "os"
-  "fmt"
 	"net/http"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -13,17 +13,17 @@ import (
 type Config struct {
 	MysqlConfig string `json:"mysql_config"`
 	HttpSpec    string `json:"spec"`
-  PixPath string `json:"pix_path"`
+	PixPath     string `json:"pix_path"`
 }
 
 type Server struct {
-	db *sql.DB
-	s  *http.Server
-  pixPath string
+	db      *sql.DB
+	s       *http.Server
+	pixPath string
 }
 
 func (s *Server) setup(c *Config) error {
-  // setup the database
+	// setup the database
 	db, err := sql.Open("mysql", c.MysqlConfig)
 	if err != nil {
 		return err
@@ -32,21 +32,21 @@ func (s *Server) setup(c *Config) error {
 		return err
 	}
 	s.db = db
-  
-  // setup storage
-  
-  fi, err := os.Stat(c.PixPath)
-  if os.IsNotExist(err) {
-    if err := os.MkdirAll(c.PixPath, os.ModeDir | 0775); err != nil {
-      return err
-    }
-    //make it
-  } else if err != nil {
-    return err
-  } else if !fi.IsDir() {
-    return fmt.Errorf("%s is not a directory", c.PixPath)
-  }
-  s.pixPath = c.PixPath
+
+	// setup storage
+
+	fi, err := os.Stat(c.PixPath)
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(c.PixPath, os.ModeDir|0775); err != nil {
+			return err
+		}
+		//make it
+	} else if err != nil {
+		return err
+	} else if !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", c.PixPath)
+	}
+	s.pixPath = c.PixPath
 
 	s.s = new(http.Server)
 	s.s.Addr = c.HttpSpec
@@ -54,13 +54,13 @@ func (s *Server) setup(c *Config) error {
 	s.s.Handler = mux
 	// Static
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-  mux.Handle("/pix/", http.StripPrefix("/pix/", http.FileServer(http.Dir(s.pixPath))))
+	mux.Handle("/pix/", http.StripPrefix("/pix/", http.FileServer(http.Dir(s.pixPath))))
 
 	// index handler
 	s.registerHandler("/", s.indexHandler)
-  
-  // upload handler
-  s.registerHandler("/api/createPic", s.uploadHandler)
+
+	// upload handler
+	s.registerHandler("/api/createPic", s.uploadHandler)
 	return nil
 }
 

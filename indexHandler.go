@@ -14,14 +14,14 @@ type indexParams struct {
 }
 
 func FetchPics(db *sql.DB) ([]*Pic, error) {
-  var columnNameMap = (&Pic{}).PointerMap()
-  
-  var columnNames = make([]string, 0, len(columnNameMap))
-	for name, _ := range columnNameMap {
-    columnNames = append(columnNames, name)
-  }
+	var columnNameMap = (&Pic{}).PointerMap()
 
-  stmt := fmt.Sprintf("SELECT %s FROM pix;", strings.Join(columnNames, ","))
+	var columnNames = make([]string, 0, len(columnNameMap))
+	for name, _ := range columnNameMap {
+		columnNames = append(columnNames, name)
+	}
+
+	stmt := fmt.Sprintf("SELECT %s FROM pix;", strings.Join(columnNames, ","))
 	rows, err := db.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -31,8 +31,8 @@ func FetchPics(db *sql.DB) ([]*Pic, error) {
 	var pics []*Pic
 	for rows.Next() {
 		var p = new(Pic)
-    pmap := p.PointerMap()
-    
+		pmap := p.PointerMap()
+
 		var rawRowValues = make([]interface{}, 0, len(columnNames))
 		for _, columnName := range columnNames {
 			rawRowValues = append(rawRowValues, pmap[columnName])
