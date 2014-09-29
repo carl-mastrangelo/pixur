@@ -13,6 +13,7 @@ var (
 	config      = flag.String("config", ".config.json", "The default configuration file")
 	mysqlConfig = flag.String("mysql_config", "", "The default mysql config")
 	spec        = flag.String("spec", ":8888", "Default HTTP port")
+  pixPath  = flag.String("pix_path", "pix", "Default picture storage directory")
 )
 
 func getConfig(path string) (*pixur.Config, error) {
@@ -46,6 +47,7 @@ func main() {
 		c.MysqlConfig = *mysqlConfig
 	}
 	c.HttpSpec = *spec
+  c.PixPath = *pixPath
 
 	s := &pixur.Server{}
 
