@@ -1,4 +1,4 @@
-pixur
+Pixur
 =====
 
 Pixur Image Site
