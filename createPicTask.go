@@ -44,17 +44,18 @@ type CreatePicTask struct {
 	tx           *sql.Tx
 
 	// Results
+	CreatedPic *Pic
 }
 
 func (t *CreatePicTask) Reset() {
 	if t.tempFilename != "" {
 		if err := os.Remove(t.tempFilename); err != nil {
-			log.Println("Error in CreatePicTask", err)
+			log.Println("ERROR Unable to remove image in CreatePicTask", t.tempFilename, err)
 		}
 	}
 	if t.tx != nil {
 		if err := t.tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Println("Error in CreatePicTask", err)
+			log.Println("ERROR Unable to rollback in CreatePicTask", err)
 		}
 	}
 }
@@ -108,11 +109,12 @@ func (t *CreatePicTask) Run() TaskError {
 
 	// The upload succeeded
 	t.tempFilename = ""
-
+	t.CreatedPic = p
 	return nil
 }
 
-// Moves the uploaded file and records the file size
+// Moves the uploaded file and records the file size.  It might not be possible to just move the
+// file in the event that the uploaded location is on a different partition than persistent dir.
 func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
@@ -208,6 +210,7 @@ func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
 	return jpeg.Encode(f, img, nil)
 }
 
+// TODO: interpret image rotation metadata
 func makeThumbnail(img image.Image) image.Image {
 	bounds := findMaxSquare(img.Bounds())
 	largeSquareImage := image.NewNRGBA(bounds)

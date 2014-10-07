@@ -53,7 +53,7 @@ func TestFillImageConfig(t *testing.T) {
 
 	task := &CreatePicTask{}
 	var p Pic
-	if err := task.fillImageConfig(&fakeFile{data: imgRaw}, &p); err != nil {
+	if _, err := task.fillImageConfig(&fakeFile{data: imgRaw}, &p); err != nil {
 		t.Fatal(err)
 	}
 
