@@ -1,6 +1,7 @@
 package pixur
 
 import (
+	"mime/multipart"
 	"net/http"
 )
 
@@ -10,19 +11,25 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	uploadedFile, fileHeader, err := r.FormFile("file")
-	if err == http.ErrMissingFile {
-		http.Error(w, "Missing File", http.StatusBadRequest)
-		return nil
-	} else if err != nil {
-		return err
+	var filename string
+	var filedata multipart.File
+	var fileURL string
+	if uploadedFile, fileHeader, err := r.FormFile("file"); err != nil {
+		if err != http.ErrMissingFile {
+			return err
+		}
+	} else {
+		filename = fileHeader.Filename
+		filedata = uploadedFile
 	}
+	fileURL = r.FormValue("url")
 
 	var task = &CreatePicTask{
 		pixPath:  s.pixPath,
 		db:       s.db,
-		FileData: uploadedFile,
-		Filename: fileHeader.Filename,
+		FileData: filedata,
+		Filename: filename,
+		FileURL:  fileURL,
 	}
 	defer task.Reset()
 

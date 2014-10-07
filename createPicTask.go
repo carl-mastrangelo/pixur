@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -33,6 +34,9 @@ type CreatePicTask struct {
 	// Inputs
 	Filename string
 	FileData multipart.File
+
+	// Alternatively, a url can be uploaded
+	FileURL string
 
 	// State
 	// The file that was created to hold the upload.
@@ -66,9 +70,18 @@ func (t *CreatePicTask) Run() TaskError {
 	var p = new(Pic)
 	fillTimestamps(p)
 
-	if err := t.moveUploadedFile(wf, p); err != nil {
-		return err
+	if t.FileData != nil {
+		if err := t.moveUploadedFile(wf, p); err != nil {
+			return err
+		}
+	} else if t.FileURL != "" {
+		if err := t.downloadFile(wf, p); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("No file uploaded")
 	}
+
 	img, err := t.fillImageConfig(wf, p)
 	if err != nil {
 		return err
@@ -103,6 +116,21 @@ func (t *CreatePicTask) Run() TaskError {
 func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
+		return err
+	} else {
+		p.FileSize = bytesWritten
+	}
+	return nil
+}
+
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
+	resp, err := http.Get(t.FileURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
 		return err
 	} else {
 		p.FileSize = bytesWritten
