@@ -2,6 +2,7 @@ package pixur
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 type Pic struct {
@@ -24,4 +25,16 @@ func (p *Pic) PointerMap() map[string]interface{} {
 
 func (p *Pic) RelativeURL() string {
 	return fmt.Sprintf("pix/%d.%s", p.Id, p.Mime.Ext())
+}
+
+func (p *Pic) Path(pixPath string) string {
+	return filepath.Join(pixPath, fmt.Sprintf("%d.%s", p.Id, p.Mime.Ext()))
+}
+
+func (p *Pic) ThumbnailRelativeURL() string {
+	return fmt.Sprintf("pix/%ds.%s", p.Id, p.Mime.Ext())
+}
+
+func (p *Pic) ThumbnailPath(pixPath string) string {
+	return filepath.Join(pixPath, fmt.Sprintf("%ds.%s", p.Id, p.Mime.Ext()))
 }

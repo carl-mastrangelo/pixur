@@ -1,3 +1,10 @@
 body {
-  background-color: #FFFFEE
+  background-color: #FFFFEE;
+}
+ul {
+  
+  list-style-type: none;
+}
+li {
+  display: inline;
 }

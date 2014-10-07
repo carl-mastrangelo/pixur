@@ -3,19 +3,25 @@ package pixur
 import (
 	"database/sql"
 	"fmt"
+	"image"
+	"image/draw"
 	"io"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"image"
+	"github.com/nfnt/resize"
 
 	_ "image/gif"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
+)
+
+const (
+	thumbnailWidth  = 120
+	thumbnailHeight = 120
 )
 
 type CreatePicTask struct {
@@ -42,14 +48,14 @@ func (t *CreatePicTask) Reset() {
 		}
 	}
 	if t.tx != nil {
-		if err := t.tx.Rollback(); err != nil {
+		if err := t.tx.Rollback(); err != nil && err != sql.ErrTxDone {
 			log.Println("Error in CreatePicTask", err)
 		}
 	}
 }
 
 func (t *CreatePicTask) Run() TaskError {
-	wf, err := ioutil.TempFile(t.pixPath, "tmp")
+	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
 		return err
 	}
@@ -60,9 +66,11 @@ func (t *CreatePicTask) Run() TaskError {
 	if err := t.moveUploadedFile(wf, p); err != nil {
 		return err
 	}
-	if err := t.fillImageConfig(wf, p); err != nil {
+	img, err := t.fillImageConfig(wf, p)
+	if err != nil {
 		return err
 	}
+	thumbnail := makeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
 	}
@@ -73,7 +81,19 @@ func (t *CreatePicTask) Run() TaskError {
 		return err
 	}
 
-	return t.tx.Commit()
+	// If there is a problem creating the thumbnail, just continue on.
+	if err := t.saveThumbnail(thumbnail, p); err != nil {
+		log.Println("WARN Failed to create thumbnail", err)
+	}
+
+	if err := t.tx.Commit(); err != nil {
+		return err
+	}
+
+	// The upload succeeded
+	t.tempFilename = ""
+
+	return nil
 }
 
 // Moves the uploaded file and records the file size
@@ -87,20 +107,22 @@ func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	return nil
 }
 
-func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) error {
+func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, error) {
 	if _, err := tempFile.Seek(0, os.SEEK_SET); err != nil {
-		return err
+		return nil, err
 	}
-	imageConfig, imageType, err := image.DecodeConfig(tempFile)
+
+	img, imgType, err := image.Decode(tempFile)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO: handle this error
-	p.Mime, _ = FromImageFormat(imageType)
-	p.Width = imageConfig.Width
-	p.Height = imageConfig.Height
-	return nil
+	p.Mime, _ = FromImageFormat(imgType)
+	p.Width = img.Bounds().Dx()
+	p.Height = img.Bounds().Dy()
+	return img, nil
 }
 
 func (t *CreatePicTask) beginTransaction() error {
@@ -138,11 +160,56 @@ func (t *CreatePicTask) insertPic(p *Pic) error {
 }
 
 func (t *CreatePicTask) renameTempFile(p *Pic) error {
-	newName := filepath.Join(t.pixPath, fmt.Sprintf("%d.%s", p.Id, p.Mime.Ext()))
-	if err := os.Rename(t.tempFilename, newName); err != nil {
+	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
 		return err
 	}
 	// point this at the new file, incase the overall transaction fails
-	t.tempFilename = newName
+	t.tempFilename = p.Path(t.pixPath)
 	return nil
+}
+
+func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
+	f, err := os.Create(p.ThumbnailPath(t.pixPath))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return jpeg.Encode(f, img, nil)
+}
+
+func makeThumbnail(img image.Image) image.Image {
+	bounds := findMaxSquare(img.Bounds())
+	largeSquareImage := image.NewNRGBA(bounds)
+	draw.Draw(largeSquareImage, bounds, img, bounds.Min, draw.Src)
+	return resize.Resize(thumbnailWidth, thumbnailHeight, largeSquareImage, resize.NearestNeighbor)
+}
+
+func findMaxSquare(bounds image.Rectangle) image.Rectangle {
+	width := bounds.Dx()
+	height := bounds.Dy()
+	if height < width {
+		missingSpace := width - height
+		return image.Rectangle{
+			Min: image.Point{
+				X: bounds.Min.X + missingSpace/2,
+				Y: bounds.Min.Y,
+			},
+			Max: image.Point{
+				X: bounds.Min.X + missingSpace/2 + height,
+				Y: bounds.Max.Y,
+			},
+		}
+	} else {
+		missingSpace := height - width
+		return image.Rectangle{
+			Min: image.Point{
+				X: bounds.Min.X,
+				Y: bounds.Min.Y + missingSpace/2,
+			},
+			Max: image.Point{
+				X: bounds.Max.X,
+				Y: bounds.Min.Y + missingSpace/2 + width,
+			},
+		}
+	}
 }

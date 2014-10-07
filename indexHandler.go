@@ -10,7 +10,6 @@ type indexParams struct {
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
-
 	var task = &ReadPicsTask{
 		db: s.db,
 	}
