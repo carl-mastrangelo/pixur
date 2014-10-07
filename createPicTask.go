@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/nfnt/resize"
 
@@ -63,6 +64,8 @@ func (t *CreatePicTask) Run() TaskError {
 	t.tempFilename = wf.Name()
 
 	var p = new(Pic)
+	fillTimestamps(p)
+
 	if err := t.moveUploadedFile(wf, p); err != nil {
 		return err
 	}
@@ -212,4 +215,9 @@ func findMaxSquare(bounds image.Rectangle) image.Rectangle {
 			},
 		}
 	}
+}
+
+func fillTimestamps(p *Pic) {
+	p.CreatedTime = int64(time.Duration(time.Now().UnixNano()) / time.Millisecond)
+	p.ModifiedTime = p.CreatedTime
 }

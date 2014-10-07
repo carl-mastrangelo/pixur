@@ -6,20 +6,24 @@ import (
 )
 
 type Pic struct {
-	Id       int64 `db:"id"`
-	FileSize int64 `db:"file_size"`
-	Mime     Mime  `db:"mime"`
-	Width    int   `db:"width"`
-	Height   int   `db:"height"`
+	Id           int64 `db:"id"`
+	FileSize     int64 `db:"file_size"`
+	Mime         Mime  `db:"mime"`
+	Width        int   `db:"width"`
+	Height       int   `db:"height"`
+	CreatedTime  int64 `db:"created_time_msec"`
+	ModifiedTime int64 `db:"modified_time_msec"`
 }
 
 func (p *Pic) PointerMap() map[string]interface{} {
 	return map[string]interface{}{
-		"id":        &p.Id,
-		"file_size": &p.FileSize,
-		"mime":      &p.Mime,
-		"width":     &p.Width,
-		"height":    &p.Height,
+		"id":                 &p.Id,
+		"file_size":          &p.FileSize,
+		"mime":               &p.Mime,
+		"width":              &p.Width,
+		"height":             &p.Height,
+		"created_time_msec":  &p.CreatedTime,
+		"modified_time_msec": &p.ModifiedTime,
 	}
 }
 
