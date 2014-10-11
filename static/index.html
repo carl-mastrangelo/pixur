@@ -4,9 +4,9 @@
       <a ng-href="{{pic.relative_url }}"><img ng-src="{{pic.thumbnail_relative_url}}" /></a>
     </li>
   </ul>
+  <form action="api/createPic" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" onchange="angular.element(this).controller().fileChange(this)" /><br />
+    <input placeholder="File URL" name="url" ng-model="ctrl.upload.url"  /><br />
+    <input type="button" value="submit" ng-click="ctrl.createPic()" />
+  </form>
 </div>
-<form action="api/createPic" method="post" enctype="multipart/form-data">
-  <input type="file" name="file" /><br />
-  <input placeholder="File URL" name="url" /><br />
-  <input type="submit" value="submit" />
-</form>

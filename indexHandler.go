@@ -43,12 +43,12 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-  var interfacePics []*InterfacePic
-  for _, pic := range task.Pics {
-    interfacePics = append(interfacePics, pic.ToInterface())
-  }
-  
-  w.Header().Set("Content-Type", "application/json")
+	var interfacePics []*InterfacePic
+	for _, pic := range task.Pics {
+		interfacePics = append(interfacePics, pic.ToInterface())
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(interfacePics); err != nil {
 		return err
