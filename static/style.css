@@ -8,3 +8,8 @@ ul {
 li {
   display: inline;
 }
+
+a.thumbnail {
+  width: 120px;
+  height: 120px;
+}
