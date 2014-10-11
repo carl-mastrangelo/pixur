@@ -8,7 +8,7 @@ import (
 type Pic struct {
 	Id           int64 `db:"id"`
 	FileSize     int64 `db:"file_size"`
-	Mime         Mime  `db:"mime"`
+	Mime         Mime  `db:"mime" `
 	Width        int   `db:"width"`
 	Height       int   `db:"height"`
 	CreatedTime  int64 `db:"created_time_msec"`

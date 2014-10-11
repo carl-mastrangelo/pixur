@@ -58,9 +58,11 @@ func (s *Server) setup(c *Config) error {
 
 	// index handler
 	s.registerHandler("/", s.indexHandler)
+	s.registerHandler("/api/findIndexPics", s.findIndexPicsHandler)
 
 	// upload handler
 	s.registerHandler("/api/createPic", s.uploadHandler)
+
 	return nil
 }
 
