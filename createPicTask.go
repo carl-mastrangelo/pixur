@@ -153,8 +153,8 @@ func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.I
 
 	// TODO: handle this error
 	p.Mime, _ = FromImageFormat(imgType)
-	p.Width = img.Bounds().Dx()
-	p.Height = img.Bounds().Dy()
+	p.Width = int64(img.Bounds().Dx())
+	p.Height = int64(img.Bounds().Dy())
 	return img, nil
 }
 

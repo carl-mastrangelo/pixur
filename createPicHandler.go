@@ -3,6 +3,7 @@ package pixur
 import (
 	"mime/multipart"
 	"net/http"
+  "encoding/json"
 )
 
 func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
@@ -33,5 +34,15 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer task.Reset()
 
-	return task.Run()
+	if err := task.Run(); err != nil {
+    return nil
+  }
+  
+  w.Header().Set("Content-Type", "application/json")
+  enc := json.NewEncoder(w)
+ if err := enc.Encode(task.CreatedPic); err != nil {
+		return err
+	}
+
+	return nil
 }

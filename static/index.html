@@ -1,0 +1,12 @@
+<div ng-controller="IndexCtrl as ctrl">
+  <ul>
+    <li ng-repeat="pic in ctrl.pics">
+      <a ng-href="{{pic.relative_url }}"><img ng-src="{{pic.thumbnail_relative_url}}" /></a>
+    </li>
+  </ul>
+</div>
+<form action="api/createPic" method="post" enctype="multipart/form-data">
+  <input type="file" name="file" /><br />
+  <input placeholder="File URL" name="url" /><br />
+  <input type="submit" value="submit" />
+</form>
