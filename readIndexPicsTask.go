@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type ReadPicsTask struct {
+type ReadIndexPicsTask struct {
 	// Deps
 	db *sql.DB
 
@@ -18,9 +18,9 @@ type ReadPicsTask struct {
 	Pics []*Pic
 }
 
-func (t *ReadPicsTask) Reset() {}
+func (t *ReadIndexPicsTask) Reset() {}
 
-func (t *ReadPicsTask) Run() TaskError {
+func (t *ReadIndexPicsTask) Run() TaskError {
 	var columnNameMap = (&Pic{}).PointerMap()
 
 	var columnNames = make([]string, 0, len(columnNameMap))

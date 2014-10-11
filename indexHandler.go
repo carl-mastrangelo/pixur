@@ -10,7 +10,7 @@ type indexParams struct {
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
-	var task = &ReadPicsTask{
+	var task = &ReadIndexPicsTask{
 		db: s.db,
 	}
 	defer task.Reset()
