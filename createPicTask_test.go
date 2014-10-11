@@ -2,30 +2,84 @@ package pixur
 
 import (
 	"bytes"
-	"mime/multipart"
-	"testing"
-
 	"image"
 	"image/gif"
+	"io/ioutil"
+	"os"
+	"testing"
+
+	ptest "pixur.org/pixur/testing"
 )
 
 type fakeFile struct {
-	multipart.File
-	data *bytes.Buffer
+	*bytes.Reader
 }
 
-func (f *fakeFile) Read(p []byte) (n int, err error) {
-	return f.data.Read(p)
-}
+func (ff *fakeFile) Close() error { return nil }
 
-func (f *fakeFile) Seek(offset int64, whence int) (int64, error) {
-	return 0, nil
+func TestWorkflowFileUpload(t *testing.T) {
+	db, err := ptest.GetDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ptest.CleanUp()
+	if err := createTables(db); err != nil {
+		t.Fatal(err)
+	}
+
+	pixPath, err := ioutil.TempDir("", "pixPath")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(pixPath)
+
+	img := image.NewGray(image.Rect(0, 0, 5, 10))
+	imgRaw := new(bytes.Buffer)
+
+	if err := gif.Encode(imgRaw, img, &gif.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	imgSize := int64(imgRaw.Len())
+
+	task := &CreatePicTask{
+		db:       db,
+		pixPath:  pixPath,
+		FileData: &fakeFile{bytes.NewReader(imgRaw.Bytes())},
+	}
+	if err := task.Run(); err != nil {
+		task.Reset()
+		t.Fatal(err)
+	}
+
+	expected := Pic{
+		FileSize: imgSize,
+		Mime:     Mime_GIF,
+		Width:    5,
+		Height:   10,
+	}
+	actual := *task.CreatedPic
+
+	if _, err := os.Stat(actual.Path(pixPath)); err != nil {
+		t.Fatal("Image was not moved", err)
+	}
+	if _, err := os.Stat(actual.ThumbnailPath(pixPath)); err != nil {
+		t.Fatal("Thumbnail not created", err)
+	}
+
+	// Zero out these, since they can change from test to test
+	actual.Id = 0
+	ptest.AssertEquals(actual.CreatedTime, actual.ModifiedTime, t)
+	actual.CreatedTime = 0
+	actual.ModifiedTime = 0
+
+	ptest.AssertEquals(actual, expected, t)
+
 }
 
 func TestMoveUploadedFile(t *testing.T) {
 	expected := "abcd"
 	task := &CreatePicTask{
-		FileData: &fakeFile{data: bytes.NewBufferString(expected)},
+		FileData: &fakeFile{bytes.NewReader([]byte(expected))},
 	}
 
 	var destBuffer bytes.Buffer
@@ -53,7 +107,7 @@ func TestFillImageConfig(t *testing.T) {
 
 	task := &CreatePicTask{}
 	var p Pic
-	if _, err := task.fillImageConfig(&fakeFile{data: imgRaw}, &p); err != nil {
+	if _, err := task.fillImageConfig(&fakeFile{bytes.NewReader(imgRaw.Bytes())}, &p); err != nil {
 		t.Fatal(err)
 	}
 
