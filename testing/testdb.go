@@ -15,26 +15,42 @@ import (
 )
 
 func GetDB() (*sql.DB, error) {
+	refLock.Lock()
+	defer refLock.Unlock()
 	once.Do(func() {
 		db, initErr = initDB()
-    if initErr != nil {
-      CleanUp()
-    }
+		if initErr != nil {
+			CleanUp()
+		}
 	})
+
+	refCount++
 	return db, initErr
 }
 
 func CleanUp() {
-  for i := len(cleanUpActions) - 1; i >=0; i-- {
-    cleanUpActions[i]()
-  }
+	refLock.Lock()
+	defer refLock.Unlock()
+	refCount--
+	if refCount == 0 {
+		for i := len(cleanUpActions) - 1; i >= 0; i-- {
+			cleanUpActions[i]()
+		}
+		// Reset the once, incase we need to set the DB back up again
+		once = new(sync.Once)
+		db = nil
+		initErr = nil
+		cleanUpActions = nil
+	}
 }
 
 var (
-	db      *sql.DB
-	initErr error
-  cleanUpActions []func() 
-	once    *sync.Once = new(sync.Once)
+	db             *sql.DB
+	initErr        error
+	cleanUpActions []func()
+	refCount                  = 0
+	refLock                   = new(sync.Mutex)
+	once           *sync.Once = new(sync.Once)
 )
 
 func initDB() (*sql.DB, error) {
@@ -42,25 +58,25 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-  cleanUpActions = append(cleanUpActions, func() {
-    os.RemoveAll(datadir)
-  })
+	cleanUpActions = append(cleanUpActions, func() {
+		os.RemoveAll(datadir)
+	})
 
 	socket, err := ioutil.TempFile("", "socket")
 	if err != nil {
 		return nil, err
 	}
-  cleanUpActions = append(cleanUpActions, func() {
-    os.Remove(socket.Name())
-  })
+	cleanUpActions = append(cleanUpActions, func() {
+		os.Remove(socket.Name())
+	})
 
 	pidFile, err := ioutil.TempFile("", "pidFile")
 	if err != nil {
 		return nil, err
 	}
-  cleanUpActions = append(cleanUpActions, func() {
-    os.Remove(pidFile.Name())
-  })
+	cleanUpActions = append(cleanUpActions, func() {
+		os.Remove(pidFile.Name())
+	})
 
 	cmd := exec.Command("mysqld",
 		"--datadir", datadir,
@@ -72,9 +88,9 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-  cleanUpActions = append(cleanUpActions, func() {
-    stderr.Close()
-  })
+	cleanUpActions = append(cleanUpActions, func() {
+		stderr.Close()
+	})
 	ready := make(chan error)
 
 	go func() {
@@ -95,9 +111,9 @@ func initDB() (*sql.DB, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-  cleanUpActions = append(cleanUpActions, func() {
-    cmd.Process.Kill()
-  })
+	cleanUpActions = append(cleanUpActions, func() {
+		cmd.Process.Kill()
+	})
 
 	select {
 	case err := <-ready:
