@@ -28,7 +28,8 @@ func (t *ReadIndexPicsTask) Run() TaskError {
 		columnNames = append(columnNames, name)
 	}
 
-	stmt := fmt.Sprintf("SELECT %s FROM pix;", strings.Join(columnNames, ","))
+	stmt := fmt.Sprintf("SELECT %s FROM pix ORDER BY created_time_msec DESC LIMIT 50;",
+		strings.Join(columnNames, ","))
 	rows, err := t.db.Query(stmt)
 	if err != nil {
 		return err
