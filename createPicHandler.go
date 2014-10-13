@@ -16,7 +16,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 	var filedata multipart.File
 	var fileURL string
 	if uploadedFile, fileHeader, err := r.FormFile("file"); err != nil {
-		if err != http.ErrMissingFile {
+		if err != http.ErrMissingFile && err != http.ErrNotMultipart {
 			return err
 		}
 	} else {
