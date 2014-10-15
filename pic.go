@@ -3,12 +3,14 @@ package pixur
 import (
 	"fmt"
 	"path/filepath"
+
+	"pixur.org/pixur/storage"
 )
 
 type Pic struct {
 	Id           int64 `db:"id"`
 	FileSize     int64 `db:"file_size"`
-	Mime         Mime  `db:"mime" `
+	Mime         Mime  `db:"mime"`
 	Width        int64 `db:"width"`
 	Height       int64 `db:"height"`
 	CreatedTime  int64 `db:"created_time_msec"`
@@ -24,6 +26,11 @@ type InterfacePic struct {
 	ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
 }
 
+var (
+	_picColumnFieldMap = storage.BuildColumnFieldMap(Pic{})
+	_picColumnNames    = storage.BuildColumnNames(Pic{})
+)
+
 func (p *Pic) ToInterface() *InterfacePic {
 	return &InterfacePic{
 		Id:                   p.Id,
@@ -35,16 +42,24 @@ func (p *Pic) ToInterface() *InterfacePic {
 	}
 }
 
-func (p *Pic) PointerMap() map[string]interface{} {
-	return map[string]interface{}{
-		"id":                 &p.Id,
-		"file_size":          &p.FileSize,
-		"mime":               &p.Mime,
-		"width":              &p.Width,
-		"height":             &p.Height,
-		"created_time_msec":  &p.CreatedTime,
-		"modified_time_msec": &p.ModifiedTime,
-	}
+func (p *Pic) GetColumnFieldMap() map[string]string {
+	return _picColumnFieldMap
+}
+
+func (p *Pic) GetColumnNames() []string {
+	return _picColumnNames
+}
+
+func (p *Pic) ColumnPointers(columnNames []string) []interface{} {
+	return storage.ColumnPointers(p, columnNames)
+}
+
+func (p *Pic) BuildInsert() string {
+	return storage.BuildInsert(p)
+}
+
+func (p *Pic) TableName() string {
+	return "pix"
 }
 
 func (p *Pic) RelativeURL() string {

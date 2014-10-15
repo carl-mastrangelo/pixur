@@ -11,7 +11,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/nfnt/resize"
@@ -168,19 +167,7 @@ func (t *CreatePicTask) beginTransaction() error {
 }
 
 func (t *CreatePicTask) insertPic(p *Pic) error {
-	var columnNames []string
-	var columnValues []interface{}
-	var valueFormat []string
-	for name, value := range p.PointerMap() {
-		columnNames = append(columnNames, name)
-		columnValues = append(columnValues, value)
-		valueFormat = append(valueFormat, "?")
-	}
-
-	stmt := fmt.Sprintf("INSERT INTO pix (%s) VALUES (%s);",
-		strings.Join(columnNames, ", "), strings.Join(valueFormat, ", "))
-
-	res, err := t.tx.Exec(stmt, columnValues...)
+	res, err := t.tx.Exec(p.BuildInsert(), p.ColumnPointers(p.GetColumnNames())...)
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,6 @@ package pixur
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 )
 
 type ReadIndexPicsTask struct {
@@ -21,31 +19,21 @@ type ReadIndexPicsTask struct {
 func (t *ReadIndexPicsTask) Reset() {}
 
 func (t *ReadIndexPicsTask) Run() TaskError {
-	var columnNameMap = (&Pic{}).PointerMap()
-
-	var columnNames = make([]string, 0, len(columnNameMap))
-	for name, _ := range columnNameMap {
-		columnNames = append(columnNames, name)
-	}
-
-	stmt := fmt.Sprintf("SELECT %s FROM pix ORDER BY created_time_msec DESC LIMIT 50;",
-		strings.Join(columnNames, ","))
-	rows, err := t.db.Query(stmt)
+	rows, err := t.db.Query("SELECT * FROM pix ORDER BY created_time_msec DESC LIMIT 50;")
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
 	var pics []*Pic
 	for rows.Next() {
 		var p = new(Pic)
-		pmap := p.PointerMap()
-
-		var rawRowValues = make([]interface{}, 0, len(columnNames))
-		for _, columnName := range columnNames {
-			rawRowValues = append(rawRowValues, pmap[columnName])
-		}
-		if err := rows.Scan(rawRowValues...); err != nil {
+		if err := rows.Scan(p.ColumnPointers(columnNames)...); err != nil {
 			return err
 		}
 		pics = append(pics, p)
