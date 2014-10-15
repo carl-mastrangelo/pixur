@@ -29,10 +29,10 @@ func BuildColumnNames(dataType interface{}) []string {
 	columns := make([]string, 0, typ.NumField())
 
 	for i := 0; i < typ.NumField(); i++ {
-    tag := typ.Field(i).Tag.Get("db")
-    if tag != "" {
-      columns = append(columns,tag)
-    }
+		tag := typ.Field(i).Tag.Get("db")
+		if tag != "" {
+			columns = append(columns, tag)
+		}
 	}
 
 	return columns
@@ -45,7 +45,10 @@ func BuildColumnFieldMap(dataType interface{}) map[string]string {
 	columns := make(map[string]string, typ.NumField())
 
 	for i := 0; i < typ.NumField(); i++ {
-		columns[typ.Field(i).Tag.Get("db")] = typ.Field(i).Name
+		tag := typ.Field(i).Tag.Get("db")
+		if tag != "" {
+			columns[tag] = typ.Field(i).Name
+		}
 	}
 
 	return columns
