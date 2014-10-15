@@ -18,11 +18,7 @@ type fakeFile struct {
 func (ff *fakeFile) Close() error { return nil }
 
 func TestWorkflowFileUpload(t *testing.T) {
-	db, err := ptest.GetDB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ptest.CleanUp()
+	db := testDB
 	if err := createTables(db); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +69,6 @@ func TestWorkflowFileUpload(t *testing.T) {
 	actual.ModifiedTime = 0
 
 	ptest.AssertEquals(actual, expected, t)
-
 }
 
 func TestMoveUploadedFile(t *testing.T) {

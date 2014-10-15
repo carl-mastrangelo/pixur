@@ -2,16 +2,10 @@ package pixur
 
 import (
 	"testing"
-
-	ptest "pixur.org/pixur/testing"
 )
 
 func TestReadIndexTaskWorkflow(t *testing.T) {
-	db, err := ptest.GetDB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ptest.CleanUp()
+	db := testDB
 	if err := createTables(db); err != nil {
 		t.Fatal(err)
 	}
