@@ -35,7 +35,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 	defer task.Reset()
 
 	if err := task.Run(); err != nil {
-		return nil
+		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")

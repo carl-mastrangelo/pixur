@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/nfnt/resize"
@@ -33,6 +34,7 @@ type CreatePicTask struct {
 	// Inputs
 	Filename string
 	FileData multipart.File
+	TagNames []string
 
 	// Alternatively, a url can be uploaded
 	FileURL string
@@ -80,6 +82,10 @@ func (t *CreatePicTask) Run() TaskError {
 		}
 	} else {
 		return fmt.Errorf("No file uploaded")
+	}
+
+	if _, err := t.insertOrFindTags(); err != nil {
+		return err
 	}
 
 	img, err := t.fillImageConfig(wf, p)
@@ -198,6 +204,116 @@ func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
 	return jpeg.Encode(f, img, nil)
 }
 
+// This function is not really transactional, because it hits multiple entity roots.
+// TODO: break this apart, test it.
+func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
+	var wg sync.WaitGroup
+	type findTagResult struct {
+		tag *Tag
+		err error
+	}
+
+	var resultMap = make(map[string]*findTagResult, len(t.TagNames))
+	var lock sync.Mutex
+
+	wg.Add(len(t.TagNames))
+	for _, tagName := range t.TagNames {
+		go func(name string) {
+			defer wg.Done()
+			tags, err := findTags(t.db, "SELECT * FROM tags WHERE name = ?;", name)
+			var res *findTagResult
+			if err != nil {
+				res = &findTagResult{
+					err: err,
+				}
+			} else if len(tags) == 0 {
+				res = &findTagResult{}
+			} else if len(tags) == 1 {
+				res = &findTagResult{
+					tag: tags[0],
+				}
+			} else {
+				res = &findTagResult{
+					err: fmt.Errorf("Data corruption: multiple tags: %v", tags),
+				}
+			}
+			lock.Lock()
+			defer lock.Unlock()
+			resultMap[name] = res
+		}(tagName)
+	}
+
+	wg.Wait()
+
+	for tagName, tagResult := range resultMap {
+		if tagResult.err != nil {
+			return nil, tagResult.err
+		} else if tagResult.tag == nil {
+			wg.Add(1)
+			go func(name string, result *findTagResult) {
+				defer wg.Done()
+				now := getNowMillis()
+				tag := &Tag{
+					Name:         name,
+					CreatedTime:  now,
+					ModifiedTime: now,
+				}
+
+				res, err := t.db.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
+				if err != nil {
+					result.err = err
+					return
+				}
+				if insertId, err := res.LastInsertId(); err != nil {
+					result.err = err
+					return
+				} else {
+					tag.Id = insertId
+				}
+				result.tag = tag
+			}(tagName, tagResult)
+		}
+	}
+	wg.Wait()
+
+	var allTags []*Tag
+	for tagName, result := range resultMap {
+		fmt.Printf("%v: %+v, %v", tagName, result.tag, result.err)
+		if result.err != nil {
+			return nil, result.err
+		}
+		allTags = append(allTags, result.tag)
+	}
+
+	return allTags, nil
+}
+
+func findTags(db *sql.DB, query string, args ...interface{}) ([]*Tag, error) {
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []*Tag
+	for rows.Next() {
+		t := new(Tag)
+		if err := rows.Scan(t.ColumnPointers(columnNames)...); err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tags, nil
+}
+
 // TODO: interpret image rotation metadata
 func makeThumbnail(img image.Image) image.Image {
 	bounds := findMaxSquare(img.Bounds())
@@ -236,7 +352,11 @@ func findMaxSquare(bounds image.Rectangle) image.Rectangle {
 	}
 }
 
+func getNowMillis() int64 {
+	return int64(time.Duration(time.Now().UnixNano()) / time.Millisecond)
+}
+
 func fillTimestamps(p *Pic) {
-	p.CreatedTime = int64(time.Duration(time.Now().UnixNano()) / time.Millisecond)
+	p.CreatedTime = getNowMillis()
 	p.ModifiedTime = p.CreatedTime
 }

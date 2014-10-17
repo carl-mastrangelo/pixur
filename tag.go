@@ -1,14 +1,14 @@
-package pixur 
+package pixur
 
 import (
 	"pixur.org/pixur/storage"
 )
 
 type Tag struct {
-	Id           int64 `db:"id"`
-	Name     string `db:"name"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
+	Id           int64  `db:"id"`
+	Name         string `db:"name"`
+	CreatedTime  int64  `db:"created_time"`
+	ModifiedTime int64  `db:"modified_time"`
 }
 
 var (
