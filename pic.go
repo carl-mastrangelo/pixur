@@ -59,7 +59,7 @@ func (p *Pic) BuildInsert() string {
 }
 
 func (p *Pic) TableName() string {
-	return "pix"
+	return "pics"
 }
 
 func (p *Pic) RelativeURL() string {

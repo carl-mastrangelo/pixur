@@ -19,7 +19,7 @@ type ReadIndexPicsTask struct {
 func (t *ReadIndexPicsTask) Reset() {}
 
 func (t *ReadIndexPicsTask) Run() TaskError {
-	rows, err := t.db.Query("SELECT * FROM pix ORDER BY created_time_msec DESC LIMIT 50;")
+	rows, err := t.db.Query("SELECT * FROM pics ORDER BY created_time_msec DESC LIMIT 50;")
 	if err != nil {
 		return err
 	}

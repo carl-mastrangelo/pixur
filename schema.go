@@ -6,7 +6,7 @@ import (
 
 var (
 	rawSchemaTable = []string{
-		"CREATE TABLE IF NOT EXISTS `pix` (" +
+		"CREATE TABLE IF NOT EXISTS `pics` (" +
 			"  `id` int(11) NOT NULL AUTO_INCREMENT," +
 			"  `file_size` int(11) NOT NULL," +
 			"  `mime` tinyint(4) NOT NULL," +
