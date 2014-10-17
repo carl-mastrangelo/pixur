@@ -6,9 +6,6 @@ import (
 
 func TestReadIndexTaskWorkflow(t *testing.T) {
 	db := testDB
-	if err := createTables(db); err != nil {
-		t.Fatal(err)
-	}
 
 	task := ReadIndexPicsTask{
 		db: db,

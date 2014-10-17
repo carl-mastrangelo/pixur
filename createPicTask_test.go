@@ -19,9 +19,6 @@ func (ff *fakeFile) Close() error { return nil }
 
 func TestWorkflowFileUpload(t *testing.T) {
 	db := testDB
-	if err := createTables(db); err != nil {
-		t.Fatal(err)
-	}
 
 	pixPath, err := ioutil.TempDir("", "pixPath")
 	if err != nil {

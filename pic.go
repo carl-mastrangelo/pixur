@@ -13,8 +13,8 @@ type Pic struct {
 	Mime         Mime  `db:"mime"`
 	Width        int64 `db:"width"`
 	Height       int64 `db:"height"`
-	CreatedTime  int64 `db:"created_time_msec"`
-	ModifiedTime int64 `db:"modified_time_msec"`
+	CreatedTime  int64 `db:"created_time"`
+	ModifiedTime int64 `db:"modified_time"`
 }
 
 type InterfacePic struct {

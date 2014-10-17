@@ -20,7 +20,13 @@ func TestMain(m *testing.M) {
 		fmt.Println("error getting db", err)
 		os.Exit(1)
 	}
-	testDB = db
 	defer ptest.CleanUp()
+	testDB = db
+
+	if err := createTables(db); err != nil {
+		fmt.Println("error creating db tables", err)
+		os.Exit(1)
+	}
+
 	os.Exit(m.Run())
 }

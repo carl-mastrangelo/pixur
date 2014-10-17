@@ -130,7 +130,7 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
 		return err
 	}
 	defer resp.Body.Close()
-  // TODO: check the response code
+	// TODO: check the response code
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
 		return err
