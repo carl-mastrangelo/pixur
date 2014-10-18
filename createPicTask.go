@@ -64,7 +64,7 @@ func (t *CreatePicTask) Reset() {
 func (t *CreatePicTask) Run() TaskError {
 	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
-		return err
+		return WrapError(err)
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -81,7 +81,7 @@ func (t *CreatePicTask) Run() TaskError {
 			return err
 		}
 	} else {
-		return fmt.Errorf("No file uploaded")
+		return WrapError(fmt.Errorf("No file uploaded"))
 	}
 
 	if _, err := t.insertOrFindTags(); err != nil {
@@ -90,7 +90,7 @@ func (t *CreatePicTask) Run() TaskError {
 
 	img, err := t.fillImageConfig(wf, p)
 	if err != nil {
-		return err
+		return WrapError(err)
 	}
 	thumbnail := makeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
@@ -109,7 +109,7 @@ func (t *CreatePicTask) Run() TaskError {
 	}
 
 	if err := t.tx.Commit(); err != nil {
-		return err
+		return WrapError(err)
 	}
 
 	// The upload succeeded
@@ -120,41 +120,41 @@ func (t *CreatePicTask) Run() TaskError {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) TaskError {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return err
+		return WrapError(err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) TaskError {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
-		return err
+		return WrapError(err)
 	}
 	defer resp.Body.Close()
 	// TODO: check the response code
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return err
+		return WrapError(err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	return nil
 }
 
-func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, error) {
+func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, TaskError) {
 	if _, err := tempFile.Seek(0, os.SEEK_SET); err != nil {
-		return nil, err
+		return nil, WrapError(err)
 	}
 
 	img, imgType, err := image.Decode(tempFile)
 
 	if err != nil {
-		return nil, err
+		return nil, WrapError(err)
 	}
 
 	// TODO: handle this error
@@ -164,49 +164,49 @@ func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.I
 	return img, nil
 }
 
-func (t *CreatePicTask) beginTransaction() error {
+func (t *CreatePicTask) beginTransaction() TaskError {
 	if tx, err := t.db.Begin(); err != nil {
-		return err
+		return WrapError(err)
 	} else {
 		t.tx = tx
 	}
 	return nil
 }
 
-func (t *CreatePicTask) insertPic(p *Pic) error {
+func (t *CreatePicTask) insertPic(p *Pic) TaskError {
 	res, err := t.tx.Exec(p.BuildInsert(), p.ColumnPointers(p.GetColumnNames())...)
 	if err != nil {
-		return err
+		return WrapError(err)
 	}
 	if insertId, err := res.LastInsertId(); err != nil {
-		return err
+		return WrapError(err)
 	} else {
 		p.Id = insertId
 	}
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *Pic) error {
+func (t *CreatePicTask) renameTempFile(p *Pic) TaskError {
 	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
-		return err
+		return WrapError(err)
 	}
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.pixPath)
 	return nil
 }
 
-func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
+func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) TaskError {
 	f, err := os.Create(p.ThumbnailPath(t.pixPath))
 	if err != nil {
-		return err
+		return WrapError(err)
 	}
 	defer f.Close()
-	return jpeg.Encode(f, img, nil)
+	return WrapError(jpeg.Encode(f, img, nil))
 }
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: break this apart, test it.
-func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
+func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	var wg sync.WaitGroup
 	type findTagResult struct {
 		tag *Tag
@@ -247,7 +247,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
 
 	for tagName, tagResult := range resultMap {
 		if tagResult.err != nil {
-			return nil, tagResult.err
+			return nil, WrapError(tagResult.err)
 		} else if tagResult.tag == nil {
 			wg.Add(1)
 			go func(name string, result *findTagResult) {
@@ -280,7 +280,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
 	for tagName, result := range resultMap {
 		fmt.Printf("%v: %+v, %v", tagName, result.tag, result.err)
 		if result.err != nil {
-			return nil, result.err
+			return nil, WrapError(result.err)
 		}
 		allTags = append(allTags, result.tag)
 	}
