@@ -15,7 +15,7 @@ var (
 	_testTearDowns []func() error
 )
 
-func BeforeAfterTestSuite(before func() error) {
+func BeforeTestSuite(before func() error) {
 	_testSetups = append(_testSetups, before)
 }
 
@@ -24,7 +24,7 @@ func AfterTestSuite(after func() error) {
 }
 
 func init() {
-	BeforeAfterTestSuite(func() error {
+	BeforeTestSuite(func() error {
 		db, err := ptest.GetDB()
 		if err != nil {
 			return err
