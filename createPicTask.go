@@ -273,7 +273,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	return allTags, nil
 }
 
-func createTag(tagName string, now millis, db *sql.DB) (*Tag, error) {
+func createTag(tagName string, now int64, db *sql.DB) (*Tag, error) {
 	tag := &Tag{
 		Name:         tagName,
 		CreatedTime:  now,
@@ -342,10 +342,12 @@ func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
 			CreatedTime:  p.CreatedTime,
 			ModifiedTime: p.ModifiedTime,
 		}
+		fmt.Println("Creating tag...")
 		_, err := t.db.Exec(picTag.BuildInsert(), picTag.ColumnPointers(picTag.GetColumnNames())...)
 		if err != nil {
 			return WrapError(err)
 		}
+		fmt.Println("Success!")
 	}
 	return nil
 }

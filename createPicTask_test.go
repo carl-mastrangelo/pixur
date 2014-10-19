@@ -100,8 +100,36 @@ func TestWorkflowFileUpload(t *testing.T) {
 	}(); err != nil {
 		t.Fatal(err)
 	}
-
 }
+
+func TestWorkflowAllTagsAdded(t *testing.T) {
+	if err := func() error {
+		imgData, err := os.Open(uploadedImagePath)
+		if err != nil {
+			return err
+		}
+		task := &CreatePicTask{
+			db:       testDB,
+			pixPath:  pixPath,
+			FileData: imgData,
+			TagNames: []string{"foo"},
+		}
+		if err := task.Run(); err != nil {
+			task.Reset()
+			return err
+		}
+		
+		tags, err := findTagByName("foo", testDB)
+		if err != nil {
+			return err
+		}
+		// TODO: check the pic tags
+		return nil
+	}(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 
 func TestMoveUploadedFile(t *testing.T) {
 	if err := func() error {

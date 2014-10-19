@@ -35,10 +35,6 @@ var (
 			"  PRIMARY KEY (`pic_id`,`tag_id`)," +
 			"  KEY `tag_id` (`tag_id`)" +
 			"  ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;",
-
-		"ALTER TABLE `pictags`" +
-			"  ADD CONSTRAINT `pictags_ibfk_2` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`)," +
-			"  ADD CONSTRAINT `pictags_ibfk_1` FOREIGN KEY (`pic_id`) REFERENCES `pics` (`id`);",
 	}
 )
 

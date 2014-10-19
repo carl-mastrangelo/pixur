@@ -9,8 +9,8 @@ type PicTag struct {
 	TagId int64 `db:"tag_id"`
 	// Name is the denormalized tag name
 	Name         string `db:"name"`
-	CreatedTime  millis `db:"created_time"`
-	ModifiedTime millis `db:"modified_time"`
+	CreatedTime  int64 `db:"created_time"`
+	ModifiedTime int64 `db:"modified_time"`
 }
 
 var (

@@ -4,8 +4,6 @@ import (
 	"time"
 )
 
-type millis int64
-
-func getNowMillis() millis {
-	return millis(time.Duration(time.Now().UnixNano()) / time.Millisecond)
+func getNowMillis() int64 {
+	return int64(time.Duration(time.Now().UnixNano()) / time.Millisecond)
 }

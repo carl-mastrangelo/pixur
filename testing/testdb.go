@@ -121,6 +121,7 @@ func initDB() (*sql.DB, error) {
 			return nil, err
 		}
 	case <-time.After(5 * time.Second):
+		fmt.Println("Got here3")
 		return nil, fmt.Errorf("Failed to start server")
 	}
 
@@ -132,7 +133,19 @@ func initDB() (*sql.DB, error) {
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS test;"); err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec("USE test;"); err != nil {
+	
+	// Close our connection, so we can reopen with the correct db name.  Other threads
+	// will not use the correct database by default.
+	if err := db.Close(); err != nil {
+		return nil, err
+	}
+
+	db, err = sql.Open("mysql", "unix("+socket.Name()+")/test")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
