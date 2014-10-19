@@ -31,6 +31,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 		FileData: filedata,
 		Filename: filename,
 		FileURL:  fileURL,
+		TagNames: r.PostForm["tag"],
 	}
 	defer task.Reset()
 
