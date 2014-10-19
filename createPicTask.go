@@ -88,10 +88,6 @@ func (t *CreatePicTask) Run() TaskError {
 		return WrapError(fmt.Errorf("No file uploaded"))
 	}
 
-	if _, err := t.insertOrFindTags(); err != nil {
-		return err
-	}
-
 	img, err := t.fillImageConfig(wf, p)
 	if err != nil {
 		return WrapError(err)
@@ -110,6 +106,15 @@ func (t *CreatePicTask) Run() TaskError {
 	// If there is a problem creating the thumbnail, just continue on.
 	if err := t.saveThumbnail(thumbnail, p); err != nil {
 		log.Println("WARN Failed to create thumbnail", err)
+	}
+
+	tags, err := t.insertOrFindTags()
+	if err != nil {
+		return WrapError(err)
+	}
+	// must happen after pic is created, because it depends on pic id
+	if err := t.addTagsForPic(p, tags); err != nil {
+		return err
 	}
 
 	if err := t.tx.Commit(); err != nil {
@@ -209,9 +214,8 @@ func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) TaskError {
 }
 
 // This function is not really transactional, because it hits multiple entity roots.
-// TODO: break this apart, test it.
+// TODO: test this.
 func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
-
 	type findTagResult struct {
 		tag *Tag
 		err error
@@ -327,6 +331,23 @@ func findTags(db *sql.DB, query string, args ...interface{}) ([]*Tag, error) {
 		return nil, err
 	}
 	return tags, nil
+}
+
+func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
+	for _, tag := range tags {
+		picTag := &PicTag{
+			PicId:        p.Id,
+			TagId:        tag.Id,
+			Name:         tag.Name,
+			CreatedTime:  p.CreatedTime,
+			ModifiedTime: p.ModifiedTime,
+		}
+		_, err := t.db.Exec(picTag.BuildInsert(), picTag.ColumnPointers(picTag.GetColumnNames())...)
+		if err != nil {
+			return WrapError(err)
+		}
+	}
+	return nil
 }
 
 // TODO: interpret image rotation metadata
