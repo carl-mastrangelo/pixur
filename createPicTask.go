@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/nfnt/resize"
 
@@ -24,6 +23,11 @@ import (
 const (
 	thumbnailWidth  = 120
 	thumbnailHeight = 120
+)
+
+var (
+	errTagNotFound   = fmt.Errorf("Unable to find Tag")
+	errDuplicateTags = fmt.Errorf("Data Corruption: Duplicate tags found")
 )
 
 type CreatePicTask struct {
@@ -207,7 +211,7 @@ func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) TaskError {
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: break this apart, test it.
 func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
-	var wg sync.WaitGroup
+
 	type findTagResult struct {
 		tag *Tag
 		err error
@@ -216,69 +220,46 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	var resultMap = make(map[string]*findTagResult, len(t.TagNames))
 	var lock sync.Mutex
 
-	wg.Add(len(t.TagNames))
+	var readsGate sync.WaitGroup
+	readsGate.Add(len(t.TagNames))
 	for _, tagName := range t.TagNames {
 		go func(name string) {
-			defer wg.Done()
-			tags, err := findTags(t.db, "SELECT * FROM tags WHERE name = ?;", name)
-			var res *findTagResult
-			if err != nil {
-				res = &findTagResult{
-					err: err,
-				}
-			} else if len(tags) == 0 {
-				res = &findTagResult{}
-			} else if len(tags) == 1 {
-				res = &findTagResult{
-					tag: tags[0],
-				}
-			} else {
-				res = &findTagResult{
-					err: fmt.Errorf("Data corruption: multiple tags: %v", tags),
-				}
-			}
+			defer readsGate.Done()
+			tag, err := findTagByName(name, t.db)
 			lock.Lock()
 			defer lock.Unlock()
-			resultMap[name] = res
+			resultMap[name] = &findTagResult{
+				tag: tag,
+				err: err,
+			}
 		}(tagName)
 	}
+	readsGate.Wait()
 
-	wg.Wait()
-
+	// Find all errors, create the missing ones, and fail otherwise
+	now := getNowMillis()
+	var writesGate sync.WaitGroup
 	for tagName, tagResult := range resultMap {
-		if tagResult.err != nil {
+		if tagResult.err == errTagNotFound {
+			writesGate.Add(1)
+			go func(name string) {
+				defer writesGate.Done()
+				tag, err := createTag(name, now, t.db)
+				lock.Lock()
+				defer lock.Unlock()
+				resultMap[name] = &findTagResult{
+					tag: tag,
+					err: err,
+				}
+			}(tagName)
+		} else if tagResult.err != nil {
 			return nil, WrapError(tagResult.err)
-		} else if tagResult.tag == nil {
-			wg.Add(1)
-			go func(name string, result *findTagResult) {
-				defer wg.Done()
-				now := getNowMillis()
-				tag := &Tag{
-					Name:         name,
-					CreatedTime:  now,
-					ModifiedTime: now,
-				}
-
-				res, err := t.db.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
-				if err != nil {
-					result.err = err
-					return
-				}
-				if insertId, err := res.LastInsertId(); err != nil {
-					result.err = err
-					return
-				} else {
-					tag.Id = insertId
-				}
-				result.tag = tag
-			}(tagName, tagResult)
 		}
 	}
-	wg.Wait()
+	writesGate.Wait()
 
 	var allTags []*Tag
-	for tagName, result := range resultMap {
-		fmt.Printf("%v: %+v, %v", tagName, result.tag, result.err)
+	for _, result := range resultMap {
 		if result.err != nil {
 			return nil, WrapError(result.err)
 		}
@@ -286,6 +267,40 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	}
 
 	return allTags, nil
+}
+
+func createTag(tagName string, now millis, db *sql.DB) (*Tag, error) {
+	tag := &Tag{
+		Name:         tagName,
+		CreatedTime:  now,
+		ModifiedTime: now,
+	}
+	res, err := db.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
+	if err != nil {
+		return nil, err
+	}
+	// Don't rollback the transaction.  Upon retry, it will work.
+	if insertId, err := res.LastInsertId(); err != nil {
+		return nil, err
+	} else {
+		tag.Id = insertId
+	}
+	return tag, nil
+}
+
+func findTagByName(tagName string, db *sql.DB) (*Tag, error) {
+	tags, err := findTags(db, "SELECT * FROM tags WHERE name = ?;", tagName)
+	if err != nil {
+		return nil, err
+	}
+	switch len(tags) {
+	case 0:
+		return nil, errTagNotFound
+	case 1:
+		return tags[0], nil
+	default:
+		return nil, errDuplicateTags
+	}
 }
 
 func findTags(db *sql.DB, query string, args ...interface{}) ([]*Tag, error) {
@@ -350,10 +365,6 @@ func findMaxSquare(bounds image.Rectangle) image.Rectangle {
 			},
 		}
 	}
-}
-
-func getNowMillis() int64 {
-	return int64(time.Duration(time.Now().UnixNano()) / time.Millisecond)
 }
 
 func fillTimestamps(p *Pic) {

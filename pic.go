@@ -8,20 +8,20 @@ import (
 )
 
 type Pic struct {
-	Id           int64 `db:"id"`
-	FileSize     int64 `db:"file_size"`
-	Mime         Mime  `db:"mime"`
-	Width        int64 `db:"width"`
-	Height       int64 `db:"height"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
+	Id           int64  `db:"id"`
+	FileSize     int64  `db:"file_size"`
+	Mime         Mime   `db:"mime"`
+	Width        int64  `db:"width"`
+	Height       int64  `db:"height"`
+	CreatedTime  millis `db:"created_time"`
+	ModifiedTime millis `db:"modified_time"`
 }
 
 type InterfacePic struct {
 	Id                   int64  `json:"id"`
 	Width                int64  `json:"width"`
 	Height               int64  `json:"height"`
-	Version              int64  `json:"version"`
+	Version              millis `json:"version"`
 	RelativeURL          string `json:"relative_url"`
 	ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
 }
