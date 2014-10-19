@@ -333,6 +333,36 @@ func findTags(db *sql.DB, query string, args ...interface{}) ([]*Tag, error) {
 	return tags, nil
 }
 
+func findPicTagsByPicId(picId int64, db *sql.DB) ([]*PicTag, error) {
+	return findPicTags(db, "SELECT * FROM pictags WHERE pic_id = ?;", picId)
+}
+
+func findPicTags(db *sql.DB, query string, args ...interface{}) ([]*PicTag, error) {
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	columnNames, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	var picTags []*PicTag
+	for rows.Next() {
+		pt := new(PicTag)
+		if err := rows.Scan(pt.ColumnPointers(columnNames)...); err != nil {
+			return nil, err
+		}
+		picTags = append(picTags, pt)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return picTags, nil
+}
+
 func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
 	for _, tag := range tags {
 		picTag := &PicTag{
@@ -342,12 +372,10 @@ func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
 			CreatedTime:  p.CreatedTime,
 			ModifiedTime: p.ModifiedTime,
 		}
-		fmt.Println("Creating tag...")
 		_, err := t.db.Exec(picTag.BuildInsert(), picTag.ColumnPointers(picTag.GetColumnNames())...)
 		if err != nil {
 			return WrapError(err)
 		}
-		fmt.Println("Success!")
 	}
 	return nil
 }

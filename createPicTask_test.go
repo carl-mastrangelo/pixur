@@ -55,7 +55,6 @@ func init() {
 		}
 		return nil
 	})
-
 }
 
 func TestWorkflowFileUpload(t *testing.T) {
@@ -112,24 +111,41 @@ func TestWorkflowAllTagsAdded(t *testing.T) {
 			db:       testDB,
 			pixPath:  pixPath,
 			FileData: imgData,
-			TagNames: []string{"foo"},
+			TagNames: []string{"foo", "bar"},
 		}
 		if err := task.Run(); err != nil {
 			task.Reset()
 			return err
 		}
-		
-		tags, err := findTagByName("foo", testDB)
+
+		fooTag, err := findTagByName("foo", testDB)
 		if err != nil {
 			return err
 		}
-		// TODO: check the pic tags
+		barTag, err := findTagByName("bar", testDB)
+		if err != nil {
+			return err
+		}
+
+		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
+		if err != nil {
+			return err
+		}
+		if len(picTags) != 2 {
+			return fmt.Errorf("Wrong number of pic tags", picTags)
+		}
+		var picTagsGroupedByName = groupPicTagsByTagName(picTags)
+		if picTagsGroupedByName["foo"].TagId != fooTag.Id {
+			return fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.Id)
+		}
+		if picTagsGroupedByName["bar"].TagId != barTag.Id {
+			return fmt.Errorf("Tag ID does not match PicTag TagId", barTag.Id)
+		}
 		return nil
 	}(); err != nil {
 		t.Fatal(err)
 	}
 }
-
 
 func TestMoveUploadedFile(t *testing.T) {
 	if err := func() error {

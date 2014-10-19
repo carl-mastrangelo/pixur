@@ -1,6 +1,8 @@
 package pixur
 
 import (
+	"fmt"
+
 	"pixur.org/pixur/storage"
 )
 
@@ -9,8 +11,8 @@ type PicTag struct {
 	TagId int64 `db:"tag_id"`
 	// Name is the denormalized tag name
 	Name         string `db:"name"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
+	CreatedTime  int64  `db:"created_time"`
+	ModifiedTime int64  `db:"modified_time"`
 }
 
 var (
@@ -36,4 +38,16 @@ func (pt *PicTag) BuildInsert() string {
 
 func (pt *PicTag) TableName() string {
 	return "pictags"
+}
+
+func (pt *PicTag) String() string {
+	return fmt.Sprintf("*%+v", *pt)
+}
+
+func groupPicTagsByTagName(pts []*PicTag) map[string]*PicTag {
+	var grouped = make(map[string]*PicTag, len(pts))
+	for _, pt := range pts {
+		grouped[pt.Name] = pt
+	}
+	return grouped
 }
