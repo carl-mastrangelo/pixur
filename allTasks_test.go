@@ -10,23 +10,56 @@ import (
 )
 
 var (
-	testDB *sql.DB
+	testDB         *sql.DB
+	_testSetups    []func() error
+	_testTearDowns []func() error
 )
 
+func BeforeAfterTestSuite(before func() error) {
+	_testSetups = append(_testSetups, before)
+}
+
+func AfterTestSuite(after func() error) {
+	_testTearDowns = append(_testTearDowns, after)
+}
+
+func init() {
+	BeforeAfterTestSuite(func() error {
+		db, err := ptest.GetDB()
+		if err != nil {
+			return err
+		}
+		AfterTestSuite(func() error {
+			ptest.CleanUp()
+			return nil
+		})
+		testDB = db
+		if err := createTables(db); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func runTests(m *testing.M) int {
+	defer func() {
+		for _, after := range _testTearDowns {
+			if err := after(); err != nil {
+				fmt.Println("Error in teardown", err)
+			}
+		}
+	}()
+
+	for _, before := range _testSetups {
+		if err := before(); err != nil {
+			fmt.Println("Error in test setup", err)
+			return 1
+		}
+	}
+
+	return m.Run()
+}
+
 func TestMain(m *testing.M) {
-	db, err := ptest.GetDB()
-
-	if err != nil {
-		fmt.Println("error getting db", err)
-		os.Exit(1)
-	}
-	defer ptest.CleanUp()
-	testDB = db
-
-	if err := createTables(db); err != nil {
-		fmt.Println("error creating db tables", err)
-		os.Exit(1)
-	}
-
-	os.Exit(m.Run())
+	os.Exit(runTests(m))
 }
