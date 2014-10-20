@@ -246,11 +246,19 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	readsGate.Wait()
 
 	// Find all errors, create the missing ones, and fail otherwise
-	now := getNowMillis()
-	var writesGate sync.WaitGroup
+	var tagsToCreate []string
 	for tagName, tagResult := range resultMap {
 		if tagResult.err == errTagNotFound {
-			writesGate.Add(1)
+			tagsToCreate = append(tagsToCreate, tagName)
+		} else if tagResult.err != nil {
+			return nil, WrapError(tagResult.err)
+		}
+	}
+
+	now := getNowMillis()
+	var writesGate sync.WaitGroup
+	writesGate.Add(len(tagsToCreate))
+	for _, tagName := range tagsToCreate {
 			go func(name string) {
 				defer writesGate.Done()
 				tag, err := createTag(name, now, t.db)
@@ -261,9 +269,6 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 					err: err,
 				}
 			}(tagName)
-		} else if tagResult.err != nil {
-			return nil, WrapError(tagResult.err)
-		}
 	}
 	writesGate.Wait()
 
