@@ -227,6 +227,30 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	}
 }
 
+func BenchmarkCreation(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if err := func() error {
+			imgData, err := os.Open(uploadedImagePath)
+			if err != nil {
+				return err
+			}
+
+			task := &CreatePicTask{
+				db:       testDB,
+				pixPath:  pixPath,
+				FileData: imgData,
+				TagNames: []string{"foo", "bar"},
+			}
+			if err := task.Run(); err != nil {
+				task.Reset()
+				return err
+			}
+			return nil
+		}(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 func TestMoveUploadedFile(t *testing.T) {
 	if err := func() error {
