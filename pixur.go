@@ -32,6 +32,8 @@ func (s *Server) setup(c *Config) error {
 		return err
 	}
 	s.db = db
+	// TODO: make this configurable
+	db.SetMaxOpenConns(20)
 
 	// setup storage
 
