@@ -7,8 +7,8 @@ import (
 type Tag struct {
 	Id           int64  `db:"id"`
 	Name         string `db:"name"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
+	CreatedTime  int64  `db:"created_time"`
+	ModifiedTime int64  `db:"modified_time"`
 }
 
 var (

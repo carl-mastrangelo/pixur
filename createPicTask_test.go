@@ -147,6 +147,87 @@ func TestWorkflowAllTagsAdded(t *testing.T) {
 	}
 }
 
+func TestWorkflowAlreadyExistingTags(t *testing.T) {
+	if err := func() error {
+		imgData, err := os.Open(uploadedImagePath)
+		if err != nil {
+			return err
+		}
+		
+		bazTag := CreateTagForTest("baz", t)
+		quxTag := CreateTagForTest("qux", t)
+
+		task := &CreatePicTask{
+			db:       testDB,
+			pixPath:  pixPath,
+			FileData: imgData,
+			TagNames: []string{"baz", "qux"},
+		}
+		if err := task.Run(); err != nil {
+			task.Reset()
+			return err
+		}
+
+		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
+		if err != nil {
+			return err
+		}
+		if len(picTags) != 2 {
+			return fmt.Errorf("Wrong number of pic tags", picTags)
+		}
+		var picTagsGroupedByName = groupPicTagsByTagName(picTags)
+		if picTagsGroupedByName["baz"].TagId != bazTag.Id {
+			return fmt.Errorf("Tag ID does not match PicTag TagId", bazTag.Id)
+		}
+		if picTagsGroupedByName["qux"].TagId != quxTag.Id {
+			return fmt.Errorf("Tag ID does not match PicTag TagId", quxTag.Id)
+		}
+		return nil
+	}(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
+	if err := func() error {
+		imgData, err := os.Open(uploadedImagePath)
+		if err != nil {
+			return err
+		}
+
+		task := &CreatePicTask{
+			db:       testDB,
+			pixPath:  pixPath,
+			FileData: imgData,
+			TagNames: []string{"foo", "foo", "  foo", "foo  "},
+		}
+		if err := task.Run(); err != nil {
+			task.Reset()
+			return err
+		}
+
+		fooTag, err := findTagByName("foo", testDB)
+		if err != nil {
+			return err
+		}
+		
+		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
+		if err != nil {
+			return err
+		}
+		if len(picTags) != 1 {
+			return fmt.Errorf("Wrong number of pic tags", picTags)
+		}
+		if picTags[0].TagId != fooTag.Id {
+			return fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.Id)
+		}
+		return nil
+	}(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+
 func TestMoveUploadedFile(t *testing.T) {
 	if err := func() error {
 		imgData, err := os.Open(uploadedImagePath)
@@ -203,4 +284,21 @@ func TestFillImageConfig(t *testing.T) {
 	}(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+
+func CreateTagForTest(tagName string, t *testing.T) *Tag {
+  tag := &Tag {
+	  Name: tagName,
+	}
+	res, err := testDB.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if insertId, err := res.LastInsertId(); err != nil {
+		t.Fatal(err)
+	} else {
+		tag.Id = insertId
+	}
+	return tag
 }

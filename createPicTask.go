@@ -1,6 +1,7 @@
 package pixur
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"image"
@@ -11,7 +12,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/nfnt/resize"
 
@@ -221,12 +224,14 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 		err error
 	}
 
-	var resultMap = make(map[string]*findTagResult, len(t.TagNames))
+	var cleanedTags = cleanTagNames(t.TagNames)
+
+	var resultMap = make(map[string]*findTagResult, len(cleanedTags))
 	var lock sync.Mutex
 
 	var readsGate sync.WaitGroup
-	readsGate.Add(len(t.TagNames))
-	for _, tagName := range t.TagNames {
+	readsGate.Add(len(cleanedTags))
+	for _, tagName := range cleanedTags {
 		go func(name string) {
 			defer readsGate.Done()
 			tag, err := findTagByName(name, t.db)
@@ -416,6 +421,46 @@ func findMaxSquare(bounds image.Rectangle) image.Rectangle {
 			},
 		}
 	}
+}
+
+func cleanTagNames(rawTagNames []string) []string {
+	var trimmed []string
+	for _, tagName := range rawTagNames {
+		trimmed = append(trimmed, strings.TrimSpace(tagName))
+	}
+
+	var noInnerSpace []string
+	for _, tagName := range trimmed {
+		var buf bytes.Buffer
+		for _, runeValue := range tagName {
+			if runeValue == unicode.ReplacementChar {
+				// TODO: do something about this value?
+				buf.WriteRune(runeValue)
+			} else if unicode.IsSpace(runeValue) {
+				buf.WriteByte('_')
+			} else {
+				buf.WriteRune(runeValue)
+			}
+		}
+		noInnerSpace = append(noInnerSpace, buf.String())
+	}
+
+	// We keep track of which are duplicates, but maintain order otherwise
+	var seen = make(map[string]struct{}, len(noInnerSpace))
+
+	var uniqueNonEmptyTags []string
+	for _, tagName := range noInnerSpace {
+		if len(tagName) == 0 {
+			continue
+		}
+		if _, present := seen[tagName]; present {
+			continue
+		}
+		seen[tagName] = struct{}{}
+		uniqueNonEmptyTags = append(uniqueNonEmptyTags, tagName)
+	}
+
+	return uniqueNonEmptyTags
 }
 
 func fillTimestamps(p *Pic) {
