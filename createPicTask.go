@@ -429,27 +429,23 @@ func cleanTagNames(rawTagNames []string) []string {
 		trimmed = append(trimmed, strings.TrimSpace(tagName))
 	}
 
-	var noInnerSpace []string
+	var noInvalidRunes []string
 	for _, tagName := range trimmed {
 		var buf bytes.Buffer
 		for _, runeValue := range tagName {
-			if runeValue == unicode.ReplacementChar {
-				// TODO: do something about this value?
-				buf.WriteRune(runeValue)
-			} else if unicode.IsSpace(runeValue) {
-				buf.WriteByte('_')
-			} else {
-				buf.WriteRune(runeValue)
+			if runeValue == unicode.ReplacementChar || !unicode.IsPrint(runeValue) {
+				continue
 			}
+			buf.WriteRune(runeValue)
 		}
-		noInnerSpace = append(noInnerSpace, buf.String())
+		noInvalidRunes = append(noInvalidRunes, buf.String())
 	}
 
 	// We keep track of which are duplicates, but maintain order otherwise
-	var seen = make(map[string]struct{}, len(noInnerSpace))
+	var seen = make(map[string]struct{}, len(noInvalidRunes))
 
 	var uniqueNonEmptyTags []string
-	for _, tagName := range noInnerSpace {
+	for _, tagName := range noInvalidRunes {
 		if len(tagName) == 0 {
 			continue
 		}

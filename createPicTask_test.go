@@ -153,7 +153,7 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		
+
 		bazTag := CreateTagForTest("baz", t)
 		quxTag := CreateTagForTest("qux", t)
 
@@ -199,6 +199,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 			db:       testDB,
 			pixPath:  pixPath,
 			FileData: imgData,
+			// All of these are the same
 			TagNames: []string{"foo", "foo", "  foo", "foo  "},
 		}
 		if err := task.Run(); err != nil {
@@ -210,7 +211,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		
+
 		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
 		if err != nil {
 			return err
@@ -224,6 +225,35 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		return nil
 	}(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCleanTagNames(t *testing.T) {
+	var unclean = []string{
+		"   ",
+		" ", // should collapse with the above
+		"",  // should also collapse"
+		"a",
+		"   a",
+		"a   ",
+		"b b",
+		"c\nc",
+		"pokémon",
+	}
+	var expected = []string{
+		"a",
+		"b b",
+		"cc",
+		"pokémon",
+	}
+	cleaned := cleanTagNames(unclean)
+	if len(cleaned) != len(expected) {
+		t.Fatal("Size mismatch", cleaned, expected)
+	}
+	for i, tagName := range cleaned {
+		if tagName != expected[i] {
+			t.Fatal("tag mismatch", cleaned, expected)
+		}
 	}
 }
 
@@ -310,10 +340,9 @@ func TestFillImageConfig(t *testing.T) {
 	}
 }
 
-
 func CreateTagForTest(tagName string, t *testing.T) *Tag {
-  tag := &Tag {
-	  Name: tagName,
+	tag := &Tag{
+		Name: tagName,
 	}
 	res, err := testDB.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
 	if err != nil {
