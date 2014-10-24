@@ -259,16 +259,16 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	var writesGate sync.WaitGroup
 	writesGate.Add(len(tagsToCreate))
 	for _, tagName := range tagsToCreate {
-			go func(name string) {
-				defer writesGate.Done()
-				tag, err := createTag(name, now, t.db)
-				lock.Lock()
-				defer lock.Unlock()
-				resultMap[name] = &findTagResult{
-					tag: tag,
-					err: err,
-				}
-			}(tagName)
+		go func(name string) {
+			defer writesGate.Done()
+			tag, err := createTag(name, now, t.db)
+			lock.Lock()
+			defer lock.Unlock()
+			resultMap[name] = &findTagResult{
+				tag: tag,
+				err: err,
+			}
+		}(tagName)
 	}
 	writesGate.Wait()
 

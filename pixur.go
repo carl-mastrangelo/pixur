@@ -36,7 +36,6 @@ func (s *Server) setup(c *Config) error {
 	db.SetMaxOpenConns(20)
 
 	// setup storage
-
 	fi, err := os.Stat(c.PixPath)
 	if os.IsNotExist(err) {
 		if err := os.MkdirAll(c.PixPath, os.ModeDir|0775); err != nil {
