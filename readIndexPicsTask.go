@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	DefaultStartTime = math.MaxInt64
-	DefaultMaxPics   = 100
+	DefaultStartID = math.MaxInt64
+	DefaultMaxPics = 100
 )
 
 type ReadIndexPicsTask struct {
@@ -15,8 +15,8 @@ type ReadIndexPicsTask struct {
 	db *sql.DB
 
 	// Inputs
-	// Only get pics with created time less than this.  If unset, the latest pics will be returned.
-	StartTime int64
+	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
+	StartID int64
 	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
 	// may be less than the number requested.  If unset, the de
 	MaxPics int64
@@ -31,11 +31,11 @@ func (t *ReadIndexPicsTask) Reset() {}
 
 func (t *ReadIndexPicsTask) Run() TaskError {
 
-	var startTime int64
-	if t.StartTime != 0 {
-		startTime = t.StartTime
+	var startID int64
+	if t.StartID != 0 {
+		startID = t.StartID
 	} else {
-		startTime = DefaultStartTime
+		startID = DefaultStartID
 	}
 
 	var maxPics int64
@@ -45,9 +45,11 @@ func (t *ReadIndexPicsTask) Run() TaskError {
 		maxPics = DefaultMaxPics
 	}
 
+	// Technically an initial lookup of the created time of the provided Pic ID id needed.
+	// TODO: decide if this is worth the extra DB call.
 	rows, err := t.db.Query(
-		"SELECT * FROM pics WHERE created_time <= ? ORDER BY created_time DESC LIMIT ?;",
-		startTime, maxPics)
+		"SELECT * FROM pics WHERE id <= ? ORDER BY created_time DESC LIMIT ?;",
+		startID, maxPics)
 
 	if err != nil {
 		return WrapError(err)

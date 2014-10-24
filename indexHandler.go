@@ -35,19 +35,19 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
-	requestedRawStartTime := r.FormValue("start_time")
-	var requestedStartTime int64
-	if requestedRawStartTime != "" {
-		if startTime, err := strconv.Atoi(requestedRawStartTime); err != nil {
+	requestedRawStartPicID := r.FormValue("start_pic_id")
+	var requestedStartPicID int64
+	if requestedRawStartPicID != "" {
+		if startID, err := strconv.Atoi(requestedRawStartPicID); err != nil {
 			return err
 		} else {
-			requestedStartTime = int64(startTime)
+			requestedStartPicID = int64(startID)
 		}
 	}
 
 	var task = &ReadIndexPicsTask{
-		db:        s.db,
-		StartTime: requestedStartTime,
+		db:      s.db,
+		StartID: requestedStartPicID,
 	}
 	defer task.Reset()
 

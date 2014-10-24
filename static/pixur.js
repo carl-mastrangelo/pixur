@@ -1,42 +1,75 @@
 (function(){
-var IndexCtrl = function($scope, indexPicsService, createPicService) {
+var IndexCtrl = function($scope, $location, indexPicsService, createPicService) {
+	this.indexPicsService_ = indexPicsService;
+	this.createPicService_ = createPicService;
+	this.location_ = $location;
+
   this.pics = [];
-  
+	
+	this.pageIDIndex = -1;
+	this.pageIDs = [];
+
+	this.nextPageID = null;
+	this.prevPageID = null;
+
   this.upload = {
     file: null, 
     url: "",
   };
 
+	// Initial Load
   indexPicsService.get().then(
     function(data) {
-      this.pics = data.data;
+			var pics = data.data;
+			if (pics.length > 0) {
+				this.nextPageID = pics[pics.length - 1].id;
+				this.pics = pics;
+			}
     }.bind(this)
   );
-  
-  this.fileChange = function(elem) {
-    if (elem.files.length > 0) {
-      this.upload.file = elem.files[0];
-    } else {
-      this.upload.file = null;
-    }
-  }.bind(this);
-  
-  this.createPic = function() {
-    createPicService.create(this.upload.file, this.upload.url)
-        .then(function(data) {
-          this.pics.unshift(data.data);
-        }.bind(this));
-  }.bind(this);
 }
+
+IndexCtrl.prototype.loadNext = function() {
+	this.indexPicsService_.get(this.nextPageID).then(
+		function(data) {
+			this.pics = data.data;
+			if (this.pics.length > 0) {
+				this.nextPageID = this.pics[this.pics.length - 1].id
+			}
+		}.bind(this)
+	);
+
+}
+
+IndexCtrl.prototype.fileChange = function(elem) {
+	if (elem.files.length > 0) {
+		this.upload.file = elem.files[0];
+	} else {
+		this.upload.file = null;
+	}
+};
+
+IndexCtrl.prototype.createPic = function() {
+	this.createPicService_.create(this.upload.file, this.upload.url)
+			.then(function(data) {
+				this.pics.unshift(data.data);
+			}.bind(this));
+};
 
 var IndexPicsService = function($http, $q) {
   this.http_ = $http;
   this.q_ = $q;
 };
 
-IndexPicsService.prototype.get = function() {
+IndexPicsService.prototype.get = function(startID) {
   var deferred = this.q_.defer();
-  this.http_.get("/api/findIndexPics").then(
+	var httpConfig = {};
+	if (startID) {
+		httpConfig.params = {
+			start_pic_id: startID
+		};
+	}
+  this.http_.get("/api/findIndexPics", httpConfig).then(
     function(data, status, headers, config) {
       deferred.resolve(data);
     },
@@ -77,8 +110,20 @@ CreatePicService.prototype.create = function(file, url) {
   return deferred.promise;
 };
 
+var ScrollDirective = function($window) {
+	return function(scope, element, attrs) {
+		angular.element($window).bind("scroll", function() {
+			//console.log(this);
+		});
+	};
+};
+
 angular.module('pixur', [])
+		.config(function($locationProvider) {
+			$locationProvider.html5Mode(true);
+		})
     .controller("IndexCtrl", IndexCtrl)
     .service("indexPicsService", IndexPicsService)
-    .service("createPicService", CreatePicService);
+    .service("createPicService", CreatePicService)
+		.directive("scroll", ScrollDirective);
 })();
