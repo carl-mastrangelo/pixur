@@ -2,6 +2,12 @@ package pixur
 
 import (
 	"database/sql"
+	"math"
+)
+
+const (
+	DefaultStartTime = math.MaxInt64
+	DefaultMaxPics   = 100
 )
 
 type ReadIndexPicsTask struct {
@@ -9,6 +15,11 @@ type ReadIndexPicsTask struct {
 	db *sql.DB
 
 	// Inputs
+	// Only get pics with created time less than this.  If unset, the latest pics will be returned.
+	StartTime int64
+	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
+	// may be less than the number requested.  If unset, the de
+	MaxPics int64
 
 	// State
 
@@ -19,10 +30,29 @@ type ReadIndexPicsTask struct {
 func (t *ReadIndexPicsTask) Reset() {}
 
 func (t *ReadIndexPicsTask) Run() TaskError {
-	rows, err := t.db.Query("SELECT * FROM pics ORDER BY created_time DESC LIMIT 50;")
+
+	var startTime int64
+	if t.StartTime != 0 {
+		startTime = t.StartTime
+	} else {
+		startTime = DefaultStartTime
+	}
+
+	var maxPics int64
+	if t.MaxPics != 0 {
+		maxPics = t.MaxPics
+	} else {
+		maxPics = DefaultMaxPics
+	}
+
+	rows, err := t.db.Query(
+		"SELECT * FROM pics WHERE created_time <= ? ORDER BY created_time DESC LIMIT ?;",
+		startTime, maxPics)
+
 	if err != nil {
 		return WrapError(err)
 	}
+
 	defer rows.Close()
 
 	columnNames, err := rows.Columns()

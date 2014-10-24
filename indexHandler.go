@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"strconv"
 )
 
 type indexParams struct {
@@ -34,8 +35,19 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
+	requestedRawStartTime := r.FormValue("start_time")
+	var requestedStartTime int64
+	if requestedRawStartTime != "" {
+		if startTime, err := strconv.Atoi(requestedRawStartTime); err != nil {
+			return err
+		} else {
+			requestedStartTime = int64(startTime)
+		}
+	}
+
 	var task = &ReadIndexPicsTask{
-		db: s.db,
+		db:        s.db,
+		StartTime: requestedStartTime,
 	}
 	defer task.Reset()
 
@@ -43,7 +55,8 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	var interfacePics []*InterfacePic
+	// Initialize this to an empty array because the json response will be null otherwise.
+	interfacePics := make([]*InterfacePic, 0, len(task.Pics))
 	for _, pic := range task.Pics {
 		interfacePics = append(interfacePics, pic.ToInterface())
 	}
