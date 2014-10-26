@@ -229,39 +229,33 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	var resultMap = make(map[string]*findTagResult, len(cleanedTags))
 	var lock sync.Mutex
 
-	var readsGate sync.WaitGroup
-	readsGate.Add(len(cleanedTags))
-	for _, tagName := range cleanedTags {
-		go func(name string) {
-			defer readsGate.Done()
-			tag, err := findTagByName(name, t.db)
-			lock.Lock()
-			defer lock.Unlock()
-			resultMap[name] = &findTagResult{
-				tag: tag,
-				err: err,
-			}
-		}(tagName)
-	}
-	readsGate.Wait()
-
-	// Find all errors, create the missing ones, and fail otherwise
-	var tagsToCreate []string
-	for tagName, tagResult := range resultMap {
-		if tagResult.err == errTagNotFound {
-			tagsToCreate = append(tagsToCreate, tagName)
-		} else if tagResult.err != nil {
-			return nil, WrapError(tagResult.err)
-		}
-	}
-
 	now := getNowMillis()
-	var writesGate sync.WaitGroup
-	writesGate.Add(len(tagsToCreate))
-	for _, tagName := range tagsToCreate {
+
+	var wg sync.WaitGroup
+	for _, tagName := range cleanedTags {
+		wg.Add(1)
 		go func(name string) {
-			defer writesGate.Done()
-			tag, err := createTag(name, now, t.db)
+			defer wg.Done()
+
+			tx, err := t.db.Begin()
+			if err != nil {
+				lock.Lock()
+				defer lock.Unlock()
+				resultMap[name] = &findTagResult{
+					tag: nil,
+					err: err,
+				}
+				return
+			}
+
+			tag, err := findAndUpsertTag(name, now, tx)
+			if err != nil {
+				// TODO: maybe do something with this error?
+				tx.Rollback()
+			} else {
+				err = tx.Commit()
+			}
+
 			lock.Lock()
 			defer lock.Unlock()
 			resultMap[name] = &findTagResult{
@@ -270,7 +264,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 			}
 		}(tagName)
 	}
-	writesGate.Wait()
+	wg.Wait()
 
 	var allTags []*Tag
 	for _, result := range resultMap {
@@ -283,27 +277,43 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	return allTags, nil
 }
 
-func createTag(tagName string, now int64, db *sql.DB) (*Tag, error) {
-	tag := &Tag{
-		Name:         tagName,
-		CreatedTime:  now,
-		ModifiedTime: now,
+// findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
+// time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
+func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
+	tag, err := findTagByName(tagName, tx)
+	if err == errTagNotFound {
+		tag, err = createTag(tagName, now, tx)
+	} else if err != nil {
+		return nil, err
+	} else {
+		tag.ModifiedTime = now
+		tag.Count += 1
+		err = tag.Update(tx)
 	}
-	res, err := db.Exec(tag.BuildInsert(), tag.ColumnPointers(tag.GetColumnNames())...)
+
 	if err != nil {
 		return nil, err
 	}
-	// Don't rollback the transaction.  Upon retry, it will work.
-	if insertId, err := res.LastInsertId(); err != nil {
+
+	return tag, nil
+}
+
+func createTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
+	tag := &Tag{
+		Name:         tagName,
+		Count:        1,
+		CreatedTime:  now,
+		ModifiedTime: now,
+	}
+
+	if err := tag.Insert(tx); err != nil {
 		return nil, err
-	} else {
-		tag.Id = insertId
 	}
 	return tag, nil
 }
 
-func findTagByName(tagName string, db *sql.DB) (*Tag, error) {
-	tags, err := findTags(db, "SELECT * FROM tags WHERE name = ?;", tagName)
+func findTagByName(tagName string, tx *sql.Tx) (*Tag, error) {
+	tags, err := findTags(tx, "SELECT * FROM tags WHERE name = ?;", tagName)
 	if err != nil {
 		return nil, err
 	}
@@ -317,8 +327,8 @@ func findTagByName(tagName string, db *sql.DB) (*Tag, error) {
 	}
 }
 
-func findTags(db *sql.DB, query string, args ...interface{}) ([]*Tag, error) {
-	rows, err := db.Query(query, args...)
+func findTags(tx *sql.Tx, query string, args ...interface{}) ([]*Tag, error) {
+	rows, err := tx.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package pixur
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"image"
 	"image/gif"
@@ -17,6 +18,25 @@ var (
 	uploadedImagePath string
 	uploadedImageSize int64
 )
+
+type container struct {
+	t  *testing.T
+	db *sql.DB
+}
+
+func (c *container) mustFindTagByName(name string) *Tag {
+	tx, err := c.db.Begin()
+	if err != nil {
+		c.t.Fatal(err)
+	}
+
+	t, err := findTagByName(name, tx)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+
+	return t
+}
 
 func init() {
 	BeforeTestSuite(func() error {
@@ -102,48 +122,42 @@ func TestWorkflowFileUpload(t *testing.T) {
 }
 
 func TestWorkflowAllTagsAdded(t *testing.T) {
-	if err := func() error {
-		imgData, err := os.Open(uploadedImagePath)
-		if err != nil {
-			return err
-		}
-		task := &CreatePicTask{
-			db:       testDB,
-			pixPath:  pixPath,
-			FileData: imgData,
-			TagNames: []string{"foo", "bar"},
-		}
-		if err := task.Run(); err != nil {
-			task.Reset()
-			return err
-		}
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
 
-		fooTag, err := findTagByName("foo", testDB)
-		if err != nil {
-			return err
-		}
-		barTag, err := findTagByName("bar", testDB)
-		if err != nil {
-			return err
-		}
-
-		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
-		if err != nil {
-			return err
-		}
-		if len(picTags) != 2 {
-			return fmt.Errorf("Wrong number of pic tags", picTags)
-		}
-		var picTagsGroupedByName = groupPicTagsByTagName(picTags)
-		if picTagsGroupedByName["foo"].TagId != fooTag.Id {
-			return fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.Id)
-		}
-		if picTagsGroupedByName["bar"].TagId != barTag.Id {
-			return fmt.Errorf("Tag ID does not match PicTag TagId", barTag.Id)
-		}
-		return nil
-	}(); err != nil {
+	imgData, err := os.Open(uploadedImagePath)
+	if err != nil {
 		t.Fatal(err)
+	}
+	task := &CreatePicTask{
+		db:       testDB,
+		pixPath:  pixPath,
+		FileData: imgData,
+		TagNames: []string{"foo", "bar"},
+	}
+	if err := task.Run(); err != nil {
+		task.Reset()
+		t.Fatal(err)
+	}
+
+	fooTag := ctnr.mustFindTagByName("foo")
+	barTag := ctnr.mustFindTagByName("bar")
+
+	picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(picTags) != 2 {
+		t.Fatal(fmt.Errorf("Wrong number of pic tags", picTags))
+	}
+	var picTagsGroupedByName = groupPicTagsByTagName(picTags)
+	if picTagsGroupedByName["foo"].TagId != fooTag.Id {
+		t.Fatal(fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.Id))
+	}
+	if picTagsGroupedByName["bar"].TagId != barTag.Id {
+		t.Fatal(fmt.Errorf("Tag ID does not match PicTag TagId", barTag.Id))
 	}
 }
 
@@ -207,7 +221,11 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 			return err
 		}
 
-		fooTag, err := findTagByName("foo", testDB)
+		tx, err := testDB.Begin()
+		if err != nil {
+			return err
+		}
+		fooTag, err := findTagByName("foo", tx)
 		if err != nil {
 			return err
 		}
