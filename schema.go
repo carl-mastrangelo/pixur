@@ -20,6 +20,7 @@ var (
 		"CREATE TABLE IF NOT EXISTS `tags` (" +
 			"  `id` int(11) NOT NULL AUTO_INCREMENT," +
 			"  `name` varchar(255) COLLATE utf8_bin NOT NULL," +
+			"  `usage_count` bigint(20) NOT NULL," +
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `modified_time` bigint(20) NOT NULL," +
 			"  PRIMARY KEY (`id`)," +
