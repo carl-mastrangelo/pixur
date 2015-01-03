@@ -68,10 +68,10 @@ func (t *CreatePicTask) Reset() {
 	}
 }
 
-func (t *CreatePicTask) Run() TaskError {
+func (t *CreatePicTask) Run() error {
 	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -88,12 +88,12 @@ func (t *CreatePicTask) Run() TaskError {
 			return err
 		}
 	} else {
-		return WrapError(fmt.Errorf("No file uploaded"))
+		return fmt.Errorf("No file uploaded")
 	}
 
 	img, err := t.fillImageConfig(wf, p)
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	thumbnail := makeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
@@ -113,7 +113,7 @@ func (t *CreatePicTask) Run() TaskError {
 
 	tags, err := t.insertOrFindTags()
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	// must happen after pic is created, because it depends on pic id
 	if err := t.addTagsForPic(p, tags); err != nil {
@@ -121,7 +121,7 @@ func (t *CreatePicTask) Run() TaskError {
 	}
 
 	if err := t.tx.Commit(); err != nil {
-		return WrapError(err)
+		return err
 	}
 
 	// The upload succeeded
@@ -132,41 +132,41 @@ func (t *CreatePicTask) Run() TaskError {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) TaskError {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return WrapError(err)
+		return err
 	} else {
 		p.FileSize = bytesWritten
 	}
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) TaskError {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	defer resp.Body.Close()
 	// TODO: check the response code
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return WrapError(err)
+		return err
 	} else {
 		p.FileSize = bytesWritten
 	}
 	return nil
 }
 
-func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, TaskError) {
+func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, error) {
 	if _, err := tempFile.Seek(0, os.SEEK_SET); err != nil {
-		return nil, WrapError(err)
+		return nil, err
 	}
 
 	img, imgType, err := image.Decode(tempFile)
 
 	if err != nil {
-		return nil, WrapError(err)
+		return nil, err
 	}
 
 	// TODO: handle this error
@@ -176,49 +176,49 @@ func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.I
 	return img, nil
 }
 
-func (t *CreatePicTask) beginTransaction() TaskError {
+func (t *CreatePicTask) beginTransaction() error {
 	if tx, err := t.db.Begin(); err != nil {
-		return WrapError(err)
+		return err
 	} else {
 		t.tx = tx
 	}
 	return nil
 }
 
-func (t *CreatePicTask) insertPic(p *Pic) TaskError {
+func (t *CreatePicTask) insertPic(p *Pic) error {
 	res, err := t.tx.Exec(p.BuildInsert(), p.ColumnPointers(p.GetColumnNames())...)
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	if insertId, err := res.LastInsertId(); err != nil {
-		return WrapError(err)
+		return err
 	} else {
 		p.Id = insertId
 	}
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *Pic) TaskError {
+func (t *CreatePicTask) renameTempFile(p *Pic) error {
 	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
-		return WrapError(err)
+		return err
 	}
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.pixPath)
 	return nil
 }
 
-func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) TaskError {
+func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
 	f, err := os.Create(p.ThumbnailPath(t.pixPath))
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 	defer f.Close()
-	return WrapError(jpeg.Encode(f, img, nil))
+	return jpeg.Encode(f, img, nil)
 }
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
-func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
+func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
 	type findTagResult struct {
 		tag *Tag
 		err error
@@ -269,7 +269,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, TaskError) {
 	var allTags []*Tag
 	for _, result := range resultMap {
 		if result.err != nil {
-			return nil, WrapError(result.err)
+			return nil, result.err
 		}
 		allTags = append(allTags, result.tag)
 	}
@@ -383,7 +383,7 @@ func findPicTags(db *sql.DB, query string, args ...interface{}) ([]*PicTag, erro
 	return picTags, nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
+func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) error {
 	for _, tag := range tags {
 		picTag := &PicTag{
 			PicId:        p.Id,
@@ -394,7 +394,7 @@ func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) TaskError {
 		}
 		_, err := t.db.Exec(picTag.BuildInsert(), picTag.ColumnPointers(picTag.GetColumnNames())...)
 		if err != nil {
-			return WrapError(err)
+			return err
 		}
 	}
 	return nil

@@ -29,7 +29,7 @@ type ReadIndexPicsTask struct {
 
 func (t *ReadIndexPicsTask) Reset() {}
 
-func (t *ReadIndexPicsTask) Run() TaskError {
+func (t *ReadIndexPicsTask) Run() error {
 
 	var startID int64
 	if t.StartID != 0 {
@@ -52,27 +52,27 @@ func (t *ReadIndexPicsTask) Run() TaskError {
 		startID, maxPics)
 
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 
 	defer rows.Close()
 
 	columnNames, err := rows.Columns()
 	if err != nil {
-		return WrapError(err)
+		return err
 	}
 
 	var pics []*Pic
 	for rows.Next() {
 		var p = new(Pic)
 		if err := rows.Scan(p.ColumnPointers(columnNames)...); err != nil {
-			return WrapError(err)
+			return err
 		}
 		pics = append(pics, p)
 	}
 
 	if err := rows.Err(); err != nil {
-		return WrapError(err)
+		return err
 	}
 
 	t.Pics = pics

@@ -129,11 +129,12 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(10)
 
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS test;"); err != nil {
 		return nil, err
 	}
-	
+
 	// Close our connection, so we can reopen with the correct db name.  Other threads
 	// will not use the correct database by default.
 	if err := db.Close(); err != nil {

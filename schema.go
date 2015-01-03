@@ -24,7 +24,7 @@ var (
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `modified_time` bigint(20) NOT NULL," +
 			"  PRIMARY KEY (`id`)," +
-			"  UNIQUE KEY `name` (`name`)" +
+			"  INDEX(`name`) " +
 			"  ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;",
 
 		"CREATE TABLE IF NOT EXISTS `pictags` (" +
