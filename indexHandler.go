@@ -15,9 +15,9 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 	var task = &ReadIndexPicsTask{
 		db: s.db,
 	}
-	defer task.Reset()
 
-	if err := task.Run(); err != nil {
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		return err
 	}
 

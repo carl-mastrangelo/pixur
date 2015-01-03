@@ -33,9 +33,9 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 		FileURL:  fileURL,
 		TagNames: r.PostForm["tag"],
 	}
-	defer task.Reset()
 
-	if err := task.Run(); err != nil {
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		return err
 	}
 

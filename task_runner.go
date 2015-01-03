@@ -2,7 +2,6 @@ package pixur
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -22,7 +21,7 @@ func (r *TaskRunner) Run(task Task) error {
 		err := task.Run()
 		if err, ok := err.(*mysql.MySQLError); ok {
 			if err.Number == innoDbDeadlockErrorNumber {
-				log.Printf("Retrying task %d/%d: %s", i, maxTaskRetries, err)
+				//log.Printf("Retrying task %d/%d: %s", i, maxTaskRetries, err)
 				// Reset here too, to ensure all state is clean
 				task.Reset()
 				continue
