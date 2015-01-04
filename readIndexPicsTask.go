@@ -7,7 +7,7 @@ import (
 
 const (
 	DefaultStartID = math.MaxInt64
-	DefaultMaxPics = 100
+	DefaultMaxPics = 60
 )
 
 type ReadIndexPicsTask struct {

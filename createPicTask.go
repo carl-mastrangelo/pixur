@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	thumbnailWidth  = 120
-	thumbnailHeight = 120
+	thumbnailWidth  = 160
+	thumbnailHeight = 160
 )
 
 var (

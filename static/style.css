@@ -1,15 +1,43 @@
 body {
   background-color: #FFFFEE;
 }
-ul {
-  
+
+ul.thumbnail-list {
   list-style-type: none;
+  padding: 0;
 }
 li {
   display: inline;
 }
 
+.index {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  /*fit inside a 1024 monitor.*/
+  max-width: 950px
+}
+
+.thumbnail-cntr {
+  background-color: #2c1fc0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #2c1fc0;
+  border-radius: 10px;
+  display: inline-block;
+  height: 160px;
+  margin: 3px;
+  padding: 0;
+  text-align: center;
+  width: 160px;
+}
+
+.thumbnail-cntr:hover {
+  border-color: #9c99bf;
+}
+
 img.thumbnail {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
 }
