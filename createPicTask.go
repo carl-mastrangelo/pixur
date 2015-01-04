@@ -31,6 +31,7 @@ const (
 var (
 	errTagNotFound   = fmt.Errorf("Unable to find Tag")
 	errDuplicateTags = fmt.Errorf("Data Corruption: Duplicate tags found")
+	errInvalidFormat = fmt.Errorf("Unknown image format")
 )
 
 type CreatePicTask struct {
@@ -92,9 +93,16 @@ func (t *CreatePicTask) Run() error {
 	}
 
 	img, err := t.fillImageConfig(wf, p)
-	if err != nil {
+	if err == image.ErrFormat {
+		// Try webm
+		img, err = fillImageConfigFromWebm(wf, p)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
+
 	thumbnail := makeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
@@ -180,7 +188,6 @@ func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.I
 	}
 
 	img, imgType, err := image.Decode(tempFile)
-
 	if err != nil {
 		return nil, err
 	}

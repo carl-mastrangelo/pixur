@@ -11,23 +11,27 @@ var (
 	Mime_JPEG    Mime = 1
 	Mime_GIF     Mime = 2
 	Mime_PNG     Mime = 3
+	Mime_WEBM    Mime = 4
 
 	mimeNameMap = map[Mime]string{
 		Mime_JPEG: "Mime_JPEG",
 		Mime_GIF:  "Mime_GIF",
 		Mime_PNG:  "Mime_PNG",
+		Mime_WEBM: "Mime_WEBM",
 	}
 
 	mimeExtMap = map[Mime]string{
 		Mime_JPEG: "jpg",
 		Mime_GIF:  "gif",
 		Mime_PNG:  "png",
+		Mime_WEBM: "webm",
 	}
 
 	formatMimeMap = map[string]Mime{
 		"jpeg": Mime_JPEG,
 		"gif":  Mime_GIF,
 		"png":  Mime_PNG,
+		"webm": Mime_WEBM,
 	}
 )
 
