@@ -139,6 +139,13 @@ func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	} else {
 		p.FileSize = bytesWritten
 	}
+	// Attempt to flush the file incase an outside program needs to read from it.
+	if f, ok := tempFile.(*os.File); ok {
+		// If there was a failure, just give up.  The enclosing task will fail.
+		if err := f.Sync(); err != nil {
+			log.Println("Failed to sync file, continuing anwyays", err)
+		}
+	}
 	return nil
 }
 
@@ -148,12 +155,21 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
 		return err
 	}
 	defer resp.Body.Close()
-	// TODO: check the response code
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Failed to Download Pic %s [%d]", t.FileURL, resp.StatusCode)
+	}
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
 		return err
 	} else {
 		p.FileSize = bytesWritten
+	}
+	// Attempt to flush the file incase an outside program needs to read from it.
+	if f, ok := tempFile.(*os.File); ok {
+		// If there was a failure, just give up.  The enclosing task will fail.
+		if err := f.Sync(); err != nil {
+			log.Println("Failed to sync file, continuing anwyays", err)
+		}
 	}
 	return nil
 }
