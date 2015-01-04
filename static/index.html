@@ -1,7 +1,5 @@
 <div ng-if="ctrl.pics.length > 0">
-  <!-- TODO: implement previous
-  <span style="float:left"><a ng-click="ctrl.loadPrevious()" ng-href="{{'i/' +ctrl.prevPageID}}">Previous</a></span>
-  -->
+  <span style="float:left"><a ng-href="/">Home</a></span>
   <span style="float:right"><a ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
   <span style="clear:both">&nbsp;</span>
 </div>
@@ -10,6 +8,8 @@
     <a ng-href="{{pic.relative_url}}" target="_self"><img class="thumbnail" ng-src="{{pic.thumbnail_relative_url}}" /></a>
   </li>
 </ul>
+  <span style="float:right"><a ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
+  <span style="clear:both"></span>
 <input type="file" name="file" onchange="angular.element(this).controller().fileChange(this)" /><br />
 <input placeholder="File URL" name="url" ng-model="ctrl.upload.url"  /><br />
 <input type="button" value="submit" ng-click="ctrl.createPic()" />

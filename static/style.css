@@ -9,7 +9,7 @@ li {
   display: inline;
 }
 
-a.thumbnail {
+img.thumbnail {
   width: 120px;
   height: 120px;
 }
