@@ -29,7 +29,7 @@ func (t *fakeTask) Reset() {
 	}
 }
 
-func TestTaskIsReset_success(t *testing.T) {
+func TestTaskIsNotReset_success(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 	err := runner.Run(task)
@@ -42,9 +42,8 @@ func TestTaskIsReset_success(t *testing.T) {
 		t.Fatal("Expected task to be run 1 time")
 	}
 
-	// We always expect the task to be reset, even in success.
-	if task.resetCount != 1 {
-		t.Fatal("Expected task to be reset 1 time")
+	if task.resetCount != 0 {
+		t.Fatal("Expected task to be reset 0 times")
 	}
 }
 
@@ -65,9 +64,8 @@ func TestTaskIsReset_failure(t *testing.T) {
 		t.Fatal("Expected task to be run 1 time")
 	}
 
-	// We always expect the task to be reset, even in success.
-	if task.resetCount != 1 {
-		t.Fatal("Expected task to be reset 1 time")
+	if task.resetCount != 0 {
+		t.Fatal("Expected task to be reset 0 times")
 	}
 }
 
@@ -88,8 +86,7 @@ func TestTaskRetriesOnDeadlock(t *testing.T) {
 		t.Fatalf("Expected task to be run %d time", maxTaskRetries)
 	}
 
-	// Reset 1 more time than total runs.
-	if task.resetCount != maxTaskRetries+1 {
+	if task.resetCount != maxTaskRetries {
 		t.Fatalf("Expected task to be reset %d time", maxTaskRetries)
 	}
 }
@@ -111,8 +108,7 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 		t.Fatal("Expected task to be run 1 time")
 	}
 
-	// Reset 1 more time than total runs.
-	if task.resetCount != 1 {
-		t.Fatal("Expected task to be reset 1 time")
+	if task.resetCount != 0 {
+		t.Fatal("Expected task to be reset 0 times")
 	}
 }

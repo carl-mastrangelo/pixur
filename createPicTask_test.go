@@ -416,28 +416,3 @@ func TestMoveUploadedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-func TestFillImageConfig(t *testing.T) {
-	if err := func() error {
-		imgData, err := os.Open(uploadedImagePath)
-		if err != nil {
-			return err
-		}
-
-		task := &CreatePicTask{}
-		var p Pic
-		if _, err := task.fillImageConfig(imgData, &p); err != nil {
-			t.Fatal(err)
-		}
-
-		if p.Mime != Mime_GIF {
-			t.Fatal("Mime type mismatch", p.Mime)
-		}
-		if p.Width != 5 || p.Height != 10 {
-			t.Fatal("Dimension Mismatch", p.Width, p.Height)
-		}
-		return nil
-	}(); err != nil {
-		t.Fatal(err)
-	}
-}

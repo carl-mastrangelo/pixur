@@ -8,7 +8,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	db := testDB
 
 	task := ReadIndexPicsTask{
-		db: db,
+		DB: db,
 	}
 
 	if err := task.Run(); err != nil {

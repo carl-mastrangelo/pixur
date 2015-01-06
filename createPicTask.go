@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"image"
-	"image/draw"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,17 +13,6 @@ import (
 	"strings"
 	"sync"
 	"unicode"
-
-	"github.com/nfnt/resize"
-
-	_ "image/gif"
-	"image/jpeg"
-	_ "image/png"
-)
-
-const (
-	thumbnailWidth  = 160
-	thumbnailHeight = 160
 )
 
 var (
@@ -92,18 +79,8 @@ func (t *CreatePicTask) Run() error {
 		return fmt.Errorf("No file uploaded")
 	}
 
-	img, err := t.fillImageConfig(wf, p)
-	if err == image.ErrFormat {
-		// Try webm
-		img, err = fillImageConfigFromWebm(wf, p)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-
-	thumbnail := makeThumbnail(img)
+	img, err := FillImageConfig(wf, p)
+	thumbnail := MakeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
 	}
@@ -115,7 +92,7 @@ func (t *CreatePicTask) Run() error {
 	}
 
 	// If there is a problem creating the thumbnail, just continue on.
-	if err := t.saveThumbnail(thumbnail, p); err != nil {
+	if err := SaveThumbnail(thumbnail, p, t.pixPath); err != nil {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
 
@@ -182,23 +159,6 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
 	return nil
 }
 
-func (t *CreatePicTask) fillImageConfig(tempFile io.ReadSeeker, p *Pic) (image.Image, error) {
-	if _, err := tempFile.Seek(0, os.SEEK_SET); err != nil {
-		return nil, err
-	}
-
-	img, imgType, err := image.Decode(tempFile)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: handle this error
-	p.Mime, _ = FromImageFormat(imgType)
-	p.Width = int64(img.Bounds().Dx())
-	p.Height = int64(img.Bounds().Dy())
-	return img, nil
-}
-
 func (t *CreatePicTask) beginTransaction() error {
 	if tx, err := t.db.Begin(); err != nil {
 		return err
@@ -228,15 +188,6 @@ func (t *CreatePicTask) renameTempFile(p *Pic) error {
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.pixPath)
 	return nil
-}
-
-func (t *CreatePicTask) saveThumbnail(img image.Image, p *Pic) error {
-	f, err := os.Create(p.ThumbnailPath(t.pixPath))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return jpeg.Encode(f, img, nil)
 }
 
 // This function is not really transactional, because it hits multiple entity roots.
@@ -421,44 +372,6 @@ func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) error {
 		}
 	}
 	return nil
-}
-
-// TODO: interpret image rotation metadata
-func makeThumbnail(img image.Image) image.Image {
-	bounds := findMaxSquare(img.Bounds())
-	largeSquareImage := image.NewNRGBA(bounds)
-	draw.Draw(largeSquareImage, bounds, img, bounds.Min, draw.Src)
-	return resize.Resize(thumbnailWidth, thumbnailHeight, largeSquareImage, resize.NearestNeighbor)
-}
-
-func findMaxSquare(bounds image.Rectangle) image.Rectangle {
-	width := bounds.Dx()
-	height := bounds.Dy()
-	if height < width {
-		missingSpace := width - height
-		return image.Rectangle{
-			Min: image.Point{
-				X: bounds.Min.X + missingSpace/2,
-				Y: bounds.Min.Y,
-			},
-			Max: image.Point{
-				X: bounds.Min.X + missingSpace/2 + height,
-				Y: bounds.Max.Y,
-			},
-		}
-	} else {
-		missingSpace := height - width
-		return image.Rectangle{
-			Min: image.Point{
-				X: bounds.Min.X,
-				Y: bounds.Min.Y + missingSpace/2,
-			},
-			Max: image.Point{
-				X: bounds.Max.X,
-				Y: bounds.Min.Y + missingSpace/2 + width,
-			},
-		}
-	}
 }
 
 func cleanTagNames(rawTagNames []string) []string {
