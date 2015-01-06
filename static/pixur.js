@@ -3,7 +3,6 @@ var IndexCtrl = function($scope, $location, $routeParams, indexPicsService, crea
   this.indexPicsService_ = indexPicsService;
   this.createPicService_ = createPicService;
   this.location_ = $location;
-  console.log("loaded again");
   this.pics = [];
 
   this.nextPageID = null;
