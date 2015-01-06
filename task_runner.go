@@ -15,8 +15,6 @@ type TaskRunner struct {
 }
 
 func (r *TaskRunner) Run(task Task) error {
-	// Always call reset for cleanup
-	defer task.Reset()
 	for i := 0; i < maxTaskRetries; i++ {
 		err := task.Run()
 		if err, ok := err.(*mysql.MySQLError); ok {

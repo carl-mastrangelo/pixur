@@ -12,7 +12,7 @@ const (
 
 type ReadIndexPicsTask struct {
 	// Deps
-	db *sql.DB
+	DB *sql.DB
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
@@ -49,7 +49,7 @@ func (t *ReadIndexPicsTask) Run() error {
 
 	// Technically an initial lookup of the created time of the provided Pic ID id needed.
 	// TODO: decide if this is worth the extra DB call.
-	rows, err := t.db.Query(
+	rows, err := t.DB.Query(
 		"SELECT * FROM pics WHERE id <= ? ORDER BY created_time DESC LIMIT ?;",
 		startID, maxPics)
 

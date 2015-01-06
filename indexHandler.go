@@ -13,7 +13,7 @@ type indexParams struct {
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 	var task = &ReadIndexPicsTask{
-		db: s.db,
+		DB: s.db,
 	}
 
 	runner := new(TaskRunner)
@@ -46,7 +46,7 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	var task = &ReadIndexPicsTask{
-		db:      s.db,
+		DB:      s.db,
 		StartID: requestedStartPicID,
 	}
 	defer task.Reset()
