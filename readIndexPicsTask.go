@@ -27,7 +27,9 @@ type ReadIndexPicsTask struct {
 	Pics []*Pic
 }
 
-func (t *ReadIndexPicsTask) Reset() {}
+func (t *ReadIndexPicsTask) Reset() {
+	t.Pics = nil
+}
 
 func (t *ReadIndexPicsTask) Run() error {
 
