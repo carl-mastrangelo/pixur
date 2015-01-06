@@ -1,8 +1,5 @@
 package pixur
 
-import (
-	"os"
-	"testing"
-)
+import ()
 
 // TODO: add tests
