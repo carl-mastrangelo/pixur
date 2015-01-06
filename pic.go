@@ -71,9 +71,9 @@ func (p *Pic) Path(pixPath string) string {
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
-	return fmt.Sprintf("pix/%ds.%s", p.Id, p.Mime.Ext())
+	return fmt.Sprintf("pix/%ds.jpg", p.Id)
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
-	return filepath.Join(pixPath, fmt.Sprintf("%ds.%s", p.Id, p.Mime.Ext()))
+	return filepath.Join(pixPath, fmt.Sprintf("%ds.jpg", p.Id))
 }
