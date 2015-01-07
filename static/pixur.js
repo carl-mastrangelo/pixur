@@ -64,7 +64,9 @@ var IndexPicsService = function($http, $q) {
 
 IndexPicsService.prototype.get = function(startID) {
   var deferred = this.q_.defer();
-  var httpConfig = {};
+  var httpConfig = {
+    cache:true
+  };
   if (startID) {
     httpConfig.params = {
       start_pic_id: startID
@@ -128,12 +130,12 @@ angular.module('pixur', [
     .config(function($routeProvider) {
       $routeProvider
           .when("/", {
-            templateUrl: "static/index.html",
+            templateUrl: "static/index_body.html",
             controller: "IndexCtrl",
             controllerAs: "ctrl"
           })
           .when("/i/:picId?", {
-            templateUrl: "static/index.html",
+            templateUrl: "static/index_body.html",
             controller: "IndexCtrl",
             controllerAs: "ctrl"
           })
