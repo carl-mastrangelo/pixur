@@ -14,10 +14,10 @@ var (
 	Mime_WEBM    Mime = 4
 
 	mimeNameMap = map[Mime]string{
-		Mime_JPEG: "Mime_JPEG",
-		Mime_GIF:  "Mime_GIF",
-		Mime_PNG:  "Mime_PNG",
-		Mime_WEBM: "Mime_WEBM",
+		Mime_JPEG: "JPEG",
+		Mime_GIF:  "GIF",
+		Mime_PNG:  "PNG",
+		Mime_WEBM: "WEBM",
 	}
 
 	mimeExtMap = map[Mime]string{
@@ -37,7 +37,7 @@ var (
 
 func (m Mime) String() string {
 	if name, ok := mimeNameMap[m]; !ok {
-		return fmt.Sprintf("Mime_UNKNOWN=%d", m)
+		return fmt.Sprintf("UNKNOWN=%d", m)
 	} else {
 		return name
 	}

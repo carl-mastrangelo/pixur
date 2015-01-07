@@ -60,6 +60,27 @@ IndexCtrl.prototype.createPic = function() {
       }.bind(this));
 };
 
+var ViewerCtrl = function($scope, $routeParams, indexPicsService) {
+  this.isImage = false;
+  this.isVideo = false;
+  
+  this.picId = $routeParams.picId;
+  this.pic = null;
+  
+  // TODO: hack, poor performance, replace with something less awful
+  // Initial Load
+  indexPicsService.get(this.picId).then(
+    function(data) {
+      var pics = data.data;
+      if (pics.length > 0) {
+        this.pic = pics[0];
+        this.isVideo = this.pic.type == "WEBM";
+        this.isImage = this.pic.type != "WEBM";
+      }
+    }.bind(this)
+  );
+}
+
 var IndexPicsService = function($http, $q, $cacheFactory) {
   this.http_ = $http;
   this.q_ = $q;
@@ -154,9 +175,15 @@ angular.module('pixur', [
             controller: "IndexCtrl",
             controllerAs: "ctrl"
           })
+          .when("/p/:picId", {
+            templateUrl: "static/viewer.html",
+            controller: "ViewerCtrl",
+            controllerAs: "ctrl"
+          })
       ;
     })
     .controller("IndexCtrl", IndexCtrl)
+    .controller("ViewerCtrl", ViewerCtrl)
     .service("indexPicsService", IndexPicsService)
     .service("createPicService", CreatePicService)
     .directive("scroll", ScrollDirective);

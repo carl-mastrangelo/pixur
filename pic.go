@@ -22,6 +22,7 @@ type InterfacePic struct {
 	Width                int64  `json:"width"`
 	Height               int64  `json:"height"`
 	Version              int64  `json:"version"`
+	Type                 string `json:"type"`
 	RelativeURL          string `json:"relative_url"`
 	ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
 }
@@ -37,6 +38,7 @@ func (p *Pic) ToInterface() *InterfacePic {
 		Width:                p.Width,
 		Height:               p.Height,
 		Version:              p.ModifiedTime,
+		Type:                 p.Mime.String(),
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
 	}

@@ -7,7 +7,7 @@
   <ul class="thumbnail-list">
     <li ng-repeat="pic in ctrl.pics">
       <div class="thumbnail-cntr">
-        <a ng-href="{{pic.relative_url}}" target="_self"><img class="thumbnail" ng-src="{{pic.thumbnail_relative_url}}" /></a>
+        <a ng-href="p/{{pic.id}}"><img class="thumbnail" ng-src="{{pic.thumbnail_relative_url}}" /></a>
       </div>
     </li>
   </ul>
