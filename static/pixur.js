@@ -1,5 +1,10 @@
 (function(){
-var IndexCtrl = function($scope, $location, $routeParams, indexPicsService, createPicService) {
+var IndexCtrl = function(
+    $scope, 
+    $location, 
+    $routeParams, 
+    indexPicsService, 
+    createPicService) {
   this.indexPicsService_ = indexPicsService;
   this.createPicService_ = createPicService;
   this.location_ = $location;
@@ -16,7 +21,6 @@ var IndexCtrl = function($scope, $location, $routeParams, indexPicsService, crea
   if ($routeParams.picId) {
     startId = $routeParams.picId;
   }
-  console.log(startId);
 
   // Initial Load
   indexPicsService.get(startId).then(
@@ -39,7 +43,6 @@ IndexCtrl.prototype.loadNext = function() {
       }
     }.bind(this)
   );
-
 }
 
 IndexCtrl.prototype.fileChange = function(elem) {
@@ -57,15 +60,27 @@ IndexCtrl.prototype.createPic = function() {
       }.bind(this));
 };
 
-var IndexPicsService = function($http, $q) {
+var IndexPicsService = function($http, $q, $cacheFactory) {
   this.http_ = $http;
   this.q_ = $q;
+  
+  this.cache = $cacheFactory.get("IndexPicsService");
+  if (!this.cache) {
+   this.cache = $cacheFactory("IndexPicsService", {
+    capacity: 10
+   });
+  }
 };
 
 IndexPicsService.prototype.get = function(startID) {
   var deferred = this.q_.defer();
+  var cache;
+  // Only cache if startID is not 0, basically if not the home page.
+  if (startID) {
+    cache = this.cache
+  }
   var httpConfig = {
-    cache:true
+    cache:cache
   };
   if (startID) {
     httpConfig.params = {
