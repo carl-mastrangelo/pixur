@@ -24,7 +24,7 @@ var (
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `modified_time` bigint(20) NOT NULL," +
 			"  PRIMARY KEY (`id`)," +
-			"  INDEX(`name`) " +
+			"  UNIQUE KEY(`name`) " +
 			"  ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1 ;",
 
 		"CREATE TABLE IF NOT EXISTS `pictags` (" +
@@ -34,7 +34,7 @@ var (
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `modified_time` bigint(20) NOT NULL," +
 			"  PRIMARY KEY (`pic_id`,`tag_id`)," +
-			"  KEY `tag_id` (`tag_id`)" +
+			"  UNIQUE KEY (`tag_id`)" +
 			"  ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 	}
 )
