@@ -64,7 +64,6 @@ func (t *CreatePicTask) reset() {
 		}
 	}
 	if t.tx != nil {
-		log.Println("Rolling back tx")
 		if err := t.tx.Rollback(); err != nil && err != sql.ErrTxDone {
 			log.Println("ERROR Unable to rollback in CreatePicTask", err)
 		}
