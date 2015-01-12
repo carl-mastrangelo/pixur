@@ -49,13 +49,22 @@ type CreatePicTask struct {
 	CreatedPic *Pic
 }
 
-func (t *CreatePicTask) Reset() {
+func (t *CreatePicTask) ResetForRetry() {
+	t.reset()
+}
+
+func (t *CreatePicTask) CleanUp() {
+	t.reset()
+}
+
+func (t *CreatePicTask) reset() {
 	if t.tempFilename != "" {
 		if err := os.Remove(t.tempFilename); err != nil {
 			log.Println("ERROR Unable to remove image in CreatePicTask", t.tempFilename, err)
 		}
 	}
 	if t.tx != nil {
+		log.Println("Rolling back tx")
 		if err := t.tx.Rollback(); err != nil && err != sql.ErrTxDone {
 			log.Println("ERROR Unable to rollback in CreatePicTask", err)
 		}

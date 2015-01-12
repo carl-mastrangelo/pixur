@@ -8,10 +8,12 @@ import (
 )
 
 type fakeTask struct {
-	runCount   int
-	resetCount int
-	run        func() error
-	reset      func()
+	runCount     int
+	resetCount   int
+	cleanUpCount int
+	run          func() error
+	reset        func()
+	cleanUp      func()
 }
 
 func (t *fakeTask) Run() error {
@@ -22,10 +24,17 @@ func (t *fakeTask) Run() error {
 	return nil
 }
 
-func (t *fakeTask) Reset() {
+func (t *fakeTask) ResetForRetry() {
 	t.resetCount++
 	if t.reset != nil {
 		t.reset()
+	}
+}
+
+func (t *fakeTask) CleanUp() {
+	t.cleanUpCount++
+	if t.cleanUp != nil {
+		t.cleanUp()
 	}
 }
 
@@ -44,6 +53,9 @@ func TestTaskIsNotReset_success(t *testing.T) {
 
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
+	}
+	if task.cleanUpCount != 1 {
+		t.Fatal("Expected task to be cleaned up 1 times")
 	}
 }
 
@@ -67,6 +79,9 @@ func TestTaskIsReset_failure(t *testing.T) {
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
 	}
+	if task.cleanUpCount != 1 {
+		t.Fatal("Expected task to be cleaned up 1 times")
+	}
 }
 
 func TestTaskRetriesOnDeadlock(t *testing.T) {
@@ -89,6 +104,9 @@ func TestTaskRetriesOnDeadlock(t *testing.T) {
 	if task.resetCount != maxTaskRetries {
 		t.Fatalf("Expected task to be reset %d time", maxTaskRetries)
 	}
+	if task.cleanUpCount != 1 {
+		t.Fatal("Expected task to be cleaned up 1 times")
+	}
 }
 
 func TestTaskFailsOnOtherError(t *testing.T) {
@@ -110,5 +128,8 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
+	}
+	if task.cleanUpCount != 1 {
+		t.Fatal("Expected task to be cleaned up 1 times")
 	}
 }

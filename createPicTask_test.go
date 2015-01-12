@@ -153,8 +153,9 @@ func TestWorkflowFileUpload(t *testing.T) {
 			pixPath:  pixPath,
 			FileData: imgData,
 		}
-		if err := task.Run(); err != nil {
-			task.Reset()
+
+		runner := new(TaskRunner)
+		if err := runner.Run(task); err != nil {
 			return err
 		}
 
@@ -199,8 +200,8 @@ func _TestWorkflowAllTagsAdded(t *testing.T) {
 		FileData: ctnr.getRandomImageData(),
 		TagNames: []string{"foo", "bar"},
 	}
-	if err := task.Run(); err != nil {
-		task.Reset()
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -238,8 +239,8 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		FileData: imgData,
 		TagNames: []string{"baz", "qux"},
 	}
-	if err := task.Run(); err != nil {
-		task.Reset()
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -273,8 +274,8 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 			// All of these are the same
 			TagNames: []string{"foo", "foo", "  foo", "foo  "},
 		}
-		if err := task.Run(); err != nil {
-			task.Reset()
+		runner := new(TaskRunner)
+		if err := runner.Run(task); err != nil {
 			return err
 		}
 
@@ -346,8 +347,8 @@ func BenchmarkCreation(b *testing.B) {
 				FileData: imgData,
 				TagNames: []string{"foo", "bar"},
 			}
-			if err := task.Run(); err != nil {
-				task.Reset()
+			runner := new(TaskRunner)
+			if err := runner.Run(task); err != nil {
 				return err
 			}
 			return nil

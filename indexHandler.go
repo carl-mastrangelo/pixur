@@ -49,12 +49,10 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 		DB:      s.db,
 		StartID: requestedStartPicID,
 	}
-	defer task.Reset()
-
-	if err := task.Run(); err != nil {
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		return err
 	}
-
 	// Initialize this to an empty array because the json response will be null otherwise.
 	interfacePics := make([]*InterfacePic, 0, len(task.Pics))
 	for _, pic := range task.Pics {
