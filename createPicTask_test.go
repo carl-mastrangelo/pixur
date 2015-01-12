@@ -8,7 +8,6 @@ import (
 	"image/gif"
 	"io/ioutil"
 	"os"
-	"sync"
 	"testing"
 
 	ptest "pixur.org/pixur/testing"
@@ -232,8 +231,7 @@ func _TestWorkflowAllTagsAdded(t *testing.T) {
 	}
 }
 
-// Disabled until I implement retry
-func _TestWorkflowAlreadyExistingTags(t *testing.T) {
+func TestWorkflowAlreadyExistingTags(t *testing.T) {
 	ctnr := &container{
 		t:  t,
 		db: testDB,
@@ -242,19 +240,6 @@ func _TestWorkflowAlreadyExistingTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//ctnr.createTag("bars")
-
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ctnr.createTagExp("bars")
-		}()
-	}
-	wg.Wait()
-
-	fmt.Println(ctnr.mustFindTagByName("bars"))
 
 	bazTag := ctnr.createTag("baz")
 	quxTag := ctnr.createTag("qux")
