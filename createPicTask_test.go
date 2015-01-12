@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"image"
+	"image/color"
 	"image/gif"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -14,10 +17,24 @@ import (
 )
 
 var (
-	pixPath           string
-	uploadedImagePath string
-	uploadedImageSize int64
+	pixPath string
 )
+
+func (c *container) getRandomImageData() *bytes.Reader {
+	bounds := image.Rect(0, 0, 5, 10)
+	img := image.NewGray(bounds)
+	for x := bounds.Min.X; x < bounds.Max.X; x++ {
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			img.SetGray(x, y, color.Gray{Y: uint8(rand.Int31n(math.MaxUint8))})
+		}
+	}
+	f := bytes.NewBuffer(nil)
+
+	if err := gif.Encode(f, img, &gif.Options{}); err != nil {
+		c.t.Fatal(err)
+	}
+	return bytes.NewReader(f.Bytes())
+}
 
 type container struct {
 	t  *testing.T
@@ -121,38 +138,16 @@ func init() {
 
 		return nil
 	})
-
-	BeforeTestSuite(func() error {
-		f, err := ioutil.TempFile(pixPath, "")
-		if err != nil {
-			return err
-		}
-		uploadedImagePath = f.Name()
-		defer f.Close()
-		AfterTestSuite(func() error {
-			return os.RemoveAll(uploadedImagePath)
-		})
-
-		img := image.NewGray(image.Rect(0, 0, 5, 10))
-
-		if err := gif.Encode(f, img, &gif.Options{}); err != nil {
-			return err
-		}
-		if fi, err := f.Stat(); err != nil {
-			return err
-		} else {
-			uploadedImageSize = fi.Size()
-		}
-		return nil
-	})
 }
 
 func TestWorkflowFileUpload(t *testing.T) {
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
+	imgDataSize := int64(imgData.Len())
 	if err := func() error {
-		imgData, err := os.Open(uploadedImagePath)
-		if err != nil {
-			return err
-		}
 		task := &CreatePicTask{
 			db:       testDB,
 			pixPath:  pixPath,
@@ -164,7 +159,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 		}
 
 		expected := Pic{
-			FileSize: uploadedImageSize,
+			FileSize: imgDataSize,
 			Mime:     Mime_GIF,
 			Width:    5,
 			Height:   10,
@@ -183,6 +178,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 		ptest.AssertEquals(actual.CreatedTime, actual.ModifiedTime, t)
 		actual.CreatedTime = 0
 		actual.ModifiedTime = 0
+		actual.Sha512Hash = ""
 
 		ptest.AssertEquals(actual, expected, t)
 		return nil
@@ -197,14 +193,10 @@ func _TestWorkflowAllTagsAdded(t *testing.T) {
 		db: testDB,
 	}
 
-	imgData, err := os.Open(uploadedImagePath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	task := &CreatePicTask{
 		db:       testDB,
 		pixPath:  pixPath,
-		FileData: imgData,
+		FileData: ctnr.getRandomImageData(),
 		TagNames: []string{"foo", "bar"},
 	}
 	if err := task.Run(); err != nil {
@@ -236,11 +228,7 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		t:  t,
 		db: testDB,
 	}
-	imgData, err := os.Open(uploadedImagePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	imgData := ctnr.getRandomImageData()
 	bazTag := ctnr.createTag("baz")
 	quxTag := ctnr.createTag("qux")
 
@@ -272,12 +260,12 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 }
 
 func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
 	if err := func() error {
-		imgData, err := os.Open(uploadedImagePath)
-		if err != nil {
-			return err
-		}
-
 		task := &CreatePicTask{
 			db:       testDB,
 			pixPath:  pixPath,
@@ -345,13 +333,13 @@ func TestCleanTagNames(t *testing.T) {
 }
 
 func BenchmarkCreation(b *testing.B) {
+	ctnr := &container{
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
+
 	for i := 0; i < b.N; i++ {
 		if err := func() error {
-			imgData, err := os.Open(uploadedImagePath)
-			if err != nil {
-				return err
-			}
-
 			task := &CreatePicTask{
 				db:       testDB,
 				pixPath:  pixPath,
@@ -370,16 +358,14 @@ func BenchmarkCreation(b *testing.B) {
 }
 
 func TestMoveUploadedFile(t *testing.T) {
-	if err := func() error {
-		imgData, err := os.Open(uploadedImagePath)
-		if err != nil {
-			return err
-		}
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
+	imgDataSize := int64(imgData.Len())
 
-		expected, err := ioutil.ReadFile(uploadedImagePath)
-		if err != nil {
-			return err
-		}
+	if err := func() error {
 		task := &CreatePicTask{
 			FileData: imgData,
 		}
@@ -390,10 +376,18 @@ func TestMoveUploadedFile(t *testing.T) {
 		if err := task.moveUploadedFile(&destBuffer, &p); err != nil {
 			return err
 		}
-		if res := destBuffer.String(); res != string(expected) {
+		if _, err := imgData.Seek(0, os.SEEK_SET); err != nil {
+			t.Fatal(err)
+		}
+		uploadedImageDataBytes, err := ioutil.ReadAll(imgData)
+		if err != nil {
+			return err
+		}
+
+		if res := destBuffer.String(); res != string(uploadedImageDataBytes) {
 			t.Fatal("String data not moved: ", res)
 		}
-		if int(p.FileSize) != len(expected) {
+		if p.FileSize != imgDataSize {
 			t.Fatal("Filesize doesn't match", p.FileSize)
 		}
 		return nil

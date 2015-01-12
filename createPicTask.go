@@ -2,12 +2,12 @@ package pixur
 
 import (
 	"bytes"
+	"crypto/sha512"
 	"database/sql"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -21,6 +21,12 @@ var (
 	errInvalidFormat = fmt.Errorf("Unknown image format")
 )
 
+type readAtSeeker interface {
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+}
+
 type CreatePicTask struct {
 	// Deps
 	pixPath string
@@ -28,7 +34,7 @@ type CreatePicTask struct {
 
 	// Inputs
 	Filename string
-	FileData multipart.File
+	FileData readAtSeeker
 	TagNames []string
 
 	// Alternatively, a url can be uploaded
@@ -79,7 +85,16 @@ func (t *CreatePicTask) Run() error {
 		return fmt.Errorf("No file uploaded")
 	}
 
+	digest, err := getFileHash(wf)
+	if err != nil {
+		return err
+	}
+	p.Sha512Hash = digest
+
 	img, err := FillImageConfig(wf, p)
+	if err != nil {
+		return err
+	}
 	thumbnail := MakeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
@@ -249,6 +264,18 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
 	}
 
 	return allTags, nil
+}
+
+func getFileHash(f io.ReadSeeker) (string, error) {
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		return "", err
+	}
+	defer f.Seek(0, os.SEEK_SET)
+	h := sha512.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified

@@ -8,13 +8,14 @@ import (
 )
 
 type Pic struct {
-	Id           int64 `db:"id"`
-	FileSize     int64 `db:"file_size"`
-	Mime         Mime  `db:"mime"`
-	Width        int64 `db:"width"`
-	Height       int64 `db:"height"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
+	Id           int64  `db:"id"`
+	FileSize     int64  `db:"file_size"`
+	Mime         Mime   `db:"mime"`
+	Width        int64  `db:"width"`
+	Height       int64  `db:"height"`
+	CreatedTime  int64  `db:"created_time"`
+	ModifiedTime int64  `db:"modified_time"`
+	Sha512Hash   string `db:"sha512_hash"`
 }
 
 type InterfacePic struct {

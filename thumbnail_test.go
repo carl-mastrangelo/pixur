@@ -43,11 +43,6 @@ func init() {
 		if err := gif.Encode(f, img, &gif.Options{}); err != nil {
 			return err
 		}
-		if fi, err := f.Stat(); err != nil {
-			return err
-		} else {
-			uploadedImageSize = fi.Size()
-		}
 		return nil
 	})
 }

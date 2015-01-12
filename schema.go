@@ -14,7 +14,9 @@ var (
 			"  `height` int(11) NOT NULL," +
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `modified_time` bigint(20) NOT NULL," +
-			"  PRIMARY KEY (`id`)" +
+			"  `sha512_hash` varchar(255) COLLATE utf8_bin NOT NULL," +
+			"  PRIMARY KEY (`id`)," +
+			"  UNIQUE KEY (`sha512_hash`) " +
 			") ENGINE=InnoDB  DEFAULT CHARSET=utf8;",
 
 		"CREATE TABLE IF NOT EXISTS `tags` (" +

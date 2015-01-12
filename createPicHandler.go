@@ -25,6 +25,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 	fileURL = r.FormValue("url")
 
+	// TODO: close filedata?
 	var task = &CreatePicTask{
 		pixPath:  s.pixPath,
 		db:       s.db,
