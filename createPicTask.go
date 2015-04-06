@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"pixur.org/pixur/schema"
 	"strings"
 	"sync"
 	"unicode"
@@ -46,7 +47,7 @@ type CreatePicTask struct {
 	tx           *sql.Tx
 
 	// Results
-	CreatedPic *Pic
+	CreatedPic *schema.Pic
 }
 
 func (t *CreatePicTask) ResetForRetry() {
@@ -78,7 +79,7 @@ func (t *CreatePicTask) Run() error {
 	defer wf.Close()
 	t.tempFilename = wf.Name()
 
-	var p = new(Pic)
+	var p = new(schema.Pic)
 	fillTimestamps(p)
 
 	if t.FileData != nil {
@@ -107,7 +108,8 @@ func (t *CreatePicTask) Run() error {
 	if err := t.beginTransaction(); err != nil {
 		return err
 	}
-	if err := t.insertPic(p); err != nil {
+
+	if err := p.InsertAndSetId(t.tx); err != nil {
 		return err
 	}
 	if err := t.renameTempFile(p); err != nil {
@@ -140,7 +142,7 @@ func (t *CreatePicTask) Run() error {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) error {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
 		return err
@@ -157,7 +159,7 @@ func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *Pic) error {
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *Pic) error {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
 		return err
@@ -191,20 +193,7 @@ func (t *CreatePicTask) beginTransaction() error {
 	return nil
 }
 
-func (t *CreatePicTask) insertPic(p *Pic) error {
-	res, err := t.tx.Exec(p.BuildInsert(), p.ColumnPointers(p.GetColumnNames())...)
-	if err != nil {
-		return err
-	}
-	if insertId, err := res.LastInsertId(); err != nil {
-		return err
-	} else {
-		p.Id = insertId
-	}
-	return nil
-}
-
-func (t *CreatePicTask) renameTempFile(p *Pic) error {
+func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
 		return err
 	}
@@ -362,7 +351,7 @@ func findTags(tx *sql.Tx, query string, args ...interface{}) ([]*Tag, error) {
 	return tags, nil
 }
 
-func findPicTagsByPicId(picId int64, db *sql.DB) ([]*PicTag, error) {
+func findPicTagsByPicId(picId schema.PicId, db *sql.DB) ([]*PicTag, error) {
 	return findPicTags(db, "SELECT * FROM pictags WHERE pic_id = ?;", picId)
 }
 
@@ -392,7 +381,7 @@ func findPicTags(db *sql.DB, query string, args ...interface{}) ([]*PicTag, erro
 	return picTags, nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *Pic, tags []*Tag) error {
+func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*Tag) error {
 	for _, tag := range tags {
 		picTag := &PicTag{
 			PicId:        p.Id,
@@ -445,7 +434,7 @@ func cleanTagNames(rawTagNames []string) []string {
 	return uniqueNonEmptyTags
 }
 
-func fillTimestamps(p *Pic) {
+func fillTimestamps(p *schema.Pic) {
 	p.CreatedTime = getNowMillis()
 	p.ModifiedTime = p.CreatedTime
 }

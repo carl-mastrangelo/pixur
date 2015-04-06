@@ -3,12 +3,13 @@ package pixur
 import (
 	"fmt"
 
+	"pixur.org/pixur/schema"
 	"pixur.org/pixur/storage"
 )
 
 type PicTag struct {
-	PicId int64 `db:"pic_id"`
-	TagId int64 `db:"tag_id"`
+	PicId schema.PicId `db:"pic_id"`
+	TagId int64        `db:"tag_id"`
 	// Name is the denormalized tag name
 	Name         string `db:"name"`
 	CreatedTime  int64  `db:"created_time"`

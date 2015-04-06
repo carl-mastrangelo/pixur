@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"pixur.org/pixur/schema"
 	"strconv"
 )
 
 type indexParams struct {
-	Pics []*Pic
+	Pics []*schema.Pic
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
@@ -36,12 +37,12 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
 	requestedRawStartPicID := r.FormValue("start_pic_id")
-	var requestedStartPicID int64
+	var requestedStartPicID schema.PicId
 	if requestedRawStartPicID != "" {
 		if startID, err := strconv.Atoi(requestedRawStartPicID); err != nil {
 			return err
 		} else {
-			requestedStartPicID = int64(startID)
+			requestedStartPicID = schema.PicId(startID)
 		}
 	}
 
@@ -53,15 +54,9 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 	if err := runner.Run(task); err != nil {
 		return err
 	}
-	// Initialize this to an empty array because the json response will be null otherwise.
-	interfacePics := make([]*InterfacePic, 0, len(task.Pics))
-	for _, pic := range task.Pics {
-		interfacePics = append(interfacePics, pic.ToInterface())
-	}
 
 	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(interfacePics); err != nil {
+	if err := json.NewEncoder(w).Encode(task.Pics); err != nil {
 		return err
 	}
 

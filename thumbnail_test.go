@@ -5,6 +5,7 @@ import (
 	"image/gif"
 	"io/ioutil"
 	"os"
+	"pixur.org/pixur/schema"
 	"testing"
 )
 
@@ -54,12 +55,12 @@ func TestFillImageConfig(t *testing.T) {
 			return err
 		}
 
-		var p Pic
+		var p schema.Pic
 		if _, err := FillImageConfig(imgData, &p); err != nil {
 			t.Fatal(err)
 		}
 
-		if p.Mime != Mime_GIF {
+		if p.Mime != schema.Mime_GIF {
 			t.Fatal("Mime type mismatch", p.Mime)
 		}
 		if p.Width != 5 || p.Height != 10 {

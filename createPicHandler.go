@@ -41,8 +41,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(task.CreatedPic.ToInterface()); err != nil {
+	if err := json.NewEncoder(w).Encode(task.CreatedPic); err != nil {
 		return err
 	}
 

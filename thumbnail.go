@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 
+	"pixur.org/pixur/schema"
+
 	"github.com/nfnt/resize"
 
 	_ "image/gif"
@@ -23,7 +25,7 @@ const (
 	maxWebmDuration = 60*2 + 1 // Two minutes, with 1 second of leeway
 )
 
-func FillImageConfig(f *os.File, p *Pic) (image.Image, error) {
+func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
 	}
@@ -39,7 +41,7 @@ func FillImageConfig(f *os.File, p *Pic) (image.Image, error) {
 		return nil, err
 	} else {
 		// TODO: handle this error
-		p.Mime, _ = FromImageFormat(imgType)
+		p.Mime, _ = schema.FromImageFormat(imgType)
 		p.Width = int64(img.Bounds().Dx())
 		p.Height = int64(img.Bounds().Dy())
 	}
@@ -56,7 +58,7 @@ func MakeThumbnail(img image.Image) image.Image {
 		resize.NearestNeighbor)
 }
 
-func SaveThumbnail(img image.Image, p *Pic, pixPath string) error {
+func SaveThumbnail(img image.Image, p *schema.Pic, pixPath string) error {
 	f, err := os.Create(p.ThumbnailPath(pixPath))
 	if err != nil {
 		return err
@@ -113,12 +115,12 @@ type ffprobeStream struct {
 	Height    int64  `json:"height"`
 }
 
-func fillImageConfigFromWebm(tempFile *os.File, p *Pic) (image.Image, error) {
+func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, error) {
 	config, err := getWebmConfig(tempFile.Name())
 	if err != nil {
 		return nil, err
 	}
-	p.Mime = Mime_WEBM
+	p.Mime = schema.Mime_WEBM
 	// Handle the 0 and 1 case
 	for _, stream := range config.Streams {
 		p.Width = stream.Width
