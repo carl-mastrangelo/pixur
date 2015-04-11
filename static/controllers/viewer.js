@@ -15,6 +15,4 @@ var ViewerCtrl = function($scope, $routeParams, picsService) {
       this.isImage = pic.type != "WEBM";
     }.bind(this)
   );
-  
-  console.log(document.body.clientWidth);
 }

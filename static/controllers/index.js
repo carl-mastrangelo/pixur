@@ -2,17 +2,28 @@ var IndexCtrl = function(
     $scope, 
     $location, 
     $routeParams, 
+    $window,
     picsService) {
   this.picsService_ = picsService;
   this.location_ = $location;
   this.pics = [];
 
+  
+  $scope.$on('$locationChangeStart', function(event, next, current) {
+    var x = $window.pageXOffset;
+    var y = $window.pageYOffset;
+    // When the back button is pressed, the controller is initialized first,
+    // followed by calling the onpopstate function.  Store the previous 
+    // offsets in a closue, since we the controller is reset.
+    $window.onpopstate = function (ev) {
+      $window.scrollTo(x, y);
+    };
+  }.bind(this));
+
   this.nextPageID = null;
   this.prevPageID = null;
   
-  window.onpopstate = function (ev) {
-    console.log(ev);
-  }
+
   this.upload = {
     file: null, 
     url: "",
