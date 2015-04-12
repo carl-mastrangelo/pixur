@@ -74,7 +74,7 @@ func (p *Pic) Insert(tx *sql.Tx) (sql.Result, error) {
 		p.Table(), getColumnNamesString(p), getColumnFmt(p))
 	r, err := tx.Exec(stmt, getColumnValues(p)...)
 	if err != nil {
-		fmt.Println(getColumnValues(p))
+		return nil, err
 	}
 	return r, err
 }
