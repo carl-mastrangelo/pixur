@@ -1,7 +1,7 @@
 <div class="index">
   <div ng-if="ctrl.pics.length > 0">
     <span style="float:left"><a ng-href="/">Home</a></span>
-    <span style="float:right"><a ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
+    <span style="float:right"><a ng-show="ctrl.nextPageID" ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
     <span style="clear:both">&nbsp;</span>
   </div>
   <ul class="thumbnail-list">
@@ -11,7 +11,7 @@
       </div>
     </li>
   </ul>
-  <span style="float:right"><a ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
+  <span style="float:right"><a ng-show="ctrl.nextPageID" ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
   <span style="clear:both"></span>
   <input type="file" name="file" onchange="angular.element(this).controller().fileChange(this)" /><br />
   <input placeholder="File URL" name="url" ng-model="ctrl.upload.url"  /><br />
