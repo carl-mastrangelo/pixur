@@ -42,7 +42,7 @@ type container struct {
 	db *sql.DB
 }
 
-func (c *container) mustFindTagByName(name string) *Tag {
+func (c *container) mustFindTagByName(name string) *schema.Tag {
 	tag, err := c.findTagByName(name)
 	if err != nil {
 		c.t.Fatal(err)
@@ -51,7 +51,7 @@ func (c *container) mustFindTagByName(name string) *Tag {
 	return tag
 }
 
-func (c *container) findTagByName(name string) (*Tag, error) {
+func (c *container) findTagByName(name string) (*schema.Tag, error) {
 	tx, err := c.db.Begin()
 	if err != nil {
 		c.t.Fatal(err)
@@ -62,9 +62,9 @@ func (c *container) findTagByName(name string) (*Tag, error) {
 	return t, err
 }
 
-func (c *container) createTag(name string) *Tag {
-	tag := &Tag{
-		Name: name,
+func (c *container) createTag(name string) *schema.Tag {
+	tag := &schema.Tag{
+		TagName: name,
 	}
 	tx, err := c.db.Begin()
 	if err != nil {
@@ -76,7 +76,7 @@ func (c *container) createTag(name string) *Tag {
 		return tag
 	}
 
-	if err := tag.Insert(tx); err != nil {
+	if _, err := tag.Insert(tx); err != nil {
 		c.t.Fatal(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -86,43 +86,26 @@ func (c *container) createTag(name string) *Tag {
 	return tag
 }
 
-func (c *container) createTagExp(name string) *Tag {
-	tag := &Tag{
-		Name: name,
-	}
+func (c *container) createTagExp(name string) *schema.Tag {
 	tx, err := c.db.Begin()
 	if err != nil {
 		c.t.Fatal(err)
 	}
 	defer tx.Rollback()
 
-	tags, err := findTags(tx, "SELECT * FROM tags WHERE name = ? FOR UPDATE;", name)
+	tag, err := schema.GetTagByName(name, tx)
 	if err != nil {
 		c.t.Fatal(err)
 	}
 
-	if len(tags) == 0 {
-		// gaplock?
-		if err := tag.Insert(tx); err != nil {
-			c.t.Fatal(err)
-		}
-		if err := tx.Commit(); err != nil {
-			c.t.Fatal(err)
-		}
-	} else if len(tags) == 1 {
-
-		tag = tags[0]
-		tag.Count++
-		if err := tag.Update(tx); err != nil {
-			c.t.Fatal(err)
-		}
-		if err := tx.Commit(); err != nil {
-			c.t.Fatal(err)
-		}
-
-	} else {
-		c.t.Fatal("Too many tags!", tags)
+	tag.Count++
+	if _, err := tag.Update(tx); err != nil {
+		c.t.Fatal(err)
 	}
+	if err := tx.Commit(); err != nil {
+		c.t.Fatal(err)
+	}
+
 	return tag
 }
 

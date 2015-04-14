@@ -76,7 +76,7 @@ func (p *Pic) Insert(tx *sql.Tx) (sql.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r, err
+	return r, nil
 }
 
 func (p *Pic) InsertAndSetId(tx *sql.Tx) error {

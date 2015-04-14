@@ -9,7 +9,7 @@ import (
 
 type PicTag struct {
 	PicId schema.PicId `db:"pic_id"`
-	TagId int64        `db:"tag_id"`
+	TagId schema.TagId `db:"tag_id"`
 	// Name is the denormalized tag name
 	Name         string `db:"name"`
 	CreatedTime  int64  `db:"created_time"`

@@ -204,9 +204,9 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
-func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
+func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	type findTagResult struct {
-		tag *Tag
+		tag *schema.Tag
 		err error
 	}
 
@@ -252,7 +252,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*Tag, error) {
 	}
 	wg.Wait()
 
-	var allTags []*Tag
+	var allTags []*schema.Tag
 	for _, result := range resultMap {
 		if result.err != nil {
 			return nil, result.err
@@ -277,7 +277,7 @@ func getFileHash(f io.ReadSeeker) (string, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
+func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
 	tag, err := findTagByName(tagName, tx)
 	if err == errTagNotFound {
 		tag, err = createTag(tagName, now, tx)
@@ -286,7 +286,7 @@ func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
 	} else {
 		tag.ModifiedTime = now
 		tag.Count += 1
-		err = tag.Update(tx)
+		_, err = tag.Update(tx)
 	}
 
 	if err != nil {
@@ -296,59 +296,28 @@ func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
 	return tag, nil
 }
 
-func createTag(tagName string, now int64, tx *sql.Tx) (*Tag, error) {
-	tag := &Tag{
-		Name:         tagName,
+func createTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
+	tag := &schema.Tag{
+		TagName:      tagName,
 		Count:        1,
 		CreatedTime:  now,
 		ModifiedTime: now,
 	}
 
-	if err := tag.Insert(tx); err != nil {
+	if err := tag.InsertAndSetId(tx); err != nil {
 		return nil, err
 	}
 	return tag, nil
 }
 
-func findTagByName(tagName string, tx *sql.Tx) (*Tag, error) {
-	tags, err := findTags(tx, "SELECT * FROM tags WHERE name = ?;", tagName)
-	if err != nil {
-		return nil, err
-	}
-	switch len(tags) {
-	case 0:
+func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
+	tag, err := schema.GetTagByName(tagName, tx)
+	if err == sql.ErrNoRows {
 		return nil, errTagNotFound
-	case 1:
-		return tags[0], nil
-	default:
-		return nil, errDuplicateTags
-	}
-}
-
-func findTags(tx *sql.Tx, query string, args ...interface{}) ([]*Tag, error) {
-	rows, err := tx.Query(query, args...)
-	if err != nil {
+	} else if err != nil {
 		return nil, err
 	}
-
-	defer rows.Close()
-	columnNames, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	var tags []*Tag
-	for rows.Next() {
-		t := new(Tag)
-		if err := rows.Scan(t.ColumnPointers(columnNames)...); err != nil {
-			return nil, err
-		}
-		tags = append(tags, t)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return tags, nil
+	return tag, nil
 }
 
 func findPicTagsByPicId(picId schema.PicId, db *sql.DB) ([]*PicTag, error) {
@@ -381,12 +350,12 @@ func findPicTags(db *sql.DB, query string, args ...interface{}) ([]*PicTag, erro
 	return picTags, nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*Tag) error {
+func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	for _, tag := range tags {
 		picTag := &PicTag{
 			PicId:        p.Id,
 			TagId:        tag.Id,
-			Name:         tag.Name,
+			Name:         tag.TagName,
 			CreatedTime:  p.CreatedTime,
 			ModifiedTime: p.ModifiedTime,
 		}
