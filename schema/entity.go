@@ -8,7 +8,6 @@ import (
 )
 
 type Entity interface {
-	Name() string
 	Table() string
 	Insert(tx *sql.Tx) (sql.Result, error)
 }

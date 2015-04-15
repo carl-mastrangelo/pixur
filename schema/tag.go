@@ -10,16 +10,12 @@ import (
 type TagId int64
 
 type Tag struct {
-	Id      TagId  `db:"id"`
-	TagName string `db:"name"`
+	Id   TagId  `db:"id"`
+	Name string `db:"name"`
 	// Count is a denormalized approximation of the number of tag references
 	Count        int64 `db:"usage_count"`
 	CreatedTime  int64 `db:"created_time"`
 	ModifiedTime int64 `db:"modified_time"`
-}
-
-func (t *Tag) Name() string {
-	return "Tag"
 }
 
 func (t *Tag) Table() string {
@@ -30,9 +26,10 @@ func (t *Tag) Insert(tx *sql.Tx) (sql.Result, error) {
 	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		t.Table(), getColumnNamesString(t), getColumnFmt(t))
 	vals := getColumnValues(t)
+
 	r, err := tx.Exec(stmt, vals...)
 	if err != nil {
-		log.Println("Query ", stmt, " failed with args", vals)
+		log.Println("Query ", stmt, " failed with args", vals, err)
 	}
 	return r, err
 }
@@ -70,14 +67,14 @@ func (t *Tag) Update(tx *sql.Tx) (sql.Result, error) {
 func GetTagByName(name string, tx *sql.Tx) (*Tag, error) {
 	var t *Tag
 	stmt := fmt.Sprintf("SELECT %s FROM %s WHERE name = ? FOR UPDATE;",
-		getColumnNamesString(t), t.Name())
+		getColumnNamesString(t), t.Table())
 
 	return getTag(stmt, []interface{}{name}, tx)
 }
 
 func getTag(stmt string, vals []interface{}, tx *sql.Tx) (*Tag, error) {
 	t := new(Tag)
-	if err := tx.QueryRow(stmt, vals...).Scan(t); err != nil {
+	if err := tx.QueryRow(stmt, vals...).Scan(getColumnPointers(t)...); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -85,7 +82,7 @@ func getTag(stmt string, vals []interface{}, tx *sql.Tx) (*Tag, error) {
 
 func getTags(stmt string, vals []interface{}, tx *sql.Tx) ([]*Tag, error) {
 	tags := make([]*Tag, 0)
-	rows, err := tx.Query(stmt, vals)
+	rows, err := tx.Query(stmt, vals...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,9 +92,14 @@ func getTags(stmt string, vals []interface{}, tx *sql.Tx) ([]*Tag, error) {
 		if err := rows.Scan(getColumnPointers(t)...); err != nil {
 			return nil, err
 		}
+		tags = append(tags, t)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return tags, nil
+}
+
+func init() {
+	register(new(Tag))
 }

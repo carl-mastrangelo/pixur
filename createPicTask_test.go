@@ -64,7 +64,7 @@ func (c *container) findTagByName(name string) (*schema.Tag, error) {
 
 func (c *container) createTag(name string) *schema.Tag {
 	tag := &schema.Tag{
-		TagName: name,
+		Name: name,
 	}
 	tx, err := c.db.Begin()
 	if err != nil {
@@ -76,7 +76,7 @@ func (c *container) createTag(name string) *schema.Tag {
 		return tag
 	}
 
-	if _, err := tag.Insert(tx); err != nil {
+	if err := tag.InsertAndSetId(tx); err != nil {
 		c.t.Fatal(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -168,7 +168,16 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 }
 
-func _TestWorkflowAllTagsAdded(t *testing.T) {
+func findPicTagsByPicId(picId schema.PicId, db *sql.DB) ([]*schema.PicTag, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	return schema.FindPicTagsByPicId(picId, tx)
+}
+
+func TestWorkflowAllTagsAdded(t *testing.T) {
 	ctnr := &container{
 		t:  t,
 		db: testDB,
@@ -204,7 +213,7 @@ func _TestWorkflowAllTagsAdded(t *testing.T) {
 	}
 }
 
-func TODOTestWorkflowAlreadyExistingTags(t *testing.T) {
+func TestWorkflowAlreadyExistingTags(t *testing.T) {
 	ctnr := &container{
 		t:  t,
 		db: testDB,
@@ -229,7 +238,7 @@ func TODOTestWorkflowAlreadyExistingTags(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(picTags) != 2 {
-		t.Fatal("Wrong number of pic tags", picTags)
+		t.Fatalf("Wrong number of pic tags %+v", picTags)
 	}
 	var picTagsGroupedByName = groupPicTagsByTagName(picTags)
 	if picTagsGroupedByName["baz"].TagId != bazTag.Id {
@@ -240,48 +249,44 @@ func TODOTestWorkflowAlreadyExistingTags(t *testing.T) {
 	}
 }
 
-func TODOTestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
+func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	ctnr := &container{
 		t:  t,
 		db: testDB,
 	}
 	imgData := ctnr.getRandomImageData()
-	if err := func() error {
-		task := &CreatePicTask{
-			db:       testDB,
-			pixPath:  pixPath,
-			FileData: imgData,
-			// All of these are the same
-			TagNames: []string{"foo", "foo", "  foo", "foo  "},
-		}
-		runner := new(TaskRunner)
-		if err := runner.Run(task); err != nil {
-			return err
-		}
-
-		tx, err := testDB.Begin()
-		if err != nil {
-			return err
-		}
-		fooTag, err := findTagByName("foo", tx)
-		if err != nil {
-			return err
-		}
-
-		picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
-		if err != nil {
-			return err
-		}
-		if len(picTags) != 1 {
-			return fmt.Errorf("Wrong number of pic tags", picTags)
-		}
-		if picTags[0].TagId != fooTag.Id {
-			return fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.Id)
-		}
-		return nil
-	}(); err != nil {
+	task := &CreatePicTask{
+		db:       testDB,
+		pixPath:  pixPath,
+		FileData: imgData,
+		// All of these are the same
+		TagNames: []string{"foo", "foo", "  foo", "foo  "},
+	}
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
 		t.Fatal(err)
 	}
+
+	tx, err := testDB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fooTag, err := findTagByName("foo", tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	picTags, err := findPicTagsByPicId(task.CreatedPic.Id, testDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(picTags) != 1 {
+		t.Fatal("Wrong number of pic tags", picTags)
+	}
+	if picTags[0].TagId != fooTag.Id {
+		t.Fatal("Tag ID does not match PicTag TagId", picTags[0].TagId, fooTag.Id)
+	}
+
 }
 
 func TestCleanTagNames(t *testing.T) {
@@ -375,4 +380,12 @@ func TestMoveUploadedFile(t *testing.T) {
 	}(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func groupPicTagsByTagName(pts []*schema.PicTag) map[string]*schema.PicTag {
+	var grouped = make(map[string]*schema.PicTag, len(pts))
+	for _, pt := range pts {
+		grouped[pt.Name] = pt
+	}
+	return grouped
 }

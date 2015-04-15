@@ -223,25 +223,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 		go func(name string) {
 			defer wg.Done()
 
-			tx, err := t.db.Begin()
-			if err != nil {
-				lock.Lock()
-				defer lock.Unlock()
-				resultMap[name] = &findTagResult{
-					tag: nil,
-					err: err,
-				}
-				return
-			}
-
-			tag, err := findAndUpsertTag(name, now, tx)
-			if err != nil {
-				// TODO: maybe do something with this error?
-				tx.Rollback()
-			} else {
-				err = tx.Commit()
-			}
-
+			tag, err := findAndUpsertTag(name, now, t.tx)
 			lock.Lock()
 			defer lock.Unlock()
 			resultMap[name] = &findTagResult{
@@ -298,7 +280,7 @@ func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error
 
 func createTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
 	tag := &schema.Tag{
-		TagName:      tagName,
+		Name:         tagName,
 		Count:        1,
 		CreatedTime:  now,
 		ModifiedTime: now,
@@ -320,47 +302,16 @@ func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
 	return tag, nil
 }
 
-func findPicTagsByPicId(picId schema.PicId, db *sql.DB) ([]*PicTag, error) {
-	return findPicTags(db, "SELECT * FROM pictags WHERE pic_id = ?;", picId)
-}
-
-func findPicTags(db *sql.DB, query string, args ...interface{}) ([]*PicTag, error) {
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-	columnNames, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	var picTags []*PicTag
-	for rows.Next() {
-		pt := new(PicTag)
-		if err := rows.Scan(pt.ColumnPointers(columnNames)...); err != nil {
-			return nil, err
-		}
-		picTags = append(picTags, pt)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return picTags, nil
-}
-
 func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	for _, tag := range tags {
-		picTag := &PicTag{
+		picTag := &schema.PicTag{
 			PicId:        p.Id,
 			TagId:        tag.Id,
-			Name:         tag.TagName,
+			Name:         tag.Name,
 			CreatedTime:  p.CreatedTime,
 			ModifiedTime: p.ModifiedTime,
 		}
-		_, err := t.db.Exec(picTag.BuildInsert(), picTag.ColumnPointers(picTag.GetColumnNames())...)
-		if err != nil {
+		if _, err := picTag.Insert(t.tx); err != nil {
 			return err
 		}
 	}

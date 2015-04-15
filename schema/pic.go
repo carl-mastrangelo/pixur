@@ -61,10 +61,6 @@ func (p *Pic) ThumbnailPath(pixPath string) string {
 	return filepath.Join(pixPath, fmt.Sprintf("%ds.jpg", p.Id))
 }
 
-func (p *Pic) Name() string {
-	return "Pic"
-}
-
 func (p *Pic) Table() string {
 	return "pics"
 }
