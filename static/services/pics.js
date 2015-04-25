@@ -48,7 +48,7 @@ PicsService.prototype.get = function(startID) {
       start_pic_id: startID
     };
   }
-  this.http_.get("/api/findIndexPics", httpConfig).then(
+  this.http_.get("/api/findNextIndexPics", httpConfig).then(
     function(data, status, headers, config) {
       data.data.forEach(function(pic){
         picCache.put(pic.id, pic);

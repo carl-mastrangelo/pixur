@@ -1,6 +1,7 @@
 package pixur
 
 import (
+	"database/sql"
 	"encoding/json"
 	"html/template"
 	"net/http"
@@ -35,7 +36,15 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) findPreviousIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
+	return findIndexPicsHandler(s.db, true, w, r)
+}
+
+func (s *Server) findNextIndexPicsHandler(w http.ResponseWriter, r *http.Request) error {
+	return findIndexPicsHandler(s.db, false, w, r)
+}
+
+func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) error {
 	requestedRawStartPicID := r.FormValue("start_pic_id")
 	var requestedStartPicID schema.PicId
 	if requestedRawStartPicID != "" {
@@ -47,8 +56,9 @@ func (s *Server) findIndexPicsHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	var task = &ReadIndexPicsTask{
-		DB:      s.db,
-		StartID: requestedStartPicID,
+		DB:        db,
+		StartID:   requestedStartPicID,
+		Ascending: ascending,
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {

@@ -5,9 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 type PicId int64
+
+type PicColumn string
+
+const (
+	PicColId          PicColumn = "id"
+	PicColCreatedTime PicColumn = "created_time"
+	PicColMime        PicColumn = "mime"
+	PicColWidth       PicColumn = "width"
+	PicColHeight      PicColumn = "height"
+)
 
 const (
 	idField          = "id"
@@ -89,13 +100,10 @@ func (p *Pic) InsertAndSetId(tx *sql.Tx) error {
 	return nil
 }
 
-func GetPicsByCreatedTime(id PicId, limit int64, tx *sql.Tx) ([]*Pic, error) {
+func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
 	pics := make([]*Pic, 0)
-	var pType *Pic
 
-	stmt := fmt.Sprintf("SELECT %s FROM %s WHERE %s <= ? ORDER BY %s DESC LIMIT  ?;",
-		getColumnNamesString(pType), pType.Table(), idField, createdTimeField)
-	rows, err := tx.Query(stmt, id, limit)
+	rows, err := stmt.Query(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +120,22 @@ func GetPicsByCreatedTime(id PicId, limit int64, tx *sql.Tx) ([]*Pic, error) {
 	}
 
 	return pics, nil
+}
+
+type preparer interface {
+	Prepare(query string) (*sql.Stmt, error)
+}
+
+func PicPrepare(stmt string, tx preparer, columns ...PicColumn) (*sql.Stmt, error) {
+	var pType *Pic
+	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+pType.Table(), 1)
+	args := make([]interface{}, len(columns))
+	for i, column := range columns {
+		args[i] = column
+	}
+	stmt = fmt.Sprintf(stmt, args...)
+	return tx.Prepare(stmt)
 }
 
 func init() {

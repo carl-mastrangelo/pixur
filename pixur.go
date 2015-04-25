@@ -59,7 +59,8 @@ func (s *Server) setup(c *Config) error {
 
 	// index handler
 	s.registerHandler("/", s.indexHandler)
-	s.registerHandler("/api/findIndexPics", s.findIndexPicsHandler)
+	s.registerHandler("/api/findNextIndexPics", s.findNextIndexPicsHandler)
+	s.registerHandler("/api/findPreviousIndexPics", s.findPreviousIndexPicsHandler)
 
 	// upload handler
 	s.registerHandler("/api/createPic", s.uploadHandler)
