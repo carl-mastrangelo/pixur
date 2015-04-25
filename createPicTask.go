@@ -293,7 +293,12 @@ func createTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
 }
 
 func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
-	tag, err := schema.GetTagByName(tagName, tx)
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColName)
+	if err != nil {
+		return nil, err
+	}
+
+	tag, err := schema.LookupTag(stmt, tagName)
 	if err == sql.ErrNoRows {
 		return nil, errTagNotFound
 	} else if err != nil {

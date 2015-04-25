@@ -86,29 +86,6 @@ func (c *container) createTag(name string) *schema.Tag {
 	return tag
 }
 
-func (c *container) createTagExp(name string) *schema.Tag {
-	tx, err := c.db.Begin()
-	if err != nil {
-		c.t.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	tag, err := schema.GetTagByName(name, tx)
-	if err != nil {
-		c.t.Fatal(err)
-	}
-
-	tag.Count++
-	if _, err := tag.Update(tx); err != nil {
-		c.t.Fatal(err)
-	}
-	if err := tx.Commit(); err != nil {
-		c.t.Fatal(err)
-	}
-
-	return tag
-}
-
 func init() {
 	BeforeTestSuite(func() error {
 		if path, err := ioutil.TempDir("", "pixPath"); err != nil {

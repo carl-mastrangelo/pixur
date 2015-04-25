@@ -12,6 +12,10 @@ type Entity interface {
 	Insert(tx *sql.Tx) (sql.Result, error)
 }
 
+type preparer interface {
+	Prepare(query string) (*sql.Stmt, error)
+}
+
 var (
 	columnIndices = make(map[reflect.Type][]int, 0)
 	columnFmts    = make(map[reflect.Type]string, 0)

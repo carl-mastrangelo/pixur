@@ -122,10 +122,6 @@ func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
 	return pics, nil
 }
 
-type preparer interface {
-	Prepare(query string) (*sql.Stmt, error)
-}
-
 func PicPrepare(stmt string, tx preparer, columns ...PicColumn) (*sql.Stmt, error) {
 	var pType *Pic
 	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)

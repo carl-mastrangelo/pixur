@@ -9,6 +9,16 @@ import (
 
 type TagId int64
 
+type TagColumn string
+
+const (
+	TagColId           TagColumn = "id"
+	TagColCreatedTime  TagColumn = "created_time"
+	TagColName         TagColumn = "name"
+	TagColCount        TagColumn = "usage_count"
+	TagColModifiedTime TagColumn = "modified_time"
+)
+
 type Tag struct {
 	Id   TagId  `db:"id"`
 	Name string `db:"name"`
@@ -64,25 +74,18 @@ func (t *Tag) Update(tx *sql.Tx) (sql.Result, error) {
 	return r, err
 }
 
-func GetTagByName(name string, tx *sql.Tx) (*Tag, error) {
-	var t *Tag
-	stmt := fmt.Sprintf("SELECT %s FROM %s WHERE name = ? FOR UPDATE;",
-		getColumnNamesString(t), t.Table())
-
-	return getTag(stmt, []interface{}{name}, tx)
-}
-
-func getTag(stmt string, vals []interface{}, tx *sql.Tx) (*Tag, error) {
+func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
 	t := new(Tag)
-	if err := tx.QueryRow(stmt, vals...).Scan(getColumnPointers(t)...); err != nil {
+	if err := stmt.QueryRow(args...).Scan(getColumnPointers(t)...); err != nil {
 		return nil, err
 	}
 	return t, nil
 }
 
-func getTags(stmt string, vals []interface{}, tx *sql.Tx) ([]*Tag, error) {
+func FindTags(stmt *sql.Stmt, args ...interface{}) ([]*Tag, error) {
 	tags := make([]*Tag, 0)
-	rows, err := tx.Query(stmt, vals...)
+
+	rows, err := stmt.Query(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +100,20 @@ func getTags(stmt string, vals []interface{}, tx *sql.Tx) ([]*Tag, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return tags, nil
+}
+
+func TagPrepare(stmt string, tx preparer, columns ...TagColumn) (*sql.Stmt, error) {
+	var tType *Tag
+	stmt = strings.Replace(stmt, "*", getColumnNamesString(tType), 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+tType.Table(), 1)
+	args := make([]interface{}, len(columns))
+	for i, column := range columns {
+		args[i] = column
+	}
+	stmt = fmt.Sprintf(stmt, args...)
+	return tx.Prepare(stmt)
 }
 
 func init() {
