@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	_ "encoding/json"
 	"fmt"
+	"time"
 )
 
 type PicTag struct {
@@ -13,6 +14,22 @@ type PicTag struct {
 	Name         string `db:"name"`
 	CreatedTime  int64  `db:"created_time"`
 	ModifiedTime int64  `db:"modified_time"`
+}
+
+func (pt *PicTag) SetCreatedTime(now time.Time) {
+	pt.CreatedTime = toMillis(now)
+}
+
+func (pt *PicTag) SetModifiedTime(now time.Time) {
+	pt.ModifiedTime = toMillis(now)
+}
+
+func (pt *PicTag) GetCreatedTime() time.Time {
+	return fromMillis(pt.CreatedTime)
+}
+
+func (pt *PicTag) GetModifiedTime() time.Time {
+	return fromMillis(pt.ModifiedTime)
 }
 
 func (tp *PicTag) Table() string {

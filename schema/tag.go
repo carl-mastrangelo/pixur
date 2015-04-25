@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 type TagId int64
@@ -26,6 +27,22 @@ type Tag struct {
 	Count        int64 `db:"usage_count"`
 	CreatedTime  int64 `db:"created_time"`
 	ModifiedTime int64 `db:"modified_time"`
+}
+
+func (t *Tag) SetCreatedTime(now time.Time) {
+	t.CreatedTime = toMillis(now)
+}
+
+func (t *Tag) SetModifiedTime(now time.Time) {
+	t.ModifiedTime = toMillis(now)
+}
+
+func (t *Tag) GetCreatedTime() time.Time {
+	return fromMillis(t.CreatedTime)
+}
+
+func (t *Tag) GetModifiedTime() time.Time {
+	return fromMillis(t.ModifiedTime)
 }
 
 func (t *Tag) Table() string {

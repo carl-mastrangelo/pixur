@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"os"
 	"pixur.org/pixur/schema"
+	"sort"
 	"strings"
-	"sync"
+	"time"
 	"unicode"
 )
 
@@ -45,6 +46,7 @@ type CreatePicTask struct {
 	// The file that was created to hold the upload.
 	tempFilename string
 	tx           *sql.Tx
+	now          time.Time
 
 	// Results
 	CreatedPic *schema.Pic
@@ -72,6 +74,7 @@ func (t *CreatePicTask) reset() {
 }
 
 func (t *CreatePicTask) Run() error {
+	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
 		return err
@@ -80,7 +83,8 @@ func (t *CreatePicTask) Run() error {
 	t.tempFilename = wf.Name()
 
 	var p = new(schema.Pic)
-	fillTimestamps(p)
+	p.SetCreatedTime(t.now)
+	p.SetModifiedTime(t.now)
 
 	if t.FileData != nil {
 		if err := t.moveUploadedFile(wf, p); err != nil {
@@ -211,35 +215,14 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	}
 
 	var cleanedTags = cleanTagNames(t.TagNames)
-
-	var resultMap = make(map[string]*findTagResult, len(cleanedTags))
-	var lock sync.Mutex
-
-	now := getNowMillis()
-
-	var wg sync.WaitGroup
-	for _, tagName := range cleanedTags {
-		wg.Add(1)
-		go func(name string) {
-			defer wg.Done()
-
-			tag, err := findAndUpsertTag(name, now, t.tx)
-			lock.Lock()
-			defer lock.Unlock()
-			resultMap[name] = &findTagResult{
-				tag: tag,
-				err: err,
-			}
-		}(tagName)
-	}
-	wg.Wait()
-
+	sort.Strings(cleanedTags)
 	var allTags []*schema.Tag
-	for _, result := range resultMap {
-		if result.err != nil {
-			return nil, result.err
+	for _, tagName := range cleanedTags {
+		tag, err := findAndUpsertTag(tagName, t.now, t.tx)
+		if err != nil {
+			return nil, err
 		}
-		allTags = append(allTags, result.tag)
+		allTags = append(allTags, tag)
 	}
 
 	return allTags, nil
@@ -259,14 +242,14 @@ func getFileHash(f io.ReadSeeker) (string, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
+func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
 	tag, err := findTagByName(tagName, tx)
 	if err == errTagNotFound {
 		tag, err = createTag(tagName, now, tx)
 	} else if err != nil {
 		return nil, err
 	} else {
-		tag.ModifiedTime = now
+		tag.SetModifiedTime(now)
 		tag.Count += 1
 		_, err = tag.Update(tx)
 	}
@@ -278,13 +261,13 @@ func findAndUpsertTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error
 	return tag, nil
 }
 
-func createTag(tagName string, now int64, tx *sql.Tx) (*schema.Tag, error) {
+func createTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
 	tag := &schema.Tag{
-		Name:         tagName,
-		Count:        1,
-		CreatedTime:  now,
-		ModifiedTime: now,
+		Name:  tagName,
+		Count: 1,
 	}
+	tag.SetCreatedTime(now)
+	tag.SetModifiedTime(now)
 
 	if err := tag.InsertAndSetId(tx); err != nil {
 		return nil, err
@@ -310,12 +293,12 @@ func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
 func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
-			PicId:        p.Id,
-			TagId:        tag.Id,
-			Name:         tag.Name,
-			CreatedTime:  p.CreatedTime,
-			ModifiedTime: p.ModifiedTime,
+			PicId: p.Id,
+			TagId: tag.Id,
+			Name:  tag.Name,
 		}
+		picTag.SetCreatedTime(p.GetCreatedTime())
+		picTag.SetModifiedTime(p.GetModifiedTime())
 		if _, err := picTag.Insert(t.tx); err != nil {
 			return err
 		}
@@ -324,14 +307,15 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 }
 
 func cleanTagNames(rawTagNames []string) []string {
-	var trimmed []string
+	trimmed := make([]string, 0, len(rawTagNames))
 	for _, tagName := range rawTagNames {
 		trimmed = append(trimmed, strings.TrimSpace(tagName))
 	}
 
-	var noInvalidRunes []string
+	noInvalidRunes := make([]string, 0, len(trimmed))
 	for _, tagName := range trimmed {
 		var buf bytes.Buffer
+		buf.Grow(len(tagName))
 		for _, runeValue := range tagName {
 			if runeValue == unicode.ReplacementChar || !unicode.IsPrint(runeValue) {
 				continue
@@ -344,6 +328,7 @@ func cleanTagNames(rawTagNames []string) []string {
 	// We keep track of which are duplicates, but maintain order otherwise
 	var seen = make(map[string]struct{}, len(noInvalidRunes))
 
+	// TODO: normalize tag names
 	var uniqueNonEmptyTags []string
 	for _, tagName := range noInvalidRunes {
 		if len(tagName) == 0 {
@@ -357,9 +342,4 @@ func cleanTagNames(rawTagNames []string) []string {
 	}
 
 	return uniqueNonEmptyTags
-}
-
-func fillTimestamps(p *schema.Pic) {
-	p.CreatedTime = getNowMillis()
-	p.ModifiedTime = p.CreatedTime
 }

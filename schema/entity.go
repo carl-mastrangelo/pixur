@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Entity interface {
@@ -97,4 +98,21 @@ func buildColumnNames(t reflect.Type, indices []int) []string {
 		names = append(names, t.Field(i).Tag.Get("db"))
 	}
 	return names
+}
+
+func toMillis(t time.Time) int64 {
+	millisPerSecond := int64(time.Second / time.Millisecond)
+	nanos := t.UnixNano()
+
+	seconds := nanos / int64(time.Second)
+	millis := (nanos % int64(time.Second)) / int64(time.Millisecond)
+
+	return seconds*millisPerSecond + millis
+}
+
+func fromMillis(t int64) time.Time {
+	millisPerSecond := int64(time.Second / time.Millisecond)
+	nanos := (t % millisPerSecond) * int64(time.Millisecond)
+	seconds := (t / millisPerSecond)
+	return time.Unix(seconds, nanos)
 }

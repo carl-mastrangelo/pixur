@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type PicId int64
@@ -54,6 +55,22 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
 	})
+}
+
+func (p *Pic) SetCreatedTime(now time.Time) {
+	p.CreatedTime = toMillis(now)
+}
+
+func (p *Pic) SetModifiedTime(now time.Time) {
+	p.ModifiedTime = toMillis(now)
+}
+
+func (p *Pic) GetCreatedTime() time.Time {
+	return fromMillis(p.CreatedTime)
+}
+
+func (p *Pic) GetModifiedTime() time.Time {
+	return fromMillis(p.ModifiedTime)
 }
 
 func (p *Pic) RelativeURL() string {
