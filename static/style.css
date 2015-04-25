@@ -1,11 +1,13 @@
 body {
   background-color: #FFFFEE;
+  margin: 0
 }
 
 ul.thumbnail-list {
   list-style-type: none;
   padding: 0;
 }
+
 li {
   display: inline;
 }
