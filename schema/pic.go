@@ -21,11 +21,6 @@ const (
 	PicColHeight      PicColumn = "height"
 )
 
-const (
-	idField          = "id"
-	createdTimeField = "created_time"
-)
-
 type Pic struct {
 	Id           PicId  `db:"id"`
 	FileSize     int64  `db:"file_size"`
@@ -115,6 +110,14 @@ func (p *Pic) InsertAndSetId(tx *sql.Tx) error {
 
 	p.Id = PicId(id)
 	return nil
+}
+
+func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
+	p := new(Pic)
+	if err := stmt.QueryRow(args...).Scan(getColumnPointers(p)...); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {

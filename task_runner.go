@@ -15,14 +15,17 @@ type TaskRunner struct {
 }
 
 func (r *TaskRunner) Run(task Task) error {
-	defer task.CleanUp()
+	if messy, ok := task.(Messy); ok {
+		defer messy.CleanUp()
+	}
+
 	for i := 0; i < maxTaskRetries; i++ {
 		err := task.Run()
 		if err, ok := err.(*mysql.MySQLError); ok {
 			if err.Number == innoDbDeadlockErrorNumber {
-				//log.Printf("Retrying task %d/%d: %s", i, maxTaskRetries, err)
-				// Reset here too, to ensure all state is clean
-				task.ResetForRetry()
+				if resettable, ok := task.(Resettable); ok {
+					resettable.ResetForRetry()
+				}
 				continue
 			}
 			// Something else bad happened.

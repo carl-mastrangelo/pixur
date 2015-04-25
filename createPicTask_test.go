@@ -151,7 +151,14 @@ func findPicTagsByPicId(picId schema.PicId, db *sql.DB) ([]*schema.PicTag, error
 		return nil, err
 	}
 	defer tx.Rollback()
-	return schema.FindPicTagsByPicId(picId, tx)
+
+	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ?;", tx, schema.PicTagColPicId)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	return schema.FindPicTags(stmt, picId)
 }
 
 func TestWorkflowAllTagsAdded(t *testing.T) {

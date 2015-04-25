@@ -65,6 +65,9 @@ func (s *Server) setup(c *Config) error {
 	// upload handler
 	s.registerHandler("/api/createPic", s.uploadHandler)
 
+	// viewer handler
+	s.registerHandler("/api/lookupPicDetails", s.lookupPicDetailsHandler)
+
 	return nil
 }
 
