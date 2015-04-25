@@ -5,13 +5,13 @@ var PicsService = function($http, $q, $cacheFactory) {
   this.indexCache = $cacheFactory.get("PicsService");
   if (!this.indexCache) {
    this.indexCache = $cacheFactory("PicsService", {
-    capacity: 10
+    capacity: 20
    });
    
    this.picCache = $cacheFactory.get("PicsService-pics");
    if (!this.picCache) {
      this.picCache = $cacheFactory("PicsService-pics", {
-      capacity: 61 // Default page size plus one for good measure
+      capacity: 122 // 2x Default page size plus one for good measure
      });
    }
   }
@@ -49,15 +49,30 @@ PicsService.prototype.get = function(startID) {
     };
   }
   this.http_.get("/api/findNextIndexPics", httpConfig).then(
-    function(data, status, headers, config) {
-      data.data.forEach(function(pic){
+    function(res, status, headers, config) {
+      res.data.forEach(function(pic){
         picCache.put(pic.id, pic);
       });
-      deferred.resolve(data);
-    },
-    function(data, status, headers, config) {
-      console.log(data);
-      console.log(status);
+      deferred.resolve(res.data);
+      
+      if (res.data.length) {
+        httpConfig.params = {
+          start_pic_id: res.data[res.data.length -1].id
+        };
+        this.http_.get("/api/findNextIndexPics", httpConfig).then(
+        function(res) {
+          res.data.forEach(function(pic){
+            picCache.put(pic.id, pic);
+          });
+        }.bind(this),
+        function(error) {
+          console.error("Failure to prefetch: ", error)
+        });
+      }
+
+    }.bind(this),
+    function(error) {
+      deferred.reject(error);
     }
   );
   return deferred.promise;

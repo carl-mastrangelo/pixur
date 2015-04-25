@@ -35,8 +35,7 @@ var IndexCtrl = function(
 
   // Initial Load
   picsService.get(startId).then(
-    function(data) {
-      var pics = data.data;
+    function(pics) {
       if (pics.length > 0) {
         this.nextPageID = pics[pics.length - 1].id;
         this.pics = pics;
@@ -47,8 +46,8 @@ var IndexCtrl = function(
 
 IndexCtrl.prototype.loadNext = function() {
   this.picsService_.get(this.nextPageID).then(
-    function(data) {
-      this.pics = data.data;
+    function(pics) {
+      this.pics = pics;
       if (this.pics.length > 0) {
         this.nextPageID = this.pics[this.pics.length - 1].id
       }
