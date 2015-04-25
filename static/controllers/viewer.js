@@ -5,14 +5,14 @@ var ViewerCtrl = function($scope, $routeParams, picsService) {
   
   this.picId = $routeParams.picId;
   this.pic = null;
-  
-  // TODO: hack, poor performance, replace with something less awful
-  // Initial Load
+  this.picTags = [];
+
   picsService.getSingle(this.picId).then(
-    function(pic) {
-      this.pic = pic;
-      this.isVideo = pic.type == "WEBM";
-      this.isImage = pic.type != "WEBM";
+    function(details) {
+      this.pic = details.pic;
+      this.picTags = details.pic_tags;
+      this.isVideo = this.pic.type == "WEBM";
+      this.isImage = this.pic.type != "WEBM";
     }.bind(this)
   );
 }

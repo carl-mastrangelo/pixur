@@ -11,7 +11,7 @@ import (
 
 type lookupPicResults struct {
 	Pic     *schema.Pic      `json:"pic"`
-	PicTags []*schema.PicTag `json:"pictags"`
+	PicTags []*schema.PicTag `json:"pic_tags"`
 }
 
 func (s *Server) lookupPicDetailsHandler(w http.ResponseWriter, r *http.Request) error {

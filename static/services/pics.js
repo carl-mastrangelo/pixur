@@ -19,16 +19,20 @@ var PicsService = function($http, $q, $cacheFactory) {
 
 PicsService.prototype.getSingle = function(picId) {
   var deferred = this.q_.defer();
-  var picCache = this.picCache;
-  var pic = this.picCache.get(picId);
-  if (pic) {
-    deferred.resolve(pic);
-    
-  } else {
-    this.get(picId).then(function(data) {
-      deferred.resolve(data.data[0]);
-    }.bind(this));
-  }
+  var httpConfig = {
+    params: {
+      pic_id: picId
+    }
+  };
+  this.http_.get("/api/lookupPicDetails", httpConfig).then(
+    function(res) {
+      deferred.resolve(res.data);
+    },
+    function(error) {
+      deferred.reject(res);
+    }
+  );
+  
   return deferred.promise;
 }
 
