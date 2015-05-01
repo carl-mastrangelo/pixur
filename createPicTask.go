@@ -78,7 +78,7 @@ func (t *CreatePicTask) Run() error {
 	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
-		return err
+		return ServerError("Unable to create tempfile", err)
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -96,7 +96,7 @@ func (t *CreatePicTask) Run() error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("No file uploaded")
+		return InvalidArgument("No file uploaded", nil)
 	}
 
 	digest, err := getFileHash(wf)
@@ -147,60 +147,61 @@ func (t *CreatePicTask) Run() error {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) error {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) Status {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return err
+		return ServerError("Unable to move uploaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
-		// If there was a failure, just give up.  The enclosing task will fail.
 		if err := f.Sync(); err != nil {
-			log.Println("Failed to sync file, continuing anwyays", err)
+			return ServerError("Failed to sync uploaded file", err)
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) Status {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
-		return err
+		return InvalidArgument("Unable to download "+t.FileURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Failed to Download Pic %s [%d]", t.FileURL, resp.StatusCode)
+		message := fmt.Sprintf("Failed to Download Pic %s [%d]", t.FileURL, resp.StatusCode)
+		return InvalidArgument(message, nil)
 	}
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return err
+		return ServerError("Failed to copy downloaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
-		// If there was a failure, just give up.  The enclosing task will fail.
 		if err := f.Sync(); err != nil {
-			log.Println("Failed to sync file, continuing anwyays", err)
+			return ServerError("Failed to sync file", err)
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) beginTransaction() error {
+func (t *CreatePicTask) beginTransaction() Status {
 	if tx, err := t.db.Begin(); err != nil {
-		return err
+		return ServerError("Unable to Begin TX", err)
 	} else {
 		t.tx = tx
 	}
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
+func (t *CreatePicTask) renameTempFile(p *schema.Pic) Status {
 	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
-		return err
+		message := fmt.Sprintf("Unable to move uploaded file %s -> %s",
+			t.tempFilename, p.Path(t.pixPath))
+		return ServerError(message, err)
 	}
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.pixPath)
@@ -210,11 +211,6 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
 func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
-	type findTagResult struct {
-		tag *schema.Tag
-		err error
-	}
-
 	cleanedTags, err := cleanTagNames(t.TagNames)
 	if err != nil {
 		return nil, err
@@ -232,14 +228,14 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	return allTags, nil
 }
 
-func getFileHash(f io.ReadSeeker) (string, error) {
+func getFileHash(f io.ReadSeeker) (string, Status) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return "", err
+		return "", ServerError(err.Error(), err)
 	}
 	defer f.Seek(0, os.SEEK_SET)
 	h := sha512.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+		return "", ServerError(err.Error(), err)
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
@@ -310,13 +306,10 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	return nil
 }
 
-func checkValidUnicode(tagNames []string) *Status {
+func checkValidUnicode(tagNames []string) Status {
 	for _, tn := range tagNames {
 		if !utf8.ValidString(tn) {
-			return &Status{
-				Code:    Code_INVALID_ARGUMENT,
-				Message: "Invalid tag name: " + tn,
-			}
+			return InvalidArgument("Invalid tag name: "+tn, nil)
 		}
 	}
 	return nil
@@ -368,7 +361,7 @@ func removeEmptyTagNames(tagNames []string) []string {
 	return nonEmptyTagNames
 }
 
-func cleanTagNames(rawTagNames []string) ([]string, *Status) {
+func cleanTagNames(rawTagNames []string) ([]string, Status) {
 	if err := checkValidUnicode(rawTagNames); err != nil {
 		return nil, err
 	}

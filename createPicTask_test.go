@@ -117,7 +117,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
+		t.Fatalf("%s %t", err, err)
 	}
 
 	expected := schema.Pic{
