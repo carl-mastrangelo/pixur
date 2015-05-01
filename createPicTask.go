@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 var (
@@ -214,7 +215,10 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 		err error
 	}
 
-	var cleanedTags = cleanTagNames(t.TagNames)
+	cleanedTags, err := cleanTagNames(t.TagNames)
+	if err != nil {
+		return nil, err
+	}
 	sort.Strings(cleanedTags)
 	var allTags []*schema.Tag
 	for _, tagName := range cleanedTags {
@@ -306,40 +310,73 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	return nil
 }
 
-func cleanTagNames(rawTagNames []string) []string {
-	trimmed := make([]string, 0, len(rawTagNames))
-	for _, tagName := range rawTagNames {
-		trimmed = append(trimmed, strings.TrimSpace(tagName))
-	}
-
-	noInvalidRunes := make([]string, 0, len(trimmed))
-	for _, tagName := range trimmed {
-		var buf bytes.Buffer
-		buf.Grow(len(tagName))
-		for _, runeValue := range tagName {
-			if runeValue == unicode.ReplacementChar || !unicode.IsPrint(runeValue) {
-				continue
+func checkValidUnicode(tagNames []string) *Status {
+	for _, tn := range tagNames {
+		if !utf8.ValidString(tn) {
+			return &Status{
+				Code:    Code_INVALID_ARGUMENT,
+				Message: "Invalid tag name: " + tn,
 			}
-			buf.WriteRune(runeValue)
 		}
-		noInvalidRunes = append(noInvalidRunes, buf.String())
 	}
+	return nil
+}
 
-	// We keep track of which are duplicates, but maintain order otherwise
-	var seen = make(map[string]struct{}, len(noInvalidRunes))
-
-	// TODO: normalize tag names
-	var uniqueNonEmptyTags []string
-	for _, tagName := range noInvalidRunes {
-		if len(tagName) == 0 {
-			continue
+func removeUnprintableCharacters(tagNames []string) []string {
+	printableTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		var buf bytes.Buffer
+		buf.Grow(len(tn))
+		for _, runeValue := range tn {
+			if unicode.IsPrint(runeValue) {
+				buf.WriteRune(runeValue)
+			}
 		}
-		if _, present := seen[tagName]; present {
-			continue
-		}
-		seen[tagName] = struct{}{}
-		uniqueNonEmptyTags = append(uniqueNonEmptyTags, tagName)
+		printableTagNames = append(printableTagNames, buf.String())
 	}
+	return printableTagNames
+}
 
-	return uniqueNonEmptyTags
+func trimTagNames(tagNames []string) []string {
+	trimmed := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		trimmed = append(trimmed, strings.TrimSpace(tn))
+	}
+	return trimmed
+}
+
+// removeDuplicateTagNames preserves order of the tags
+func removeDuplicateTagNames(tagNames []string) []string {
+	var seen = make(map[string]struct{}, len(tagNames))
+	uniqueTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		if _, present := seen[tn]; !present {
+			seen[tn] = struct{}{}
+			uniqueTagNames = append(uniqueTagNames, tn)
+		}
+	}
+	return uniqueTagNames
+}
+
+func removeEmptyTagNames(tagNames []string) []string {
+	nonEmptyTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		if tn != "" {
+			nonEmptyTagNames = append(nonEmptyTagNames, tn)
+		}
+	}
+	return nonEmptyTagNames
+}
+
+func cleanTagNames(rawTagNames []string) ([]string, *Status) {
+	if err := checkValidUnicode(rawTagNames); err != nil {
+		return nil, err
+	}
+	// TODO: normalize unicode names, in order to be searchable and collapse dupes
+	printableTagNames := removeUnprintableCharacters(rawTagNames)
+	trimmedTagNames := trimTagNames(printableTagNames)
+	nonEmptyTagNames := removeEmptyTagNames(trimmedTagNames)
+	uniqueTagNames := removeDuplicateTagNames(nonEmptyTagNames)
+
+	return uniqueTagNames, nil
 }
