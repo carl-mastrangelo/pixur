@@ -75,6 +75,11 @@ func (pt *PicTag) Insert(tx *sql.Tx) (sql.Result, error) {
 	return r, nil
 }
 
+func (pt *PicTag) Delete(tx *sql.Tx) (sql.Result, error) {
+	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?;", pt.Table(), PicTagColPicId, PicTagColTagId)
+	return tx.Exec(stmt, pt.PicId, pt.TagId)
+}
+
 func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
 	picTags := make([]*PicTag, 0)
 

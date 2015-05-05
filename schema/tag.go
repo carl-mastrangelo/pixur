@@ -91,6 +91,11 @@ func (t *Tag) Update(tx *sql.Tx) (sql.Result, error) {
 	return r, err
 }
 
+func (t *Tag) Delete(tx *sql.Tx) (sql.Result, error) {
+	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", t.Table(), TagColId)
+	return tx.Exec(stmt, t.Id)
+}
+
 func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
 	t := new(Tag)
 	if err := stmt.QueryRow(args...).Scan(getColumnPointers(t)...); err != nil {

@@ -112,6 +112,11 @@ func (p *Pic) InsertAndSetId(tx *sql.Tx) error {
 	return nil
 }
 
+func (p *Pic) Delete(tx *sql.Tx) (sql.Result, error) {
+	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", p.Table(), PicColId)
+	return tx.Exec(stmt, p.Id)
+}
+
 func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
 	p := new(Pic)
 	if err := stmt.QueryRow(args...).Scan(getColumnPointers(p)...); err != nil {
