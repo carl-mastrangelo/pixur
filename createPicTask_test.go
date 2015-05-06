@@ -4,12 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"image"
-	"image/color"
-	"image/gif"
 	"io/ioutil"
-	"math"
-	"math/rand"
 	"os"
 	"pixur.org/pixur/schema"
 	"testing"
@@ -21,27 +16,6 @@ import (
 var (
 	pixPath string
 )
-
-func (c *container) getRandomImageData() *bytes.Reader {
-	bounds := image.Rect(0, 0, 5, 10)
-	img := image.NewGray(bounds)
-	for x := bounds.Min.X; x < bounds.Max.X; x++ {
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			img.SetGray(x, y, color.Gray{Y: uint8(rand.Int31n(math.MaxUint8))})
-		}
-	}
-	f := bytes.NewBuffer(nil)
-
-	if err := gif.Encode(f, img, &gif.Options{}); err != nil {
-		c.t.Fatal(err)
-	}
-	return bytes.NewReader(f.Bytes())
-}
-
-type container struct {
-	t  *testing.T
-	db *sql.DB
-}
 
 func (c *container) mustFindTagByName(name string) *schema.Tag {
 	tag, err := c.findTagByName(name)

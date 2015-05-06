@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"pixur.org/pixur/schema"
 	"time"
+
+	"pixur.org/pixur/schema"
 )
 
 var _ Task = &DeletePicTask{}
@@ -17,76 +18,38 @@ type DeletePicTask struct {
 	db      *sql.DB
 
 	// input
-	Id schema.PicId
+	PicId schema.PicId
 }
 
 func (task *DeletePicTask) Run() error {
-
 	tx, err := task.db.Begin()
 	if err != nil {
 		return ServerError("Unable to Begin TX", err)
 	}
 	defer tx.Rollback()
 
-	picStmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
+	p, err := lookupPicToDelete(task.PicId, tx)
 	if err != nil {
-		return ServerError("Unable to Prepare Lookup", err)
-	}
-	defer picStmt.Close()
-
-	p, err := schema.LookupPic(picStmt, task.Id)
-	if err == sql.ErrNoRows {
-		// TODO: return a 404ish error
-		return InvalidArgument("No Pic Id found", err)
-	} else if err != nil {
-		return ServerError("Error Looking up Pic", err)
+		return err
 	}
 
-	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicTagColPicId)
+	pts, err := findPicTagsToDelete(task.PicId, tx)
 	if err != nil {
-		return ServerError("Unable to Prepare Lookup", err)
+		return err
 	}
-	defer picTagStmt.Close()
 
-	pts, err := schema.FindPicTags(picTagStmt, task.Id)
+	ts, err := findTagsToDelete(pts, tx)
 	if err != nil {
-		return ServerError("Error Looking up Pic Tags", err)
+		return err
 	}
 
-	tagStmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColId)
-	if err != nil {
-		return ServerError("Unable to Prepare Lookup", err)
-	}
-	defer tagStmt.Close()
-
-	ts := make([]*schema.Tag, 0, len(pts))
-	for _, pt := range pts {
-		t, err := schema.LookupTag(tagStmt, pt.TagId)
-		if err != nil {
-			return ServerError(fmt.Sprintf("Error Looking up Tag: %d", pt.TagId), err)
-		}
-		ts = append(ts, t)
-	}
-
-	for _, pt := range pts {
-		if _, err := pt.Delete(tx); err != nil {
-			return ServerError("Unable to Delete PicTag", err)
-		}
+	if err := deletePicTags(pts, tx); err != nil {
+		return err
 	}
 
 	now := time.Now()
-	for _, t := range ts {
-		if t.Count > 1 {
-			t.Count--
-			t.SetModifiedTime(now)
-			if _, err := t.Update(tx); err != nil {
-				return ServerError("Unable to Update Tag", err)
-			}
-		} else {
-			if _, err := t.Delete(tx); err != nil {
-				return ServerError("Unable to Delete Tag", err)
-			}
-		}
+	if err := upleteTags(ts, now, tx); err != nil {
+		return err
 	}
 
 	if _, err := p.Delete(tx); err != nil {
@@ -105,5 +68,80 @@ func (task *DeletePicTask) Run() error {
 		log.Println("Warning, unable to delete pic data", p, err)
 	}
 
+	return nil
+}
+
+func findPicTagsToDelete(picId schema.PicId, tx *sql.Tx) ([]*schema.PicTag, Status) {
+	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicTagColPicId)
+	if err != nil {
+		return nil, ServerError("Unable to Prepare Lookup", err)
+	}
+	defer stmt.Close()
+	pts, err := schema.FindPicTags(stmt, picId)
+	if err != nil {
+		return nil, ServerError("Error Looking up Pic Tags", err)
+	}
+	return pts, nil
+}
+
+func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, Status) {
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColId)
+	if err != nil {
+		return nil, ServerError("Unable to Prepare Lookup", err)
+	}
+	defer stmt.Close()
+
+	ts := make([]*schema.Tag, 0, len(pts))
+	for _, pt := range pts {
+		t, err := schema.LookupTag(stmt, pt.TagId)
+		if err != nil {
+			return nil, ServerError(fmt.Sprintf("Error Looking up Tag: %d", pt.TagId), err)
+		}
+		ts = append(ts, t)
+	}
+	return ts, nil
+}
+
+func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) Status {
+	for _, pt := range pts {
+		if _, err := pt.Delete(tx); err != nil {
+			return ServerError("Unable to Delete PicTag", err)
+		}
+	}
+	return nil
+}
+
+func lookupPicToDelete(picId schema.PicId, tx *sql.Tx) (*schema.Pic, Status) {
+	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
+	if err != nil {
+		return nil, ServerError("Unable to Prepare Lookup", err)
+	}
+	defer stmt.Close()
+
+	p, err := schema.LookupPic(stmt, picId)
+	if err == sql.ErrNoRows {
+		// TODO: return a 404ish error
+		return nil, InvalidArgument("No Pic Id found", err)
+	} else if err != nil {
+		return nil, ServerError("Error Looking up Pic", err)
+	}
+	return p, nil
+}
+
+// if Update|Insert = Upsert, then Update|Delete = uplete?
+func upleteTags(ts []*schema.Tag, now time.Time, tx *sql.Tx) Status {
+	for _, t := range ts {
+		if t.Count > 1 {
+			t.Count--
+			t.SetModifiedTime(now)
+			if _, err := t.Update(tx); err != nil {
+				return ServerError("Unable to Update Tag", err)
+			}
+		} else {
+			if _, err := t.Delete(tx); err != nil {
+				return ServerError("Unable to Delete Tag", err)
+			}
+		}
+	}
 	return nil
 }
