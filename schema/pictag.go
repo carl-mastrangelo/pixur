@@ -65,19 +65,19 @@ func (tp *PicTag) Table() string {
 	return "pictags"
 }
 
-func (pt *PicTag) Insert(tx *sql.Tx) (sql.Result, error) {
+func (pt *PicTag) Insert(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		pt.Table(), getColumnNamesString(pt), getColumnFmt(pt))
-	r, err := tx.Exec(stmt, getColumnValues(pt)...)
+	r, err := q.Exec(stmt, getColumnValues(pt)...)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (pt *PicTag) Delete(tx *sql.Tx) (sql.Result, error) {
+func (pt *PicTag) Delete(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?;", pt.Table(), PicTagColPicId, PicTagColTagId)
-	return tx.Exec(stmt, pt.PicId, pt.TagId)
+	return q.Exec(stmt, pt.PicId, pt.TagId)
 }
 
 func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
@@ -102,7 +102,7 @@ func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
 	return picTags, nil
 }
 
-func PicTagPrepare(stmt string, tx preparer, columns ...PicTagColumn) (*sql.Stmt, error) {
+func PicTagPrepare(stmt string, prep preparer, columns ...PicTagColumn) (*sql.Stmt, error) {
 	var pType *PicTag
 	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)
 	stmt = strings.Replace(stmt, "FROM_", "FROM "+pType.Table(), 1)
@@ -111,7 +111,7 @@ func PicTagPrepare(stmt string, tx preparer, columns ...PicTagColumn) (*sql.Stmt
 		args[i] = column
 	}
 	stmt = fmt.Sprintf(stmt, args...)
-	return tx.Prepare(stmt)
+	return prep.Prepare(stmt)
 }
 
 func init() {

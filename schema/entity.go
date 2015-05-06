@@ -10,11 +10,17 @@ import (
 
 type Entity interface {
 	Table() string
-	Insert(tx *sql.Tx) (sql.Result, error)
+	Insert(q queryer) (sql.Result, error)
 }
 
 type preparer interface {
 	Prepare(query string) (*sql.Stmt, error)
+}
+
+type queryer interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
 var (

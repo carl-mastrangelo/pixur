@@ -88,18 +88,18 @@ func (p *Pic) Table() string {
 	return "pics"
 }
 
-func (p *Pic) Insert(tx *sql.Tx) (sql.Result, error) {
+func (p *Pic) Insert(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		p.Table(), getColumnNamesString(p), getColumnFmt(p))
-	r, err := tx.Exec(stmt, getColumnValues(p)...)
+	r, err := q.Exec(stmt, getColumnValues(p)...)
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func (p *Pic) InsertAndSetId(tx *sql.Tx) error {
-	res, err := p.Insert(tx)
+func (p *Pic) InsertAndSetId(q queryer) error {
+	res, err := p.Insert(q)
 	if err != nil {
 		return err
 	}
@@ -112,9 +112,9 @@ func (p *Pic) InsertAndSetId(tx *sql.Tx) error {
 	return nil
 }
 
-func (p *Pic) Delete(tx *sql.Tx) (sql.Result, error) {
+func (p *Pic) Delete(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", p.Table(), PicColId)
-	return tx.Exec(stmt, p.Id)
+	return q.Exec(stmt, p.Id)
 }
 
 func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
@@ -147,7 +147,7 @@ func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
 	return pics, nil
 }
 
-func PicPrepare(stmt string, tx preparer, columns ...PicColumn) (*sql.Stmt, error) {
+func PicPrepare(stmt string, prep preparer, columns ...PicColumn) (*sql.Stmt, error) {
 	var pType *Pic
 	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)
 	stmt = strings.Replace(stmt, "FROM_", "FROM "+pType.Table(), 1)
@@ -156,7 +156,7 @@ func PicPrepare(stmt string, tx preparer, columns ...PicColumn) (*sql.Stmt, erro
 		args[i] = column
 	}
 	stmt = fmt.Sprintf(stmt, args...)
-	return tx.Prepare(stmt)
+	return prep.Prepare(stmt)
 }
 
 func init() {

@@ -49,20 +49,20 @@ func (t *Tag) Table() string {
 	return "tags"
 }
 
-func (t *Tag) Insert(tx *sql.Tx) (sql.Result, error) {
+func (t *Tag) Insert(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		t.Table(), getColumnNamesString(t), getColumnFmt(t))
 	vals := getColumnValues(t)
 
-	r, err := tx.Exec(stmt, vals...)
+	r, err := q.Exec(stmt, vals...)
 	if err != nil {
 		log.Println("Query ", stmt, " failed with args", vals, err)
 	}
 	return r, err
 }
 
-func (t *Tag) InsertAndSetId(tx *sql.Tx) error {
-	res, err := t.Insert(tx)
+func (t *Tag) InsertAndSetId(q queryer) error {
+	res, err := t.Insert(q)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (t *Tag) InsertAndSetId(tx *sql.Tx) error {
 	return nil
 }
 
-func (t *Tag) Update(tx *sql.Tx) (sql.Result, error) {
+func (t *Tag) Update(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("UPDATE %s SET ", t.Table())
 
 	stmt += strings.Join(getColumnNames(t), "=?, ")
@@ -84,16 +84,16 @@ func (t *Tag) Update(tx *sql.Tx) (sql.Result, error) {
 	vals := getColumnValues(t)
 	vals = append(vals, t.Id)
 
-	r, err := tx.Exec(stmt, vals...)
+	r, err := q.Exec(stmt, vals...)
 	if err != nil {
 		log.Println("Query ", stmt, " failed with args", vals)
 	}
 	return r, err
 }
 
-func (t *Tag) Delete(tx *sql.Tx) (sql.Result, error) {
+func (t *Tag) Delete(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", t.Table(), TagColId)
-	return tx.Exec(stmt, t.Id)
+	return q.Exec(stmt, t.Id)
 }
 
 func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
@@ -126,7 +126,7 @@ func FindTags(stmt *sql.Stmt, args ...interface{}) ([]*Tag, error) {
 	return tags, nil
 }
 
-func TagPrepare(stmt string, tx preparer, columns ...TagColumn) (*sql.Stmt, error) {
+func TagPrepare(stmt string, prep preparer, columns ...TagColumn) (*sql.Stmt, error) {
 	var tType *Tag
 	stmt = strings.Replace(stmt, "*", getColumnNamesString(tType), 1)
 	stmt = strings.Replace(stmt, "FROM_", "FROM "+tType.Table(), 1)
@@ -135,7 +135,7 @@ func TagPrepare(stmt string, tx preparer, columns ...TagColumn) (*sql.Stmt, erro
 		args[i] = column
 	}
 	stmt = fmt.Sprintf(stmt, args...)
-	return tx.Prepare(stmt)
+	return prep.Prepare(stmt)
 }
 
 func init() {
