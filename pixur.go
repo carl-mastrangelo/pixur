@@ -68,6 +68,9 @@ func (s *Server) setup(c *Config) error {
 	// viewer handler
 	s.registerHandler("/api/lookupPicDetails", s.lookupPicDetailsHandler)
 
+	// delete handler
+	s.registerHandler("/api/deletePic", s.deletePicHandler)
+
 	return nil
 }
 
