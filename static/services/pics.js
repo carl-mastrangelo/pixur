@@ -50,7 +50,7 @@ PicsService.prototype.deletePic = function(picId) {
       deferred.resolve(res.data);
     }.bind(this),
     function(error) {
-      deferred.reject(res);
+      deferred.reject(error);
     }
   );
   return deferred.promise;

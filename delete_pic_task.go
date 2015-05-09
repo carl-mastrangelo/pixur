@@ -121,7 +121,7 @@ func lookupPicToDelete(picId schema.PicId, tx *sql.Tx) (*schema.Pic, Status) {
 	p, err := schema.LookupPic(stmt, picId)
 	if err == sql.ErrNoRows {
 		// TODO: return a 404ish error
-		return nil, InvalidArgument("No Pic Id found", err)
+		return nil, InvalidArgument(fmt.Sprintf("Could not find pic %d", picId), nil)
 	} else if err != nil {
 		return nil, ServerError("Error Looking up Pic", err)
 	}
