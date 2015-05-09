@@ -2,7 +2,9 @@ package pixur
 
 import (
 	"bytes"
+	"crypto/sha512"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -22,13 +24,18 @@ type container struct {
 	t  *testing.T
 	db *sql.DB
 
-	pixPath       string
-	createdPicIds []schema.PicId
-	createdTagIds []schema.TagId
+	pixPath           string
+	createdPicIds     []schema.PicId
+	createdTagIds     []schema.TagId
+	createdPicTagKeys []schema.PicTagKey
 }
 
 func (c *container) CreatePic() *schema.Pic {
-	p := &schema.Pic{}
+	h := sha512.New()
+	binary.Write(h, binary.LittleEndian, rand.Int63())
+	p := &schema.Pic{
+		Sha512Hash: string(h.Sum(nil)),
+	}
 	if err := p.InsertAndSetId(c.db); err != nil {
 		c.t.Fatal(err)
 	}
@@ -58,22 +65,97 @@ func (c *container) CreateTag() *schema.Tag {
 	return t
 }
 
+func (c *container) CreatePicTag(p *schema.Pic, t *schema.Tag) *schema.PicTag {
+	picTag := &schema.PicTag{
+		PicId: p.Id,
+		TagId: t.Id,
+		Name:  t.Name,
+	}
+	if _, err := picTag.Insert(c.db); err != nil {
+		c.t.Fatal(err)
+	}
+	t.Count++
+	if _, err := t.Update(c.db); err != nil {
+		c.t.Fatal(err)
+	}
+	c.createdPicTagKeys = append(c.createdPicTagKeys, schema.PicTagKey{
+		PicId: p.Id,
+		TagId: t.Id,
+	})
+	return picTag
+}
+
+func (c *container) RefreshPic(p **schema.Pic) {
+	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ?;", c.db, schema.PicColId)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	updated, err := schema.LookupPic(stmt, (*p).Id)
+	if err == sql.ErrNoRows {
+		*p = nil
+	} else if err != nil {
+		c.t.Fatal(err)
+	}
+	*p = updated
+}
+
+func (c *container) RefreshTag(t **schema.Tag) {
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", c.db, schema.TagColId)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	updated, err := schema.LookupTag(stmt, (*t).Id)
+	if err == sql.ErrNoRows {
+		*t = nil
+	} else if err != nil {
+		c.t.Fatal(err)
+	}
+	*t = updated
+}
+
+func (c *container) RefreshPicTag(pt **schema.PicTag) {
+	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;",
+		c.db, schema.PicTagColPicId, schema.PicTagColTagId)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	updated, err := schema.LookupPicTag(stmt, (*pt).PicId, (*pt).TagId)
+	if err == sql.ErrNoRows {
+		*pt = nil
+	} else if err != nil {
+		c.t.Fatal(err)
+	}
+	*pt = updated
+}
+
 func (c *container) CleanUp() {
+	for _, picTagKey := range c.createdPicTagKeys {
+		if _, err := schema.DeletePicTag(picTagKey, c.db); err != nil {
+			c.t.Error(err)
+		}
+	}
+	c.createdPicTagKeys = nil
+
 	for _, picId := range c.createdPicIds {
 		if _, err := (&schema.Pic{Id: picId}).Delete(c.db); err != nil {
 			c.t.Error(err)
 		}
 	}
+	c.createdPicIds = nil
+
 	for _, tagId := range c.createdTagIds {
 		if _, err := (&schema.Tag{Id: tagId}).Delete(c.db); err != nil {
 			c.t.Error(err)
 		}
 	}
+	c.createdTagIds = nil
+
 	if c.pixPath != "" {
 		if err := os.RemoveAll(c.pixPath); err != nil {
 			c.t.Error(err)
 		}
 	}
+	c.pixPath = ""
 }
 
 func (c *container) mkPixPath() string {

@@ -18,6 +18,11 @@ const (
 	PicTagColModifiedTime PicTagColumn = "modified_time"
 )
 
+type PicTagKey struct {
+	PicId PicId
+	TagId TagId
+}
+
 type PicTag struct {
 	PicId PicId `db:"pic_id"`
 	TagId TagId `db:"tag_id"`
@@ -78,6 +83,22 @@ func (pt *PicTag) Insert(q queryer) (sql.Result, error) {
 func (pt *PicTag) Delete(q queryer) (sql.Result, error) {
 	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?;", pt.Table(), PicTagColPicId, PicTagColTagId)
 	return q.Exec(stmt, pt.PicId, pt.TagId)
+}
+
+func DeletePicTag(key PicTagKey, q queryer) (sql.Result, error) {
+	dummy := &PicTag{
+		PicId: key.PicId,
+		TagId: key.TagId,
+	}
+	return dummy.Delete(q)
+}
+
+func LookupPicTag(stmt *sql.Stmt, args ...interface{}) (*PicTag, error) {
+	pt := new(PicTag)
+	if err := stmt.QueryRow(args...).Scan(getColumnPointers(pt)...); err != nil {
+		return nil, err
+	}
+	return pt, nil
 }
 
 func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
