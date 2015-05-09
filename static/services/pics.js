@@ -29,10 +29,30 @@ PicsService.prototype.getSingle = function(picId) {
       deferred.resolve(res.data);
     },
     function(error) {
-      deferred.reject(res);
+      deferred.reject(error);
     }
   );
   
+  return deferred.promise;
+}
+
+PicsService.prototype.deletePic = function(picId) {
+  var deferred = this.q_.defer();
+  var httpConfig = {
+    params: {
+      pic_id: picId
+    }
+  };
+  this.http_.get("/api/deletePic", httpConfig).then(
+    function(res) {
+      this.indexCache.removeAll();
+      this.picCache.removeAll();
+      deferred.resolve(res.data);
+    }.bind(this),
+    function(error) {
+      deferred.reject(res);
+    }
+  );
   return deferred.promise;
 }
 

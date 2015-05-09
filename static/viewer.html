@@ -22,4 +22,7 @@
     <li ng-repeat="picTag in ctrl.picTags">{{picTag.name}}<br></li>
   </ul>
   <a href="#" onclick="window.history.back()">Back</a>
+  <br><br>
+  <input type="checkbox" ng-model="ctrl.canDelete">
+  <input type="button" ng-click="ctrl.deletePic()" ng-disabled="!ctrl.canDelete" value="Delete">
 </div>
