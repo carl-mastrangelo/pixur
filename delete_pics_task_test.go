@@ -7,7 +7,7 @@ import (
 	_ "pixur.org/pixur/schema"
 )
 
-func TestWorkFlow(test *testing.T) {
+func TestDeleteWorkflow(test *testing.T) {
 	c := &container{
 		t:  test,
 		db: testDB,
@@ -46,5 +46,36 @@ func TestWorkFlow(test *testing.T) {
 
 	if c.RefreshPic(&p2); p2 == nil {
 		test.Fatal("Expected Other pic to exist", p2)
+	}
+}
+
+func TestDelete_TagsDecremented(test *testing.T) {
+	c := &container{
+		t:  test,
+		db: testDB,
+	}
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+	p2 := c.CreatePic()
+	t := c.CreateTag()
+	c.CreatePicTag(p2, t)
+
+	task := &DeletePicTask{
+		db:      testDB,
+		pixPath: c.pixPath,
+		PicId:   p.Id,
+	}
+
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
+		test.Fatal(err)
+	}
+
+	if c.RefreshTag(&t); t == nil {
+		test.Fatal("Expected Tag to exist")
+	}
+	if t.Count != 1 {
+		test.Fatal("Incorrect Tag Count", t)
 	}
 }

@@ -32,12 +32,14 @@ type container struct {
 
 func (c *container) CreatePic() *schema.Pic {
 	h := sha512.New()
-	binary.Write(h, binary.LittleEndian, rand.Int63())
+	if err := binary.Write(h, binary.LittleEndian, rand.Int63()); err != nil {
+		c.t.Fatal(err)
+	}
 	p := &schema.Pic{
-		Sha512Hash: string(h.Sum(nil)),
+		Sha512Hash: fmt.Sprintf("%02x", h.Sum(nil)),
 	}
 	if err := p.InsertAndSetId(c.db); err != nil {
-		c.t.Fatal(err)
+		c.t.Fatal(err, p)
 	}
 	c.createdPicIds = append(c.createdPicIds, p.Id)
 	if err := c.writeImageData(p); err != nil {
