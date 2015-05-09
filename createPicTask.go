@@ -78,7 +78,7 @@ func (t *CreatePicTask) Run() error {
 	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.pixPath, "__")
 	if err != nil {
-		return ServerError("Unable to create tempfile", err)
+		return InternalError("Unable to create tempfile", err)
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -150,14 +150,14 @@ func (t *CreatePicTask) Run() error {
 func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) Status {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return ServerError("Unable to move uploaded file", err)
+		return InternalError("Unable to move uploaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return ServerError("Failed to sync uploaded file", err)
+			return InternalError("Failed to sync uploaded file", err)
 		}
 	}
 	return nil
@@ -175,14 +175,14 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) Status {
 	}
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return ServerError("Failed to copy downloaded file", err)
+		return InternalError("Failed to copy downloaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return ServerError("Failed to sync file", err)
+			return InternalError("Failed to sync file", err)
 		}
 	}
 	return nil
@@ -190,7 +190,7 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) Status {
 
 func (t *CreatePicTask) beginTransaction() Status {
 	if tx, err := t.db.Begin(); err != nil {
-		return ServerError("Unable to Begin TX", err)
+		return InternalError("Unable to Begin TX", err)
 	} else {
 		t.tx = tx
 	}
@@ -201,7 +201,7 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) Status {
 	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
 		message := fmt.Sprintf("Unable to move uploaded file %s -> %s",
 			t.tempFilename, p.Path(t.pixPath))
-		return ServerError(message, err)
+		return InternalError(message, err)
 	}
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.pixPath)
@@ -230,12 +230,12 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 
 func getFileHash(f io.ReadSeeker) (string, Status) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return "", ServerError(err.Error(), err)
+		return "", InternalError(err.Error(), err)
 	}
 	defer f.Seek(0, os.SEEK_SET)
 	h := sha512.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", ServerError(err.Error(), err)
+		return "", InternalError(err.Error(), err)
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }

@@ -79,7 +79,14 @@ func (s *Server) registerHandler(path string,
 	s.s.Handler.(*http.ServeMux).HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if err := handler(w, r); err != nil {
 			log.Println("Error in handler: ", err)
+			if status, ok := err.(Status); ok {
+				code := status.GetCode()
+				http.Error(w, code.String()+": "+status.GetMessage(), code.HttpStatus())
+				return
+			}
+
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	})
 }
