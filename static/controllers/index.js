@@ -8,22 +8,25 @@ var IndexCtrl = function(
   this.location_ = $location;
   this.pics = [];
 
-  
-  $scope.$on('$locationChangeStart', function(event, next, current) {
+  // For some reason, replace state causes favicon.ico requests to be 
+  // sent in Chrome.  
+  // TODO: figure out why scrolling causes a stream of http requests.
+  $window.onscroll = function() {
     var x = $window.pageXOffset;
     var y = $window.pageYOffset;
-    // When the back button is pressed, the controller is initialized first,
-    // followed by calling the onpopstate function.  Store the previous 
-    // offsets in a closue, since we the controller is reset.
-    $window.onpopstate = function (ev) {
-      $window.scrollTo(x, y);
-    };
-  }.bind(this));
+    $window.history.replaceState({x:x, y:y}, '');
+  }.bind(this);
+
+  $window.scrollTo(0, 0);
+  $window.onpopstate = function (ev) {
+    if (ev.state != null) {
+      $window.scrollTo(ev.state.x, ev.state.y);
+    }
+  };
 
   this.nextPageID = null;
   this.prevPageID = null;
   
-
   this.upload = {
     file: null, 
     url: "",
