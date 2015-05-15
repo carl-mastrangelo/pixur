@@ -25,12 +25,12 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService) {
 
 ViewerCtrl.prototype.deletePic = function() {
   this.picsService_.deletePic(this.picId).then(
-    function() {
+    function(f) {
       this.window_.history.back()
     }.bind(this),
     function(err) {
       // TODO: actually return a better error
-      alert(err);
+      alert(angular.toJson(err, 2));
       console.error(err);
     });
 }
