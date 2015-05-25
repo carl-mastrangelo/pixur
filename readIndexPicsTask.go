@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	defaultDescStartID = schema.PicId(math.MaxInt64)
-	defaultAscStartID  = schema.PicId(math.MinInt64)
+	defaultDescStartID = math.MaxInt64
+	defaultAscStartID  = math.MinInt64
 	DefaultMaxPics     = 60
 )
 
@@ -18,7 +18,7 @@ type ReadIndexPicsTask struct {
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
-	StartID schema.PicId
+	StartID int64
 	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
 	// may be less than the number requested.  If unset, the de
 	MaxPics int64
@@ -40,7 +40,7 @@ func (t *ReadIndexPicsTask) CleanUp() {
 }
 
 func (t *ReadIndexPicsTask) Run() error {
-	var startID schema.PicId
+	var startID int64
 	if t.StartID != 0 {
 		startID = t.StartID
 	} else if t.Ascending {

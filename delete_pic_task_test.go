@@ -3,8 +3,6 @@ package pixur
 import (
 	"os"
 	"testing"
-
-	_ "pixur.org/pixur/schema"
 )
 
 func TestDeleteWorkflow(test *testing.T) {
@@ -23,7 +21,7 @@ func TestDeleteWorkflow(test *testing.T) {
 	task := &DeletePicTask{
 		db:      testDB,
 		pixPath: c.pixPath,
-		PicId:   p.Id,
+		PicId:   p.PicId,
 	}
 
 	runner := new(TaskRunner)
@@ -64,7 +62,7 @@ func TestDelete_TagsDecremented(test *testing.T) {
 	task := &DeletePicTask{
 		db:      testDB,
 		pixPath: c.pixPath,
-		PicId:   p.Id,
+		PicId:   p.PicId,
 	}
 
 	runner := new(TaskRunner)
@@ -75,7 +73,7 @@ func TestDelete_TagsDecremented(test *testing.T) {
 	if c.RefreshTag(&t); t == nil {
 		test.Fatal("Expected Tag to exist")
 	}
-	if t.Count != 1 {
+	if t.UsageCount != 1 {
 		test.Fatal("Incorrect Tag Count", t)
 	}
 }

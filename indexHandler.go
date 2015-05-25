@@ -46,12 +46,12 @@ func (s *Server) findNextIndexPicsHandler(w http.ResponseWriter, r *http.Request
 
 func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) error {
 	requestedRawStartPicID := r.FormValue("start_pic_id")
-	var requestedStartPicID schema.PicId
+	var requestedStartPicID int64
 	if requestedRawStartPicID != "" {
 		if startID, err := strconv.Atoi(requestedRawStartPicID); err != nil {
 			return err
 		} else {
-			requestedStartPicID = schema.PicId(startID)
+			requestedStartPicID = int64(startID)
 		}
 	}
 

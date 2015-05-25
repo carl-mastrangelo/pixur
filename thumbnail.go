@@ -120,7 +120,7 @@ func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, err
 	if err != nil {
 		return nil, err
 	}
-	p.Mime = schema.Mime_WEBM
+	p.Mime = schema.Pic_WEBM
 	// Handle the 0 and 1 case
 	for _, stream := range config.Streams {
 		p.Width = stream.Width

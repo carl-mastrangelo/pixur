@@ -25,8 +25,8 @@ type container struct {
 	db *sql.DB
 
 	pixPath           string
-	createdPicIds     []schema.PicId
-	createdTagIds     []schema.TagId
+	createdPicIds     []int64
+	createdTagIds     []int64
 	createdPicTagKeys []schema.PicTagKey
 }
 
@@ -38,10 +38,10 @@ func (c *container) CreatePic() *schema.Pic {
 	p := &schema.Pic{
 		Sha512Hash: fmt.Sprintf("%02x", h.Sum(nil)),
 	}
-	if err := p.InsertAndSetId(c.db); err != nil {
+	if err := p.Insert(c.db); err != nil {
 		c.t.Fatal(err, p)
 	}
-	c.createdPicIds = append(c.createdPicIds, p.Id)
+	c.createdPicIds = append(c.createdPicIds, p.PicId)
 	if err := c.writeImageData(p); err != nil {
 		c.t.Fatal(err)
 	}
@@ -59,30 +59,30 @@ func (c *container) CreateTag() *schema.Tag {
 		name += string(dictionary[rand.Intn(len(dictionary))])
 	}
 	t := &schema.Tag{Name: name}
-	if err := t.InsertAndSetId(c.db); err != nil {
+	if err := t.Insert(c.db); err != nil {
 		c.t.Fatal(err)
 	}
-	c.createdTagIds = append(c.createdTagIds, t.Id)
+	c.createdTagIds = append(c.createdTagIds, t.TagId)
 
 	return t
 }
 
 func (c *container) CreatePicTag(p *schema.Pic, t *schema.Tag) *schema.PicTag {
 	picTag := &schema.PicTag{
-		PicId: p.Id,
-		TagId: t.Id,
+		PicId: p.PicId,
+		TagId: t.TagId,
 		Name:  t.Name,
 	}
 	if _, err := picTag.Insert(c.db); err != nil {
 		c.t.Fatal(err)
 	}
-	t.Count++
-	if _, err := t.Update(c.db); err != nil {
+	t.UsageCount++
+	if err := t.Update(c.db); err != nil {
 		c.t.Fatal(err)
 	}
 	c.createdPicTagKeys = append(c.createdPicTagKeys, schema.PicTagKey{
-		PicId: p.Id,
-		TagId: t.Id,
+		PicId: p.PicId,
+		TagId: t.TagId,
 	})
 	return picTag
 }
@@ -92,7 +92,7 @@ func (c *container) RefreshPic(p **schema.Pic) {
 	if err != nil {
 		c.t.Fatal(err)
 	}
-	updated, err := schema.LookupPic(stmt, (*p).Id)
+	updated, err := schema.LookupPic(stmt, (*p).PicId)
 	if err == sql.ErrNoRows {
 		*p = nil
 	} else if err != nil {
@@ -106,7 +106,7 @@ func (c *container) RefreshTag(t **schema.Tag) {
 	if err != nil {
 		c.t.Fatal(err)
 	}
-	updated, err := schema.LookupTag(stmt, (*t).Id)
+	updated, err := schema.LookupTag(stmt, (*t).TagId)
 	if err == sql.ErrNoRows {
 		*t = nil
 	} else if err != nil {
@@ -132,21 +132,21 @@ func (c *container) RefreshPicTag(pt **schema.PicTag) {
 
 func (c *container) CleanUp() {
 	for _, picTagKey := range c.createdPicTagKeys {
-		if _, err := schema.DeletePicTag(picTagKey, c.db); err != nil {
+		if err := schema.DeletePicTag(picTagKey, c.db); err != nil {
 			c.t.Error(err)
 		}
 	}
 	c.createdPicTagKeys = nil
 
 	for _, picId := range c.createdPicIds {
-		if _, err := (&schema.Pic{Id: picId}).Delete(c.db); err != nil {
+		if err := (&schema.Pic{PicId: picId}).Delete(c.db); err != nil {
 			c.t.Error(err)
 		}
 	}
 	c.createdPicIds = nil
 
 	for _, tagId := range c.createdTagIds {
-		if _, err := (&schema.Tag{Id: tagId}).Delete(c.db); err != nil {
+		if err := (&schema.Tag{TagId: tagId}).Delete(c.db); err != nil {
 			c.t.Error(err)
 		}
 	}

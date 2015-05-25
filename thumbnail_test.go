@@ -60,7 +60,7 @@ func TestFillImageConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if p.Mime != schema.Mime_GIF {
+		if p.Mime != schema.Pic_GIF {
 			t.Fatal("Mime type mismatch", p.Mime)
 		}
 		if p.Width != 5 || p.Height != 10 {

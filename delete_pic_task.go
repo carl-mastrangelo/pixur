@@ -18,7 +18,7 @@ type DeletePicTask struct {
 	db      *sql.DB
 
 	// input
-	PicId schema.PicId
+	PicId int64
 }
 
 func (task *DeletePicTask) Run() error {
@@ -52,7 +52,7 @@ func (task *DeletePicTask) Run() error {
 		return err
 	}
 
-	if _, err := p.Delete(tx); err != nil {
+	if err := p.Delete(tx); err != nil {
 		return InternalError("Unable to Delete Pic", err)
 	}
 
@@ -71,7 +71,7 @@ func (task *DeletePicTask) Run() error {
 	return nil
 }
 
-func findPicTagsToDelete(picId schema.PicId, tx *sql.Tx) ([]*schema.PicTag, Status) {
+func findPicTagsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicTag, Status) {
 	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicTagColPicId)
 	if err != nil {
 		return nil, InternalError("Unable to Prepare Lookup", err)
@@ -104,14 +104,14 @@ func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, Status) 
 
 func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) Status {
 	for _, pt := range pts {
-		if _, err := pt.Delete(tx); err != nil {
+		if err := pt.Delete(tx); err != nil {
 			return InternalError("Unable to Delete PicTag", err)
 		}
 	}
 	return nil
 }
 
-func lookupPicToDelete(picId schema.PicId, tx *sql.Tx) (*schema.Pic, Status) {
+func lookupPicToDelete(picId int64, tx *sql.Tx) (*schema.Pic, Status) {
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
 	if err != nil {
 		return nil, InternalError("Unable to Prepare Lookup", err)
@@ -130,14 +130,14 @@ func lookupPicToDelete(picId schema.PicId, tx *sql.Tx) (*schema.Pic, Status) {
 // if Update|Insert = Upsert, then Update|Delete = uplete?
 func upleteTags(ts []*schema.Tag, now time.Time, tx *sql.Tx) Status {
 	for _, t := range ts {
-		if t.Count > 1 {
-			t.Count--
+		if t.UsageCount > 1 {
+			t.UsageCount--
 			t.SetModifiedTime(now)
-			if _, err := t.Update(tx); err != nil {
+			if err := t.Update(tx); err != nil {
 				return InternalError("Unable to Update Tag", err)
 			}
 		} else {
-			if _, err := t.Delete(tx); err != nil {
+			if err := t.Delete(tx); err != nil {
 				return InternalError("Unable to Delete Tag", err)
 			}
 		}

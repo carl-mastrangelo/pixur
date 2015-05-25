@@ -114,7 +114,7 @@ func (t *CreatePicTask) Run() error {
 		return err
 	}
 
-	if err := p.InsertAndSetId(t.tx); err != nil {
+	if err := p.Insert(t.tx); err != nil {
 		return err
 	}
 	if err := t.renameTempFile(p); err != nil {
@@ -250,8 +250,8 @@ func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, e
 		return nil, err
 	} else {
 		tag.SetModifiedTime(now)
-		tag.Count += 1
-		_, err = tag.Update(tx)
+		tag.UsageCount += 1
+		err = tag.Update(tx)
 	}
 
 	if err != nil {
@@ -263,13 +263,13 @@ func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, e
 
 func createTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
 	tag := &schema.Tag{
-		Name:  tagName,
-		Count: 1,
+		Name:       tagName,
+		UsageCount: 1,
 	}
 	tag.SetCreatedTime(now)
 	tag.SetModifiedTime(now)
 
-	if err := tag.InsertAndSetId(tx); err != nil {
+	if err := tag.Insert(tx); err != nil {
 		return nil, err
 	}
 	return tag, nil
@@ -293,8 +293,8 @@ func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
 func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
-			PicId: p.Id,
-			TagId: tag.Id,
+			PicId: p.PicId,
+			TagId: tag.TagId,
 			Name:  tag.Name,
 		}
 		picTag.SetCreatedTime(p.GetCreatedTime())

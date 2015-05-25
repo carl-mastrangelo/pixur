@@ -6,30 +6,26 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
 
-type PicTagColumn string
-
 const (
-	PicTagColPicId        PicTagColumn = "pic_id"
-	PicTagColTagId        PicTagColumn = "tag_id"
-	PicTagColName         PicTagColumn = "name"
-	PicTagColCreatedTime  PicTagColumn = "created_time"
-	PicTagColModifiedTime PicTagColumn = "modified_time"
+	PicTagTableName tableName = "`pictags`"
+
+	PicTagColPicId string = "`pic_id`"
+	PicTagColTagId string = "`tag_id`"
+	PicTagColData  string = "`data`"
+)
+
+var (
+	picTagColNames = []string{PicTagColPicId, PicTagColTagId, PicTagColData}
+	picTagColFmt   = strings.Repeat("?,", len(picTagColNames)-1) + "?"
 )
 
 type PicTagKey struct {
-	PicId PicId
-	TagId TagId
-}
-
-type PicTag struct {
-	PicId PicId `db:"pic_id"`
-	TagId TagId `db:"tag_id"`
-	// Name is the denormalized tag name
-	Name         string `db:"name"`
-	CreatedTime  int64  `db:"created_time"`
-	ModifiedTime int64  `db:"modified_time"`
+	PicId int64
+	TagId int64
 }
 
 func (pt *PicTag) MarshalJSON() ([]byte, error) {
@@ -66,39 +62,69 @@ func (pt *PicTag) GetModifiedTime() time.Time {
 	return fromMillis(pt.ModifiedTime)
 }
 
-func (tp *PicTag) Table() string {
-	return "pictags"
+func (pt *PicTag) fillFromRow(s scanTo) error {
+	var data []byte
+	if err := s.Scan(&data); err != nil {
+		return err
+	}
+	return proto.Unmarshal([]byte(data), pt)
 }
 
-func (pt *PicTag) Insert(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
-		pt.Table(), getColumnNamesString(pt), getColumnFmt(pt))
-	r, err := q.Exec(stmt, getColumnValues(pt)...)
+func (pt *PicTag) Insert(prep preparer) (sql.Result, error) {
+	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
+		PicTagTableName, strings.Join(picTagColNames, ","), picTagColFmt)
+	stmt, err := prep.Prepare(rawstmt)
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	defer stmt.Close()
+	data, err := proto.Marshal(pt)
+	if err != nil {
+		return nil, err
+	}
+	return stmt.Exec(pt.PicId, pt.TagId, data)
 }
 
-func (pt *PicTag) Delete(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?;", pt.Table(), PicTagColPicId, PicTagColTagId)
-	return q.Exec(stmt, pt.PicId, pt.TagId)
+func (pt *PicTag) Update(prep preparer) error {
+	rawstmt := fmt.Sprintf("UPDATE %s SET ", PicTagTableName)
+	rawstmt += strings.Join(picTagColNames, "=?,")
+	rawstmt += fmt.Sprintf("=? WHERE %s=? AND %s=?;", PicTagColPicId, PicTagColTagId)
+
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	data, err := proto.Marshal(pt)
+	if err != nil {
+		return err
+	}
+	if _, err := stmt.Exec(pt.PicId, pt.TagId, data, pt.PicId, pt.TagId); err != nil {
+		return err
+	}
+	return nil
 }
 
-func DeletePicTag(key PicTagKey, q queryer) (sql.Result, error) {
+func (pt *PicTag) Delete(prep preparer) error {
+	rawstmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?;",
+		PicTagTableName, PicTagColPicId, PicTagColTagId)
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	if _, err := stmt.Exec(pt.PicId, pt.TagId); err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeletePicTag(key PicTagKey, prep preparer) error {
 	dummy := &PicTag{
 		PicId: key.PicId,
 		TagId: key.TagId,
 	}
-	return dummy.Delete(q)
-}
-
-func LookupPicTag(stmt *sql.Stmt, args ...interface{}) (*PicTag, error) {
-	pt := new(PicTag)
-	if err := stmt.QueryRow(args...).Scan(getColumnPointers(pt)...); err != nil {
-		return nil, err
-	}
-	return pt, nil
+	return dummy.Delete(prep)
 }
 
 func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
@@ -111,7 +137,7 @@ func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
 	defer rows.Close()
 	for rows.Next() {
 		pt := new(PicTag)
-		if err := rows.Scan(getColumnPointers(pt)...); err != nil {
+		if err := pt.fillFromRow(rows); err != nil {
 			return nil, err
 		}
 		picTags = append(picTags, pt)
@@ -123,18 +149,21 @@ func FindPicTags(stmt *sql.Stmt, args ...interface{}) ([]*PicTag, error) {
 	return picTags, nil
 }
 
-func PicTagPrepare(stmt string, prep preparer, columns ...PicTagColumn) (*sql.Stmt, error) {
-	var pType *PicTag
-	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+pType.Table(), 1)
-	args := make([]interface{}, len(columns))
-	for i, column := range columns {
-		args[i] = column
+func LookupPicTag(stmt *sql.Stmt, args ...interface{}) (*PicTag, error) {
+	pt := new(PicTag)
+	if err := pt.fillFromRow(stmt.QueryRow(args...)); err != nil {
+		return nil, err
+	}
+	return pt, nil
+}
+
+func PicTagPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
+	stmt = strings.Replace(stmt, "*", PicTagColData, 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(PicTagTableName), 1)
+	args := make([]interface{}, 0, len(columns))
+	for _, col := range columns {
+		args = append(args, col)
 	}
 	stmt = fmt.Sprintf(stmt, args...)
 	return prep.Prepare(stmt)
-}
-
-func init() {
-	register(new(PicTag))
 }

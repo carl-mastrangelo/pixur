@@ -3,7 +3,6 @@ package pixur
 import (
 	"encoding/json"
 	"net/http"
-	"pixur.org/pixur/schema"
 	"strconv"
 )
 
@@ -12,12 +11,12 @@ import (
 
 func (s *Server) deletePicHandler(w http.ResponseWriter, r *http.Request) error {
 	requestedRawPicID := r.FormValue("pic_id")
-	var requestedPicId schema.PicId
+	var requestedPicId int64
 	if requestedRawPicID != "" {
 		if picId, err := strconv.Atoi(requestedRawPicID); err != nil {
 			return err
 		} else {
-			requestedPicId = schema.PicId(picId)
+			requestedPicId = int64(picId)
 		}
 	}
 

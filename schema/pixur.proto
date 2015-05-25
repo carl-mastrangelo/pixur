@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package schema;
+
+message Pic {
+  int64 pic_id = 1;
+  int64 file_size = 2;
+  
+  enum Mime {
+    UNKNOWN = 0;
+    JPEG = 1;
+    GIF = 2;
+    PNG = 3;
+    WEBM = 4;
+  }
+  
+  Mime mime = 3;
+  int64 width = 4;
+  int64 height = 5;
+  int64 created_time = 6;
+  int64 modified_time = 7;
+  string sha512_hash = 8;
+}
+
+message Tag {
+  int64 tag_id = 1;
+  string name = 2;
+  int64 usage_count = 3;
+  int64 created_time = 4;
+  int64 modified_time = 5;
+}
+
+message PicTag {
+  int64 pic_id = 1;
+  int64 tag_id = 2;
+  string name = 3;
+  int64 created_time = 4;
+  int64 modified_time = 5;
+}

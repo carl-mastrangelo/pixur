@@ -4,56 +4,34 @@ import (
 	"fmt"
 )
 
-type Mime int
-
 var (
-	Mime_UNKNOWN Mime = 0
-	Mime_JPEG    Mime = 1
-	Mime_GIF     Mime = 2
-	Mime_PNG     Mime = 3
-	Mime_WEBM    Mime = 4
+	extMap = map[Pic_Mime]string{
+		Pic_UNKNOWN: "bin",
 
-	mimeNameMap = map[Mime]string{
-		Mime_JPEG: "JPEG",
-		Mime_GIF:  "GIF",
-		Mime_PNG:  "PNG",
-		Mime_WEBM: "WEBM",
+		Pic_JPEG: "jpg",
+		Pic_GIF:  "gif",
+		Pic_PNG:  "png",
+		Pic_WEBM: "webm",
 	}
 
-	mimeExtMap = map[Mime]string{
-		Mime_JPEG: "jpg",
-		Mime_GIF:  "gif",
-		Mime_PNG:  "png",
-		Mime_WEBM: "webm",
-	}
-
-	formatMimeMap = map[string]Mime{
-		"jpeg": Mime_JPEG,
-		"gif":  Mime_GIF,
-		"png":  Mime_PNG,
-		"webm": Mime_WEBM,
+	formatMimeMap = map[string]Pic_Mime{
+		"jpeg": Pic_JPEG,
+		"gif":  Pic_GIF,
+		"png":  Pic_PNG,
+		"webm": Pic_WEBM,
 	}
 )
 
-func (m Mime) String() string {
-	if name, ok := mimeNameMap[m]; !ok {
-		return fmt.Sprintf("UNKNOWN=%d", m)
-	} else {
-		return name
-	}
-}
-
-func (m Mime) Ext() string {
-	if ext, ok := mimeExtMap[m]; !ok {
-		return "bin"
-	} else {
+func (m *Pic_Mime) Ext() string {
+	if ext, ok := extMap[*m]; ok {
 		return ext
 	}
+	return extMap[Pic_UNKNOWN]
 }
 
-func FromImageFormat(format string) (Mime, error) {
+func FromImageFormat(format string) (Pic_Mime, error) {
 	if m, ok := formatMimeMap[format]; !ok {
-		return Mime_UNKNOWN, fmt.Errorf("Unknown format %s", format)
+		return Pic_UNKNOWN, fmt.Errorf("Unknown format %s", format)
 	} else {
 		return m, nil
 	}

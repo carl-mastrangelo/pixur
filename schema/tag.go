@@ -3,31 +3,24 @@ package schema
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
-
-type TagId int64
-
-type TagColumn string
 
 const (
-	TagColId           TagColumn = "id"
-	TagColCreatedTime  TagColumn = "created_time"
-	TagColName         TagColumn = "name"
-	TagColCount        TagColumn = "usage_count"
-	TagColModifiedTime TagColumn = "modified_time"
+	TagTableName tableName = "`tags`"
+
+	TagColId   string = "`id`"
+	TagColData string = "`data`"
+	TagColName string = "`name`"
 )
 
-type Tag struct {
-	Id   TagId  `db:"id"`
-	Name string `db:"name"`
-	// Count is a denormalized approximation of the number of tag references
-	Count        int64 `db:"usage_count"`
-	CreatedTime  int64 `db:"created_time"`
-	ModifiedTime int64 `db:"modified_time"`
-}
+var (
+	tagColNames = []string{TagColId, TagColData, TagColName}
+	tagColFmt   = strings.Repeat("?,", len(tagColNames)-1) + "?"
+)
 
 func (t *Tag) SetCreatedTime(now time.Time) {
 	t.CreatedTime = toMillis(now)
@@ -45,24 +38,27 @@ func (t *Tag) GetModifiedTime() time.Time {
 	return fromMillis(t.ModifiedTime)
 }
 
-func (t *Tag) Table() string {
-	return "tags"
-}
-
-func (t *Tag) Insert(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
-		t.Table(), getColumnNamesString(t), getColumnFmt(t))
-	vals := getColumnValues(t)
-
-	r, err := q.Exec(stmt, vals...)
-	if err != nil {
-		log.Println("Query ", stmt, " failed with args", vals, err)
+func (t *Tag) fillFromRow(s scanTo) error {
+	var data []byte
+	if err := s.Scan(&data); err != nil {
+		return err
 	}
-	return r, err
+	return proto.Unmarshal([]byte(data), t)
 }
 
-func (t *Tag) InsertAndSetId(q queryer) error {
-	res, err := t.Insert(q)
+func (t *Tag) Insert(prep preparer) error {
+	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
+		TagTableName, strings.Join(tagColNames, ","), tagColFmt)
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	data, err := proto.Marshal(t)
+	if err != nil {
+		return err
+	}
+	res, err := stmt.Exec(t.TagId, data, t.Name)
 	if err != nil {
 		return err
 	}
@@ -70,38 +66,41 @@ func (t *Tag) InsertAndSetId(q queryer) error {
 	if err != nil {
 		return err
 	}
+	t.TagId = id
+	return t.Update(prep)
+}
 
-	t.Id = TagId(id)
+func (t *Tag) Update(prep preparer) error {
+	rawstmt := fmt.Sprintf("UPDATE %s SET ", TagTableName)
+	rawstmt += strings.Join(tagColNames, "=?,")
+	rawstmt += fmt.Sprintf("=? WHERE %s=?;", TagColId)
+
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	data, err := proto.Marshal(t)
+	if err != nil {
+		return err
+	}
+	if _, err := stmt.Exec(t.TagId, data, t.Name, t.TagId); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (t *Tag) Update(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("UPDATE %s SET ", t.Table())
-
-	stmt += strings.Join(getColumnNames(t), "=?, ")
-	stmt += "=? WHERE id = ?;"
-
-	vals := getColumnValues(t)
-	vals = append(vals, t.Id)
-
-	r, err := q.Exec(stmt, vals...)
+func (t *Tag) Delete(prep preparer) error {
+	rawstmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", TagTableName, TagColId)
+	stmt, err := prep.Prepare(rawstmt)
 	if err != nil {
-		log.Println("Query ", stmt, " failed with args", vals)
+		return err
 	}
-	return r, err
-}
-
-func (t *Tag) Delete(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", t.Table(), TagColId)
-	return q.Exec(stmt, t.Id)
-}
-
-func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
-	t := new(Tag)
-	if err := stmt.QueryRow(args...).Scan(getColumnPointers(t)...); err != nil {
-		return nil, err
+	defer stmt.Close()
+	if _, err := stmt.Exec(t.TagId); err != nil {
+		return err
 	}
-	return t, nil
+	return nil
 }
 
 func FindTags(stmt *sql.Stmt, args ...interface{}) ([]*Tag, error) {
@@ -114,7 +113,7 @@ func FindTags(stmt *sql.Stmt, args ...interface{}) ([]*Tag, error) {
 	defer rows.Close()
 	for rows.Next() {
 		t := new(Tag)
-		if err := rows.Scan(getColumnPointers(t)...); err != nil {
+		if err := t.fillFromRow(rows); err != nil {
 			return nil, err
 		}
 		tags = append(tags, t)
@@ -126,18 +125,21 @@ func FindTags(stmt *sql.Stmt, args ...interface{}) ([]*Tag, error) {
 	return tags, nil
 }
 
-func TagPrepare(stmt string, prep preparer, columns ...TagColumn) (*sql.Stmt, error) {
-	var tType *Tag
-	stmt = strings.Replace(stmt, "*", getColumnNamesString(tType), 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+tType.Table(), 1)
-	args := make([]interface{}, len(columns))
-	for i, column := range columns {
-		args[i] = column
+func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
+	t := new(Tag)
+	if err := t.fillFromRow(stmt.QueryRow(args...)); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func TagPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
+	stmt = strings.Replace(stmt, "*", TagColData, 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(TagTableName), 1)
+	args := make([]interface{}, 0, len(columns))
+	for _, col := range columns {
+		args = append(args, col)
 	}
 	stmt = fmt.Sprintf(stmt, args...)
 	return prep.Prepare(stmt)
-}
-
-func init() {
-	register(new(Tag))
 }

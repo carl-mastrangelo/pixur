@@ -7,30 +7,23 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
-
-type PicId int64
-
-type PicColumn string
 
 const (
-	PicColId          PicColumn = "id"
-	PicColCreatedTime PicColumn = "created_time"
-	PicColMime        PicColumn = "mime"
-	PicColWidth       PicColumn = "width"
-	PicColHeight      PicColumn = "height"
+	PicTableName tableName = "`pics`"
+
+	PicColId          string = "`id`"
+	PicColData        string = "`data`"
+	PicColCreatedTime string = "`created_time`"
+	PicColSha512Hash  string = "`sha512_hash`"
 )
 
-type Pic struct {
-	Id           PicId  `db:"id"`
-	FileSize     int64  `db:"file_size"`
-	Mime         Mime   `db:"mime"`
-	Width        int64  `db:"width"`
-	Height       int64  `db:"height"`
-	CreatedTime  int64  `db:"created_time"`
-	ModifiedTime int64  `db:"modified_time"`
-	Sha512Hash   string `db:"sha512_hash"`
-}
+var (
+	picColNames = []string{PicColId, PicColData, PicColCreatedTime, PicColSha512Hash}
+	picColFmt   = strings.Repeat("?,", len(picColNames)-1) + "?"
+)
 
 func (p *Pic) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
@@ -42,7 +35,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		RelativeURL          string `json:"relative_url"`
 		ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
 	}{
-		Id:                   int64(p.Id),
+		Id:                   int64(p.PicId),
 		Width:                p.Width,
 		Height:               p.Height,
 		Version:              p.ModifiedTime,
@@ -69,60 +62,87 @@ func (p *Pic) GetModifiedTime() time.Time {
 }
 
 func (p *Pic) RelativeURL() string {
-	return fmt.Sprintf("pix/%d.%s", p.Id, p.Mime.Ext())
+	return fmt.Sprintf("pix/%d.%s", p.PicId, p.Mime.Ext())
 }
 
 func (p *Pic) Path(pixPath string) string {
-	return filepath.Join(pixPath, fmt.Sprintf("%d.%s", p.Id, p.Mime.Ext()))
+	return filepath.Join(pixPath, fmt.Sprintf("%d.%s", p.PicId, p.Mime.Ext()))
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
-	return fmt.Sprintf("pix/%ds.jpg", p.Id)
+	return fmt.Sprintf("pix/%ds.jpg", p.PicId)
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
-	return filepath.Join(pixPath, fmt.Sprintf("%ds.jpg", p.Id))
+	return filepath.Join(pixPath, fmt.Sprintf("%ds.jpg", p.PicId))
 }
 
-func (p *Pic) Table() string {
-	return "pics"
-}
-
-func (p *Pic) Insert(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
-		p.Table(), getColumnNamesString(p), getColumnFmt(p))
-	r, err := q.Exec(stmt, getColumnValues(p)...)
-	if err != nil {
-		return nil, err
+func (p *Pic) fillFromRow(s scanTo) error {
+	var data []byte
+	if err := s.Scan(&data); err != nil {
+		return err
 	}
-	return r, nil
+	return proto.Unmarshal([]byte(data), p)
 }
 
-func (p *Pic) InsertAndSetId(q queryer) error {
-	res, err := p.Insert(q)
+func (p *Pic) Insert(prep preparer) error {
+	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
+		PicTableName, strings.Join(picColNames, ","), picColFmt)
+	stmt, err := prep.Prepare(rawstmt)
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+	data, err := proto.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	res, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha512Hash)
+	if err != nil {
+		return err
+	}
+
 	id, err := res.LastInsertId()
 	if err != nil {
 		return err
 	}
+	p.PicId = id
 
-	p.Id = PicId(id)
+	return p.Update(prep)
+}
+
+func (p *Pic) Update(prep preparer) error {
+	rawstmt := fmt.Sprintf("UPDATE %s SET ", PicTableName)
+	rawstmt += strings.Join(picColNames, "=?,")
+	rawstmt += fmt.Sprintf("=? WHERE %s=?;", PicColId)
+
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	data, err := proto.Marshal(p)
+	if err != nil {
+		return err
+	}
+	if _, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha512Hash, p.PicId); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (p *Pic) Delete(q queryer) (sql.Result, error) {
-	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", p.Table(), PicColId)
-	return q.Exec(stmt, p.Id)
-}
-
-func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
-	p := new(Pic)
-	if err := stmt.QueryRow(args...).Scan(getColumnPointers(p)...); err != nil {
-		return nil, err
+func (p *Pic) Delete(prep preparer) error {
+	rawstmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", PicTableName, PicColId)
+	stmt, err := prep.Prepare(rawstmt)
+	if err != nil {
+		return err
 	}
-	return p, nil
+	defer stmt.Close()
+	if _, err := stmt.Exec(p.PicId); err != nil {
+		return err
+	}
+	return nil
 }
 
 func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
@@ -135,7 +155,7 @@ func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
 	defer rows.Close()
 	for rows.Next() {
 		p := new(Pic)
-		if err := rows.Scan(getColumnPointers(p)...); err != nil {
+		if err := p.fillFromRow(rows); err != nil {
 			return nil, err
 		}
 		pics = append(pics, p)
@@ -147,18 +167,21 @@ func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
 	return pics, nil
 }
 
-func PicPrepare(stmt string, prep preparer, columns ...PicColumn) (*sql.Stmt, error) {
-	var pType *Pic
-	stmt = strings.Replace(stmt, "*", getColumnNamesString(pType), 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+pType.Table(), 1)
-	args := make([]interface{}, len(columns))
-	for i, column := range columns {
-		args[i] = column
+func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
+	p := new(Pic)
+	if err := p.fillFromRow(stmt.QueryRow(args...)); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func PicPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
+	stmt = strings.Replace(stmt, "*", PicColData, 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(PicTableName), 1)
+	args := make([]interface{}, 0, len(columns))
+	for _, col := range columns {
+		args = append(args, col)
 	}
 	stmt = fmt.Sprintf(stmt, args...)
 	return prep.Prepare(stmt)
-}
-
-func init() {
-	register(new(Pic))
 }

@@ -12,7 +12,7 @@ type LookupPicTask struct {
 	DB *sql.DB
 
 	// Inputs
-	PicId schema.PicId
+	PicId int64
 
 	// Results
 	Pic     *schema.Pic
