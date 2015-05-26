@@ -114,6 +114,15 @@ func NotFound(message string, e error) Status {
 	}
 }
 
+func AlreadyExists(message string, e error) Status {
+	return &statusError{
+		Code:       Code_ALREADY_EXISTS,
+		Message:    message,
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
 func getStackTrace() string {
 	s := make([]byte, 4096)
 	size := runtime.Stack(s, false)

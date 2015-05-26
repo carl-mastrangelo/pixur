@@ -16,6 +16,12 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/go-sql-driver/mysql"
+)
+
+const (
+	duplicateEntryErrorNumber = 1062
 )
 
 var (
@@ -115,7 +121,12 @@ func (t *CreatePicTask) Run() error {
 	}
 
 	if err := p.Insert(t.tx); err != nil {
-		return err
+		if err, ok := err.(*mysql.MySQLError); ok {
+			if err.Number == duplicateEntryErrorNumber {
+				return AlreadyExists("Picture already uploaded", err)
+			}
+		}
+		return InternalError("Unable to Insert Picture", err)
 	}
 	if err := t.renameTempFile(p); err != nil {
 		return err
