@@ -17,11 +17,11 @@ const (
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
 	PicColCreatedTime string = "`created_time`"
-	PicColSha512Hash  string = "`sha512_hash`"
+	PicColSha256Hash  string = "`sha256_hash`"
 )
 
 var (
-	picColNames = []string{PicColId, PicColData, PicColCreatedTime, PicColSha512Hash}
+	picColNames = []string{PicColId, PicColData, PicColCreatedTime, PicColSha256Hash}
 	picColFmt   = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
 
@@ -98,7 +98,7 @@ func (p *Pic) Insert(prep preparer) error {
 		return err
 	}
 
-	res, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha512Hash)
+	res, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha256Hash)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (p *Pic) Update(prep preparer) error {
 	if err != nil {
 		return err
 	}
-	if _, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha512Hash, p.PicId); err != nil {
+	if _, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha256Hash, p.PicId); err != nil {
 		return err
 	}
 	return nil

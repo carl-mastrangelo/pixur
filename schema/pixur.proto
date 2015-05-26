@@ -19,7 +19,7 @@ message Pic {
   int64 height = 5;
   int64 created_time = 6;
   int64 modified_time = 7;
-  string sha512_hash = 8;
+  bytes sha256_hash = 9;
 }
 
 message Tag {

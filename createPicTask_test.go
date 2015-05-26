@@ -10,6 +10,8 @@ import (
 	"testing"
 	"unicode"
 
+	"github.com/golang/protobuf/proto"
+
 	ptest "pixur.org/pixur/testing"
 )
 
@@ -114,10 +116,11 @@ func TestWorkflowFileUpload(t *testing.T) {
 	ptest.AssertEquals(actual.CreatedTime, actual.ModifiedTime, t)
 	actual.CreatedTime = 0
 	actual.ModifiedTime = 0
-	actual.Sha512Hash = ""
+	actual.Sha256Hash = nil
 
-	ptest.AssertEquals(actual, expected, t)
-
+	if !proto.Equal(&actual, &expected) {
+		t.Fatalf("%s != %s", actual, expected)
+	}
 }
 
 func findPicTagsByPicId(picId int64, db *sql.DB) ([]*schema.PicTag, error) {

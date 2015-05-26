@@ -57,7 +57,7 @@ type Pic struct {
 	Height       int64    `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
 	CreatedTime  int64    `protobuf:"varint,6,opt,name=created_time" json:"created_time,omitempty"`
 	ModifiedTime int64    `protobuf:"varint,7,opt,name=modified_time" json:"modified_time,omitempty"`
-	Sha512Hash   string   `protobuf:"bytes,8,opt,name=sha512_hash" json:"sha512_hash,omitempty"`
+	Sha256Hash   []byte   `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }

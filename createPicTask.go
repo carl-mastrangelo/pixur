@@ -2,7 +2,7 @@ package pixur
 
 import (
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"io"
@@ -103,7 +103,7 @@ func (t *CreatePicTask) Run() error {
 	if err != nil {
 		return err
 	}
-	p.Sha512Hash = digest
+	p.Sha256Hash = digest
 
 	img, err := FillImageConfig(wf, p)
 	if err != nil {
@@ -228,16 +228,16 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	return allTags, nil
 }
 
-func getFileHash(f io.ReadSeeker) (string, Status) {
+func getFileHash(f io.ReadSeeker) ([]byte, Status) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return "", InternalError(err.Error(), err)
+		return nil, InternalError(err.Error(), err)
 	}
 	defer f.Seek(0, os.SEEK_SET)
-	h := sha512.New()
+	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", InternalError(err.Error(), err)
+		return nil, InternalError(err.Error(), err)
 	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return h.Sum(nil), nil
 }
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified

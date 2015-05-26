@@ -2,7 +2,7 @@ package pixur
 
 import (
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
 	"fmt"
@@ -31,12 +31,12 @@ type container struct {
 }
 
 func (c *container) CreatePic() *schema.Pic {
-	h := sha512.New()
+	h := sha256.New()
 	if err := binary.Write(h, binary.LittleEndian, rand.Int63()); err != nil {
 		c.t.Fatal(err)
 	}
 	p := &schema.Pic{
-		Sha512Hash: fmt.Sprintf("%02x", h.Sum(nil)),
+		Sha256Hash: h.Sum(nil),
 	}
 	if err := p.Insert(c.db); err != nil {
 		c.t.Fatal(err, p)
