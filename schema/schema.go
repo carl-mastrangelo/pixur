@@ -20,10 +20,3 @@ type tableName string
 func toMillis(t time.Time) int64 {
 	return t.UnixNano() / int64(time.Millisecond)
 }
-
-func fromMillis(t int64) time.Time {
-	millisPerSecond := int64(time.Second / time.Millisecond)
-	nanos := (t % millisPerSecond) * int64(time.Millisecond)
-	seconds := (t / millisPerSecond)
-	return time.Unix(seconds, nanos)
-}

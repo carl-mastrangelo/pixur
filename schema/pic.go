@@ -38,7 +38,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Id:                   int64(p.PicId),
 		Width:                p.Width,
 		Height:               p.Height,
-		Version:              p.ModifiedTime,
+		Version:              p.GetModifiedTime().UnixNano(),
 		Type:                 p.Mime.String(),
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
@@ -46,19 +46,33 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 }
 
 func (p *Pic) SetCreatedTime(now time.Time) {
-	p.CreatedTime = toMillis(now)
+	p.CreatedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (p *Pic) SetModifiedTime(now time.Time) {
-	p.ModifiedTime = toMillis(now)
+	p.ModifiedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (p *Pic) GetCreatedTime() time.Time {
-	return fromMillis(p.CreatedTime)
+	var t Timestamp
+	if p.CreatedTimestamp != nil {
+		t = *p.CreatedTimestamp
+	}
+	return time.Unix(t.Seconds, int64(t.Nanos))
 }
 
 func (p *Pic) GetModifiedTime() time.Time {
-	return fromMillis(p.ModifiedTime)
+	var t Timestamp
+	if p.ModifiedTimestamp != nil {
+		t = *p.ModifiedTimestamp
+	}
+	return time.Unix(t.Seconds, int64(t.Nanos))
 }
 
 func (p *Pic) RelativeURL() string {
@@ -98,7 +112,9 @@ func (p *Pic) Insert(prep preparer) error {
 		return err
 	}
 
-	res, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha256Hash)
+	createdTimeMillis := toMillis(p.GetCreatedTime())
+
+	res, err := stmt.Exec(p.PicId, data, createdTimeMillis, p.Sha256Hash)
 	if err != nil {
 		return err
 	}
@@ -126,7 +142,8 @@ func (p *Pic) Update(prep preparer) error {
 	if err != nil {
 		return err
 	}
-	if _, err := stmt.Exec(p.PicId, data, p.CreatedTime, p.Sha256Hash, p.PicId); err != nil {
+	createdTimeMillis := toMillis(p.GetCreatedTime())
+	if _, err := stmt.Exec(p.PicId, data, createdTimeMillis, p.Sha256Hash, p.PicId); err != nil {
 		return err
 	}
 	return nil

@@ -12,6 +12,7 @@ It has these top-level messages:
 	Pic
 	Tag
 	PicTag
+	Timestamp
 */
 package schema
 
@@ -50,44 +51,102 @@ func (x Pic_Mime) String() string {
 }
 
 type Pic struct {
-	PicId        int64    `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
-	FileSize     int64    `protobuf:"varint,2,opt,name=file_size" json:"file_size,omitempty"`
-	Mime         Pic_Mime `protobuf:"varint,3,opt,name=mime,enum=schema.Pic_Mime" json:"mime,omitempty"`
-	Width        int64    `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
-	Height       int64    `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
-	CreatedTime  int64    `protobuf:"varint,6,opt,name=created_time" json:"created_time,omitempty"`
-	ModifiedTime int64    `protobuf:"varint,7,opt,name=modified_time" json:"modified_time,omitempty"`
-	Sha256Hash   []byte   `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
+	PicId             int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	FileSize          int64      `protobuf:"varint,2,opt,name=file_size" json:"file_size,omitempty"`
+	Mime              Pic_Mime   `protobuf:"varint,3,opt,name=mime,enum=pixur.Pic_Mime" json:"mime,omitempty"`
+	Width             int64      `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
+	Height            int64      `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
+	CreatedTimeMsec   int64      `protobuf:"varint,6,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
+	ModifiedTimeMsec  int64      `protobuf:"varint,7,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
+	Sha256Hash        []byte     `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
+	CreatedTimestamp  *Timestamp `protobuf:"bytes,10,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
+	ModifiedTimestamp *Timestamp `protobuf:"bytes,11,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }
 func (m *Pic) String() string { return proto.CompactTextString(m) }
 func (*Pic) ProtoMessage()    {}
 
+func (m *Pic) GetCreatedTimestamp() *Timestamp {
+	if m != nil {
+		return m.CreatedTimestamp
+	}
+	return nil
+}
+
+func (m *Pic) GetModifiedTimestamp() *Timestamp {
+	if m != nil {
+		return m.ModifiedTimestamp
+	}
+	return nil
+}
+
 type Tag struct {
-	TagId        int64  `protobuf:"varint,1,opt,name=tag_id" json:"tag_id,omitempty"`
-	Name         string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	UsageCount   int64  `protobuf:"varint,3,opt,name=usage_count" json:"usage_count,omitempty"`
-	CreatedTime  int64  `protobuf:"varint,4,opt,name=created_time" json:"created_time,omitempty"`
-	ModifiedTime int64  `protobuf:"varint,5,opt,name=modified_time" json:"modified_time,omitempty"`
+	TagId             int64      `protobuf:"varint,1,opt,name=tag_id" json:"tag_id,omitempty"`
+	Name              string     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	UsageCount        int64      `protobuf:"varint,3,opt,name=usage_count" json:"usage_count,omitempty"`
+	CreatedTimeMsec   int64      `protobuf:"varint,4,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
+	ModifiedTimeMsec  int64      `protobuf:"varint,5,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
+	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
+	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
 }
 
 func (m *Tag) Reset()         { *m = Tag{} }
 func (m *Tag) String() string { return proto.CompactTextString(m) }
 func (*Tag) ProtoMessage()    {}
 
+func (m *Tag) GetCreatedTimestamp() *Timestamp {
+	if m != nil {
+		return m.CreatedTimestamp
+	}
+	return nil
+}
+
+func (m *Tag) GetModifiedTimestamp() *Timestamp {
+	if m != nil {
+		return m.ModifiedTimestamp
+	}
+	return nil
+}
+
 type PicTag struct {
-	PicId        int64  `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
-	TagId        int64  `protobuf:"varint,2,opt,name=tag_id" json:"tag_id,omitempty"`
-	Name         string `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
-	CreatedTime  int64  `protobuf:"varint,4,opt,name=created_time" json:"created_time,omitempty"`
-	ModifiedTime int64  `protobuf:"varint,5,opt,name=modified_time" json:"modified_time,omitempty"`
+	PicId             int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	TagId             int64      `protobuf:"varint,2,opt,name=tag_id" json:"tag_id,omitempty"`
+	Name              string     `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
+	CreatedTimeMsec   int64      `protobuf:"varint,4,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
+	ModifiedTimeMsec  int64      `protobuf:"varint,5,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
+	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
+	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
 }
 
 func (m *PicTag) Reset()         { *m = PicTag{} }
 func (m *PicTag) String() string { return proto.CompactTextString(m) }
 func (*PicTag) ProtoMessage()    {}
 
+func (m *PicTag) GetCreatedTimestamp() *Timestamp {
+	if m != nil {
+		return m.CreatedTimestamp
+	}
+	return nil
+}
+
+func (m *PicTag) GetModifiedTimestamp() *Timestamp {
+	if m != nil {
+		return m.ModifiedTimestamp
+	}
+	return nil
+}
+
+// This is the same as google.protobuf.Timestamp, until it becomes standard.
+type Timestamp struct {
+	Seconds int64 `protobuf:"varint,1,opt,name=seconds" json:"seconds,omitempty"`
+	Nanos   int32 `protobuf:"varint,2,opt,name=nanos" json:"nanos,omitempty"`
+}
+
+func (m *Timestamp) Reset()         { *m = Timestamp{} }
+func (m *Timestamp) String() string { return proto.CompactTextString(m) }
+func (*Timestamp) ProtoMessage()    {}
+
 func init() {
-	proto.RegisterEnum("schema.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
+	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
 }

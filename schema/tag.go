@@ -23,19 +23,33 @@ var (
 )
 
 func (t *Tag) SetCreatedTime(now time.Time) {
-	t.CreatedTime = toMillis(now)
+	t.CreatedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (t *Tag) SetModifiedTime(now time.Time) {
-	t.ModifiedTime = toMillis(now)
+	t.ModifiedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (t *Tag) GetCreatedTime() time.Time {
-	return fromMillis(t.CreatedTime)
+	var tm Timestamp
+	if t.CreatedTimestamp != nil {
+		tm = *t.CreatedTimestamp
+	}
+	return time.Unix(tm.Seconds, int64(tm.Nanos))
 }
 
 func (t *Tag) GetModifiedTime() time.Time {
-	return fromMillis(t.ModifiedTime)
+	var tm Timestamp
+	if t.ModifiedTimestamp != nil {
+		tm = *t.ModifiedTimestamp
+	}
+	return time.Unix(tm.Seconds, int64(tm.Nanos))
 }
 
 func (t *Tag) fillFromRow(s scanTo) error {

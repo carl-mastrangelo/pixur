@@ -42,24 +42,38 @@ func (pt *PicTag) MarshalJSON() ([]byte, error) {
 		Name:         pt.Name,
 		CreatedTime:  pt.GetCreatedTime(),
 		ModifiedTime: pt.GetModifiedTime(),
-		Version:      pt.ModifiedTime,
+		Version:      pt.GetModifiedTime().UnixNano(),
 	})
 }
 
 func (pt *PicTag) SetCreatedTime(now time.Time) {
-	pt.CreatedTime = toMillis(now)
+	pt.CreatedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (pt *PicTag) SetModifiedTime(now time.Time) {
-	pt.ModifiedTime = toMillis(now)
+	pt.ModifiedTimestamp = &Timestamp{
+		Seconds: now.Unix(),
+		Nanos:   int32(now.Nanosecond()),
+	}
 }
 
 func (pt *PicTag) GetCreatedTime() time.Time {
-	return fromMillis(pt.CreatedTime)
+	var t Timestamp
+	if pt.CreatedTimestamp != nil {
+		t = *pt.CreatedTimestamp
+	}
+	return time.Unix(t.Seconds, int64(t.Nanos))
 }
 
 func (pt *PicTag) GetModifiedTime() time.Time {
-	return fromMillis(pt.ModifiedTime)
+	var t Timestamp
+	if pt.ModifiedTimestamp != nil {
+		t = *pt.ModifiedTimestamp
+	}
+	return time.Unix(t.Seconds, int64(t.Nanos))
 }
 
 func (pt *PicTag) fillFromRow(s scanTo) error {

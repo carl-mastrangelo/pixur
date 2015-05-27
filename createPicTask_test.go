@@ -11,8 +11,6 @@ import (
 	"unicode"
 
 	"github.com/golang/protobuf/proto"
-
-	ptest "pixur.org/pixur/testing"
 )
 
 var (
@@ -113,9 +111,11 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 	// Zero out these, since they can change from test to test
 	actual.PicId = 0
-	ptest.AssertEquals(actual.CreatedTime, actual.ModifiedTime, t)
-	actual.CreatedTime = 0
-	actual.ModifiedTime = 0
+	if !proto.Equal(actual.CreatedTimestamp, actual.ModifiedTimestamp) {
+		t.Fatalf("%s != %s", actual.CreatedTimestamp, actual.ModifiedTimestamp)
+	}
+	actual.CreatedTimestamp = nil
+	actual.ModifiedTimestamp = nil
 	actual.Sha256Hash = nil
 
 	if !proto.Equal(&actual, &expected) {
