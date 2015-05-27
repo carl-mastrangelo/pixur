@@ -19,8 +19,6 @@ message Pic {
   Mime mime = 3;
   int64 width = 4;
   int64 height = 5;
-  int64 created_time_msec = 6;
-  int64 modified_time_msec = 7;
   bytes sha256_hash = 9;
 
   Timestamp created_timestamp = 10;
@@ -31,8 +29,6 @@ message Tag {
   int64 tag_id = 1;
   string name = 2;
   int64 usage_count = 3;
-  int64 created_time_msec = 4;
-  int64 modified_time_msec = 5;
   Timestamp created_timestamp = 6;
   Timestamp modified_timestamp = 7;
 }
@@ -41,8 +37,6 @@ message PicTag {
   int64 pic_id = 1;
   int64 tag_id = 2;
   string name = 3;
-  int64 created_time_msec = 4;
-  int64 modified_time_msec = 5;
   Timestamp created_timestamp = 6;
   Timestamp modified_timestamp = 7;
 }

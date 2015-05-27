@@ -56,8 +56,6 @@ type Pic struct {
 	Mime              Pic_Mime   `protobuf:"varint,3,opt,name=mime,enum=pixur.Pic_Mime" json:"mime,omitempty"`
 	Width             int64      `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
 	Height            int64      `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
-	CreatedTimeMsec   int64      `protobuf:"varint,6,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
-	ModifiedTimeMsec  int64      `protobuf:"varint,7,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
 	Sha256Hash        []byte     `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
 	CreatedTimestamp  *Timestamp `protobuf:"bytes,10,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
 	ModifiedTimestamp *Timestamp `protobuf:"bytes,11,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
@@ -85,8 +83,6 @@ type Tag struct {
 	TagId             int64      `protobuf:"varint,1,opt,name=tag_id" json:"tag_id,omitempty"`
 	Name              string     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
 	UsageCount        int64      `protobuf:"varint,3,opt,name=usage_count" json:"usage_count,omitempty"`
-	CreatedTimeMsec   int64      `protobuf:"varint,4,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
-	ModifiedTimeMsec  int64      `protobuf:"varint,5,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
 	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
 	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
 }
@@ -113,8 +109,6 @@ type PicTag struct {
 	PicId             int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
 	TagId             int64      `protobuf:"varint,2,opt,name=tag_id" json:"tag_id,omitempty"`
 	Name              string     `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
-	CreatedTimeMsec   int64      `protobuf:"varint,4,opt,name=created_time_msec" json:"created_time_msec,omitempty"`
-	ModifiedTimeMsec  int64      `protobuf:"varint,5,opt,name=modified_time_msec" json:"modified_time_msec,omitempty"`
 	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
 	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
 }
