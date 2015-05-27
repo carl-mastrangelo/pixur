@@ -25,6 +25,10 @@ const (
 	maxWebmDuration = 60*2 + 1 // Two minutes, with 1 second of leeway
 )
 
+type badWebmFormatErr struct {
+	error
+}
+
 func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
@@ -156,23 +160,26 @@ func getWebmConfig(filepath string) (*ffprobeConfig, error) {
 	if config.Format.FormatName != "matroska,webm" {
 		return nil, fmt.Errorf("Only webm supported: %v", config)
 	}
-	if config.Format.StreamCount != 1 {
-		return nil, fmt.Errorf("Only single stream webms supported: %v", config)
+	if config.Format.StreamCount == 0 {
+		return nil, fmt.Errorf("No Streams found: %v", config)
 	}
-	if config.Format.Duration <= 0 || config.Format.Duration > maxWebmDuration {
+	if config.Format.Duration < 0 || config.Format.Duration > maxWebmDuration {
 		return nil, fmt.Errorf("Invalid Duration %v", config)
 	}
-	// There should be only 1 stream, but use a for loop just incase.
+
+	var videoFound bool
+	// Only check for a video stream, since we will just mute it on output.
 	for _, stream := range config.Streams {
-		// Add more formats as needed
-		if stream.CodecName != "vp8" {
-			return nil, fmt.Errorf("Only Vp8 Current supported %v", config)
+		if stream.CodecType == "video" {
+			if stream.CodecName == "vp8" || stream.CodecName == "vp9" {
+				videoFound = true
+				break
+			}
 		}
-		/* I'm not sure what to do about other stream types like subs, but just fail until there's
-		   an actual example.*/
-		if stream.CodecType != "video" {
-			return nil, fmt.Errorf("Only Video streams supported %v", config)
-		}
+	}
+
+	if !videoFound {
+		return nil, &badWebmFormatErr{fmt.Errorf("Bad Video %v", config)}
 	}
 
 	return config, nil

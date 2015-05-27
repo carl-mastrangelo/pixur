@@ -113,6 +113,9 @@ func (t *CreatePicTask) Run() error {
 
 	img, err := FillImageConfig(wf, p)
 	if err != nil {
+		if err, ok := err.(*badWebmFormatErr); ok {
+			return InvalidArgument("Bad Web Fmt", err)
+		}
 		return err
 	}
 	thumbnail := MakeThumbnail(img)
