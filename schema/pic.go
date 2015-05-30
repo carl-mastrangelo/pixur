@@ -18,11 +18,17 @@ const (
 	PicColData        string = "`data`"
 	PicColCreatedTime string = "`created_time`"
 	PicColSha256Hash  string = "`sha256_hash`"
+	PicColHidden      string = "`hidden`"
 )
 
 var (
-	picColNames = []string{PicColId, PicColData, PicColCreatedTime, PicColSha256Hash}
-	picColFmt   = strings.Repeat("?,", len(picColNames)-1) + "?"
+	picColNames = []string{
+		PicColId,
+		PicColData,
+		PicColCreatedTime,
+		PicColSha256Hash,
+		PicColHidden}
+	picColFmt = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
 
 func (p *Pic) MarshalJSON() ([]byte, error) {
@@ -98,9 +104,12 @@ func (p *Pic) Insert(prep preparer) error {
 		return err
 	}
 
-	createdTimeMillis := toMillis(p.GetCreatedTime())
-
-	res, err := stmt.Exec(p.PicId, data, createdTimeMillis, p.Sha256Hash)
+	res, err := stmt.Exec(
+		p.PicId,
+		data,
+		toMillis(p.GetCreatedTime()),
+		p.Sha256Hash,
+		p.isHidden())
 	if err != nil {
 		return err
 	}
@@ -128,11 +137,35 @@ func (p *Pic) Update(prep preparer) error {
 	if err != nil {
 		return err
 	}
-	createdTimeMillis := toMillis(p.GetCreatedTime())
-	if _, err := stmt.Exec(p.PicId, data, createdTimeMillis, p.Sha256Hash, p.PicId); err != nil {
+
+	if _, err := stmt.Exec(
+		p.PicId,
+		data,
+		toMillis(p.GetCreatedTime()),
+		p.Sha256Hash,
+		p.isHidden(),
+		p.PicId); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (p *Pic) isHidden() bool {
+	return p.SoftDeleted() || p.HardDeleted()
+}
+
+func (p *Pic) SoftDeleted() bool {
+	if p.DeletionStatus == nil {
+		return false
+	}
+	return p.DeletionStatus.MarkedDeletedTs != nil
+}
+
+func (p *Pic) HardDeleted() bool {
+	if p.DeletionStatus == nil {
+		return false
+	}
+	return p.DeletionStatus.ActualDeletedTs != nil
 }
 
 func (p *Pic) Delete(prep preparer) error {

@@ -11,9 +11,11 @@ var (
 			"  `data` blob NOT NULL," +
 			"  `created_time` bigint(20) NOT NULL," +
 			"  `sha256_hash` tinyblob NOT NULL," +
+			"  `hidden` bool NOT NULL," +
 			"  PRIMARY KEY (`id`)," +
 			"  UNIQUE KEY (`sha256_hash`(255))," +
-			"  KEY `created_time_msec` (`created_time`)" +
+			"  KEY `created_time` (`created_time`)," +
+			"  KEY `hidden` (`hidden`)" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",
 
 		"CREATE TABLE IF NOT EXISTS `tags` (" +

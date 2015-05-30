@@ -58,12 +58,17 @@ func (t *ReadIndexPicsTask) Run() error {
 
 	var sql string
 	if t.Ascending {
-		sql = "SELECT * FROM_ WHERE %s >= ? ORDER BY %s ASC LIMIT ?;"
+		sql = "SELECT * FROM_ WHERE %s >= ? AND NOT %s ORDER BY %s ASC LIMIT ?;"
 	} else {
-		sql = "SELECT * FROM_ WHERE %s <= ? ORDER BY %s DESC LIMIT ?;"
+		sql = "SELECT * FROM_ WHERE %s <= ? AND NOT %s ORDER BY %s DESC LIMIT ?;"
 	}
 
-	stmt, err := schema.PicPrepare(sql, t.DB, schema.PicColId, schema.PicColCreatedTime)
+	stmt, err := schema.PicPrepare(
+		sql,
+		t.DB,
+		schema.PicColId,
+		schema.PicColHidden,
+		schema.PicColCreatedTime)
 	if err != nil {
 		return err
 	}
