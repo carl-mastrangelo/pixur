@@ -46,33 +46,19 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 }
 
 func (p *Pic) SetCreatedTime(now time.Time) {
-	p.CreatedTimestamp = &Timestamp{
-		Seconds: now.Unix(),
-		Nanos:   int32(now.Nanosecond()),
-	}
+	p.CreatedTs = FromTime(now)
 }
 
 func (p *Pic) SetModifiedTime(now time.Time) {
-	p.ModifiedTimestamp = &Timestamp{
-		Seconds: now.Unix(),
-		Nanos:   int32(now.Nanosecond()),
-	}
+	p.ModifiedTs = FromTime(now)
 }
 
 func (p *Pic) GetCreatedTime() time.Time {
-	var t Timestamp
-	if p.CreatedTimestamp != nil {
-		t = *p.CreatedTimestamp
-	}
-	return time.Unix(t.Seconds, int64(t.Nanos))
+	return ToTime(p.CreatedTs)
 }
 
 func (p *Pic) GetModifiedTime() time.Time {
-	var t Timestamp
-	if p.ModifiedTimestamp != nil {
-		t = *p.ModifiedTimestamp
-	}
-	return time.Unix(t.Seconds, int64(t.Nanos))
+	return ToTime(p.ModifiedTs)
 }
 
 func (p *Pic) RelativeURL() string {

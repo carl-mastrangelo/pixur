@@ -7,7 +7,7 @@ option go_package = "schema";
 message Pic {
   int64 pic_id = 1;
   int64 file_size = 2;
-  
+
   enum Mime {
     UNKNOWN = 0;
     JPEG = 1;
@@ -15,30 +15,52 @@ message Pic {
     PNG = 3;
     WEBM = 4;
   }
-  
+
   Mime mime = 3;
   int64 width = 4;
   int64 height = 5;
   bytes sha256_hash = 9;
 
-  Timestamp created_timestamp = 10;
-  Timestamp modified_timestamp = 11;
+  Timestamp created_ts = 10;
+  Timestamp modified_ts = 11;
+
+  // If present, the pic is on the path to removal.  When the pic is marked
+  // for deletion, it is delisted from normal indexing operations.  When the
+  // pic is actually "deleted"  all tags are removed, image and thumbnail
+  // data is removed, but the Pic object sticks around.
+  DeletionStatus deletion_status = 12;
+
+  message DeletionStatus {
+    // Represents when this Pic was marked for deletion
+    Timestamp marked_deleted_ts = 1;
+    // Represents when this picture will be auto deleted.  Note that the Pic
+    // may exist for a short period after this time.  (may be absent)
+    Timestamp pending_deleted_ts = 2;
+    // Determines when Pic was actually deleted.  (present after the Pic is 
+    // hard deleted, a.k.a purging)
+    Timestamp actual_deleted_ts = 3;
+    // Gives an explanation for why this pic was removed.
+    string reason = 4;
+
+    // TODO: maybe include a "see other" pic id in this message.  This would
+    // handle deletion inferior versions of other pics.
+  }
 }
 
 message Tag {
   int64 tag_id = 1;
   string name = 2;
   int64 usage_count = 3;
-  Timestamp created_timestamp = 6;
-  Timestamp modified_timestamp = 7;
+  Timestamp created_ts = 6;
+  Timestamp modified_ts = 7;
 }
 
 message PicTag {
   int64 pic_id = 1;
   int64 tag_id = 2;
   string name = 3;
-  Timestamp created_timestamp = 6;
-  Timestamp modified_timestamp = 7;
+  Timestamp created_ts = 6;
+  Timestamp modified_ts = 7;
 }
 
 // This is the same as google.protobuf.Timestamp, until it becomes standard.

@@ -51,82 +51,132 @@ func (x Pic_Mime) String() string {
 }
 
 type Pic struct {
-	PicId             int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
-	FileSize          int64      `protobuf:"varint,2,opt,name=file_size" json:"file_size,omitempty"`
-	Mime              Pic_Mime   `protobuf:"varint,3,opt,name=mime,enum=pixur.Pic_Mime" json:"mime,omitempty"`
-	Width             int64      `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
-	Height            int64      `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
-	Sha256Hash        []byte     `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
-	CreatedTimestamp  *Timestamp `protobuf:"bytes,10,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
-	ModifiedTimestamp *Timestamp `protobuf:"bytes,11,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
+	PicId      int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	FileSize   int64      `protobuf:"varint,2,opt,name=file_size" json:"file_size,omitempty"`
+	Mime       Pic_Mime   `protobuf:"varint,3,opt,name=mime,enum=pixur.Pic_Mime" json:"mime,omitempty"`
+	Width      int64      `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
+	Height     int64      `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
+	Sha256Hash []byte     `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
+	CreatedTs  *Timestamp `protobuf:"bytes,10,opt,name=created_ts" json:"created_ts,omitempty"`
+	ModifiedTs *Timestamp `protobuf:"bytes,11,opt,name=modified_ts" json:"modified_ts,omitempty"`
+	// If present, the pic is on the path to removal.  When the pic is marked
+	// for deletion, it is delisted from normal indexing operations.  When the
+	// pic is actually "deleted"  all tags are removed, image and thumbnail
+	// data is removed, but the Pic object sticks around.
+	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }
 func (m *Pic) String() string { return proto.CompactTextString(m) }
 func (*Pic) ProtoMessage()    {}
 
-func (m *Pic) GetCreatedTimestamp() *Timestamp {
+func (m *Pic) GetCreatedTs() *Timestamp {
 	if m != nil {
-		return m.CreatedTimestamp
+		return m.CreatedTs
 	}
 	return nil
 }
 
-func (m *Pic) GetModifiedTimestamp() *Timestamp {
+func (m *Pic) GetModifiedTs() *Timestamp {
 	if m != nil {
-		return m.ModifiedTimestamp
+		return m.ModifiedTs
+	}
+	return nil
+}
+
+func (m *Pic) GetDeletionStatus() *Pic_DeletionStatus {
+	if m != nil {
+		return m.DeletionStatus
+	}
+	return nil
+}
+
+type Pic_DeletionStatus struct {
+	// Represents when this Pic was marked for deletion
+	MarkedDeletedTs *Timestamp `protobuf:"bytes,1,opt,name=marked_deleted_ts" json:"marked_deleted_ts,omitempty"`
+	// Represents when this picture will be auto deleted.  Note that the Pic
+	// may exist for a short period after this time.  (may be absent)
+	PendingDeletedTs *Timestamp `protobuf:"bytes,2,opt,name=pending_deleted_ts" json:"pending_deleted_ts,omitempty"`
+	// Determines when Pic was actually deleted.  (present after the Pic is
+	// hard deleted, a.k.a purging)
+	ActualDeletedTs *Timestamp `protobuf:"bytes,3,opt,name=actual_deleted_ts" json:"actual_deleted_ts,omitempty"`
+	// Gives an explanation for why this pic was removed.
+	Reason string `protobuf:"bytes,4,opt,name=reason" json:"reason,omitempty"`
+}
+
+func (m *Pic_DeletionStatus) Reset()         { *m = Pic_DeletionStatus{} }
+func (m *Pic_DeletionStatus) String() string { return proto.CompactTextString(m) }
+func (*Pic_DeletionStatus) ProtoMessage()    {}
+
+func (m *Pic_DeletionStatus) GetMarkedDeletedTs() *Timestamp {
+	if m != nil {
+		return m.MarkedDeletedTs
+	}
+	return nil
+}
+
+func (m *Pic_DeletionStatus) GetPendingDeletedTs() *Timestamp {
+	if m != nil {
+		return m.PendingDeletedTs
+	}
+	return nil
+}
+
+func (m *Pic_DeletionStatus) GetActualDeletedTs() *Timestamp {
+	if m != nil {
+		return m.ActualDeletedTs
 	}
 	return nil
 }
 
 type Tag struct {
-	TagId             int64      `protobuf:"varint,1,opt,name=tag_id" json:"tag_id,omitempty"`
-	Name              string     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	UsageCount        int64      `protobuf:"varint,3,opt,name=usage_count" json:"usage_count,omitempty"`
-	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
-	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
+	TagId      int64      `protobuf:"varint,1,opt,name=tag_id" json:"tag_id,omitempty"`
+	Name       string     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	UsageCount int64      `protobuf:"varint,3,opt,name=usage_count" json:"usage_count,omitempty"`
+	CreatedTs  *Timestamp `protobuf:"bytes,6,opt,name=created_ts" json:"created_ts,omitempty"`
+	ModifiedTs *Timestamp `protobuf:"bytes,7,opt,name=modified_ts" json:"modified_ts,omitempty"`
 }
 
 func (m *Tag) Reset()         { *m = Tag{} }
 func (m *Tag) String() string { return proto.CompactTextString(m) }
 func (*Tag) ProtoMessage()    {}
 
-func (m *Tag) GetCreatedTimestamp() *Timestamp {
+func (m *Tag) GetCreatedTs() *Timestamp {
 	if m != nil {
-		return m.CreatedTimestamp
+		return m.CreatedTs
 	}
 	return nil
 }
 
-func (m *Tag) GetModifiedTimestamp() *Timestamp {
+func (m *Tag) GetModifiedTs() *Timestamp {
 	if m != nil {
-		return m.ModifiedTimestamp
+		return m.ModifiedTs
 	}
 	return nil
 }
 
 type PicTag struct {
-	PicId             int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
-	TagId             int64      `protobuf:"varint,2,opt,name=tag_id" json:"tag_id,omitempty"`
-	Name              string     `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
-	CreatedTimestamp  *Timestamp `protobuf:"bytes,6,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
-	ModifiedTimestamp *Timestamp `protobuf:"bytes,7,opt,name=modified_timestamp" json:"modified_timestamp,omitempty"`
+	PicId      int64      `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	TagId      int64      `protobuf:"varint,2,opt,name=tag_id" json:"tag_id,omitempty"`
+	Name       string     `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
+	CreatedTs  *Timestamp `protobuf:"bytes,6,opt,name=created_ts" json:"created_ts,omitempty"`
+	ModifiedTs *Timestamp `protobuf:"bytes,7,opt,name=modified_ts" json:"modified_ts,omitempty"`
 }
 
 func (m *PicTag) Reset()         { *m = PicTag{} }
 func (m *PicTag) String() string { return proto.CompactTextString(m) }
 func (*PicTag) ProtoMessage()    {}
 
-func (m *PicTag) GetCreatedTimestamp() *Timestamp {
+func (m *PicTag) GetCreatedTs() *Timestamp {
 	if m != nil {
-		return m.CreatedTimestamp
+		return m.CreatedTs
 	}
 	return nil
 }
 
-func (m *PicTag) GetModifiedTimestamp() *Timestamp {
+func (m *PicTag) GetModifiedTs() *Timestamp {
 	if m != nil {
-		return m.ModifiedTimestamp
+		return m.ModifiedTs
 	}
 	return nil
 }

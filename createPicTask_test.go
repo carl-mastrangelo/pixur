@@ -111,11 +111,11 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 	// Zero out these, since they can change from test to test
 	actual.PicId = 0
-	if !proto.Equal(actual.CreatedTimestamp, actual.ModifiedTimestamp) {
-		t.Fatalf("%s != %s", actual.CreatedTimestamp, actual.ModifiedTimestamp)
+	if actual.GetCreatedTime() != actual.GetModifiedTime() {
+		t.Fatalf("%s != %s", actual.GetCreatedTime(), actual.GetModifiedTime())
 	}
-	actual.CreatedTimestamp = nil
-	actual.ModifiedTimestamp = nil
+	expected.SetCreatedTime(actual.GetCreatedTime())
+	expected.SetModifiedTime(actual.GetModifiedTime())
 	actual.Sha256Hash = nil
 
 	if !proto.Equal(&actual, &expected) {
