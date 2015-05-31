@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestDeleteWorkflow(test *testing.T) {
+func TestPurgeWorkflow(test *testing.T) {
 	c := &container{
 		t:  test,
 		db: testDB,
@@ -18,7 +18,7 @@ func TestDeleteWorkflow(test *testing.T) {
 	t := c.CreateTag()
 	pt := c.CreatePicTag(p, t)
 
-	task := &DeletePicTask{
+	task := &PurgePicTask{
 		DB:      testDB,
 		PixPath: c.pixPath,
 		PicId:   p.PicId,
@@ -47,7 +47,7 @@ func TestDeleteWorkflow(test *testing.T) {
 	}
 }
 
-func TestDelete_TagsDecremented(test *testing.T) {
+func TestPurge_TagsDecremented(test *testing.T) {
 	c := &container{
 		t:  test,
 		db: testDB,
@@ -59,7 +59,7 @@ func TestDelete_TagsDecremented(test *testing.T) {
 	t := c.CreateTag()
 	c.CreatePicTag(p2, t)
 
-	task := &DeletePicTask{
+	task := &PurgePicTask{
 		DB:      testDB,
 		PixPath: c.pixPath,
 		PicId:   p.PicId,

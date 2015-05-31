@@ -11,9 +11,9 @@ import (
 	"pixur.org/pixur/status"
 )
 
-var _ Task = &DeletePicTask{}
+var _ Task = &PurgePicTask{}
 
-type DeletePicTask struct {
+type PurgePicTask struct {
 	// deps
 	PixPath string
 	DB      *sql.DB
@@ -22,14 +22,14 @@ type DeletePicTask struct {
 	PicId int64
 }
 
-func (task *DeletePicTask) Run() error {
+func (task *PurgePicTask) Run() error {
 	tx, err := task.DB.Begin()
 	if err != nil {
 		return status.InternalError("Unable to Begin TX", err)
 	}
 	defer tx.Rollback()
 
-	p, err := lookupPicToDelete(task.PicId, tx)
+	p, err := lookupPicToPurge(task.PicId, tx)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (task *DeletePicTask) Run() error {
 	}
 
 	if err := p.Delete(tx); err != nil {
-		return status.InternalError("Unable to Delete Pic", err)
+		return status.InternalError("Unable to Purge Pic", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -112,7 +112,7 @@ func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) status.Status {
 	return nil
 }
 
-func lookupPicToDelete(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
+func lookupPicToPurge(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
 	if err != nil {
 		return nil, status.InternalError("Unable to Prepare Lookup", err)

@@ -8,7 +8,7 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-type DeletePicHandler struct {
+type PurgePicHandler struct {
 	// embeds
 	http.Handler
 
@@ -19,7 +19,7 @@ type DeletePicHandler struct {
 
 // TODO: add tests
 // TODO: Add csrf protection
-func (h *DeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
@@ -31,7 +31,7 @@ func (h *DeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var task = &tasks.DeletePicTask{
+	var task = &tasks.PurgePicTask{
 		DB:      h.DB,
 		PixPath: h.PixPath,
 		PicId:   requestedPicId,
@@ -47,7 +47,7 @@ func (h *DeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
-		mux.Handle("/api/deletePic", &DeletePicHandler{
+		mux.Handle("/api/purgePic", &PurgePicHandler{
 			DB:      c.DB,
 			PixPath: c.PixPath,
 		})
