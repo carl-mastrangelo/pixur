@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	PicTagTableName tableName = "`pictags`"
+	PicTagTableName string = "`pictags`"
 
 	PicTagColPicId string = "`pic_id`"
 	PicTagColTagId string = "`tag_id`"
@@ -159,7 +159,7 @@ func LookupPicTag(stmt *sql.Stmt, args ...interface{}) (*PicTag, error) {
 
 func PicTagPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
 	stmt = strings.Replace(stmt, "*", PicTagColData, 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(PicTagTableName), 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+PicTagTableName, 1)
 	args := make([]interface{}, 0, len(columns))
 	for _, col := range columns {
 		args = append(args, col)

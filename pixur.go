@@ -3,9 +3,10 @@ package pixur
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+
+	"pixur.org/pixur/handlers"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -57,38 +58,11 @@ func (s *Server) setup(c *Config) error {
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.Handle("/pix/", http.StripPrefix("/pix/", http.FileServer(http.Dir(s.pixPath))))
 
-	// index handler
-	s.registerHandler("/", s.indexHandler)
-	s.registerHandler("/api/findNextIndexPics", s.findNextIndexPicsHandler)
-	s.registerHandler("/api/findPreviousIndexPics", s.findPreviousIndexPicsHandler)
-
-	// upload handler
-	s.registerHandler("/api/createPic", s.uploadHandler)
-
-	// viewer handler
-	s.registerHandler("/api/lookupPicDetails", s.lookupPicDetailsHandler)
-
-	// delete handler
-	s.registerHandler("/api/deletePic", s.deletePicHandler)
-
-	return nil
-}
-
-func (s *Server) registerHandler(path string,
-	handler func(http.ResponseWriter, *http.Request) error) {
-	s.s.Handler.(*http.ServeMux).HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if err := handler(w, r); err != nil {
-			log.Println("Error in handler: ", err)
-			if status, ok := err.(Status); ok {
-				code := status.GetCode()
-				http.Error(w, code.String()+": "+status.GetMessage(), code.HttpStatus())
-				return
-			}
-
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
+		DB:      db,
+		PixPath: s.pixPath,
 	})
+	return nil
 }
 
 func (s *Server) StartAndWait(c *Config) error {

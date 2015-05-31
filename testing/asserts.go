@@ -11,10 +11,10 @@ func AssertEquals(actual, expected interface{}, t *_testing.T) {
 }
 
 func AssertStringSlicesEquals(actual, expected []string, t *_testing.T) {
-  if len(actual) != len(expected) {
-    t.Fatal("Slices differ in length: ", actual, expected)
-  }
-  for i := 0; i < len(actual); i++ {
-    AssertEquals(actual[i], expected[i], t)
-  }
+	if len(actual) != len(expected) {
+		t.Fatal("Slices differ in length: ", actual, expected)
+	}
+	for i := 0; i < len(actual); i++ {
+		AssertEquals(actual[i], expected[i], t)
+	}
 }

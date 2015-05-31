@@ -1,4 +1,4 @@
-package pixur
+package tasks
 
 import (
 	"testing"

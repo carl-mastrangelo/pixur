@@ -1,9 +1,9 @@
-package pixur
+package image
 
 import (
 	"encoding/json"
 	"fmt"
-	"image"
+	img "image"
 	"image/draw"
 	"os"
 	"os/exec"
@@ -25,19 +25,19 @@ const (
 	maxWebmDuration = 60*2 + 1 // Two minutes, with 1 second of leeway
 )
 
-type badWebmFormatErr struct {
+type BadWebmFormatErr struct {
 	error
 }
 
-func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
+func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
 	}
 
-	img, imgType, err := image.Decode(f)
-	if err == image.ErrFormat {
+	im, imgType, err := img.Decode(f)
+	if err == img.ErrFormat {
 		// Try Webm
-		img, err = fillImageConfigFromWebm(f, p)
+		im, err = fillImageConfigFromWebm(f, p)
 		if err != nil {
 			return nil, err
 		}
@@ -46,54 +46,54 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 	} else {
 		// TODO: handle this error
 		p.Mime, _ = schema.FromImageFormat(imgType)
-		p.Width = int64(img.Bounds().Dx())
-		p.Height = int64(img.Bounds().Dy())
+		p.Width = int64(im.Bounds().Dx())
+		p.Height = int64(im.Bounds().Dy())
 	}
 
-	return img, nil
+	return im, nil
 }
 
 // TODO: interpret image rotation metadata
-func MakeThumbnail(img image.Image) image.Image {
-	bounds := findMaxSquare(img.Bounds())
-	largeSquareImage := image.NewNRGBA(bounds)
-	draw.Draw(largeSquareImage, bounds, img, bounds.Min, draw.Src)
+func MakeThumbnail(im img.Image) img.Image {
+	bounds := findMaxSquare(im.Bounds())
+	largeSquareImage := img.NewNRGBA(bounds)
+	draw.Draw(largeSquareImage, bounds, im, bounds.Min, draw.Src)
 	return resize.Resize(DefaultThumbnailWidth, DefaultThumbnailHeight, largeSquareImage,
 		resize.NearestNeighbor)
 }
 
-func SaveThumbnail(img image.Image, p *schema.Pic, pixPath string) error {
+func SaveThumbnail(im img.Image, p *schema.Pic, pixPath string) error {
 	f, err := os.Create(p.ThumbnailPath(pixPath))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return jpeg.Encode(f, img, nil)
+	return jpeg.Encode(f, im, nil)
 }
 
-func findMaxSquare(bounds image.Rectangle) image.Rectangle {
+func findMaxSquare(bounds img.Rectangle) img.Rectangle {
 	width := bounds.Dx()
 	height := bounds.Dy()
 	if height < width {
 		missingSpace := width - height
-		return image.Rectangle{
-			Min: image.Point{
+		return img.Rectangle{
+			Min: img.Point{
 				X: bounds.Min.X + missingSpace/2,
 				Y: bounds.Min.Y,
 			},
-			Max: image.Point{
+			Max: img.Point{
 				X: bounds.Min.X + missingSpace/2 + height,
 				Y: bounds.Max.Y,
 			},
 		}
 	} else {
 		missingSpace := height - width
-		return image.Rectangle{
-			Min: image.Point{
+		return img.Rectangle{
+			Min: img.Point{
 				X: bounds.Min.X,
 				Y: bounds.Min.Y + missingSpace/2,
 			},
-			Max: image.Point{
+			Max: img.Point{
 				X: bounds.Max.X,
 				Y: bounds.Min.Y + missingSpace/2 + width,
 			},
@@ -119,7 +119,7 @@ type ffprobeStream struct {
 	Height    int64  `json:"height"`
 }
 
-func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, error) {
+func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error) {
 	config, err := getWebmConfig(tempFile.Name())
 	if err != nil {
 		return nil, err
@@ -179,13 +179,13 @@ func getWebmConfig(filepath string) (*ffprobeConfig, error) {
 	}
 
 	if !videoFound {
-		return nil, &badWebmFormatErr{fmt.Errorf("Bad Video %v", config)}
+		return nil, &BadWebmFormatErr{fmt.Errorf("Bad Video %v", config)}
 	}
 
 	return config, nil
 }
 
-func getFirstWebmFrame(filepath string) (image.Image, error) {
+func getFirstWebmFrame(filepath string) (img.Image, error) {
 	cmd := exec.Command("ffmpeg",
 		"-i", filepath,
 		"-v", "quiet", // disable version info
@@ -202,7 +202,7 @@ func getFirstWebmFrame(filepath string) (image.Image, error) {
 		return nil, err
 	}
 
-	img, _, err := image.Decode(stdout)
+	im, _, err := img.Decode(stdout)
 	if err != nil {
 		return nil, err
 	}
@@ -210,5 +210,5 @@ func getFirstWebmFrame(filepath string) (image.Image, error) {
 		return nil, err
 	}
 
-	return img, nil
+	return im, nil
 }

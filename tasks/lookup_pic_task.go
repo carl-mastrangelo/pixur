@@ -1,7 +1,8 @@
-package pixur
+package tasks
 
 import (
 	"database/sql"
+
 	"pixur.org/pixur/schema"
 )
 
@@ -12,7 +13,7 @@ type LookupPicTask struct {
 	DB *sql.DB
 
 	// Inputs
-	PicId int64
+	PicID int64
 
 	// Results
 	Pic     *schema.Pic
@@ -26,7 +27,7 @@ func (t *LookupPicTask) Run() error {
 	}
 	defer picStmt.Close()
 
-	p, err := schema.LookupPic(picStmt, t.PicId)
+	p, err := schema.LookupPic(picStmt, t.PicID)
 	if err != nil {
 		return err
 	}
@@ -39,7 +40,7 @@ func (t *LookupPicTask) Run() error {
 	}
 	defer picTagStmt.Close()
 
-	pts, err := schema.FindPicTags(picTagStmt, t.PicId)
+	pts, err := schema.FindPicTags(picTagStmt, t.PicID)
 	if err != nil {
 		return err
 	}

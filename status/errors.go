@@ -1,4 +1,4 @@
-package pixur
+package status
 
 import (
 	"fmt"

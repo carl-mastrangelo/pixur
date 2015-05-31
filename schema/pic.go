@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	PicTableName tableName = "`pics`"
+	PicTableName string = "`pics`"
 
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
@@ -213,7 +213,7 @@ func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
 
 func PicPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
 	stmt = strings.Replace(stmt, "*", PicColData, 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(PicTableName), 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+PicTableName, 1)
 	args := make([]interface{}, 0, len(columns))
 	for _, col := range columns {
 		args = append(args, col)

@@ -1,4 +1,4 @@
-package pixur
+package tasks
 
 import (
 	"bytes"
@@ -10,12 +10,15 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"pixur.org/pixur/schema"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"pixur.org/pixur/image"
+	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -25,9 +28,9 @@ const (
 )
 
 var (
-	errTagNotFound   = fmt.Errorf("Unable to find Tag")
-	errDuplicateTags = fmt.Errorf("Data Corruption: Duplicate tags found")
-	errInvalidFormat = fmt.Errorf("Unknown image format")
+	ErrTagNotFound   = fmt.Errorf("Unable to find Tag")
+	ErrDuplicateTags = fmt.Errorf("Data Corruption: Duplicate tags found")
+	ErrInvalidFormat = fmt.Errorf("Unknown image format")
 )
 
 type readAtSeeker interface {
@@ -38,8 +41,8 @@ type readAtSeeker interface {
 
 type CreatePicTask struct {
 	// Deps
-	pixPath string
-	db      *sql.DB
+	PixPath string
+	DB      *sql.DB
 
 	// Inputs
 	Filename string
@@ -82,9 +85,9 @@ func (t *CreatePicTask) reset() {
 
 func (t *CreatePicTask) Run() error {
 	t.now = time.Now()
-	wf, err := ioutil.TempFile(t.pixPath, "__")
+	wf, err := ioutil.TempFile(t.PixPath, "__")
 	if err != nil {
-		return InternalError("Unable to create tempfile", err)
+		return status.InternalError("Unable to create tempfile", err)
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -102,7 +105,7 @@ func (t *CreatePicTask) Run() error {
 			return err
 		}
 	} else {
-		return InvalidArgument("No file uploaded", nil)
+		return status.InvalidArgument("No file uploaded", nil)
 	}
 
 	digest, err := getFileHash(wf)
@@ -111,14 +114,14 @@ func (t *CreatePicTask) Run() error {
 	}
 	p.Sha256Hash = digest
 
-	img, err := FillImageConfig(wf, p)
+	img, err := image.FillImageConfig(wf, p)
 	if err != nil {
-		if err, ok := err.(*badWebmFormatErr); ok {
-			return InvalidArgument("Bad Web Fmt", err)
+		if err, ok := err.(*image.BadWebmFormatErr); ok {
+			return status.InvalidArgument("Bad Web Fmt", err)
 		}
 		return err
 	}
-	thumbnail := MakeThumbnail(img)
+	thumbnail := image.MakeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
 	}
@@ -126,17 +129,17 @@ func (t *CreatePicTask) Run() error {
 	if err := p.Insert(t.tx); err != nil {
 		if err, ok := err.(*mysql.MySQLError); ok {
 			if err.Number == duplicateEntryErrorNumber {
-				return AlreadyExists("Picture already uploaded", err)
+				return status.AlreadyExists("Picture already uploaded", err)
 			}
 		}
-		return InternalError("Unable to Insert Picture", err)
+		return status.InternalError("Unable to Insert Picture", err)
 	}
 	if err := t.renameTempFile(p); err != nil {
 		return err
 	}
 
 	// If there is a problem creating the thumbnail, just continue on.
-	if err := SaveThumbnail(thumbnail, p, t.pixPath); err != nil {
+	if err := image.SaveThumbnail(thumbnail, p, t.PixPath); err != nil {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
 
@@ -161,64 +164,64 @@ func (t *CreatePicTask) Run() error {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) Status {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) status.Status {
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return InternalError("Unable to move uploaded file", err)
+		return status.InternalError("Unable to move uploaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return InternalError("Failed to sync uploaded file", err)
+			return status.InternalError("Failed to sync uploaded file", err)
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) Status {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) status.Status {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
-		return InvalidArgument("Unable to download "+t.FileURL, err)
+		return status.InvalidArgument("Unable to download "+t.FileURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		message := fmt.Sprintf("Failed to Download Pic %s [%d]", t.FileURL, resp.StatusCode)
-		return InvalidArgument(message, nil)
+		return status.InvalidArgument(message, nil)
 	}
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return InternalError("Failed to copy downloaded file", err)
+		return status.InternalError("Failed to copy downloaded file", err)
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return InternalError("Failed to sync file", err)
+			return status.InternalError("Failed to sync file", err)
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) beginTransaction() Status {
-	if tx, err := t.db.Begin(); err != nil {
-		return InternalError("Unable to Begin TX", err)
+func (t *CreatePicTask) beginTransaction() status.Status {
+	if tx, err := t.DB.Begin(); err != nil {
+		return status.InternalError("Unable to Begin TX", err)
 	} else {
 		t.tx = tx
 	}
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *schema.Pic) Status {
-	if err := os.Rename(t.tempFilename, p.Path(t.pixPath)); err != nil {
+func (t *CreatePicTask) renameTempFile(p *schema.Pic) status.Status {
+	if err := os.Rename(t.tempFilename, p.Path(t.PixPath)); err != nil {
 		message := fmt.Sprintf("Unable to move uploaded file %s -> %s",
-			t.tempFilename, p.Path(t.pixPath))
-		return InternalError(message, err)
+			t.tempFilename, p.Path(t.PixPath))
+		return status.InternalError(message, err)
 	}
 	// point this at the new file, incase the overall transaction fails
-	t.tempFilename = p.Path(t.pixPath)
+	t.tempFilename = p.Path(t.PixPath)
 	return nil
 }
 
@@ -242,14 +245,14 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	return allTags, nil
 }
 
-func getFileHash(f io.ReadSeeker) ([]byte, Status) {
+func getFileHash(f io.ReadSeeker) ([]byte, status.Status) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return nil, InternalError(err.Error(), err)
+		return nil, status.InternalError(err.Error(), err)
 	}
 	defer f.Seek(0, os.SEEK_SET)
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return nil, InternalError(err.Error(), err)
+		return nil, status.InternalError(err.Error(), err)
 	}
 	return h.Sum(nil), nil
 }
@@ -258,7 +261,7 @@ func getFileHash(f io.ReadSeeker) ([]byte, Status) {
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
 func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
 	tag, err := findTagByName(tagName, tx)
-	if err == errTagNotFound {
+	if err == ErrTagNotFound {
 		tag, err = createTag(tagName, now, tx)
 	} else if err != nil {
 		return nil, err
@@ -297,7 +300,7 @@ func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
 
 	tag, err := schema.LookupTag(stmt, tagName)
 	if err == sql.ErrNoRows {
-		return nil, errTagNotFound
+		return nil, ErrTagNotFound
 	} else if err != nil {
 		return nil, err
 	}
@@ -320,10 +323,10 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	return nil
 }
 
-func checkValidUnicode(tagNames []string) Status {
+func checkValidUnicode(tagNames []string) status.Status {
 	for _, tn := range tagNames {
 		if !utf8.ValidString(tn) {
-			return InvalidArgument("Invalid tag name: "+tn, nil)
+			return status.InvalidArgument("Invalid tag name: "+tn, nil)
 		}
 	}
 	return nil
@@ -375,7 +378,7 @@ func removeEmptyTagNames(tagNames []string) []string {
 	return nonEmptyTagNames
 }
 
-func cleanTagNames(rawTagNames []string) ([]string, Status) {
+func cleanTagNames(rawTagNames []string) ([]string, status.Status) {
 	if err := checkValidUnicode(rawTagNames); err != nil {
 		return nil, err
 	}

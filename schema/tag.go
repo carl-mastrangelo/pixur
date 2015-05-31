@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TagTableName tableName = "`tags`"
+	TagTableName string = "`tags`"
 
 	TagColId   string = "`id`"
 	TagColData string = "`data`"
@@ -135,7 +135,7 @@ func LookupTag(stmt *sql.Stmt, args ...interface{}) (*Tag, error) {
 
 func TagPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
 	stmt = strings.Replace(stmt, "*", TagColData, 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+string(TagTableName), 1)
+	stmt = strings.Replace(stmt, "FROM_", "FROM "+TagTableName, 1)
 	args := make([]interface{}, 0, len(columns))
 	for _, col := range columns {
 		args = append(args, col)

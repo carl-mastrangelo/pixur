@@ -1,4 +1,4 @@
-package pixur
+package tasks
 
 import (
 	"bytes"
@@ -84,8 +84,8 @@ func TestWorkflowFileUpload(t *testing.T) {
 	imgData := ctnr.getRandomImageData()
 	imgDataSize := int64(imgData.Len())
 	task := &CreatePicTask{
-		db:       testDB,
-		pixPath:  pixPath,
+		DB:       testDB,
+		PixPath:  pixPath,
 		FileData: imgData,
 	}
 
@@ -146,8 +146,8 @@ func TestWorkflowAllTagsAdded(t *testing.T) {
 	}
 
 	task := &CreatePicTask{
-		db:       testDB,
-		pixPath:  pixPath,
+		DB:       testDB,
+		PixPath:  pixPath,
 		FileData: ctnr.getRandomImageData(),
 		TagNames: []string{"foo", "bar"},
 	}
@@ -185,8 +185,8 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 	quxTag := ctnr.createTag("qux")
 
 	task := &CreatePicTask{
-		db:       testDB,
-		pixPath:  pixPath,
+		DB:       testDB,
+		PixPath:  pixPath,
 		FileData: imgData,
 		TagNames: []string{"baz", "qux"},
 	}
@@ -218,8 +218,8 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	}
 	imgData := ctnr.getRandomImageData()
 	task := &CreatePicTask{
-		db:       testDB,
-		pixPath:  pixPath,
+		DB:       testDB,
+		PixPath:  pixPath,
 		FileData: imgData,
 		// All of these are the same
 		TagNames: []string{"foo", "foo", "  foo", "foo  "},
@@ -350,8 +350,8 @@ func BenchmarkCreation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := func() error {
 			task := &CreatePicTask{
-				db:       testDB,
-				pixPath:  pixPath,
+				DB:       testDB,
+				PixPath:  pixPath,
 				FileData: imgData,
 				TagNames: []string{"foo", "bar"},
 			}

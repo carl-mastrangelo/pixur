@@ -1,4 +1,4 @@
-package pixur
+package tasks
 
 import (
 	"os"
@@ -19,8 +19,8 @@ func TestDeleteWorkflow(test *testing.T) {
 	pt := c.CreatePicTag(p, t)
 
 	task := &DeletePicTask{
-		db:      testDB,
-		pixPath: c.pixPath,
+		DB:      testDB,
+		PixPath: c.pixPath,
 		PicId:   p.PicId,
 	}
 
@@ -60,8 +60,8 @@ func TestDelete_TagsDecremented(test *testing.T) {
 	c.CreatePicTag(p2, t)
 
 	task := &DeletePicTask{
-		db:      testDB,
-		pixPath: c.pixPath,
+		DB:      testDB,
+		PixPath: c.pixPath,
 		PicId:   p.PicId,
 	}
 

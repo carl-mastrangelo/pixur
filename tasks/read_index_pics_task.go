@@ -1,8 +1,9 @@
-package pixur
+package tasks
 
 import (
 	"database/sql"
 	"math"
+
 	"pixur.org/pixur/schema"
 )
 

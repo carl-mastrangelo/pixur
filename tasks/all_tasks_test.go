@@ -1,4 +1,4 @@
-package pixur
+package tasks
 
 import (
 	"bytes"
@@ -237,7 +237,7 @@ func init() {
 			return nil
 		})
 		testDB = db
-		if err := createTables(db); err != nil {
+		if err := schema.CreateTables(db); err != nil {
 			return err
 		}
 		return nil
