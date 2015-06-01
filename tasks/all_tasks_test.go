@@ -14,6 +14,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"pixur.org/pixur/schema"
@@ -189,7 +190,13 @@ func (c *container) getRandomImageData() *bytes.Reader {
 }
 
 func (c *container) writeImageData(p *schema.Pic) error {
-	f, err := os.Create(p.Path(c.mkPixPath()))
+	path := p.Path(c.mkPixPath())
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0770); err != nil {
+		c.t.Fatal(err)
+	}
+
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -201,6 +208,11 @@ func (c *container) writeImageData(p *schema.Pic) error {
 }
 
 func (c *container) writeThumbnailData(p *schema.Pic) error {
+	path := p.ThumbnailPath(c.mkPixPath())
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0770); err != nil {
+		c.t.Fatal(err)
+	}
 	f, err := os.Create(p.ThumbnailPath(c.mkPixPath()))
 	if err != nil {
 		return err

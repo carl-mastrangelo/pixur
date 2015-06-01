@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -215,6 +216,10 @@ func (t *CreatePicTask) beginTransaction() status.Status {
 }
 
 func (t *CreatePicTask) renameTempFile(p *schema.Pic) status.Status {
+	if err := os.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
+		return status.InternalError("Unable to prepare pic dir: "+err.Error(), err)
+	}
+
 	if err := os.Rename(t.tempFilename, p.Path(t.PixPath)); err != nil {
 		message := fmt.Sprintf("Unable to move uploaded file %s -> %s",
 			t.tempFilename, p.Path(t.PixPath))

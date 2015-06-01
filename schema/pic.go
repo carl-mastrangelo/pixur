@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,7 +73,9 @@ func (p *Pic) RelativeURL() string {
 }
 
 func (p *Pic) Path(pixPath string) string {
-	return filepath.Join(pixPath, fmt.Sprintf("%d.%s", p.PicId, p.Mime.Ext()))
+	return filepath.Join(
+		PicBaseDir(pixPath, p.PicId),
+		fmt.Sprintf("%d.%s", p.PicId, p.Mime.Ext()))
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
@@ -80,7 +83,22 @@ func (p *Pic) ThumbnailRelativeURL() string {
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
-	return filepath.Join(pixPath, fmt.Sprintf("%ds.jpg", p.PicId))
+	return filepath.Join(
+		PicBaseDir(pixPath, p.PicId),
+		fmt.Sprintf("%ds.jpg", p.PicId))
+}
+
+func PicBaseDir(pixPath string, id int64) string {
+	rawId := strconv.FormatInt(id, 10)
+	if len(rawId)%2 != 0 {
+		rawId = "0" + rawId
+	}
+	path := []string{pixPath}
+	for i := 0; i < len(rawId); i += 2 {
+		path = append(path, rawId[i:i+2])
+	}
+
+	return filepath.Join(path...)
 }
 
 func (p *Pic) fillFromRow(s scanTo) error {
