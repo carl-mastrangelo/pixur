@@ -29,6 +29,9 @@ message Pic {
   // pic is actually "deleted"  all tags are removed, image and thumbnail
   // data is removed, but the Pic object sticks around.
   DeletionStatus deletion_status = 12;
+  
+  // Only present on animated images (current GIFs).  
+  AnimationInfo animation_info = 13;
 
   message DeletionStatus {
     // Represents when this Pic was marked for deletion
@@ -45,6 +48,12 @@ message Pic {
     // TODO: maybe include a "see other" pic id in this message.  This would
     // handle deletion inferior versions of other pics.
   }
+}
+
+message AnimationInfo {
+  // How long this animated image in time.  There must be more than 2 frames 
+  // for this value to be set.
+  Duration duration = 1;
 }
 
 message Tag {
@@ -65,6 +74,13 @@ message PicTag {
 
 // This is the same as google.protobuf.Timestamp, until it becomes standard.
 message Timestamp {
+  int64 seconds = 1;
+
+  int32 nanos = 2;
+}
+
+// This is the same as google.protobuf.Duration, until it becomes standard.
+message Duration {
   int64 seconds = 1;
 
   int32 nanos = 2;

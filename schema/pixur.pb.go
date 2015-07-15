@@ -10,9 +10,11 @@ It is generated from these files:
 
 It has these top-level messages:
 	Pic
+	AnimationInfo
 	Tag
 	PicTag
 	Timestamp
+	Duration
 */
 package schema
 
@@ -64,6 +66,8 @@ type Pic struct {
 	// pic is actually "deleted"  all tags are removed, image and thumbnail
 	// data is removed, but the Pic object sticks around.
 	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
+	// Only present on animated images (current GIFs).
+	AnimationInfo *AnimationInfo `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }
@@ -87,6 +91,13 @@ func (m *Pic) GetModifiedTs() *Timestamp {
 func (m *Pic) GetDeletionStatus() *Pic_DeletionStatus {
 	if m != nil {
 		return m.DeletionStatus
+	}
+	return nil
+}
+
+func (m *Pic) GetAnimationInfo() *AnimationInfo {
+	if m != nil {
+		return m.AnimationInfo
 	}
 	return nil
 }
@@ -125,6 +136,23 @@ func (m *Pic_DeletionStatus) GetPendingDeletedTs() *Timestamp {
 func (m *Pic_DeletionStatus) GetActualDeletedTs() *Timestamp {
 	if m != nil {
 		return m.ActualDeletedTs
+	}
+	return nil
+}
+
+type AnimationInfo struct {
+	// How long this animated image in time.  There must be more than 2 frames
+	// for this value to be set.
+	Duration *Duration `protobuf:"bytes,1,opt,name=duration" json:"duration,omitempty"`
+}
+
+func (m *AnimationInfo) Reset()         { *m = AnimationInfo{} }
+func (m *AnimationInfo) String() string { return proto.CompactTextString(m) }
+func (*AnimationInfo) ProtoMessage()    {}
+
+func (m *AnimationInfo) GetDuration() *Duration {
+	if m != nil {
+		return m.Duration
 	}
 	return nil
 }
@@ -190,6 +218,16 @@ type Timestamp struct {
 func (m *Timestamp) Reset()         { *m = Timestamp{} }
 func (m *Timestamp) String() string { return proto.CompactTextString(m) }
 func (*Timestamp) ProtoMessage()    {}
+
+// This is the same as google.protobuf.Duration, until it becomes standard.
+type Duration struct {
+	Seconds int64 `protobuf:"varint,1,opt,name=seconds" json:"seconds,omitempty"`
+	Nanos   int32 `protobuf:"varint,2,opt,name=nanos" json:"nanos,omitempty"`
+}
+
+func (m *Duration) Reset()         { *m = Duration{} }
+func (m *Duration) String() string { return proto.CompactTextString(m) }
+func (*Duration) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)

@@ -12,7 +12,7 @@ import (
 
 	"github.com/nfnt/resize"
 
-	_ "image/gif"
+	"image/gif"
 	"image/jpeg"
 	_ "image/png"
 )
@@ -48,6 +48,30 @@ func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 		p.Mime, _ = schema.FromImageFormat(imgType)
 		p.Width = int64(im.Bounds().Dx())
 		p.Height = int64(im.Bounds().Dy())
+	}
+
+	if p.Mime == schema.Pic_GIF {
+		if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+			return nil, err
+		}
+
+		GIF, err := gif.DecodeAll(f)
+		if err != nil {
+			return nil, err
+		}
+		// Ignore gifs that either have only one frame
+		if len(GIF.Delay) > 1 {
+			hundredths := 0
+			for frameDelay := range GIF.Delay {
+				hundredths += frameDelay
+			}
+			p.AnimationInfo = &schema.AnimationInfo{
+				Duration: &schema.Duration{
+					Seconds: int64(hundredths / 100),
+					Nanos:   int32((hundredths % 100) * 10 * 1000 * 1000),
+				},
+			}
+		}
 	}
 
 	return im, nil
