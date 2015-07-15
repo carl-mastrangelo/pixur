@@ -33,6 +33,11 @@ var (
 )
 
 func (p *Pic) MarshalJSON() ([]byte, error) {
+	var animated bool
+	if p.GetAnimationInfo().GetDuration() != nil {
+		d := p.GetAnimationInfo().GetDuration()
+		animated = d.Seconds > 0 || d.Nanos > 0
+	}
 	return json.Marshal(struct {
 		Id                   int64  `json:"id"`
 		Width                int64  `json:"width"`
@@ -41,6 +46,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Type                 string `json:"type"`
 		RelativeURL          string `json:"relative_url"`
 		ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
+		Animated             bool   `json:animated`
 	}{
 		Id:                   int64(p.PicId),
 		Width:                p.Width,
@@ -49,6 +55,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Type:                 p.Mime.String(),
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
+		Animated:             animated,
 	})
 }
 
