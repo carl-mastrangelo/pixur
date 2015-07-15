@@ -36,14 +36,16 @@ PicsService.prototype.getSingle = function(picId) {
   return deferred.promise;
 }
 
-PicsService.prototype.deletePic = function(picId) {
+PicsService.prototype.deletePic = function(picId, reason) {
   var deferred = this.q_.defer();
   var httpConfig = {
     params: {
-      pic_id: picId
+      pic_id: picId,
+      reason: reason
+      // TODO: add pending deletion time
     }
   };
-  this.http_.get("/api/deletePic", httpConfig).then(
+  this.http_.get("/api/softDeletePic", httpConfig).then(
     function(res) {
       this.indexCache.removeAll();
       this.picCache.removeAll();

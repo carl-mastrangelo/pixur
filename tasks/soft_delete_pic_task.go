@@ -16,7 +16,7 @@ type SoftDeletePicTask struct {
 	DB *sql.DB
 
 	// input
-	PicId int64
+	PicID int64
 	// Represents when this Pic can be hard deleted.  Optional.
 	PendingDeletionTime *time.Time
 
@@ -31,7 +31,7 @@ func (task *SoftDeletePicTask) Run() error {
 	}
 	defer tx.Rollback()
 
-	p, err := lookupPicToDelete(task.PicId, tx)
+	p, err := lookupPicToDelete(task.PicID, tx)
 	if err != nil {
 		return err
 	}

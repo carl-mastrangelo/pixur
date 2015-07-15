@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"pixur.org/pixur"
+	"pixur.org/pixur/schema"
 
 	_ "github.com/go-sql-driver/mysql"
 )
