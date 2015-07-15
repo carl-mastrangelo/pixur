@@ -22,8 +22,14 @@ angular.module('pixur', [
             controller: "ViewerCtrl",
             controllerAs: "ctrl"
           })
+          .when("/exp/qv/:picId", {
+            templateUrl: "static/quickviewer.html",
+            controller: "QuickViewerCtrl",
+            controllerAs: "ctrl"
+          })
       ;
     })
     .controller("IndexCtrl", IndexCtrl)
     .controller("ViewerCtrl", ViewerCtrl)
+    .controller("QuickViewerCtrl", QuickViewerCtrl)
     .service("picsService", PicsService);

@@ -1,0 +1,24 @@
+<div class="viewer" ng-keypress="ctrl.keydown($event)" tabindex="0">
+
+  <div ng-if="ctrl.isImage">
+    <a ng-href="{{ctrl.pic.relative_url}}" target="_self"><img 
+      ng-src="{{ctrl.pic.relative_url}}" 
+      style="width: auto; height: auto; max-width: 100%"
+      
+      /></a>
+  </div>
+  <!-- TODO make this work on mobile -->
+  <div ng-if="ctrl.isVideo">
+    <video 
+        style="width: auto; height: auto; max-width: 100%" 
+        ng-src="{{ctrl.pic.relative_url}}" 
+        loop
+        muted
+        autoplay
+        controls>
+      Your browser does not support the video tag.
+    </video> 
+  </div>
+  
+  hey
+</div>
