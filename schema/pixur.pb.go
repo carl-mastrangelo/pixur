@@ -10,6 +10,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	Pic
+	PicIdentifier
 	AnimationInfo
 	Tag
 	PicTag
@@ -50,6 +51,26 @@ var Pic_Mime_value = map[string]int32{
 
 func (x Pic_Mime) String() string {
 	return proto.EnumName(Pic_Mime_name, int32(x))
+}
+
+type PicIdentifier_Type int32
+
+const (
+	PicIdentifier_UNKNOWN PicIdentifier_Type = 0
+	PicIdentifier_SHA256  PicIdentifier_Type = 1
+)
+
+var PicIdentifier_Type_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "SHA256",
+}
+var PicIdentifier_Type_value = map[string]int32{
+	"UNKNOWN": 0,
+	"SHA256":  1,
+}
+
+func (x PicIdentifier_Type) String() string {
+	return proto.EnumName(PicIdentifier_Type_name, int32(x))
 }
 
 type Pic struct {
@@ -139,6 +160,16 @@ func (m *Pic_DeletionStatus) GetActualDeletedTs() *Timestamp {
 	}
 	return nil
 }
+
+type PicIdentifier struct {
+	PicId int64              `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	Type  PicIdentifier_Type `protobuf:"varint,2,opt,name=type,enum=pixur.PicIdentifier_Type" json:"type,omitempty"`
+	Value []byte             `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *PicIdentifier) Reset()         { *m = PicIdentifier{} }
+func (m *PicIdentifier) String() string { return proto.CompactTextString(m) }
+func (*PicIdentifier) ProtoMessage()    {}
 
 type AnimationInfo struct {
 	// How long this animated image in time.  There must be more than 2 frames
@@ -231,4 +262,5 @@ func (*Duration) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
+	proto.RegisterEnum("pixur.PicIdentifier_Type", PicIdentifier_Type_name, PicIdentifier_Type_value)
 }

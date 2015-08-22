@@ -50,6 +50,18 @@ message Pic {
   }
 }
 
+message PicIdentifier {
+  int64 pic_id = 1;
+  enum Type {
+    UNKNOWN = 0;
+    SHA256 = 1;
+  }
+
+  Type type = 2;
+
+  bytes value = 3;
+}
+
 message AnimationInfo {
   // How long this animated image in time.  There must be more than 2 frames 
   // for this value to be set.
