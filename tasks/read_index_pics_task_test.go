@@ -47,15 +47,6 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	defer ctnr.CleanUp()
 
 	p1 := ctnr.CreatePic()
-	p2 := ctnr.CreatePic()
-	// A soft deletion
-	p2.DeletionStatus = &schema.Pic_DeletionStatus{
-		MarkedDeletedTs: schema.FromTime(time.Now()),
-	}
-	if err := p2.Update(testDB); err != nil {
-		t.Fatal(err)
-	}
-
 	p3 := ctnr.CreatePic()
 	// A hard deletion
 	p3.DeletionStatus = &schema.Pic_DeletionStatus{
@@ -76,7 +67,7 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 		if proto.Equal(p1, actual) {
 			foundPic = true
 		}
-		if proto.Equal(p2, actual) || proto.Equal(p3, actual) {
+		if proto.Equal(p3, actual) {
 			t.Fatalf("Found a hidden pic")
 		}
 	}

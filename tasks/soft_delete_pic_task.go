@@ -39,7 +39,7 @@ func (task *SoftDeletePicTask) Run() error {
 	now := time.Now()
 
 	if p.DeletionStatus != nil {
-		if p.DeletionStatus.ActualDeletedTs != nil {
+		if p.HardDeleted() {
 			return status.InvalidArgument("Pic is already Hard Deleted", nil)
 		}
 	} else {

@@ -176,7 +176,7 @@ func (p *Pic) Update(prep preparer) error {
 }
 
 func (p *Pic) isHidden() bool {
-	return p.SoftDeleted() || p.HardDeleted()
+	return p.HardDeleted()
 }
 
 func (p *Pic) SoftDeleted() bool {
