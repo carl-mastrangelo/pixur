@@ -113,6 +113,7 @@ func (t *CreatePicTask) Run() error {
 	if err != nil {
 		return err
 	}
+	// TODO: remove this
 	p.Sha256Hash = digest
 
 	img, err := image.FillImageConfig(wf, p)
@@ -125,6 +126,22 @@ func (t *CreatePicTask) Run() error {
 	thumbnail := image.MakeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
+	}
+
+	// TODO: Move this into its own function
+	// TODO: See if this can be a LOCK IN SHARE MODE
+	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
+		t.tx, schema.PicIdentColType, schema.PicIdentColValue)
+	if err != nil {
+		return err
+	}
+
+	sha256Idents, err := schema.FindPicIdentifiers(stmt, schema.PicIdentifier_SHA256, digest)
+	if err != nil {
+		return err
+	}
+	if len(sha256Idents) > 0 {
+		return status.AlreadyExists("Picture already uploaded", nil)
 	}
 
 	if err := p.Insert(t.tx); err != nil {
@@ -150,6 +167,16 @@ func (t *CreatePicTask) Run() error {
 	}
 	// must happen after pic is created, because it depends on pic id
 	if err := t.addTagsForPic(p, tags); err != nil {
+		return err
+	}
+
+	// This also must happen after the pic is inserted, to use PicId
+	sha256Ident := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: digest,
+	}
+	if err := sha256Ident.Insert(t.tx); err != nil {
 		return err
 	}
 

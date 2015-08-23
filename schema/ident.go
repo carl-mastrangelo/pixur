@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	PicIdentTableName string = "`pics`"
-	PicIdentColPicId  string = "`pic_id`"
-	PicIdentColType   string = "`type`"
-	PicIdentColValue  string = "`value`"
-	PicIdentColData   string = "`data`"
+	PicIdentTableName string = "`picidents`"
+
+	PicIdentColPicId string = "`pic_id`"
+	PicIdentColType  string = "`type`"
+	PicIdentColValue string = "`value`"
+	PicIdentColData  string = "`data`"
 )
 
 var (
