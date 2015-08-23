@@ -33,6 +33,7 @@ func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
 	}
+	defer f.Seek(0, os.SEEK_SET)
 
 	im, imgType, err := img.Decode(f)
 	if err == img.ErrFormat {

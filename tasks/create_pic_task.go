@@ -2,6 +2,8 @@ package tasks
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
@@ -109,13 +111,6 @@ func (t *CreatePicTask) Run() error {
 		return status.InvalidArgument("No file uploaded", nil)
 	}
 
-	digest, err := getFileHash(wf)
-	if err != nil {
-		return err
-	}
-	// TODO: remove this
-	p.Sha256Hash = digest
-
 	img, err := image.FillImageConfig(wf, p)
 	if err != nil {
 		if err, ok := err.(*image.BadWebmFormatErr); ok {
@@ -128,6 +123,13 @@ func (t *CreatePicTask) Run() error {
 		return err
 	}
 
+	identities, err := generatePicIdentities(wf)
+	if err != nil {
+		return err
+	}
+	// TODO: remove this
+	p.Sha256Hash = identities[schema.PicIdentifier_SHA256]
+
 	// TODO: Move this into its own function
 	// TODO: See if this can be a LOCK IN SHARE MODE
 	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
@@ -136,7 +138,8 @@ func (t *CreatePicTask) Run() error {
 		return err
 	}
 
-	sha256Idents, err := schema.FindPicIdentifiers(stmt, schema.PicIdentifier_SHA256, digest)
+	sha256Idents, err := schema.FindPicIdentifiers(
+		stmt, schema.PicIdentifier_SHA256, identities[schema.PicIdentifier_SHA256])
 	if err != nil {
 		return err
 	}
@@ -171,13 +174,15 @@ func (t *CreatePicTask) Run() error {
 	}
 
 	// This also must happen after the pic is inserted, to use PicId
-	sha256Ident := &schema.PicIdentifier{
-		PicId: p.PicId,
-		Type:  schema.PicIdentifier_SHA256,
-		Value: digest,
-	}
-	if err := sha256Ident.Insert(t.tx); err != nil {
-		return err
+	for typ, val := range identities {
+		ident := &schema.PicIdentifier{
+			PicId: p.PicId,
+			Type:  typ,
+			Value: val,
+		}
+		if err := ident.Insert(t.tx); err != nil {
+			return err
+		}
 	}
 
 	if err := t.tx.Commit(); err != nil {
@@ -275,18 +280,6 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	}
 
 	return allTags, nil
-}
-
-func getFileHash(f io.ReadSeeker) ([]byte, status.Status) {
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return nil, status.InternalError(err.Error(), err)
-	}
-	defer f.Seek(0, os.SEEK_SET)
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return nil, status.InternalError(err.Error(), err)
-	}
-	return h.Sum(nil), nil
 }
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
@@ -421,4 +414,25 @@ func cleanTagNames(rawTagNames []string) ([]string, status.Status) {
 	uniqueTagNames := removeDuplicateTagNames(nonEmptyTagNames)
 
 	return uniqueTagNames, nil
+}
+
+func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byte, error) {
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		return nil, status.InternalError(err.Error(), err)
+	}
+	defer f.Seek(0, os.SEEK_SET)
+	h1 := sha256.New()
+	h2 := sha1.New()
+	h3 := md5.New()
+
+	w := io.MultiWriter(h1, h2, h3)
+
+	if _, err := io.Copy(w, f); err != nil {
+		return nil, status.InternalError(err.Error(), err)
+	}
+	return map[schema.PicIdentifier_Type][]byte{
+		schema.PicIdentifier_SHA256: h1.Sum(nil),
+		schema.PicIdentifier_SHA1:   h2.Sum(nil),
+		schema.PicIdentifier_MD5:    h3.Sum(nil),
+	}, nil
 }
