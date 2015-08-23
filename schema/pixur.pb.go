@@ -58,15 +58,21 @@ type PicIdentifier_Type int32
 const (
 	PicIdentifier_UNKNOWN PicIdentifier_Type = 0
 	PicIdentifier_SHA256  PicIdentifier_Type = 1
+	PicIdentifier_SHA1    PicIdentifier_Type = 2
+	PicIdentifier_MD5     PicIdentifier_Type = 3
 )
 
 var PicIdentifier_Type_name = map[int32]string{
 	0: "UNKNOWN",
 	1: "SHA256",
+	2: "SHA1",
+	3: "MD5",
 }
 var PicIdentifier_Type_value = map[string]int32{
 	"UNKNOWN": 0,
 	"SHA256":  1,
+	"SHA1":    2,
+	"MD5":     3,
 }
 
 func (x PicIdentifier_Type) String() string {
