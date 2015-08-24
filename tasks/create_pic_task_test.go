@@ -2,8 +2,13 @@ package tasks
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"hash"
+	"io"
 	"io/ioutil"
 	"os"
 	"pixur.org/pixur/schema"
@@ -154,6 +159,67 @@ func TestDuplicateImageIgnored(t *testing.T) {
 			t.Fatalf("Expected Already exists: %s", st)
 		}
 	}
+}
+
+func TestAllIdentitiesAdded(t *testing.T) {
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
+	task := &CreatePicTask{
+		DB:       testDB,
+		PixPath:  pixPath,
+		FileData: imgData,
+	}
+
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
+		t.Fatalf("%s %t", err, err)
+	}
+
+	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+		testDB, schema.PicIdentColPicId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	idents, err := schema.FindPicIdentifiers(stmt, task.CreatedPic.PicId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	groupedIdents := groupIdentifierByType(idents)
+	if len(groupedIdents) != 3 {
+		t.Fatalf("Unexpected Idents: %s", groupedIdents)
+	}
+	if !bytes.Equal(mustHash(sha256.New(), imgData), groupedIdents[schema.PicIdentifier_SHA256]) {
+		t.Fatalf("sha256 mismatch: %s", groupedIdents[schema.PicIdentifier_SHA256])
+	}
+	if !bytes.Equal(mustHash(sha1.New(), imgData), groupedIdents[schema.PicIdentifier_SHA1]) {
+		t.Fatalf("sha1 mismatch: %s", groupedIdents[schema.PicIdentifier_SHA1])
+	}
+	if !bytes.Equal(mustHash(md5.New(), imgData), groupedIdents[schema.PicIdentifier_MD5]) {
+		t.Fatalf("md5 mismatch: %s", groupedIdents[schema.PicIdentifier_MD5])
+	}
+}
+
+func groupIdentifierByType(idents []*schema.PicIdentifier) map[schema.PicIdentifier_Type][]byte {
+	grouped := map[schema.PicIdentifier_Type][]byte{}
+	for _, id := range idents {
+		grouped[id.Type] = id.Value
+	}
+	return grouped
+}
+
+func mustHash(h hash.Hash, r io.ReadSeeker) []byte {
+	if _, err := r.Seek(0, os.SEEK_SET); err != nil {
+		panic(err.Error())
+	}
+	if _, err := io.Copy(h, r); err != nil {
+		panic(err.Error())
+	}
+	return h.Sum(nil)
 }
 
 func findPicTagsByPicId(picId int64, db *sql.DB) ([]*schema.PicTag, error) {
