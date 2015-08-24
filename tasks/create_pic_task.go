@@ -198,6 +198,10 @@ func (t *CreatePicTask) Run() error {
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
 func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) status.Status {
+	// If the task is reset, this will need to seek to the beginning
+	if _, err := t.FileData.Seek(0, os.SEEK_SET); err != nil {
+		return status.InternalError(err.Error(), err)
+	}
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
 		return status.InternalError("Unable to move uploaded file", err)

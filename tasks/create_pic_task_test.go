@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"testing"
 	"unicode"
 
@@ -120,6 +121,38 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 	if !proto.Equal(&actual, &expected) {
 		t.Fatalf("%s != %s", actual, expected)
+	}
+}
+
+func TestDuplicateImageIgnored(t *testing.T) {
+	ctnr := &container{
+		t:  t,
+		db: testDB,
+	}
+	imgData := ctnr.getRandomImageData()
+	task := &CreatePicTask{
+		DB:       testDB,
+		PixPath:  pixPath,
+		FileData: imgData,
+	}
+
+	runner := new(TaskRunner)
+	if err := runner.Run(task); err != nil {
+		t.Fatalf("%s %t", err, err)
+	}
+
+	task.ResetForRetry()
+	err := runner.Run(task)
+	if err == nil {
+		t.Fatal("Task should have failed")
+	}
+
+	if st, ok := err.(status.Status); !ok {
+		t.Fatalf("Expected a Status error: %t", err)
+	} else {
+		if st.GetCode() != status.Code_ALREADY_EXISTS {
+			t.Fatalf("Expected Already exists: %s", st)
+		}
 	}
 }
 
