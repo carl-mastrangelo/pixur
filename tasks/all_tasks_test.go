@@ -2,6 +2,8 @@ package tasks
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
@@ -25,23 +27,56 @@ type container struct {
 	t  *testing.T
 	db *sql.DB
 
-	pixPath           string
-	createdPicIds     []int64
-	createdTagIds     []int64
-	createdPicTagKeys []schema.PicTagKey
+	pixPath               string
+	createdPicIds         []int64
+	createdTagIds         []int64
+	createdPicIdentifiers []*schema.PicIdentifier
+	createdPicTagKeys     []schema.PicTagKey
 }
 
 func (c *container) CreatePic() *schema.Pic {
-	h := sha256.New()
-	if err := binary.Write(h, binary.LittleEndian, rand.Int63()); err != nil {
+	h1 := sha256.New()
+	h2 := sha1.New()
+	h3 := md5.New()
+	if err := binary.Write(io.MultiWriter(h1, h2, h3), binary.LittleEndian, rand.Int63()); err != nil {
 		c.t.Fatal(err)
 	}
-	p := &schema.Pic{
-		Sha256Hash: h.Sum(nil),
-	}
+	p := &schema.Pic{}
+
 	if err := p.Insert(c.db); err != nil {
 		c.t.Fatal(err, p)
 	}
+
+	pi1 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: h1.Sum(nil),
+	}
+	if err := pi1.Insert(c.db); err != nil {
+		c.t.Fatal(err, p)
+	}
+	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi1)
+
+	pi2 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_SHA1,
+		Value: h2.Sum(nil),
+	}
+	if err := pi2.Insert(c.db); err != nil {
+		c.t.Fatal(err, p)
+	}
+	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi2)
+
+	pi3 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_MD5,
+		Value: h3.Sum(nil),
+	}
+	if err := pi3.Insert(c.db); err != nil {
+		c.t.Fatal(err, p)
+	}
+	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi3)
+
 	c.createdPicIds = append(c.createdPicIds, p.PicId)
 	if err := c.writeImageData(p); err != nil {
 		c.t.Fatal(err)
@@ -141,6 +176,13 @@ func (c *container) CleanUp() {
 
 	for _, picId := range c.createdPicIds {
 		if err := (&schema.Pic{PicId: picId}).Delete(c.db); err != nil {
+			c.t.Error(err)
+		}
+	}
+	c.createdPicIds = nil
+
+	for _, picIdent := range c.createdPicIdentifiers {
+		if err := picIdent.Delete(c.db); err != nil {
 			c.t.Error(err)
 		}
 	}

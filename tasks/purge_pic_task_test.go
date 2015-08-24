@@ -3,6 +3,8 @@ package tasks
 import (
 	"os"
 	"testing"
+
+	"pixur.org/pixur/schema"
 )
 
 func TestPurgeWorkflow(test *testing.T) {
@@ -17,6 +19,19 @@ func TestPurgeWorkflow(test *testing.T) {
 	p2 := c.CreatePic()
 	t := c.CreateTag()
 	pt := c.CreatePicTag(p, t)
+
+	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+		testDB, schema.PicIdentColPicId)
+	if err != nil {
+		test.Fatal(err)
+	}
+	idents, err := schema.FindPicIdentifiers(stmt, p.PicId)
+	if err != nil {
+		test.Fatal(err)
+	}
+	if len(idents) != 3 {
+		test.Fatalf("Wrong number of identifiers: %s", idents)
+	}
 
 	task := &PurgePicTask{
 		DB:      testDB,
@@ -40,6 +55,14 @@ func TestPurgeWorkflow(test *testing.T) {
 	}
 	if c.RefreshPicTag(&pt); pt != nil {
 		test.Fatal("Expected PicTag to be deleted", pt)
+	}
+
+	idents, err = schema.FindPicIdentifiers(stmt, task.PicId)
+	if err != nil {
+		test.Fatal(err)
+	}
+	if len(idents) != 0 {
+		test.Fatalf("Wrong number of identifiers: %s", idents)
 	}
 
 	if c.RefreshPic(&p2); p2 == nil {
