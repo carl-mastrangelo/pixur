@@ -85,7 +85,6 @@ type Pic struct {
 	Mime       Pic_Mime   `protobuf:"varint,3,opt,name=mime,enum=pixur.Pic_Mime" json:"mime,omitempty"`
 	Width      int64      `protobuf:"varint,4,opt,name=width" json:"width,omitempty"`
 	Height     int64      `protobuf:"varint,5,opt,name=height" json:"height,omitempty"`
-	Sha256Hash []byte     `protobuf:"bytes,9,opt,name=sha256_hash,proto3" json:"sha256_hash,omitempty"`
 	CreatedTs  *Timestamp `protobuf:"bytes,10,opt,name=created_ts" json:"created_ts,omitempty"`
 	ModifiedTs *Timestamp `protobuf:"bytes,11,opt,name=modified_ts" json:"modified_ts,omitempty"`
 	// If present, the pic is on the path to removal.  When the pic is marked

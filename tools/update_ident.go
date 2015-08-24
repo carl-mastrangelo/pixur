@@ -59,7 +59,6 @@ func fixIdents(p *schema.Pic, db *sql.DB) error {
 	}
 	defer tx.Rollback()
 
-	p.Sha256Hash = nil
 	if err := p.Update(tx); err != nil {
 		return err
 	}

@@ -19,7 +19,7 @@ message Pic {
   Mime mime = 3;
   int64 width = 4;
   int64 height = 5;
-  bytes sha256_hash = 9;
+  // TAG 9 unused
 
   Timestamp created_ts = 10;
   Timestamp modified_ts = 11;
