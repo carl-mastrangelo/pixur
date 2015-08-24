@@ -10,10 +10,8 @@ var (
 			"  " + PicColId + " bigint(11) NOT NULL AUTO_INCREMENT," +
 			"  " + PicColData + " blob NOT NULL," +
 			"  " + PicColCreatedTime + " bigint(20) NOT NULL," +
-			"  " + PicColSha256Hash + " tinyblob NOT NULL," +
 			"  " + PicColHidden + " bool NOT NULL," +
 			"  PRIMARY KEY (" + PicColId + ")," +
-			"  UNIQUE KEY (" + PicColSha256Hash + "(255))," +
 			"  KEY " + PicColCreatedTime + " (" + PicColCreatedTime + ")," +
 			"  KEY " + PicColHidden + " (" + PicColHidden + ")" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",

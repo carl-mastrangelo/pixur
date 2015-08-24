@@ -122,7 +122,6 @@ func TestWorkflowFileUpload(t *testing.T) {
 	}
 	expected.SetCreatedTime(actual.GetCreatedTime())
 	expected.SetModifiedTime(actual.GetModifiedTime())
-	actual.Sha256Hash = nil
 
 	if !proto.Equal(&actual, &expected) {
 		t.Fatalf("%s != %s", actual, expected)

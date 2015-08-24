@@ -127,8 +127,6 @@ func (t *CreatePicTask) Run() error {
 	if err != nil {
 		return err
 	}
-	// TODO: remove this
-	p.Sha256Hash = identities[schema.PicIdentifier_SHA256]
 
 	// TODO: Move this into its own function
 	// TODO: See if this can be a LOCK IN SHARE MODE

@@ -18,7 +18,6 @@ const (
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
 	PicColCreatedTime string = "`created_time`"
-	PicColSha256Hash  string = "`sha256_hash`"
 	PicColHidden      string = "`hidden`"
 )
 
@@ -27,7 +26,6 @@ var (
 		PicColId,
 		PicColData,
 		PicColCreatedTime,
-		PicColSha256Hash,
 		PicColHidden}
 	picColFmt = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
@@ -133,7 +131,6 @@ func (p *Pic) Insert(prep preparer) error {
 		p.PicId,
 		data,
 		toMillis(p.GetCreatedTime()),
-		p.Sha256Hash,
 		p.isHidden())
 	if err != nil {
 		return err
@@ -167,7 +164,6 @@ func (p *Pic) Update(prep preparer) error {
 		p.PicId,
 		data,
 		toMillis(p.GetCreatedTime()),
-		p.Sha256Hash,
 		p.isHidden(),
 		p.PicId); err != nil {
 		return err
