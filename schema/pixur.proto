@@ -29,7 +29,7 @@ message Pic {
   // pic is actually "deleted" only the pic object is removed.
   DeletionStatus deletion_status = 12;
   
-  // Only present on animated images (current GIFs).  
+  // Only present on animated images.
   AnimationInfo animation_info = 13;
 
   message DeletionStatus {
@@ -78,7 +78,7 @@ message PicIdentifier {
 }
 
 message AnimationInfo {
-  // How long this animated image in time.  There must be more than 2 frames 
+  // How long this animated image in time.  There must be more than 1 frame
   // for this value to be set.
   Duration duration = 1;
 }

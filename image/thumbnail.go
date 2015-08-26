@@ -5,8 +5,11 @@ import (
 	"fmt"
 	img "image"
 	"image/draw"
+	"log"
+	"math"
 	"os"
 	"os/exec"
+	"time"
 
 	"pixur.org/pixur/schema"
 
@@ -157,7 +160,27 @@ func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error
 		break
 	}
 
+	if dur, success := convertFloatDuration(config.Format.Duration); success {
+		if dur >= time.Nanosecond {
+			p.AnimationInfo = &schema.AnimationInfo{
+				Duration: schema.FromDuration(dur),
+			}
+		}
+	} else {
+		log.Println("Invalid duration from ffmpeg: ", config.Format.Duration)
+	}
+
 	return getFirstWebmFrame(tempFile.Name())
+}
+
+func convertFloatDuration(seconds float64) (time.Duration, bool) {
+	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds > math.MaxInt64 {
+		return time.Duration(0), false
+	}
+	if seconds < 0 {
+		return time.Duration(0), false
+	}
+	return time.Duration(seconds * 1e9), true
 }
 
 func getWebmConfig(filepath string) (*ffprobeConfig, error) {

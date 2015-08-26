@@ -117,7 +117,7 @@ type Pic struct {
 	// for deletion, it is delisted from normal indexing operations.  When the
 	// pic is actually "deleted" only the pic object is removed.
 	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
-	// Only present on animated images (current GIFs).
+	// Only present on animated images.
 	AnimationInfo *AnimationInfo `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
 }
 
@@ -207,7 +207,7 @@ func (m *PicIdentifier) String() string { return proto.CompactTextString(m) }
 func (*PicIdentifier) ProtoMessage()    {}
 
 type AnimationInfo struct {
-	// How long this animated image in time.  There must be more than 2 frames
+	// How long this animated image in time.  There must be more than 1 frame
 	// for this value to be set.
 	Duration *Duration `protobuf:"bytes,1,opt,name=duration" json:"duration,omitempty"`
 }

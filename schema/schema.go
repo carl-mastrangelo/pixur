@@ -34,3 +34,14 @@ func FromTime(ft time.Time) *Timestamp {
 		Nanos:   int32(ft.Nanosecond()),
 	}
 }
+
+func ToDuration(td *Duration) time.Duration {
+	return time.Duration(td.Seconds*1e9 + int64(td.Nanos))
+}
+
+func FromDuration(fd time.Duration) *Duration {
+	return &Duration{
+		Seconds: int64(fd / time.Second),
+		Nanos:   int32(fd % time.Second),
+	}
+}
