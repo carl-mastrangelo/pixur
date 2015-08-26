@@ -331,6 +331,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer tx.Rollback()
 	fooTag, err := findTagByName("foo", tx)
 	if err != nil {
 		t.Fatal(err)
@@ -443,22 +444,17 @@ func BenchmarkCreation(b *testing.B) {
 	ctnr := &container{
 		db: testDB,
 	}
-	imgData := ctnr.getRandomImageData()
 
 	for i := 0; i < b.N; i++ {
-		if err := func() error {
-			task := &CreatePicTask{
-				DB:       testDB,
-				PixPath:  pixPath,
-				FileData: imgData,
-				TagNames: []string{"foo", "bar"},
-			}
-			runner := new(TaskRunner)
-			if err := runner.Run(task); err != nil {
-				return err
-			}
-			return nil
-		}(); err != nil {
+		imgData := ctnr.getRandomImageData()
+		task := &CreatePicTask{
+			DB:       testDB,
+			PixPath:  pixPath,
+			FileData: imgData,
+			TagNames: []string{"foo", "bar"},
+		}
+		runner := new(TaskRunner)
+		if err := runner.Run(task); err != nil {
 			b.Fatal(err)
 		}
 	}
