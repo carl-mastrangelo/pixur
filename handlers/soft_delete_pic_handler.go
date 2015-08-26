@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
 )
 
@@ -31,7 +33,17 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	reason := r.FormValue("reason")
+	details := r.FormValue("details")
+	reason := schema.Pic_DeletionStatus_NONE
+	if rawReason := r.FormValue("reason"); rawReason != "" {
+		rawReason := strings.ToUpper(rawReason)
+		if newReason, ok := schema.Pic_DeletionStatus_Reason_value[rawReason]; ok {
+			reason = schema.Pic_DeletionStatus_Reason(newReason)
+		} else {
+			http.Error(w, "Could not parse reason "+rawReason, http.StatusBadRequest)
+			return
+		}
+	}
 
 	pendingDeletionTime := time.Now().AddDate(0, 0, 7) // 7 days to live
 	if rawTime := r.FormValue("pending_deletion_time"); rawTime != "" {
@@ -44,6 +56,7 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	var task = &tasks.SoftDeletePicTask{
 		DB:                  h.DB,
 		PicID:               requestedPicId,
+		Details:             details,
 		Reason:              reason,
 		PendingDeletionTime: &pendingDeletionTime,
 	}
