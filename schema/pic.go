@@ -44,7 +44,8 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Type                 string `json:"type"`
 		RelativeURL          string `json:"relative_url"`
 		ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
-		Animated             bool   `json:animated`
+		Animated             bool   `json:"animated"`
+		PendingDeletion      bool   `json:pending_deletion"`
 	}{
 		Id:                   int64(p.PicId),
 		Width:                p.Width,
@@ -54,6 +55,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
 		Animated:             animated,
+		PendingDeletion:      p.SoftDeleted(),
 	})
 }
 
