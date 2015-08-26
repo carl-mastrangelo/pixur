@@ -19,9 +19,11 @@ func TestSoftDeleteWorkflow(test *testing.T) {
 	p := c.CreatePic()
 
 	task := &SoftDeletePicTask{
-		DB:     testDB,
-		PicID:  p.PicId,
-		Reason: "LowQuality",
+		DB:        testDB,
+		PicID:     p.PicId,
+		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
+		Details:   "LowQuality",
+		Temporary: true,
 	}
 
 	runner := new(TaskRunner)
@@ -42,7 +44,15 @@ func TestSoftDeleteWorkflow(test *testing.T) {
 		test.Fatal("Expected pic not to be hard deleted", p)
 	}
 
-	if p.DeletionStatus.Reason != "LowQuality" {
+	if p.DeletionStatus.Details != "LowQuality" {
+		test.Fatal("Details not preserved", p)
+	}
+
+	if !p.DeletionStatus.Temporary {
+		test.Fatal("Deletion should be temporary", p)
+	}
+
+	if p.DeletionStatus.Reason != schema.Pic_DeletionStatus_RULE_VIOLATION {
 		test.Fatal("Reason not preserved", p)
 	}
 
@@ -74,6 +84,7 @@ func TestSoftDelete_OverwritePendingTimestamp(test *testing.T) {
 		DB:                  testDB,
 		PicID:               p.PicId,
 		PendingDeletionTime: &now,
+		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
 
 	runner := new(TaskRunner)
@@ -114,6 +125,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
 		DB:                  testDB,
 		PicID:               p.PicId,
 		PendingDeletionTime: &now,
+		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
 
 	runner := new(TaskRunner)

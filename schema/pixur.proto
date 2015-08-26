@@ -26,8 +26,7 @@ message Pic {
 
   // If present, the pic is on the path to removal.  When the pic is marked
   // for deletion, it is delisted from normal indexing operations.  When the
-  // pic is actually "deleted"  all tags are removed, image and thumbnail
-  // data is removed, but the Pic object sticks around.
+  // pic is actually "deleted" only the pic object is removed.
   DeletionStatus deletion_status = 12;
   
   // Only present on animated images (current GIFs).  
@@ -43,7 +42,21 @@ message Pic {
     // hard deleted, a.k.a purging)
     Timestamp actual_deleted_ts = 3;
     // Gives an explanation for why this pic was removed.
-    string reason = 4;
+    string details = 4;
+    
+    enum Reason {
+      // The reason is not know, due to limitations of proto
+      UNKNOWN = 0;
+      // No specific reason.  This is a catch-all reason.
+      NONE = 1;
+      // The pic is in violation of the rules.  
+      RULE_VIOLATION = 2;
+    }
+    // The reason the pic was removed.
+    Reason reason = 5;
+    // Determines if this pic can be undeleted if re uploaded.  Currently the
+    // only reason is due to disk space concerns.
+    bool temporary = 6;
 
     // TODO: maybe include a "see other" pic id in this message.  This would
     // handle deletion inferior versions of other pics.

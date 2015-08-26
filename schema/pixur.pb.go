@@ -53,6 +53,32 @@ func (x Pic_Mime) String() string {
 	return proto.EnumName(Pic_Mime_name, int32(x))
 }
 
+type Pic_DeletionStatus_Reason int32
+
+const (
+	// The reason is not know, due to limitations of proto
+	Pic_DeletionStatus_UNKNOWN Pic_DeletionStatus_Reason = 0
+	// No specific reason.  This is a catch-all reason.
+	Pic_DeletionStatus_NONE Pic_DeletionStatus_Reason = 1
+	// The pic is in violation of the rules.
+	Pic_DeletionStatus_RULE_VIOLATION Pic_DeletionStatus_Reason = 2
+)
+
+var Pic_DeletionStatus_Reason_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "NONE",
+	2: "RULE_VIOLATION",
+}
+var Pic_DeletionStatus_Reason_value = map[string]int32{
+	"UNKNOWN":        0,
+	"NONE":           1,
+	"RULE_VIOLATION": 2,
+}
+
+func (x Pic_DeletionStatus_Reason) String() string {
+	return proto.EnumName(Pic_DeletionStatus_Reason_name, int32(x))
+}
+
 type PicIdentifier_Type int32
 
 const (
@@ -89,8 +115,7 @@ type Pic struct {
 	ModifiedTs *Timestamp `protobuf:"bytes,11,opt,name=modified_ts" json:"modified_ts,omitempty"`
 	// If present, the pic is on the path to removal.  When the pic is marked
 	// for deletion, it is delisted from normal indexing operations.  When the
-	// pic is actually "deleted"  all tags are removed, image and thumbnail
-	// data is removed, but the Pic object sticks around.
+	// pic is actually "deleted" only the pic object is removed.
 	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
 	// Only present on animated images (current GIFs).
 	AnimationInfo *AnimationInfo `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
@@ -138,7 +163,12 @@ type Pic_DeletionStatus struct {
 	// hard deleted, a.k.a purging)
 	ActualDeletedTs *Timestamp `protobuf:"bytes,3,opt,name=actual_deleted_ts" json:"actual_deleted_ts,omitempty"`
 	// Gives an explanation for why this pic was removed.
-	Reason string `protobuf:"bytes,4,opt,name=reason" json:"reason,omitempty"`
+	Details string `protobuf:"bytes,4,opt,name=details" json:"details,omitempty"`
+	// The reason the pic was removed.
+	Reason Pic_DeletionStatus_Reason `protobuf:"varint,5,opt,name=reason,enum=pixur.Pic_DeletionStatus_Reason" json:"reason,omitempty"`
+	// Determines if this pic can be undeleted if re uploaded.  Currently the
+	// only reason is due to disk space concerns.
+	Temporary bool `protobuf:"varint,6,opt,name=temporary" json:"temporary,omitempty"`
 }
 
 func (m *Pic_DeletionStatus) Reset()         { *m = Pic_DeletionStatus{} }
@@ -267,5 +297,6 @@ func (*Duration) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
+	proto.RegisterEnum("pixur.Pic_DeletionStatus_Reason", Pic_DeletionStatus_Reason_name, Pic_DeletionStatus_Reason_value)
 	proto.RegisterEnum("pixur.PicIdentifier_Type", PicIdentifier_Type_name, PicIdentifier_Type_value)
 }

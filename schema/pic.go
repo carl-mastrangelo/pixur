@@ -176,17 +176,11 @@ func (p *Pic) isHidden() bool {
 }
 
 func (p *Pic) SoftDeleted() bool {
-	if p.DeletionStatus == nil {
-		return false
-	}
-	return p.DeletionStatus.MarkedDeletedTs != nil
+	return p.GetDeletionStatus().GetMarkedDeletedTs() != nil
 }
 
 func (p *Pic) HardDeleted() bool {
-	if p.DeletionStatus == nil {
-		return false
-	}
-	return p.DeletionStatus.ActualDeletedTs != nil
+	return p.GetDeletionStatus().GetActualDeletedTs() != nil
 }
 
 func (p *Pic) Delete(prep preparer) error {

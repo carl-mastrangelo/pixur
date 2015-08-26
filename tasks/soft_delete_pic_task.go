@@ -21,10 +21,18 @@ type SoftDeletePicTask struct {
 	PendingDeletionTime *time.Time
 
 	// Why is this being deleted
-	Reason string
+	Reason  schema.Pic_DeletionStatus_Reason
+	Details string
+
+	// Can this picture ever be re uploaded?
+	Temporary bool
 }
 
 func (task *SoftDeletePicTask) Run() error {
+	if task.Reason == schema.Pic_DeletionStatus_UNKNOWN {
+		return status.InternalError("Invalid deletion reason: "+task.Reason.String(), nil)
+	}
+
 	tx, err := task.DB.Begin()
 	if err != nil {
 		return status.InternalError("Unable to Begin TX", err)
@@ -47,6 +55,8 @@ func (task *SoftDeletePicTask) Run() error {
 	}
 
 	p.DeletionStatus.Reason = task.Reason
+	p.DeletionStatus.Details = task.Details
+	p.DeletionStatus.Temporary = task.Temporary
 	if task.PendingDeletionTime != nil {
 		p.DeletionStatus.PendingDeletedTs = schema.FromTime(*task.PendingDeletionTime)
 	} else {
