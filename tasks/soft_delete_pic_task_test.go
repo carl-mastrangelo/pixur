@@ -10,16 +10,13 @@ import (
 )
 
 func TestSoftDeleteWorkflow(test *testing.T) {
-	c := &container{
-		t:  test,
-		db: testDB,
-	}
+	c := NewContainer(test)
 	defer c.CleanUp()
 
 	p := c.CreatePic()
 
 	task := &SoftDeletePicTask{
-		DB:        testDB,
+		DB:        c.GetDB(),
 		PicID:     p.PicId,
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
@@ -31,7 +28,7 @@ func TestSoftDeleteWorkflow(test *testing.T) {
 		test.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Path(c.pixPath)); os.IsNotExist(err) {
+	if _, err := os.Stat(p.Path(c.GetTempDir())); os.IsNotExist(err) {
 		test.Fatal("Expected file to exist", err)
 	}
 
@@ -62,10 +59,7 @@ func TestSoftDeleteWorkflow(test *testing.T) {
 }
 
 func TestSoftDelete_OverwritePendingTimestamp(test *testing.T) {
-	c := &container{
-		t:  test,
-		db: testDB,
-	}
+	c := NewContainer(test)
 	defer c.CleanUp()
 
 	now := time.Now().UTC()
@@ -76,12 +70,12 @@ func TestSoftDelete_OverwritePendingTimestamp(test *testing.T) {
 		MarkedDeletedTs:  schema.FromTime(then),
 		PendingDeletedTs: schema.FromTime(then),
 	}
-	if err := p.Update(testDB); err != nil {
+	if err := p.Update(c.GetDB()); err != nil {
 		test.Fatal(err)
 	}
 
 	task := &SoftDeletePicTask{
-		DB:                  testDB,
+		DB:                  c.GetDB(),
 		PicID:               p.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
@@ -104,10 +98,7 @@ func TestSoftDelete_OverwritePendingTimestamp(test *testing.T) {
 }
 
 func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
-	c := &container{
-		t:  test,
-		db: testDB,
-	}
+	c := NewContainer(test)
 	defer c.CleanUp()
 
 	now := time.Now().UTC()
@@ -117,12 +108,12 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
 		MarkedDeletedTs: schema.FromTime(now),
 		ActualDeletedTs: schema.FromTime(now),
 	}
-	if err := p.Update(testDB); err != nil {
+	if err := p.Update(c.GetDB()); err != nil {
 		test.Fatal(err)
 	}
 
 	task := &SoftDeletePicTask{
-		DB:                  testDB,
+		DB:                  c.GetDB(),
 		PicID:               p.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
@@ -137,6 +128,5 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
 				test.Fatal(st)
 			}
 		}
-
 	}
 }

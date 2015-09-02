@@ -8,10 +8,7 @@ import (
 )
 
 func TestPurgeWorkflow(test *testing.T) {
-	c := &container{
-		t:  test,
-		db: testDB,
-	}
+	c := NewContainer(test)
 	defer c.CleanUp()
 
 	p := c.CreatePic()
@@ -21,7 +18,7 @@ func TestPurgeWorkflow(test *testing.T) {
 	pt := c.CreatePicTag(p, t)
 
 	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
-		testDB, schema.PicIdentColPicId)
+		c.GetDB(), schema.PicIdentColPicId)
 	if err != nil {
 		test.Fatal(err)
 	}
@@ -34,8 +31,8 @@ func TestPurgeWorkflow(test *testing.T) {
 	}
 
 	task := &PurgePicTask{
-		DB:      testDB,
-		PixPath: c.pixPath,
+		DB:      c.GetDB(),
+		PixPath: c.GetTempDir(),
 		PicId:   p.PicId,
 	}
 
@@ -44,7 +41,7 @@ func TestPurgeWorkflow(test *testing.T) {
 		test.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Path(c.pixPath)); !os.IsNotExist(err) {
+	if _, err := os.Stat(p.Path(c.GetTempDir())); !os.IsNotExist(err) {
 		test.Fatal("Expected file to be deleted", err)
 	}
 	if c.RefreshPic(&p); p != nil {
@@ -71,10 +68,7 @@ func TestPurgeWorkflow(test *testing.T) {
 }
 
 func TestPurge_TagsDecremented(test *testing.T) {
-	c := &container{
-		t:  test,
-		db: testDB,
-	}
+	c := NewContainer(test)
 	defer c.CleanUp()
 
 	p := c.CreatePic()
@@ -83,8 +77,8 @@ func TestPurge_TagsDecremented(test *testing.T) {
 	c.CreatePicTag(p2, t)
 
 	task := &PurgePicTask{
-		DB:      testDB,
-		PixPath: c.pixPath,
+		DB:      c.GetDB(),
+		PixPath: c.GetTempDir(),
 		PicId:   p.PicId,
 	}
 

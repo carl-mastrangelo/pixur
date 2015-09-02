@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
-	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
@@ -24,14 +23,59 @@ import (
 )
 
 type container struct {
-	t  *testing.T
-	db *sql.DB
+	t       testing.TB
+	db      *sql.DB
+	tempDir string
+}
 
-	pixPath               string
-	createdPicIds         []int64
-	createdTagIds         []int64
-	createdPicIdentifiers []*schema.PicIdentifier
-	createdPicTagKeys     []schema.PicTagKey
+func NewContainer(t testing.TB) *container {
+	if t == nil {
+		panic("t cannot be nil")
+	}
+	return &container{
+		t: t,
+	}
+}
+
+func (c *container) GetDB() *sql.DB {
+	if c.db == nil {
+		db, err := ptest.GetDB()
+		if err != nil {
+			c.t.Fatal(err)
+		}
+		if err := schema.CreateTables(db); err != nil {
+			c.t.Fatal(err)
+		}
+		c.db = db
+	}
+	return c.db
+}
+
+func (c *container) GetTempDir() string {
+	if c.tempDir != "" {
+		return c.tempDir
+	}
+	if path, err := ioutil.TempDir("", "unitTestTempDir"); err != nil {
+		c.t.Fatal(err)
+	} else {
+		c.tempDir = path
+	}
+	return c.tempDir
+}
+
+func (c *container) CleanUp() {
+	if c.db != nil {
+		if err := c.db.Close(); err != nil {
+			c.t.Error(err)
+		}
+	}
+	c.db = nil
+	if c.tempDir != "" {
+		if err := os.RemoveAll(c.tempDir); err != nil {
+			c.t.Error(err)
+		}
+	}
+	c.tempDir = ""
 }
 
 func (c *container) CreatePic() *schema.Pic {
@@ -43,7 +87,7 @@ func (c *container) CreatePic() *schema.Pic {
 	}
 	p := &schema.Pic{}
 
-	if err := p.Insert(c.db); err != nil {
+	if err := p.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
 
@@ -52,32 +96,28 @@ func (c *container) CreatePic() *schema.Pic {
 		Type:  schema.PicIdentifier_SHA256,
 		Value: h1.Sum(nil),
 	}
-	if err := pi1.Insert(c.db); err != nil {
+	if err := pi1.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
-	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi1)
 
 	pi2 := &schema.PicIdentifier{
 		PicId: p.PicId,
 		Type:  schema.PicIdentifier_SHA1,
 		Value: h2.Sum(nil),
 	}
-	if err := pi2.Insert(c.db); err != nil {
+	if err := pi2.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
-	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi2)
 
 	pi3 := &schema.PicIdentifier{
 		PicId: p.PicId,
 		Type:  schema.PicIdentifier_MD5,
 		Value: h3.Sum(nil),
 	}
-	if err := pi3.Insert(c.db); err != nil {
+	if err := pi3.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
-	c.createdPicIdentifiers = append(c.createdPicIdentifiers, pi3)
 
-	c.createdPicIds = append(c.createdPicIds, p.PicId)
 	if err := c.writeImageData(p); err != nil {
 		c.t.Fatal(err)
 	}
@@ -95,10 +135,9 @@ func (c *container) CreateTag() *schema.Tag {
 		name += string(dictionary[rand.Intn(len(dictionary))])
 	}
 	t := &schema.Tag{Name: name}
-	if err := t.Insert(c.db); err != nil {
+	if err := t.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err)
 	}
-	c.createdTagIds = append(c.createdTagIds, t.TagId)
 
 	return t
 }
@@ -109,22 +148,19 @@ func (c *container) CreatePicTag(p *schema.Pic, t *schema.Tag) *schema.PicTag {
 		TagId: t.TagId,
 		Name:  t.Name,
 	}
-	if _, err := picTag.Insert(c.db); err != nil {
+	if _, err := picTag.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err)
 	}
 	t.UsageCount++
-	if err := t.Update(c.db); err != nil {
+	if err := t.Update(c.GetDB()); err != nil {
 		c.t.Fatal(err)
 	}
-	c.createdPicTagKeys = append(c.createdPicTagKeys, schema.PicTagKey{
-		PicId: p.PicId,
-		TagId: t.TagId,
-	})
+
 	return picTag
 }
 
 func (c *container) RefreshPic(p **schema.Pic) {
-	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ?;", c.db, schema.PicColId)
+	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ?;", c.GetDB(), schema.PicColId)
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -138,7 +174,7 @@ func (c *container) RefreshPic(p **schema.Pic) {
 }
 
 func (c *container) RefreshTag(t **schema.Tag) {
-	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", c.db, schema.TagColId)
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", c.GetDB(), schema.TagColId)
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -153,7 +189,7 @@ func (c *container) RefreshTag(t **schema.Tag) {
 
 func (c *container) RefreshPicTag(pt **schema.PicTag) {
 	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;",
-		c.db, schema.PicTagColPicId, schema.PicTagColTagId)
+		c.GetDB(), schema.PicTagColPicId, schema.PicTagColTagId)
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -164,55 +200,6 @@ func (c *container) RefreshPicTag(pt **schema.PicTag) {
 		c.t.Fatal(err)
 	}
 	*pt = updated
-}
-
-func (c *container) CleanUp() {
-	for _, picTagKey := range c.createdPicTagKeys {
-		if err := schema.DeletePicTag(picTagKey, c.db); err != nil {
-			c.t.Error(err)
-		}
-	}
-	c.createdPicTagKeys = nil
-
-	for _, picId := range c.createdPicIds {
-		if err := (&schema.Pic{PicId: picId}).Delete(c.db); err != nil {
-			c.t.Error(err)
-		}
-	}
-	c.createdPicIds = nil
-
-	for _, picIdent := range c.createdPicIdentifiers {
-		if err := picIdent.Delete(c.db); err != nil {
-			c.t.Error(err)
-		}
-	}
-	c.createdPicIds = nil
-
-	for _, tagId := range c.createdTagIds {
-		if err := (&schema.Tag{TagId: tagId}).Delete(c.db); err != nil {
-			c.t.Error(err)
-		}
-	}
-	c.createdTagIds = nil
-
-	if c.pixPath != "" {
-		if err := os.RemoveAll(c.pixPath); err != nil {
-			c.t.Error(err)
-		}
-	}
-	c.pixPath = ""
-}
-
-func (c *container) mkPixPath() string {
-	if c.pixPath != "" {
-		return c.pixPath
-	}
-	if path, err := ioutil.TempDir("", "unitTestPixPath"); err != nil {
-		c.t.Fatal(err)
-	} else {
-		c.pixPath = path
-	}
-	return c.pixPath
 }
 
 func (c *container) getRandomImageData() *bytes.Reader {
@@ -232,7 +219,7 @@ func (c *container) getRandomImageData() *bytes.Reader {
 }
 
 func (c *container) writeImageData(p *schema.Pic) error {
-	path := p.Path(c.mkPixPath())
+	path := p.Path(c.GetTempDir())
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0770); err != nil {
 		c.t.Fatal(err)
@@ -250,12 +237,12 @@ func (c *container) writeImageData(p *schema.Pic) error {
 }
 
 func (c *container) writeThumbnailData(p *schema.Pic) error {
-	path := p.ThumbnailPath(c.mkPixPath())
+	path := p.ThumbnailPath(c.GetTempDir())
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0770); err != nil {
 		c.t.Fatal(err)
 	}
-	f, err := os.Create(p.ThumbnailPath(c.mkPixPath()))
+	f, err := os.Create(p.ThumbnailPath(c.GetTempDir()))
 	if err != nil {
 		return err
 	}
@@ -266,53 +253,8 @@ func (c *container) writeThumbnailData(p *schema.Pic) error {
 	return nil
 }
 
-var (
-	testDB         *sql.DB
-	_testSetups    []func() error
-	_testTearDowns []func() error
-)
-
-func BeforeTestSuite(before func() error) {
-	_testSetups = append(_testSetups, before)
-}
-
-func AfterTestSuite(after func() error) {
-	_testTearDowns = append(_testTearDowns, after)
-}
-
-func init() {
-	BeforeTestSuite(func() error {
-		db, err := ptest.GetDB()
-		if err != nil {
-			return err
-		}
-		AfterTestSuite(func() error {
-			ptest.CleanUp()
-			return nil
-		})
-		testDB = db
-		if err := schema.CreateTables(db); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
 func runTests(m *testing.M) int {
-	defer func() {
-		for _, after := range _testTearDowns {
-			if err := after(); err != nil {
-				fmt.Println("Error in teardown", err)
-			}
-		}
-	}()
-
-	for _, before := range _testSetups {
-		if err := before(); err != nil {
-			fmt.Println("Error in test setup", err)
-			return 1
-		}
-	}
+	defer ptest.CleanUp()
 
 	return m.Run()
 }

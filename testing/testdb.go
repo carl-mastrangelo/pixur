@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+  "log"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+  "sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -23,27 +25,35 @@ var (
 
 	done = make(chan struct{})
 	dbs  = make(chan newDB)
+  
+  initOnce sync.Once
 )
 
-func init() {
-	go func() {
-		initError := setupDB()
-		for {
-			dbs <- newDB{nil, initError}
-		}
-	}()
-}
-
 func GetDB() (*sql.DB, error) {
-	db := <-dbs
-	return db.db, db.err
+  initOnce.Do(func() {
+    go func() {
+      initError := setupDB(done, dbs)
+      if initError != nil {
+        log.Println(initError)
+      }
+      close(dbs)
+    }()
+  })
+	db, present := <-dbs
+  if !present {
+    return nil, fmt.Errorf("shutdown")
+  }
+  if db.err != nil {
+    return nil, db.err
+  }
+	return db.db, nil
 }
 
 func CleanUp() {
 	close(done)
 }
 
-func setupDB() error {
+func setupDB(done chan struct{}, dbs chan newDB) error {
 	datadir, err := ioutil.TempDir("", "datadir")
 	if err != nil {
 		return err
@@ -127,7 +137,12 @@ func setupDB() error {
 			if err != nil {
 				return err
 			}
-			dbs <- newDB{db, nil}
+      select {
+        case dbs <- newDB{db, nil}:
+        case <-done:
+        return nil
+      }
+			
 		}
 	}
 }

@@ -19,10 +19,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var (
-	pixPath string
-)
-
 func (c *container) mustFindTagByName(name string) *schema.Tag {
 	tag, err := c.findTagByName(name)
 	if err != nil {
@@ -33,7 +29,7 @@ func (c *container) mustFindTagByName(name string) *schema.Tag {
 }
 
 func (c *container) findTagByName(name string) (*schema.Tag, error) {
-	tx, err := c.db.Begin()
+	tx, err := c.GetDB().Begin()
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -47,7 +43,7 @@ func (c *container) createTag(name string) *schema.Tag {
 	tag := &schema.Tag{
 		Name: name,
 	}
-	tx, err := c.db.Begin()
+	tx, err := c.GetDB().Begin()
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -67,31 +63,14 @@ func (c *container) createTag(name string) *schema.Tag {
 	return tag
 }
 
-func init() {
-	BeforeTestSuite(func() error {
-		if path, err := ioutil.TempDir("", "pixPath"); err != nil {
-			return err
-		} else {
-			pixPath = path
-		}
-		AfterTestSuite(func() error {
-			return os.RemoveAll(pixPath)
-		})
-
-		return nil
-	})
-}
-
 func TestWorkflowFileUpload(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	imgDataSize := int64(imgData.Len())
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: imgData,
 	}
 
@@ -108,10 +87,10 @@ func TestWorkflowFileUpload(t *testing.T) {
 	}
 	actual := *task.CreatedPic
 
-	if _, err := os.Stat(actual.Path(pixPath)); err != nil {
+	if _, err := os.Stat(actual.Path(ctnr.GetTempDir())); err != nil {
 		t.Fatal("Image was not moved:", err)
 	}
-	if _, err := os.Stat(actual.ThumbnailPath(pixPath)); err != nil {
+	if _, err := os.Stat(actual.ThumbnailPath(ctnr.GetTempDir())); err != nil {
 		t.Fatal("Thumbnail not created:", err)
 	}
 
@@ -129,14 +108,12 @@ func TestWorkflowFileUpload(t *testing.T) {
 }
 
 func TestDuplicateImageIgnored(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: imgData,
 	}
 
@@ -161,14 +138,12 @@ func TestDuplicateImageIgnored(t *testing.T) {
 }
 
 func TestAllIdentitiesAdded(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: imgData,
 	}
 
@@ -178,7 +153,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	}
 
 	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
-		testDB, schema.PicIdentColPicId)
+		ctnr.GetDB(), schema.PicIdentColPicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,14 +213,12 @@ func findPicTagsByPicId(picId int64, db *sql.DB) ([]*schema.PicTag, error) {
 }
 
 func TestWorkflowAllTagsAdded(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: ctnr.getRandomImageData(),
 		TagNames: []string{"foo", "bar"},
 	}
@@ -257,7 +230,7 @@ func TestWorkflowAllTagsAdded(t *testing.T) {
 	fooTag := ctnr.mustFindTagByName("foo")
 	barTag := ctnr.mustFindTagByName("bar")
 
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, testDB)
+	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, ctnr.GetDB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,17 +247,15 @@ func TestWorkflowAllTagsAdded(t *testing.T) {
 }
 
 func TestWorkflowAlreadyExistingTags(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	bazTag := ctnr.createTag("baz")
 	quxTag := ctnr.createTag("qux")
 
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: imgData,
 		TagNames: []string{"baz", "qux"},
 	}
@@ -293,7 +264,7 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, testDB)
+	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, ctnr.GetDB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,14 +281,12 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 }
 
 func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	task := &CreatePicTask{
-		DB:       testDB,
-		PixPath:  pixPath,
+		DB:       ctnr.GetDB(),
+		PixPath:  ctnr.GetTempDir(),
 		FileData: imgData,
 		// All of these are the same
 		TagNames: []string{"foo", "foo", "  foo", "foo  "},
@@ -327,7 +296,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tx, err := testDB.Begin()
+	tx, err := ctnr.GetDB().Begin()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +306,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, testDB)
+	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, ctnr.GetDB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,15 +410,14 @@ func TestCleanTagNames(t *testing.T) {
 }
 
 func BenchmarkCreation(b *testing.B) {
-	ctnr := &container{
-		db: testDB,
-	}
+	ctnr := NewContainer(b)
+	defer ctnr.CleanUp()
 
 	for i := 0; i < b.N; i++ {
 		imgData := ctnr.getRandomImageData()
 		task := &CreatePicTask{
-			DB:       testDB,
-			PixPath:  pixPath,
+			DB:       ctnr.GetDB(),
+			PixPath:  ctnr.GetTempDir(),
 			FileData: imgData,
 			TagNames: []string{"foo", "bar"},
 		}
@@ -461,10 +429,8 @@ func BenchmarkCreation(b *testing.B) {
 }
 
 func TestMoveUploadedFile(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
+	defer ctnr.CleanUp()
 	imgData := ctnr.getRandomImageData()
 	imgDataSize := int64(imgData.Len())
 

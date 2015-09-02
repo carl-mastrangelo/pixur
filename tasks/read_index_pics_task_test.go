@@ -10,16 +10,13 @@ import (
 )
 
 func TestReadIndexTaskWorkflow(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
 	defer ctnr.CleanUp()
 
 	p := ctnr.CreatePic()
 
 	task := ReadIndexPicsTask{
-		DB: testDB,
+		DB: ctnr.GetDB(),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
@@ -40,10 +37,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 }
 
 func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
-	ctnr := &container{
-		t:  t,
-		db: testDB,
-	}
+	ctnr := NewContainer(t)
 	defer ctnr.CleanUp()
 
 	p1 := ctnr.CreatePic()
@@ -54,7 +48,7 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	}
 
 	task := ReadIndexPicsTask{
-		DB: testDB,
+		DB: ctnr.GetDB(),
 	}
 
 	if err := task.Run(); err != nil {
