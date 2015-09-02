@@ -8,130 +8,139 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func GetDB() (*sql.DB, error) {
-	refLock.Lock()
-	defer refLock.Unlock()
-	once.Do(func() {
-		db, initErr = initDB()
-		if initErr != nil {
-			CleanUp()
-		}
-	})
-
-	refCount++
-	return db, initErr
-}
-
-func CleanUp() {
-	refLock.Lock()
-	defer refLock.Unlock()
-	refCount--
-	if refCount == 0 {
-		for i := len(cleanUpActions) - 1; i >= 0; i-- {
-			cleanUpActions[i]()
-		}
-		// Reset the once, incase we need to set the DB back up again
-		once = new(sync.Once)
-		db = nil
-		initErr = nil
-		cleanUpActions = nil
-	}
+type newDB struct {
+	db  *sql.DB
+	err error
 }
 
 var (
-	db             *sql.DB
-	initErr        error
-	cleanUpActions []func()
-	refCount                  = 0
-	refLock                   = new(sync.Mutex)
-	once           *sync.Once = new(sync.Once)
+	timeout = 5 * time.Second
+
+	done = make(chan struct{})
+	dbs  = make(chan newDB)
 )
 
-func initDB() (*sql.DB, error) {
+func init() {
+	go func() {
+		initError := setupDB()
+		for {
+			dbs <- newDB{nil, initError}
+		}
+	}()
+}
+
+func GetDB() (*sql.DB, error) {
+	db := <-dbs
+	return db.db, db.err
+}
+
+func CleanUp() {
+	close(done)
+}
+
+func setupDB() error {
 	datadir, err := ioutil.TempDir("", "datadir")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cleanUpActions = append(cleanUpActions, func() {
-		os.RemoveAll(datadir)
-	})
+	defer os.RemoveAll(datadir)
 
 	socket, err := ioutil.TempFile("", "socket")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cleanUpActions = append(cleanUpActions, func() {
-		os.Remove(socket.Name())
-	})
+	defer os.Remove(socket.Name())
 
 	pidFile, err := ioutil.TempFile("", "pidFile")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cleanUpActions = append(cleanUpActions, func() {
-		os.Remove(pidFile.Name())
-	})
+	defer os.Remove(pidFile.Name())
 
 	cmd := exec.Command("mysqld",
 		"--datadir", datadir,
 		"--socket", socket.Name(),
 		"--pid-file", pidFile.Name(),
 		"--skip-grant-tables",
-		"--skip-networking")
+		"--skip-networking",
+	)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cleanUpActions = append(cleanUpActions, func() {
-		stderr.Close()
-	})
-	ready := make(chan error)
+	defer stderr.Close()
 
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	defer cmd.Process.Kill()
+
+	ready := make(chan error)
+	stderrlines := make(chan string, 20)
 	go func() {
-		r := bufio.NewReader(stderr)
 		defer close(ready)
-		for {
-			line, err := r.ReadString('\n')
-			if err != nil {
-				ready <- err
-				return
+		s := bufio.NewScanner(stderr)
+		for s.Scan() {
+			line := s.Text()
+			select {
+			case stderrlines <- line:
+			default:
 			}
 			if strings.Contains(line, "mysqld: ready for connections") {
 				return
 			}
 		}
+		if err := s.Err(); err != nil {
+			ready <- err
+		}
 	}()
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	cleanUpActions = append(cleanUpActions, func() {
-		cmd.Process.Kill()
-	})
 
 	select {
 	case err := <-ready:
 		if err != nil {
-			return nil, err
+			return err
 		}
-	case <-time.After(5 * time.Second):
-		fmt.Println("Got here3")
-		return nil, fmt.Errorf("Failed to start server")
+	case <-time.After(timeout):
+		lines := make([]string, 0, cap(stderrlines))
+		for i := 0; i < cap(stderrlines); i++ {
+			select {
+			case line := <-stderrlines:
+				lines = append(lines, line)
+			default:
+				break
+			}
+		}
+		return fmt.Errorf("Failed to start server after %v\n\n%s", timeout, strings.Join(lines, "\n"))
 	}
 
-	db, err := sql.Open("mysql", "unix("+socket.Name()+")/")
+	for i := 0; ; i++ {
+		select {
+		case <-done:
+			return nil
+		default:
+			db, err := getDb(socket.Name(), i)
+			if err != nil {
+				return err
+			}
+			dbs <- newDB{db, nil}
+		}
+	}
+}
+
+func getDb(socketname string, id int) (*sql.DB, error) {
+	db, err := sql.Open("mysql", "unix("+socketname+")/")
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(10)
 
-	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS test;"); err != nil {
+	dbName := fmt.Sprintf("testdb%d", id)
+
+	if _, err := db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", dbName)); err != nil {
 		return nil, err
 	}
 
@@ -141,10 +150,11 @@ func initDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	db, err = sql.Open("mysql", "unix("+socket.Name()+")/test")
+	db, err = sql.Open("mysql", "unix("+socketname+")/"+dbName)
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(10)
 
 	if err := db.Ping(); err != nil {
 		return nil, err
