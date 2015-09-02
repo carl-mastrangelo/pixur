@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-  "log"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
-  "sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -25,27 +25,27 @@ var (
 
 	done = make(chan struct{})
 	dbs  = make(chan newDB)
-  
-  initOnce sync.Once
+
+	initOnce sync.Once
 )
 
 func GetDB() (*sql.DB, error) {
-  initOnce.Do(func() {
-    go func() {
-      initError := setupDB(done, dbs)
-      if initError != nil {
-        log.Println(initError)
-      }
-      close(dbs)
-    }()
-  })
+	initOnce.Do(func() {
+		go func() {
+			initError := setupDB(done, dbs)
+			if initError != nil {
+				log.Println(initError)
+			}
+			close(dbs)
+		}()
+	})
 	db, present := <-dbs
-  if !present {
-    return nil, fmt.Errorf("shutdown")
-  }
-  if db.err != nil {
-    return nil, db.err
-  }
+	if !present {
+		return nil, fmt.Errorf("shutdown")
+	}
+	if db.err != nil {
+		return nil, db.err
+	}
 	return db.db, nil
 }
 
@@ -91,7 +91,7 @@ func setupDB(done chan struct{}, dbs chan newDB) error {
 	defer cmd.Process.Kill()
 
 	ready := make(chan error)
-	stderrlines := make(chan string, 20)
+	stderrlines := make(chan string, 50)
 	go func() {
 		defer close(ready)
 		s := bufio.NewScanner(stderr)
@@ -107,24 +107,18 @@ func setupDB(done chan struct{}, dbs chan newDB) error {
 		}
 		if err := s.Err(); err != nil {
 			ready <- err
+			return
 		}
+		ready <- fmt.Errorf("Server not ready, but no apparent error")
 	}()
-
 	select {
 	case err := <-ready:
 		if err != nil {
-			return err
+			lines := concatLines(stderrlines)
+			return fmt.Errorf("%v\n\n%s", err, strings.Join(lines, "\n"))
 		}
 	case <-time.After(timeout):
-		lines := make([]string, 0, cap(stderrlines))
-		for i := 0; i < cap(stderrlines); i++ {
-			select {
-			case line := <-stderrlines:
-				lines = append(lines, line)
-			default:
-				break
-			}
-		}
+		lines := concatLines(stderrlines)
 		return fmt.Errorf("Failed to start server after %v\n\n%s", timeout, strings.Join(lines, "\n"))
 	}
 
@@ -137,14 +131,27 @@ func setupDB(done chan struct{}, dbs chan newDB) error {
 			if err != nil {
 				return err
 			}
-      select {
-        case dbs <- newDB{db, nil}:
-        case <-done:
-        return nil
-      }
-			
+			select {
+			case dbs <- newDB{db, nil}:
+			case <-done:
+				return nil
+			}
+
 		}
 	}
+}
+
+func concatLines(pipe chan string) []string {
+	lines := make([]string, 0, cap(pipe))
+	for i := 0; i < cap(pipe); i++ {
+		select {
+		case line := <-pipe:
+			lines = append(lines, line)
+		default:
+			break
+		}
+	}
+	return lines
 }
 
 func getDb(socketname string, id int) (*sql.DB, error) {
