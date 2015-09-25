@@ -63,6 +63,9 @@ func (s *Server) setup(c *Config) error {
 	mux := http.NewServeMux()
 	s.s.Handler = mux
 	// Static
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not found", http.StatusNotFound)
+	})
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
 		Handler: http.FileServer(http.Dir(s.pixPath)),
