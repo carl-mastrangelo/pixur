@@ -106,5 +106,7 @@ func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Use empty string here because the embedded fileserver already is in the directory
 	r.URL.Path = path.Join(schema.PicBaseDir("", id), file)
+	// Standard week
+	w.Header().Add("Cache-Control", "max-age=604800")
 	fs.Handler.ServeHTTP(w, r)
 }
