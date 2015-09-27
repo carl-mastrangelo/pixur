@@ -27,7 +27,7 @@ func (task *HardDeletePicTask) Run() error {
 	}
 	defer tx.Rollback()
 
-	p, err := lookupPicToDelete(task.PicID, tx)
+	p, err := lookupPicForUpdate(task.PicID, tx)
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,7 @@ func (task *PurgePicTask) Run() error {
 	}
 	defer tx.Rollback()
 
-	p, err := lookupPicToPurge(task.PicId, tx)
+	p, err := lookupPicForUpdate(task.PicId, tx)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func deletePicIdents(pis []*schema.PicIdentifier, tx *sql.Tx) status.Status {
 	return nil
 }
 
-func lookupPicToPurge(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
+func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
 	if err != nil {
 		return nil, status.InternalError("Unable to Prepare Lookup", err)

@@ -61,6 +61,8 @@ message Pic {
     // TODO: maybe include a "see other" pic id in this message.  This would
     // handle deletion inferior versions of other pics.
   }
+
+  int64 view_count = 14;
 }
 
 message PicIdentifier {

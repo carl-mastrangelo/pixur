@@ -119,6 +119,7 @@ type Pic struct {
 	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
 	// Only present on animated images.
 	AnimationInfo *AnimationInfo `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
+	ViewCount     int64          `protobuf:"varint,14,opt,name=view_count" json:"view_count,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }

@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"pixur.org/pixur/schema"
@@ -39,7 +38,7 @@ func (task *SoftDeletePicTask) Run() error {
 	}
 	defer tx.Rollback()
 
-	p, err := lookupPicToDelete(task.PicID, tx)
+	p, err := lookupPicForUpdate(task.PicID, tx)
 	if err != nil {
 		return err
 	}
@@ -76,20 +75,4 @@ func (task *SoftDeletePicTask) Run() error {
 	}
 
 	return nil
-}
-
-func lookupPicToDelete(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
-	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
-	if err != nil {
-		return nil, status.InternalError("Unable to Prepare Lookup", err)
-	}
-	defer stmt.Close()
-
-	p, err := schema.LookupPic(stmt, picId)
-	if err == sql.ErrNoRows {
-		return nil, status.NotFound(fmt.Sprintf("Could not find pic %d", picId), nil)
-	} else if err != nil {
-		return nil, status.InternalError("Error Looking up Pic", err)
-	}
-	return p, nil
 }
