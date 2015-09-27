@@ -35,7 +35,6 @@ func main() {
 		}
 
 		log.Println("Preparing to delete", p.GetVarPicID(), pendingTime)
-		log.Printf("%+v", p)
 		var task = &tasks.HardDeletePicTask{
 			DB:      sc.DB,
 			PixPath: sc.PixPath,
