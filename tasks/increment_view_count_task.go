@@ -27,6 +27,10 @@ func (t *IncrementViewCountTask) Run() error {
 		return err
 	}
 
+	if p.HardDeleted() {
+		return status.InvalidArgument("Cannot update view count of deleted pic", nil)
+	}
+
 	// TODO: This needs some sort of debouncing to avoid being run up.
 	p.ViewCount++
 	p.SetModifiedTime(time.Now())
