@@ -36,6 +36,25 @@ PicsService.prototype.getSingle = function(picId) {
   return deferred.promise;
 }
 
+PicsService.prototype.incrementViewCount = function(picId) {
+  var deferred = this.q_.defer();
+  var httpConfig = {
+    params: {
+      pic_id: picId
+    }
+  };
+  this.http_.get("/api/incrementPicViewCount", httpConfig).then(
+    function(res) {
+      deferred.resolve(res.data);
+    },
+    function(error) {
+      deferred.reject(error);
+    }
+  );
+
+  return deferred.promise;
+}
+
 PicsService.prototype.deletePic = function(picId, details) {
   var deferred = this.q_.defer();
   var httpConfig = {
@@ -106,7 +125,7 @@ PicsService.prototype.get = function(startID) {
 
 PicsService.prototype.create = function(file, url) {
   var deferred = this.q_.defer();
-  
+
   var data = new FormData();
   data.append("url", url);
   if (file != null) {

@@ -19,6 +19,8 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService) {
       this.picTags = details.pic_tags;
       this.isVideo = this.pic.type == "WEBM";
       this.isImage = this.pic.type != "WEBM";
+
+      picsService.incrementViewCount(this.picId);
     }.bind(this)
   );
 }
@@ -34,4 +36,3 @@ ViewerCtrl.prototype.deletePic = function() {
       console.error(err);
     });
 }
-
