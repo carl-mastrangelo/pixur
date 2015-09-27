@@ -12,7 +12,7 @@ import (
 
 type lookupPicResults struct {
 	Pic     *schema.Pic      `json:"pic"`
-	PicTags []*schema.PicTag `json:"pic_tags"`
+	PicTags []*schema.PicTag `json:"pic_tags,omitempty"`
 }
 
 type LookupPicDetailsHandler struct {

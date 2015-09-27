@@ -48,9 +48,9 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Type                 string `json:"type"`
 		RelativeURL          string `json:"relative_url"`
 		ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
-		Animated             bool   `json:"animated"`
-		PendingDeletion      bool   `json:pending_deletion"`
-		ViewCount            int64  `json:view_count"`
+		Animated             bool   `json:"animated,omitempty"`
+		PendingDeletion      bool   `json:"pending_deletion,omitempty"`
+		ViewCount            int64  `json:"view_count,omitempty"`
 	}{
 		Id:                   string(b32id),
 		Width:                p.Width,
