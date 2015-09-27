@@ -173,6 +173,12 @@ func (c *container) RefreshPic(p **schema.Pic) {
 	*p = updated
 }
 
+func (c *container) UpdatePic(p *schema.Pic) {
+	if err := p.Update(c.GetDB()); err != nil {
+		c.t.Fatal(err)
+	}
+}
+
 func (c *container) RefreshTag(t **schema.Tag) {
 	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", c.GetDB(), schema.TagColId)
 	if err != nil {

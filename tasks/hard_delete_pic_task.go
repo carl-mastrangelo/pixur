@@ -34,15 +34,19 @@ func (task *HardDeletePicTask) Run() error {
 
 	now := time.Now()
 
-	if p.DeletionStatus != nil {
-		if p.HardDeleted() {
-			return status.InvalidArgument("Pic is already Hard Deleted", nil)
-		}
-	} else {
+	if p.DeletionStatus == nil {
 		p.DeletionStatus = &schema.Pic_DeletionStatus{
-			ActualDeletedTs: schema.FromTime(now),
+			MarkedDeletedTs:  schema.FromTime(now),
+			PendingDeletedTs: schema.FromTime(now),
+			Reason:           schema.Pic_DeletionStatus_NONE,
 		}
 	}
+
+	if p.HardDeleted() {
+		return status.InvalidArgument("Pic is already Hard Deleted", nil)
+	}
+
+	p.DeletionStatus.ActualDeletedTs = schema.FromTime(now)
 
 	p.SetModifiedTime(now)
 	if err := p.Update(tx); err != nil {

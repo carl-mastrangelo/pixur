@@ -35,11 +35,6 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		d := p.GetAnimationInfo().GetDuration()
 		animated = d.Seconds > 0 || d.Nanos > 0
 	}
-	vid := B32Varint(p.PicId)
-	b32id, err := vid.MarshalText()
-	if err != nil {
-		panic(err)
-	}
 	return json.Marshal(struct {
 		Id                   string `json:"id"`
 		Width                int64  `json:"width"`
@@ -52,7 +47,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		PendingDeletion      bool   `json:"pending_deletion,omitempty"`
 		ViewCount            int64  `json:"view_count,omitempty"`
 	}{
-		Id:                   string(b32id),
+		Id:                   p.GetVarPicID(),
 		Width:                p.Width,
 		Height:               p.Height,
 		Version:              p.GetModifiedTime().UnixNano(),
@@ -81,44 +76,33 @@ func (p *Pic) GetModifiedTime() time.Time {
 	return ToTime(p.ModifiedTs)
 }
 
-func (p *Pic) RelativeURL() string {
-	vid := B32Varint(p.PicId)
-	b32id, err := vid.MarshalText()
+func (p *Pic) GetVarPicID() string {
+	v := B32Varint(p.PicId)
+	b32id, err := v.MarshalText()
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("pix/%s.%s", string(b32id), p.Mime.Ext())
+	return string(b32id)
+}
+
+func (p *Pic) RelativeURL() string {
+	return fmt.Sprintf("pix/%s.%s", p.GetVarPicID(), p.Mime.Ext())
 }
 
 func (p *Pic) Path(pixPath string) string {
-	vid := B32Varint(p.PicId)
-	b32id, err := vid.MarshalText()
-	if err != nil {
-		panic(err)
-	}
 	return filepath.Join(
 		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%s.%s", string(b32id), p.Mime.Ext()))
+		fmt.Sprintf("%s.%s", p.GetVarPicID(), p.Mime.Ext()))
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
-	vid := B32Varint(p.PicId)
-	b32id, err := vid.MarshalText()
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("pix/%su.jpg", string(b32id))
+	return fmt.Sprintf("pix/%su.jpg", p.GetVarPicID())
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
-	vid := B32Varint(p.PicId)
-	b32id, err := vid.MarshalText()
-	if err != nil {
-		panic(err)
-	}
 	return filepath.Join(
 		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%su.jpg", string(b32id)))
+		fmt.Sprintf("%su.jpg", p.GetVarPicID()))
 }
 
 func PicBaseDir(pixPath string, id int64) string {
@@ -206,7 +190,7 @@ func (p *Pic) isHidden() bool {
 }
 
 func (p *Pic) SoftDeleted() bool {
-	return p.GetDeletionStatus().GetMarkedDeletedTs() != nil
+	return p.GetDeletionStatus().GetMarkedDeletedTs() != nil && !p.HardDeleted()
 }
 
 func (p *Pic) HardDeleted() bool {
