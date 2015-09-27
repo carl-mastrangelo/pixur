@@ -5,17 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
-	"regexp"
 
 	"pixur.org/pixur/handlers"
-	"pixur.org/pixur/schema"
 
 	_ "github.com/go-sql-driver/mysql"
-)
-
-var (
-	pixPathMatcher = regexp.MustCompile("^([0-9A-TV-Za-tv-z]+)u?\\.?")
 )
 
 type Config struct {
@@ -61,15 +54,6 @@ func (s *Server) setup(c *Config) error {
 	s.s.Addr = c.HttpSpec
 	mux := http.NewServeMux()
 	s.s.Handler = mux
-	// Static
-	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Not found", http.StatusNotFound)
-	})
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
-		Handler: http.FileServer(http.Dir(s.pixPath)),
-		pixPath: s.pixPath,
-	}))
 
 	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
 		DB:      db,
@@ -81,34 +65,4 @@ func (s *Server) setup(c *Config) error {
 func (s *Server) StartAndWait(c *Config) error {
 	s.setup(c)
 	return s.s.ListenAndServe()
-}
-
-type fileServer struct {
-	http.Handler
-	pixPath string
-}
-
-func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	dir, file := path.Split(r.URL.Path)
-	if dir != "" {
-		// Something is wrong, /pix/ should have been stripped.
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	match := pixPathMatcher.FindStringSubmatch(file)
-	if match == nil {
-		// No pic id was found, abort.
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	var vid schema.B32Varint
-	if err := vid.UnmarshalText([]byte(match[1])); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// Use empty string here because the embedded fileserver already is in the directory
-	r.URL.Path = path.Join(schema.PicBaseDir("", int64(vid)), file)
-	// Standard week
-	w.Header().Add("Cache-Control", "max-age=604800")
-	fs.Handler.ServeHTTP(w, r)
 }
