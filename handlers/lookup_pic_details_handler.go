@@ -45,7 +45,7 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	returnJSON(w, lookupPicResults{
+	returnJSON(w, r, lookupPicResults{
 		Pic:     task.Pic,
 		PicTags: task.PicTags,
 	})

@@ -66,7 +66,7 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	returnJSON(w, true)
+	returnJSON(w, r, true)
 }
 
 func init() {

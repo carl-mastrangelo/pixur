@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"compress/gzip"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"pixur.org/pixur/status"
 )
@@ -41,9 +44,27 @@ func returnTaskError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-func returnJSON(w http.ResponseWriter, obj interface{}) {
+func returnJSON(w http.ResponseWriter, r *http.Request, obj interface{}) {
+	var writer io.Writer = w
+
+	if encs := r.Header.Get("Accept-Encoding"); encs != "" {
+		for _, enc := range strings.Split(encs, ",") {
+			if strings.TrimSpace(enc) == "gzip" {
+				if gw, err := gzip.NewWriterLevel(writer, gzip.BestSpeed); err != nil {
+					// Should never happen
+					panic(err)
+				} else {
+					defer gw.Close()
+					writer = gw
+				}
+				w.Header().Set("Content-Encoding", "gzip")
+				break
+			}
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(obj); err != nil {
+	if err := json.NewEncoder(writer).Encode(obj); err != nil {
 		log.Println("Error writing JSON", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

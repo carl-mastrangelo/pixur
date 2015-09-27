@@ -38,7 +38,7 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	returnJSON(w, true)
+	returnJSON(w, r, true)
 }
 
 func init() {
