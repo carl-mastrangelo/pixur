@@ -87,9 +87,14 @@ func (v *B32Varint) UnmarshalText(text []byte) error {
 		num = num<<4 | uint64(val&0xF)
 
 		if val&0x10 == 0 {
+			// too much data
+			if len(text) > i+1 {
+				return stdb32.CorruptInputError(i + 1)
+			}
 			break
 		}
 	}
+
 	*v = B32Varint(num)
 	return nil
 }

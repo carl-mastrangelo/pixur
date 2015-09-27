@@ -5,8 +5,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 
+	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
 )
 
@@ -57,11 +57,12 @@ func (h *NextIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) {
 	var requestedStartPicID int64
 	if raw := r.FormValue("start_pic_id"); raw != "" {
-		if startID, err := strconv.ParseInt(raw, 10, 64); err != nil {
+		var vid schema.B32Varint
+		if err := vid.UnmarshalText([]byte(raw)); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {
-			requestedStartPicID = int64(startID)
+			requestedStartPicID = int64(vid)
 		}
 	}
 

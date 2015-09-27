@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +35,13 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		d := p.GetAnimationInfo().GetDuration()
 		animated = d.Seconds > 0 || d.Nanos > 0
 	}
+	vid := B32Varint(p.PicId)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
+	}
 	return json.Marshal(struct {
-		Id                   int64  `json:"id"`
+		Id                   string `json:"id"`
 		Width                int64  `json:"width"`
 		Height               int64  `json:"height"`
 		Version              int64  `json:"version"`
@@ -47,7 +51,7 @@ func (p *Pic) MarshalJSON() ([]byte, error) {
 		Animated             bool   `json:"animated"`
 		PendingDeletion      bool   `json:pending_deletion"`
 	}{
-		Id:                   int64(p.PicId),
+		Id:                   string(b32id),
 		Width:                p.Width,
 		Height:               p.Height,
 		Version:              p.GetModifiedTime().UnixNano(),
@@ -76,33 +80,55 @@ func (p *Pic) GetModifiedTime() time.Time {
 }
 
 func (p *Pic) RelativeURL() string {
-	return fmt.Sprintf("pix/%d.%s", p.PicId, p.Mime.Ext())
+	vid := B32Varint(p.PicId)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("pix/%s.%s", string(b32id), p.Mime.Ext())
 }
 
 func (p *Pic) Path(pixPath string) string {
+	vid := B32Varint(p.PicId)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
+	}
 	return filepath.Join(
 		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%d.%s", p.PicId, p.Mime.Ext()))
+		fmt.Sprintf("%s.%s", string(b32id), p.Mime.Ext()))
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
-	return fmt.Sprintf("pix/%ds.jpg", p.PicId)
+	vid := B32Varint(p.PicId)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("pix/%su.jpg", string(b32id))
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
+	vid := B32Varint(p.PicId)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
+	}
 	return filepath.Join(
 		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%ds.jpg", p.PicId))
+		fmt.Sprintf("%su.jpg", string(b32id)))
 }
 
 func PicBaseDir(pixPath string, id int64) string {
-	rawId := strconv.FormatInt(id, 10)
-	if len(rawId)%2 != 0 {
-		rawId = "0" + rawId
+	vid := B32Varint(id)
+	b32id, err := vid.MarshalText()
+	if err != nil {
+		panic(err)
 	}
 	path := []string{pixPath}
-	for i := 0; i < len(rawId); i += 2 {
-		path = append(path, rawId[i:i+2])
+
+	for i := 0; i < len(b32id)-1; i++ {
+		path = append(path, string(b32id[i:i+1]))
 	}
 
 	return filepath.Join(path...)

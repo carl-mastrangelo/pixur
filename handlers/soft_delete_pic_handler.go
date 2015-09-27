@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,11 +24,12 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
-		if picId, err := strconv.Atoi(requestedRawPicID); err != nil {
+		var vid schema.B32Varint
+		if err := vid.UnmarshalText([]byte(requestedRawPicID)); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {
-			requestedPicId = int64(picId)
+			requestedPicId = int64(vid)
 		}
 	}
 

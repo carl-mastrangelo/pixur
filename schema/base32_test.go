@@ -182,13 +182,13 @@ func TestBase32DecodingFailOnOverLong(t *testing.T) {
 	}
 }
 
-func TestBase32DecodingIgnoreExcess(t *testing.T) {
-	var num B32Varint = 1
-	err := num.UnmarshalText([]byte("1!@#$%"))
-	if err != nil {
-		t.Fatal(err)
+func TestBase32DecodingFailsExcess(t *testing.T) {
+	var num B32Varint = 3
+	err := num.UnmarshalText([]byte("11"))
+	if err == nil {
+		t.Fatal("Expected an Error")
 	}
-	if num != 1 {
-		t.Fatalf("Expected %v but was %v", 1, num)
+	if num != 3 {
+		t.Fatalf("Expected %v but was %v", 3, num)
 	}
 }

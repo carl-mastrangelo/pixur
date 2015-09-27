@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
@@ -27,11 +26,12 @@ type LookupPicDetailsHandler struct {
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
-		if picID, err := strconv.ParseInt(raw, 10, 64); err != nil {
+		var vid schema.B32Varint
+		if err := vid.UnmarshalText([]byte(raw)); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {
-			requestedPicID = int64(picID)
+			requestedPicID = int64(vid)
 		}
 	}
 

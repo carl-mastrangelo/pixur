@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strconv"
 
 	"pixur.org/pixur/handlers"
 	"pixur.org/pixur/schema"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	pixPathMatcher = regexp.MustCompile("^([0-9]+)s?\\.?")
+	pixPathMatcher = regexp.MustCompile("^([0-9A-TV-Za-tv-z]+)u?\\.?")
 )
 
 type Config struct {
@@ -98,17 +97,17 @@ func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	match := pixPathMatcher.FindStringSubmatch(file)
 	if match == nil {
-		// No number was found, abort.
+		// No pic id was found, abort.
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	id, err := strconv.ParseInt(match[1], 10, 64)
-	if err != nil {
-		// should never happen due to the regex.
-		panic(err)
+	var vid schema.B32Varint
+	if err := vid.UnmarshalText([]byte(match[1])); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	// Use empty string here because the embedded fileserver already is in the directory
-	r.URL.Path = path.Join(schema.PicBaseDir("", id), file)
+	r.URL.Path = path.Join(schema.PicBaseDir("", int64(vid)), file)
 	// Standard week
 	w.Header().Add("Cache-Control", "max-age=604800")
 	fs.Handler.ServeHTTP(w, r)
