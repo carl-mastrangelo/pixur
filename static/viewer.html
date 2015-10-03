@@ -18,6 +18,7 @@
       Your browser does not support the video tag.
     </video> 
   </div>
+  <div ng-show="ctrl.pic.pending_deletion">This pic is pending deletion</div>
   <ul>
     <li ng-repeat="picTag in ctrl.picTags">{{picTag.name}}<br></li>
   </ul>

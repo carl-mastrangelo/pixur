@@ -43,3 +43,7 @@ img.thumbnail {
   height: 160px;
   border-radius: 8px;
 }
+
+img.deleted {
+  filter: blur(5px) grayscale(5%);
+}

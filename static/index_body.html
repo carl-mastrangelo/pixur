@@ -7,7 +7,10 @@
   <ul class="thumbnail-list">
     <li ng-repeat="pic in ctrl.pics">
       <div class="thumbnail-cntr">
-        <a ng-href="p/{{pic.id}}"><img class="thumbnail" ng-src="{{pic.thumbnail_relative_url}}" /></a>
+        <a ng-href="p/{{pic.id}}"><img 
+          class="thumbnail"
+          ng-class="{deleted: pic.pending_deletion}" 
+          ng-src="{{pic.thumbnail_relative_url}}" /></a>
       </div>
     </li>
   </ul>
