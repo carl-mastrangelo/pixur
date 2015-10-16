@@ -46,4 +46,5 @@ img.thumbnail {
 
 img.deleted {
   filter: blur(5px) grayscale(5%);
+  -webkit-filter: blur(5px) grayscale(5%);
 }
