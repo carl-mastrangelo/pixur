@@ -39,20 +39,14 @@ PicsService.prototype.getSingle = function(picId) {
 PicsService.prototype.incrementViewCount = function(picId) {
   var deferred = this.q_.defer();
   var params = {
-      "pic_id": picId
-    }
+    "pic_id": picId
+  }
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"
     },
-    "transformRequest": function(o) {
-      var str = [];
-      for(var p in o)
-      str.push(encodeURIComponent(p) + "=" + encodeURIComponent(o[p]));
-      return str.join("&");
-    }
+    "transformRequest": PicsService.postTransform
   };
-    
   this.http_.post("/api/incrementPicViewCount", params, httpConfig).then(
     function(res) {
       deferred.resolve(res.data);
@@ -67,14 +61,20 @@ PicsService.prototype.incrementViewCount = function(picId) {
 
 PicsService.prototype.deletePic = function(picId, details) {
   var deferred = this.q_.defer();
+  // TODO: add pending deletion time
+  var params = {
+    "pic_id": picId
+  }
+  if (details !== undefined) {
+    params["details"] = details;
+  }
   var httpConfig = {
-    params: {
-      pic_id: picId,
-      details: details
-      // TODO: add pending deletion time
-    }
+    "headers":  {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "transformRequest": PicsService.postTransform
   };
-  this.http_.get("/api/softDeletePic", httpConfig).then(
+  this.http_.post("/api/softDeletePic", params, httpConfig).then(
     function(res) {
       this.indexCache.removeAll();
       this.picCache.removeAll();
@@ -159,3 +159,9 @@ PicsService.prototype.create = function(file, url) {
   return deferred.promise;
 };
 
+PicsService.postTransform = function(o) {
+  var str = [];
+  for(var p in o)
+  str.push(encodeURIComponent(p) + "=" + encodeURIComponent(o[p]));
+  return str.join("&");
+};
