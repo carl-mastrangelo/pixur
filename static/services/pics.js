@@ -38,12 +38,22 @@ PicsService.prototype.getSingle = function(picId) {
 
 PicsService.prototype.incrementViewCount = function(picId) {
   var deferred = this.q_.defer();
+  var params = {
+      "pic_id": picId
+    }
   var httpConfig = {
-    params: {
-      pic_id: picId
+    "headers":  {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "transformRequest": function(o) {
+      var str = [];
+      for(var p in o)
+      str.push(encodeURIComponent(p) + "=" + encodeURIComponent(o[p]));
+      return str.join("&");
     }
   };
-  this.http_.get("/api/incrementPicViewCount", httpConfig).then(
+    
+  this.http_.post("/api/incrementPicViewCount", params, httpConfig).then(
     function(res) {
       deferred.resolve(res.data);
     },
