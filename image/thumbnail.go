@@ -238,6 +238,7 @@ func getFirstWebmFrame(filepath string) (img.Image, error) {
 		"-i", filepath,
 		"-v", "quiet", // disable version info
 		"-frames:v", "1",
+		"-ss", "1", // Grab the last frame before the first second
 		"-codec:v", "png",
 		"-f", "image2pipe",
 		"-")
