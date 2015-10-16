@@ -11,7 +11,7 @@ var PicsService = function($http, $q, $cacheFactory) {
    this.picCache = $cacheFactory.get("PicsService-pics");
    if (!this.picCache) {
      this.picCache = $cacheFactory("PicsService-pics", {
-      capacity: 122 // 2x Default page size plus one for good measure
+      capacity: 241 // 4 pages worth, two in each direction, plus 1.
      });
    }
   }
@@ -77,21 +77,15 @@ PicsService.prototype.deletePic = function(picId, details) {
   return deferred.promise;
 }
 
-PicsService.prototype.get = function(startID) {
+PicsService.prototype.getNextIndexPics = function(startId) {
   var deferred = this.q_.defer();
-  var indexCache;
   var picCache = this.picCache;
-  // Only cache if startID is not 0, basically if not the home page.
-  if (startID) {
-    indexCache = this.indexCache
-  }
-  var httpConfig = {
-    cache:indexCache
-  };
-  if (startID) {
-    httpConfig.params = {
-      start_pic_id: startID
-    };
+  var httpConfig = {};
+  if (startId) {
+      httpConfig["params"] = {
+        "start_pic_id": startId
+      };
+      httpConfig["cache"] = this.indexCache;
   }
   this.http_.get("/api/findNextIndexPics", httpConfig).then(
     function(res, status, headers, config) {
@@ -99,29 +93,37 @@ PicsService.prototype.get = function(startID) {
         picCache.put(pic.id, pic);
       });
       deferred.resolve(res.data);
-      
-      if (res.data.length) {
-        httpConfig.params = {
-          start_pic_id: res.data[res.data.length -1].id
-        };
-        this.http_.get("/api/findNextIndexPics", httpConfig).then(
-        function(res) {
-          res.data.forEach(function(pic){
-            picCache.put(pic.id, pic);
-          });
-        }.bind(this),
-        function(error) {
-          console.error("Failure to prefetch: ", error)
-        });
-      }
-
-    }.bind(this),
+    },
     function(error) {
       deferred.reject(error);
     }
   );
   return deferred.promise;
-};
+}
+
+PicsService.prototype.getPreviousIndexPics = function(startId) {
+  var deferred = this.q_.defer();
+  var httpConfig = {};
+  var picCache = this.picCache;
+  if (startId) {
+      httpConfig["params"] = {
+        "start_pic_id": startId
+      };
+      httpConfig["cache"] = this.indexCache;
+  }
+  this.http_.get("/api/findPreviousIndexPics", httpConfig).then(
+    function(res, status, headers, config) {
+      res.data.forEach(function(pic){
+        picCache.put(pic.id, pic);
+      });
+      deferred.resolve(res.data);
+    },
+    function(error) {
+      deferred.reject(error);
+    }
+  );
+  return deferred.promise;
+}
 
 PicsService.prototype.create = function(file, url) {
   var deferred = this.q_.defer();
