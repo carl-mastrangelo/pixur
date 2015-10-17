@@ -92,6 +92,11 @@ func (v *B32Varint) UnmarshalText(text []byte) error {
 				return stdb32.CorruptInputError(i + 1)
 			}
 			break
+		} else {
+			// They didnt have a finishing byte
+			if i == len(text)-1 {
+				return stdb32.CorruptInputError(i)
+			}
 		}
 	}
 

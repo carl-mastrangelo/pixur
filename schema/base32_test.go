@@ -171,6 +171,17 @@ func TestBase32DecodingFailOnTooLong(t *testing.T) {
 	}
 }
 
+func TestBase32DecodingFailOnTooShort(t *testing.T) {
+	var num B32Varint = 3
+	err := num.UnmarshalText([]byte("h"))
+	if err == nil {
+		t.Fatal("Expected an Error")
+	}
+	if num != 3 {
+		t.Fatal("Should not have changed on bad input")
+	}
+}
+
 func TestBase32DecodingFailOnOverLong(t *testing.T) {
 	var num B32Varint = 3
 	err := num.UnmarshalText([]byte("g0"))
