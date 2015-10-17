@@ -63,6 +63,8 @@ func (s *Server) setup(c *Config) error {
 }
 
 func (s *Server) StartAndWait(c *Config) error {
-	s.setup(c)
+	if err := s.setup(c); err != nil {
+		return err
+	}
 	return s.s.ListenAndServe()
 }
