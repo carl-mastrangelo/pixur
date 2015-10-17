@@ -11,8 +11,8 @@ import (
 // TODO: add tests
 
 type lookupPicResults struct {
-	Pic     *schema.Pic      `json:"pic"`
-	PicTags []*schema.PicTag `json:"pic_tags,omitempty"`
+	Pic     *JsonPic      `json:"pic"`
+	PicTags []*JsonPicTag `json:"pic_tags,omitempty"`
 }
 
 type LookupPicDetailsHandler struct {
@@ -20,7 +20,8 @@ type LookupPicDetailsHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB     *sql.DB
+	Runner *tasks.TaskRunner
 }
 
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,15 +40,20 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		DB:    h.DB,
 		PicID: requestedPicID,
 	}
-	runner := new(tasks.TaskRunner)
+	var runner *tasks.TaskRunner
+	if h.Runner != nil {
+		runner = h.Runner
+	} else {
+		runner = new(tasks.TaskRunner)
+	}
 	if err := runner.Run(task); err != nil {
 		returnTaskError(w, err)
 		return
 	}
 
 	returnJSON(w, r, lookupPicResults{
-		Pic:     task.Pic,
-		PicTags: task.PicTags,
+		Pic:     interfacePic(task.Pic),
+		PicTags: interfacePicTags(task.PicTags),
 	})
 }
 

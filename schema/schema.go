@@ -23,7 +23,7 @@ func toMillis(t time.Time) int64 {
 
 func ToTime(ft *Timestamp) time.Time {
 	if ft == nil {
-		return time.Time{}
+		return time.Time{}.UTC()
 	}
 	return time.Unix(ft.Seconds, int64(ft.Nanos)).UTC()
 }

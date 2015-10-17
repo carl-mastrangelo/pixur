@@ -2,7 +2,6 @@ package schema
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -28,37 +27,6 @@ var (
 		PicColHidden}
 	picColFmt = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
-
-func (p *Pic) MarshalJSON() ([]byte, error) {
-	var animated bool
-	if p.GetAnimationInfo().GetDuration() != nil {
-		d := p.GetAnimationInfo().GetDuration()
-		animated = d.Seconds > 0 || d.Nanos > 0
-	}
-	return json.Marshal(struct {
-		Id                   string `json:"id"`
-		Width                int64  `json:"width"`
-		Height               int64  `json:"height"`
-		Version              int64  `json:"version"`
-		Type                 string `json:"type"`
-		RelativeURL          string `json:"relative_url"`
-		ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
-		Animated             bool   `json:"animated,omitempty"`
-		PendingDeletion      bool   `json:"pending_deletion,omitempty"`
-		ViewCount            int64  `json:"view_count,omitempty"`
-	}{
-		Id:                   p.GetVarPicID(),
-		Width:                p.Width,
-		Height:               p.Height,
-		Version:              p.GetModifiedTime().UnixNano(),
-		Type:                 p.Mime.String(),
-		RelativeURL:          p.RelativeURL(),
-		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
-		Animated:             animated,
-		PendingDeletion:      p.SoftDeleted(),
-		ViewCount:            p.ViewCount,
-	})
-}
 
 func (p *Pic) SetCreatedTime(now time.Time) {
 	p.CreatedTs = FromTime(now)

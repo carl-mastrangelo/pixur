@@ -2,7 +2,6 @@ package schema
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -26,24 +25,6 @@ var (
 type PicTagKey struct {
 	PicId int64
 	TagId int64
-}
-
-func (pt *PicTag) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		PicId        int64     `json:"pic_id"`
-		TagId        int64     `json:"tag_id"`
-		Name         string    `json:"name"`
-		CreatedTime  time.Time `json:"created_time"`
-		ModifiedTime time.Time `json:"modified_time"`
-		Version      int64     `json:"version"`
-	}{
-		PicId:        int64(pt.PicId),
-		TagId:        int64(pt.TagId),
-		Name:         pt.Name,
-		CreatedTime:  pt.GetCreatedTime(),
-		ModifiedTime: pt.GetModifiedTime(),
-		Version:      pt.GetModifiedTime().UnixNano(),
-	})
 }
 
 func (pt *PicTag) SetCreatedTime(now time.Time) {

@@ -54,7 +54,7 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	returnJSON(w, r, task.CreatedPic)
+	returnJSON(w, r, interfacePic(task.CreatedPic))
 }
 
 func init() {

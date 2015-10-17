@@ -78,7 +78,7 @@ func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *
 		return
 	}
 
-	returnJSON(w, r, task.Pics)
+	returnJSON(w, r, interfacePics(task.Pics))
 }
 
 func init() {

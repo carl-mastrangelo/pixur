@@ -12,9 +12,23 @@ const (
 )
 
 type TaskRunner struct {
+	run func(task Task) error
+}
+
+func TestTaskRunner(run func(task Task) error) *TaskRunner {
+	return &TaskRunner{
+		run: run,
+	}
 }
 
 func (r *TaskRunner) Run(task Task) error {
+	if r.run != nil {
+		return r.run(task)
+	}
+	return runTask(task)
+}
+
+func runTask(task Task) error {
 	if messy, ok := task.(Messy); ok {
 		defer messy.CleanUp()
 	}
