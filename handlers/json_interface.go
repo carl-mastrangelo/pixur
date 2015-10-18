@@ -7,16 +7,16 @@ import (
 )
 
 type JsonPic struct {
-	Id                   string `json:"id"`
-	Width                int64  `json:"width"`
-	Height               int64  `json:"height"`
-	Version              int64  `json:"version"`
-	Type                 string `json:"type"`
-	RelativeURL          string `json:"relative_url"`
-	ThumbnailRelativeURL string `json:"thumbnail_relative_url"`
-	Animated             bool   `json:"animated,omitempty"`
-	PendingDeletion      bool   `json:"pending_deletion,omitempty"`
-	ViewCount            int64  `json:"view_count,omitempty"`
+	Id                   string  `json:"id"`
+	Width                int64   `json:"width"`
+	Height               int64   `json:"height"`
+	Version              int64   `json:"version"`
+	Type                 string  `json:"type"`
+	RelativeURL          string  `json:"relative_url"`
+	ThumbnailRelativeURL string  `json:"thumbnail_relative_url"`
+	Duration             float64 `json:"duration"`
+	PendingDeletion      bool    `json:"pending_deletion,omitempty"`
+	ViewCount            int64   `json:"view_count,omitempty"`
 }
 
 func interfacePic(p *schema.Pic) *JsonPic {
@@ -34,11 +34,6 @@ func interfacePics(ps []*schema.Pic) []*JsonPic {
 }
 
 func (jp *JsonPic) Fill(p *schema.Pic) {
-	var animated bool
-	if p.GetAnimationInfo().GetDuration() != nil {
-		d := p.GetAnimationInfo().GetDuration()
-		animated = d.Seconds > 0 || d.Nanos > 0
-	}
 	*jp = JsonPic{
 		Id:                   p.GetVarPicID(),
 		Width:                p.Width,
@@ -47,9 +42,12 @@ func (jp *JsonPic) Fill(p *schema.Pic) {
 		Type:                 p.Mime.String(),
 		RelativeURL:          p.RelativeURL(),
 		ThumbnailRelativeURL: p.ThumbnailRelativeURL(),
-		Animated:             animated,
 		PendingDeletion:      p.SoftDeleted(),
 		ViewCount:            p.ViewCount,
+	}
+	if p.GetAnimationInfo().GetDuration() != nil {
+		d := p.GetAnimationInfo().GetDuration()
+		jp.Duration = float64(d.Seconds) + float64(d.Nanos)/1e9
 	}
 }
 
