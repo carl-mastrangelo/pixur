@@ -8,8 +8,6 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-// TODO: add tests
-
 type lookupPicResults struct {
 	Pic     *JsonPic      `json:"pic"`
 	PicTags []*JsonPicTag `json:"pic_tags,omitempty"`

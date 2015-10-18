@@ -10,8 +10,6 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/golang/protobuf/proto"
-
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
 )

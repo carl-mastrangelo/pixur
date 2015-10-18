@@ -15,7 +15,8 @@ type SoftDeletePicHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB     *sql.DB
+	Runner *tasks.TaskRunner
 }
 
 // TODO: add tests
@@ -60,7 +61,12 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Reason:              reason,
 		PendingDeletionTime: &pendingDeletionTime,
 	}
-	runner := new(tasks.TaskRunner)
+	var runner *tasks.TaskRunner
+	if h.Runner != nil {
+		runner = h.Runner
+	} else {
+		runner = new(tasks.TaskRunner)
+	}
 	if err := runner.Run(task); err != nil {
 		returnTaskError(w, err)
 		return
