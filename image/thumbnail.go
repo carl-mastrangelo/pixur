@@ -63,22 +63,27 @@ func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Ignore gifs that either have only one frame
+		// Ignore gifs that have only one frame
 		if len(GIF.Delay) > 1 {
-			hundredths := 0
-			for frameDelay := range GIF.Delay {
-				hundredths += frameDelay
-			}
 			p.AnimationInfo = &schema.AnimationInfo{
-				Duration: &schema.Duration{
-					Seconds: int64(hundredths / 100),
-					Nanos:   int32((hundredths % 100) * 10 * 1000 * 1000),
-				},
+				Duration: GetGifDuration(GIF),
 			}
 		}
 	}
 
 	return im, nil
+}
+
+// TODO: add tests for this
+func GetGifDuration(g *gif.GIF) *schema.Duration {
+	var duration time.Duration
+	// TODO: check for overflow
+	// each delay unit is 1/100 of a second
+	for _, frameHundredths := range g.Delay {
+		duration += time.Millisecond * time.Duration(10*frameHundredths)
+	}
+
+	return schema.FromDuration(duration)
 }
 
 // TODO: interpret image rotation metadata
@@ -129,18 +134,18 @@ func findMaxSquare(bounds img.Rectangle) img.Rectangle {
 	}
 }
 
-type ffprobeConfig struct {
-	Streams []ffprobeStream `json:"streams"`
-	Format  ffprobeFormat   `json:"format"`
+type FFprobeConfig struct {
+	Streams []FFprobeStream `json:"streams"`
+	Format  FFprobeFormat   `json:"format"`
 }
 
-type ffprobeFormat struct {
+type FFprobeFormat struct {
 	StreamCount int     `json:"nb_streams"`
 	FormatName  string  `json:"format_name"`
 	Duration    float64 `json:"duration,string"`
 }
 
-type ffprobeStream struct {
+type FFprobeStream struct {
 	CodecName string `json:"codec_name"`
 	CodecType string `json:"codec_type"`
 	Width     int64  `json:"width"`
@@ -148,7 +153,7 @@ type ffprobeStream struct {
 }
 
 func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error) {
-	config, err := getWebmConfig(tempFile.Name())
+	config, err := GetWebmConfig(tempFile.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +165,7 @@ func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error
 		break
 	}
 
-	if dur, success := convertFloatDuration(config.Format.Duration); success {
+	if dur, success := ConvertFloatDuration(config.Format.Duration); success {
 		if dur >= time.Nanosecond {
 			p.AnimationInfo = &schema.AnimationInfo{
 				Duration: schema.FromDuration(dur),
@@ -173,7 +178,7 @@ func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error
 	return getFirstWebmFrame(tempFile.Name())
 }
 
-func convertFloatDuration(seconds float64) (time.Duration, bool) {
+func ConvertFloatDuration(seconds float64) (time.Duration, bool) {
 	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds > math.MaxInt64 {
 		return time.Duration(0), false
 	}
@@ -183,7 +188,7 @@ func convertFloatDuration(seconds float64) (time.Duration, bool) {
 	return time.Duration(seconds * 1e9), true
 }
 
-func getWebmConfig(filepath string) (*ffprobeConfig, error) {
+func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 	cmd := exec.Command("ffprobe",
 		"-print_format", "json",
 		"-v", "quiet", // disable version info
@@ -197,7 +202,7 @@ func getWebmConfig(filepath string) (*ffprobeConfig, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	config := new(ffprobeConfig)
+	config := new(FFprobeConfig)
 	if err := json.NewDecoder(stdout).Decode(config); err != nil {
 		return nil, err
 	}
