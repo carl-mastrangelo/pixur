@@ -5,6 +5,7 @@ import (
 	"fmt"
 	img "image"
 	"image/draw"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -17,7 +18,7 @@ import (
 
 	"image/gif"
 	"image/jpeg"
-	_ "image/png"
+	"image/png"
 )
 
 // TODO: maybe make this into it's own package
@@ -68,6 +69,7 @@ func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 			p.AnimationInfo = &schema.AnimationInfo{
 				Duration: GetGifDuration(GIF),
 			}
+			// TODO: maybe skip the first second of frames like webm
 		}
 	}
 
@@ -238,13 +240,31 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 	return config, nil
 }
 
+// The Idea here is to read the first 1 second of video data, and stop after
+// that.  The last frame received will be the thumbnail.  Normally the first
+// frame of video will be an intro or darker frame.  This is undesirable, so
+// we give the video 1 second of warm up time.
+// This doesn't use the -ss argument, because if the video is less than one
+// second, no output will be produced.  In general, if there is not a frame
+// after the first duration, no output will be produced.  If there was a video
+// with a single frame that had a duration of 2 seconds, no output would be
+// produced.  This also means that we can't just seek to some percentage of
+// the way through the video and get a frame.
+// This takes a different approach: output every frame, stopping after the
+// first second of video time.  Then, keep the last frame produced.  This
+// takes advantage of PNGs being self contained, allowing this to read the
+// concatenated image output produced by ffmpeg.  Thus, videos shorter than
+// 1 second will produce *something*, and videos longer than 1 don't need to
+// be completely parsed.
+// TODO: This is pretty slow, find a faster way.
 func getFirstWebmFrame(filepath string) (img.Image, error) {
 	cmd := exec.Command("ffmpeg",
 		"-i", filepath,
 		"-v", "quiet", // disable version info
-		"-frames:v", "1",
-		"-ss", "1", // Grab the last frame before the first second
+		"-t", "1.0", // Grab the last frame before the first second
+		"-frames:v", "120", // Handle up to 120fps video, then give up.
 		"-codec:v", "png",
+		"-compression_level", "0", // Don't bother compressing
 		"-f", "image2pipe",
 		"-")
 	// PNG data comes across stdout
@@ -252,16 +272,31 @@ func getFirstWebmFrame(filepath string) (img.Image, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer stdout.Close()
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+	defer cmd.Process.Kill()
+	// Avoid checking more than 120 frames
+	maxFrames := 120
+	var im img.Image
 
-	im, _, err := img.Decode(stdout)
-	if err != nil {
-		return nil, err
+	for i := 0; i < maxFrames; i++ {
+		// Can't use image.Decode because it reads too far ahead.
+		lastIm, err := png.Decode(stdout)
+		if err == io.ErrUnexpectedEOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		im = lastIm
 	}
 	if err := cmd.Wait(); err != nil {
 		return nil, err
+	}
+
+	if im == nil {
+		return nil, &BadWebmFormatErr{fmt.Errorf("No frames in webm")}
 	}
 
 	return im, nil
