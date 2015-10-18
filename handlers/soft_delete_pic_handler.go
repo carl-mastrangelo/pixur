@@ -19,7 +19,6 @@ type SoftDeletePicHandler struct {
 	Runner *tasks.TaskRunner
 }
 
-// TODO: add tests
 // TODO: Add csrf protection
 func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedRawPicID := r.FormValue("pic_id")
