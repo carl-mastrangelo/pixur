@@ -55,7 +55,11 @@ func main() {
 		if err := p.Update(tx); err != nil {
 			return err
 		}
-		log.Println("Finished", p.GetVarPicID())
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		log.Println("Finished", p.PicId, p.GetVarPicID(), p.AnimationInfo)
 
 		return nil
 	})
