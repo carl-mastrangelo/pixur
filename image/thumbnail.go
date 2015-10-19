@@ -76,6 +76,13 @@ func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
 	return im, nil
 }
 
+// Returns the duration of this gif.  It will be different per browser,
+// with inaccuracies usually in the 0/100 and 1/100 delays (which are
+// rounded up to 10/100).  http://nullsleep.tumblr.com/post/16524517190/
+// animated-gif-minimum-frame-delay-browser describes the delays for
+// common browsers.  An idea to solve this is to keep a histogram of the
+// short delay frames (from 0-5 hundredths) and allow the browser js to
+// reinterpret the duration.
 // TODO: add tests for this
 func GetGifDuration(g *gif.GIF) *schema.Duration {
 	var duration time.Duration
