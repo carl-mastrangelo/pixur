@@ -20,6 +20,10 @@ type PurgePicHandler struct {
 // TODO: add tests
 // TODO: Add csrf protection
 func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+		return
+	}
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {

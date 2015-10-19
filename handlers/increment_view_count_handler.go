@@ -17,6 +17,10 @@ type IncrementViewCountHandler struct {
 }
 
 func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+		return
+	}
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.B32Varint

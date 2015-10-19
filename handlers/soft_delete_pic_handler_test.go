@@ -231,3 +231,28 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 		t.Fatal(res.StatusCode)
 	}
 }
+
+func TestSoftDeleteGetNotAllowed(t *testing.T) {
+	var softDeletePicTask *tasks.SoftDeletePicTask
+	successRunner := func(task tasks.Task) error {
+		softDeletePicTask = task.(*tasks.SoftDeletePicTask)
+		return nil
+	}
+	s := httptest.NewServer(&SoftDeletePicHandler{
+		Runner: tasks.TestTaskRunner(successRunner),
+	})
+	defer s.Close()
+
+	res, err := http.Get(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatal(res.StatusCode)
+	}
+	if softDeletePicTask != nil {
+		t.Fatal("Task should not have been run")
+	}
+}

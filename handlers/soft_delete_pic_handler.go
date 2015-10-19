@@ -21,6 +21,10 @@ type SoftDeletePicHandler struct {
 
 // TODO: Add csrf protection
 func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+		return
+	}
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
