@@ -3,7 +3,7 @@ package image
 import (
 	"encoding/json"
 	"fmt"
-	img "image"
+	"image"
 	"image/draw"
 	"io"
 	"log"
@@ -33,14 +33,14 @@ type BadWebmFormatErr struct {
 	error
 }
 
-func FillImageConfig(f *os.File, p *schema.Pic) (img.Image, error) {
+func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
 	}
 	defer f.Seek(0, os.SEEK_SET)
 
-	im, imgType, err := img.Decode(f)
-	if err == img.ErrFormat {
+	im, imgType, err := image.Decode(f)
+	if err == image.ErrFormat {
 		// Try Webm
 		im, err = fillImageConfigFromWebm(f, p)
 		if err != nil {
@@ -96,15 +96,15 @@ func GetGifDuration(g *gif.GIF) *schema.Duration {
 }
 
 // TODO: interpret image rotation metadata
-func MakeThumbnail(im img.Image) img.Image {
+func MakeThumbnail(im image.Image) image.Image {
 	bounds := findMaxSquare(im.Bounds())
-	largeSquareImage := img.NewNRGBA(bounds)
+	largeSquareImage := image.NewNRGBA(bounds)
 	draw.Draw(largeSquareImage, bounds, im, bounds.Min, draw.Src)
 	return resize.Resize(DefaultThumbnailWidth, DefaultThumbnailHeight, largeSquareImage,
 		resize.NearestNeighbor)
 }
 
-func SaveThumbnail(im img.Image, p *schema.Pic, pixPath string) error {
+func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) error {
 	f, err := os.Create(p.ThumbnailPath(pixPath))
 	if err != nil {
 		return err
@@ -113,29 +113,29 @@ func SaveThumbnail(im img.Image, p *schema.Pic, pixPath string) error {
 	return jpeg.Encode(f, im, nil)
 }
 
-func findMaxSquare(bounds img.Rectangle) img.Rectangle {
+func findMaxSquare(bounds image.Rectangle) image.Rectangle {
 	width := bounds.Dx()
 	height := bounds.Dy()
 	if height < width {
 		missingSpace := width - height
-		return img.Rectangle{
-			Min: img.Point{
+		return image.Rectangle{
+			Min: image.Point{
 				X: bounds.Min.X + missingSpace/2,
 				Y: bounds.Min.Y,
 			},
-			Max: img.Point{
+			Max: image.Point{
 				X: bounds.Min.X + missingSpace/2 + height,
 				Y: bounds.Max.Y,
 			},
 		}
 	} else {
 		missingSpace := height - width
-		return img.Rectangle{
-			Min: img.Point{
+		return image.Rectangle{
+			Min: image.Point{
 				X: bounds.Min.X,
 				Y: bounds.Min.Y + missingSpace/2,
 			},
-			Max: img.Point{
+			Max: image.Point{
 				X: bounds.Max.X,
 				Y: bounds.Min.Y + missingSpace/2 + width,
 			},
@@ -161,7 +161,7 @@ type FFprobeStream struct {
 	Height    int64  `json:"height"`
 }
 
-func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (img.Image, error) {
+func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, error) {
 	config, err := GetWebmConfig(tempFile.Name())
 	if err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 // 1 second will produce *something*, and videos longer than 1 don't need to
 // be completely parsed.
 // TODO: This is pretty slow, find a faster way.
-func getFirstWebmFrame(filepath string) (img.Image, error) {
+func getFirstWebmFrame(filepath string) (image.Image, error) {
 	cmd := exec.Command("ffmpeg",
 		"-i", filepath,
 		"-v", "quiet", // disable version info
@@ -280,26 +280,40 @@ func getFirstWebmFrame(filepath string) (img.Image, error) {
 		return nil, err
 	}
 	defer stdout.Close()
+
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 	defer cmd.Process.Kill()
-	// Avoid checking more than 120 frames
-	maxFrames := 120
-	var im img.Image
 
+	im, err := keepLastImage(stdout)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	return im, nil
+}
+
+// Reads in a concatenated set of images and returns the last one.
+// An error is returned if no images could be read, or the there was a
+// decode error.
+func keepLastImage(r io.Reader) (image.Image, error) {
+	maxFrames := 120
+	var im image.Image
 	for i := 0; i < maxFrames; i++ {
-		// Can't use image.Decode because it reads too far ahead.
-		lastIm, err := png.Decode(stdout)
+		// don't use image.Decode because it doesn't return EOF on EOF
+		lastIm, err := png.Decode(r)
+
 		if err == io.ErrUnexpectedEOF {
 			break
 		} else if err != nil {
 			return nil, err
 		}
 		im = lastIm
-	}
-	if err := cmd.Wait(); err != nil {
-		return nil, err
 	}
 
 	if im == nil {
