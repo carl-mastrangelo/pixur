@@ -44,7 +44,7 @@ func phash0(vals [][]float64) (uint64, []float64) {
 	median := (flatvals[mid-1] + flatvals[mid]) / 2
 	var hash uint64
 
-	for i, val := range flatvals {
+	for i, val := range inputs {
 		if val > median {
 			hash |= 1 << uint(i)
 		}
