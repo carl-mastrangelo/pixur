@@ -86,6 +86,7 @@ const (
 	PicIdentifier_SHA256  PicIdentifier_Type = 1
 	PicIdentifier_SHA1    PicIdentifier_Type = 2
 	PicIdentifier_MD5     PicIdentifier_Type = 3
+	PicIdentifier_DCT_0   PicIdentifier_Type = 4
 )
 
 var PicIdentifier_Type_name = map[int32]string{
@@ -93,12 +94,14 @@ var PicIdentifier_Type_name = map[int32]string{
 	1: "SHA256",
 	2: "SHA1",
 	3: "MD5",
+	4: "DCT_0",
 }
 var PicIdentifier_Type_value = map[string]int32{
 	"UNKNOWN": 0,
 	"SHA256":  1,
 	"SHA1":    2,
 	"MD5":     3,
+	"DCT_0":   4,
 }
 
 func (x PicIdentifier_Type) String() string {
@@ -201,6 +204,8 @@ type PicIdentifier struct {
 	PicId int64              `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
 	Type  PicIdentifier_Type `protobuf:"varint,2,opt,name=type,enum=pixur.PicIdentifier_Type" json:"type,omitempty"`
 	Value []byte             `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	// dct0 are the upper 8x8 corner of the 32x32 dct of the image
+	Dct0Values []float32 `protobuf:"fixed32,4,rep,packed,name=dct0_values" json:"dct0_values,omitempty"`
 }
 
 func (m *PicIdentifier) Reset()         { *m = PicIdentifier{} }

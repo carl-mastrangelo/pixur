@@ -72,11 +72,15 @@ message PicIdentifier {
     SHA256 = 1;
     SHA1 = 2;
     MD5 = 3;
+    DCT_0 = 4;
   }
 
   Type type = 2;
 
   bytes value = 3;
+
+  // dct0 are the upper 8x8 corner of the 32x32 dct of the image
+  repeated float dct0_values = 4 [packed=true];
 }
 
 message AnimationInfo {
