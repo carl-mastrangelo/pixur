@@ -1,8 +1,10 @@
 package image
 
 import (
+	"encoding/binary"
 	"image"
 	"math"
+	"sort"
 
 	"github.com/nfnt/resize"
 )
@@ -10,6 +12,46 @@ import (
 const (
 	dctSize = 32
 )
+
+func PerceptualHash0(im image.Image) ([]byte, []float32) {
+	gray := dctResize(im)
+	arr := image2Array(gray)
+	dcts := dct2d(arr)
+	hash, inputs := phash0(dcts)
+	outputs := make([]float32, len(inputs))
+	for i, input := range inputs {
+		outputs[i] = float32(input)
+	}
+	hashBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(hashBytes, hash)
+
+	return hashBytes, outputs
+}
+
+// This approach is riddled with inefficiencies.
+func phash0(vals [][]float64) (uint64, []float64) {
+	inputs := make([]float64, 0, 64)
+	flatvals := make([]float64, 0, len(inputs))
+	for y := 1; y < 9; y++ {
+		for x := 1; x < 9; x++ {
+			inputs = append(inputs, vals[y][x])
+			flatvals = append(flatvals, vals[y][x])
+		}
+	}
+
+	sort.Float64s(flatvals)
+	mid := len(flatvals) / 2
+	median := (flatvals[mid-1] + flatvals[mid]) / 2
+	var hash uint64
+
+	for i, val := range flatvals {
+		if val > median {
+			hash |= 1 << uint(i)
+		}
+	}
+
+	return hash, inputs
+}
 
 func dctResize(im image.Image) *image.Gray {
 	small := resize.Resize(dctSize, dctSize, im, resize.Lanczos2)

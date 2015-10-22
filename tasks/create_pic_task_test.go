@@ -164,7 +164,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	}
 
 	groupedIdents := groupIdentifierByType(idents)
-	if len(groupedIdents) != 3 {
+	if len(groupedIdents) != 4 {
 		t.Fatalf("Unexpected Idents: %s", groupedIdents)
 	}
 	if !bytes.Equal(mustHash(sha256.New(), imgData), groupedIdents[schema.PicIdentifier_SHA256]) {
@@ -176,6 +176,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	if !bytes.Equal(mustHash(md5.New(), imgData), groupedIdents[schema.PicIdentifier_MD5]) {
 		t.Fatalf("md5 mismatch: %s", groupedIdents[schema.PicIdentifier_MD5])
 	}
+	// TODO: check the phash
 }
 
 func groupIdentifierByType(idents []*schema.PicIdentifier) map[schema.PicIdentifier_Type][]byte {

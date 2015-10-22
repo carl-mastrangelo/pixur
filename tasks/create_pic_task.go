@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"image"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,7 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"pixur.org/pixur/image"
+	imaging "pixur.org/pixur/image"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 
@@ -111,14 +112,14 @@ func (t *CreatePicTask) Run() error {
 		return status.InvalidArgument("No file uploaded", nil)
 	}
 
-	img, err := image.FillImageConfig(wf, p)
+	img, err := imaging.FillImageConfig(wf, p)
 	if err != nil {
-		if err, ok := err.(*image.BadWebmFormatErr); ok {
+		if err, ok := err.(*imaging.BadWebmFormatErr); ok {
 			return status.InvalidArgument("Bad Web Fmt", err)
 		}
 		return err
 	}
-	thumbnail := image.MakeThumbnail(img)
+	thumbnail := imaging.MakeThumbnail(img)
 	if err := t.beginTransaction(); err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (t *CreatePicTask) Run() error {
 	}
 
 	// If there is a problem creating the thumbnail, just continue on.
-	if err := image.SaveThumbnail(thumbnail, p, t.PixPath); err != nil {
+	if err := imaging.SaveThumbnail(thumbnail, p, t.PixPath); err != nil {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
 
@@ -181,6 +182,11 @@ func (t *CreatePicTask) Run() error {
 		if err := ident.Insert(t.tx); err != nil {
 			return err
 		}
+	}
+
+	pIdent := getPerceptualHash(p, img)
+	if err := pIdent.Insert(t.tx); err != nil {
+		return err
 	}
 
 	if err := t.tx.Commit(); err != nil {
@@ -416,6 +422,16 @@ func cleanTagNames(rawTagNames []string) ([]string, status.Status) {
 	uniqueTagNames := removeDuplicateTagNames(nonEmptyTagNames)
 
 	return uniqueTagNames, nil
+}
+
+func getPerceptualHash(p *schema.Pic, im image.Image) *schema.PicIdentifier {
+	hash, inputs := imaging.PerceptualHash0(im)
+	return &schema.PicIdentifier{
+		PicId:      p.PicId,
+		Type:       schema.PicIdentifier_DCT_0,
+		Value:      hash,
+		Dct0Values: inputs,
+	}
 }
 
 func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byte, error) {
