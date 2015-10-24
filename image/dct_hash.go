@@ -13,6 +13,13 @@ const (
 	dctSize = 32
 )
 
+func CountBits(num uint64) int {
+	num = num - ((num >> 1) & 0x5555555555555555)
+	num = (num & 0x3333333333333333) + ((num >> 2) & 0x3333333333333333)
+	num = (((num + (num >> 4)) & 0x0f0f0f0f0f0f0f0f) * 0x0101010101010101) >> 56
+	return int(num)
+}
+
 func PerceptualHash0(im image.Image) ([]byte, []float32) {
 	gray := dctResize(im)
 	arr := image2Array(gray)
