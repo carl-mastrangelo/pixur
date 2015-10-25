@@ -4,7 +4,10 @@ import (
 	"container/heap"
 	"database/sql"
 	"encoding/binary"
+	"encoding/csv"
 	"log"
+	"os"
+	"strconv"
 
 	"pixur.org/pixur/image"
 	"pixur.org/pixur/schema"
@@ -59,9 +62,31 @@ func run() error {
 
 	comp := findSimilar(pis)
 	log.Println(comp.Len())
-	for i := 0; i < 100 && comp.Len() > 0; i++ {
-		diff := heap.Pop(comp).(imgDiff)
-		log.Println(diff.diff, schema.B32Varint(diff.leftId), schema.B32Varint(diff.rightId))
+	if err := writeDiffs(comp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeDiffs(h heap.Interface) error {
+	f, err := os.Create("diffs.csv")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+
+	for h.Len() > 0 {
+		d := heap.Pop(h).(imgDiff)
+		dd, dl, dr := strconv.Itoa(d.diff), strconv.FormatInt(d.leftId, 10), strconv.FormatInt(d.rightId, 10)
+		if err := w.Write([]string{dd, dl, dr}); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -73,7 +98,7 @@ func findSimilar(pis []*schema.PicIdentifier) heap.Interface {
 		leftBits := binary.BigEndian.Uint64(pis[i].Value)
 		for k := i + 1; k < len(pis)-1; k++ {
 			rightBits := binary.BigEndian.Uint64(pis[k].Value)
-			if count := image.CountBits(leftBits ^ rightBits); count <= 10 {
+			if count := image.CountBits(leftBits ^ rightBits); count <= 20 {
 				heap.Push(&comp, imgDiff{
 					leftBits:  leftBits,
 					rightBits: rightBits,
