@@ -45,7 +45,12 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	returnJSON(w, r, task.SimilarPicIDs)
+	rawIds := make([]string, 0, len(task.SimilarPicIDs))
+	for _, id := range task.SimilarPicIDs {
+		rawIds = append(rawIds, schema.B32Varint(id).String())
+	}
+
+	returnJSON(w, r, rawIds)
 }
 
 func init() {
