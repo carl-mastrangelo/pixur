@@ -104,6 +104,11 @@ func (v *B32Varint) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (v B32Varint) String() string {
+	s, _ := v.MarshalText()
+	return string(s)
+}
+
 func b32DecodeValues() []byte {
 	vals := make([]byte, 256)
 	for i := 0; i < len(vals); i++ {
