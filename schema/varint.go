@@ -88,6 +88,20 @@ func (v *Varint) Decode(raw string) (int, error) {
 	return v.DecodeBytes([]byte(raw))
 }
 
+func (v *Varint) DecodeAll(raw string) error {
+	var tmp Varint
+	n, err := tmp.Decode(raw)
+	if err != nil {
+		return err
+	}
+	if n != len(raw) {
+		return fmt.Errorf("excess input")
+	}
+	// Don't overwrite it on error
+	*v = tmp
+	return nil
+}
+
 func (v Varint) String() string {
 	return fmt.Sprintf("%s(%d)", v.Encode(), v)
 }

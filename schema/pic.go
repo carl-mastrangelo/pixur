@@ -45,12 +45,7 @@ func (p *Pic) GetModifiedTime() time.Time {
 }
 
 func (p *Pic) GetVarPicID() string {
-	v := B32Varint(p.PicId)
-	b32id, err := v.MarshalText()
-	if err != nil {
-		panic(err)
-	}
-	return string(b32id)
+	return Varint(p.PicId).Encode()
 }
 
 func (p *Pic) RelativeURL() string {
@@ -74,15 +69,11 @@ func (p *Pic) ThumbnailPath(pixPath string) string {
 }
 
 func PicBaseDir(pixPath string, id int64) string {
-	vid := B32Varint(id)
-	b32id, err := vid.MarshalText()
-	if err != nil {
-		panic(err)
-	}
+	vid := Varint(id).Encode()
 	path := []string{pixPath}
 
-	for i := 0; i < len(b32id)-1; i++ {
-		path = append(path, string(b32id[i:i+1]))
+	for i := 0; i < len(vid)-1; i++ {
+		path = append(path, string(vid[i:i+1]))
 	}
 
 	return filepath.Join(path...)

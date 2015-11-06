@@ -27,8 +27,8 @@ func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
-		var vid schema.B32Varint
-		if err := vid.UnmarshalText([]byte(requestedRawPicID)); err != nil {
+		var vid schema.Varint
+		if err := vid.DecodeAll(requestedRawPicID); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {

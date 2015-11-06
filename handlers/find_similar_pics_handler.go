@@ -21,8 +21,8 @@ type FindSimilarPicsHandler struct {
 func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
-		var vid schema.B32Varint
-		if err := vid.UnmarshalText([]byte(raw)); err != nil {
+		var vid schema.Varint
+		if err := vid.DecodeAll(raw); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {
@@ -47,7 +47,7 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	rawIds := make([]string, 0, len(task.SimilarPicIDs))
 	for _, id := range task.SimilarPicIDs {
-		rawIds = append(rawIds, schema.B32Varint(id).String())
+		rawIds = append(rawIds, schema.Varint(id).Encode())
 	}
 
 	returnJSON(w, r, rawIds)

@@ -87,9 +87,9 @@ func TestLookupPicParsePicId(t *testing.T) {
 	})
 	defer s.Close()
 
-	// h0 = 16
+	// hf = 16
 	// test server claims that the url is missing a slash
-	res, err := http.Get(s.URL + "/?pic_id=h0")
+	res, err := http.Get(s.URL + "/?pic_id=hf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestLookupPicBadPicId(t *testing.T) {
 	})
 	defer s.Close()
 
-	res, err := http.Get(s.URL + "?pic_id=hq")
+	res, err := http.Get(s.URL + "?pic_id=g1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestLookupPicTaskError(t *testing.T) {
 
 	// Disable logging for the call
 	log.SetOutput(ioutil.Discard)
-	res, err := http.Get(s.URL + "?pic_id=5")
+	res, err := http.Get(s.URL + "?pic_id=h5")
 	if err != nil {
 		log.SetOutput(os.Stderr)
 		t.Fatal(err)
@@ -148,7 +148,7 @@ func TestLookupPicTaskError(t *testing.T) {
 	log.SetOutput(os.Stderr)
 
 	defer res.Body.Close()
-	if lookupPicTask.PicID != 5 {
+	if lookupPicTask.PicID != 6 {
 		t.Fatal("Wrong PicID", lookupPicTask.PicID)
 	}
 	if res.StatusCode != http.StatusInternalServerError {

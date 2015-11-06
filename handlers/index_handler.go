@@ -57,8 +57,8 @@ func (h *NextIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) {
 	var requestedStartPicID int64
 	if raw := r.FormValue("start_pic_id"); raw != "" {
-		var vid schema.B32Varint
-		if err := vid.UnmarshalText([]byte(raw)); err != nil {
+		var vid schema.Varint
+		if err := vid.DecodeAll(raw); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {

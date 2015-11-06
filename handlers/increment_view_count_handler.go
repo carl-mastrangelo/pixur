@@ -23,8 +23,8 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
-		var vid schema.B32Varint
-		if err := vid.UnmarshalText([]byte(raw)); err != nil {
+		var vid schema.Varint
+		if err := vid.DecodeAll(raw); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else {

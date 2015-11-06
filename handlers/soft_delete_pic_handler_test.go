@@ -28,7 +28,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 	defer s.Close()
 
 	data := url.Values{}
-	data.Add("pic_id", "h0") // 16
+	data.Add("pic_id", "hf") // 16
 	data.Add("details", "details")
 	data.Add("reason", "rule_violation")
 	data.Add("pending_deletion_time", "2015-10-18T23:00:00Z")
@@ -80,7 +80,7 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 	defer s.Close()
 
 	data := url.Values{}
-	data.Add("pic_id", "hq") // invalid
+	data.Add("pic_id", "h") // invalid
 
 	res, err := http.PostForm(s.URL, data)
 	if err != nil {
@@ -213,7 +213,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 	defer s.Close()
 
 	data := url.Values{}
-	data.Add("pic_id", "5")
+	data.Add("pic_id", "h0")
 
 	// Disable logging for the call
 	log.SetOutput(ioutil.Discard)
@@ -224,7 +224,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 	}
 
 	defer res.Body.Close()
-	if softDeletePicTask.PicID != 5 {
+	if softDeletePicTask.PicID != 1 {
 		t.Fatal("Wrong PicID", softDeletePicTask.PicID)
 	}
 	if res.StatusCode != http.StatusInternalServerError {

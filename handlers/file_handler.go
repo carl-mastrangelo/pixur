@@ -30,8 +30,8 @@ func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	var vid schema.B32Varint
-	if err := vid.UnmarshalText([]byte(match[1])); err != nil {
+	var vid schema.Varint
+	if err := vid.DecodeAll(match[1]); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
