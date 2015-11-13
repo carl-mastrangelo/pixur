@@ -174,17 +174,18 @@ func (s *Status) Error() string {
 		} else {
 			b.WriteString("Caused by ")
 		}
-		switch err := err.(type) {
+		switch e := err.(type) {
 		case *Status:
-			if s.Message != "" {
-				b.WriteString(s.Code.String() + ": " + s.Message)
+			if e.Message != "" {
+				b.WriteString(e.Code.String() + ": " + e.Message)
 			} else {
-				b.WriteString(s.Code.String())
+				b.WriteString(e.Code.String())
 			}
-			if s.StackTrace != "" {
-				b.WriteRune('\n')
-				b.WriteString(strings.Join(strings.Split(s.StackTrace, "\n"), "\n\t"))
+			if e.StackTrace != "" {
+				b.WriteString("\n\t")
+				b.WriteString(strings.Join(strings.Split(e.StackTrace, "\n"), "\n\t"))
 			}
+			err = e.Cause
 		default:
 			b.WriteString(err.Error())
 		}
