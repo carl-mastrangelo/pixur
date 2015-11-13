@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -25,7 +24,7 @@ type PurgePicTask struct {
 func (task *PurgePicTask) Run() error {
 	tx, err := task.DB.Begin()
 	if err != nil {
-		return status.InternalError("Unable to Begin TX", err)
+		return status.InternalError(err, "Unable to Begin TX")
 	}
 	defer tx.Rollback()
 
@@ -63,11 +62,11 @@ func (task *PurgePicTask) Run() error {
 	}
 
 	if err := p.Delete(tx); err != nil {
-		return status.InternalError("Unable to Purge Pic", err)
+		return status.InternalError(err, "Unable to Purge Pic")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return status.InternalError("Unable to Commit", err)
+		return status.InternalError(err, "Unable to Commit")
 	}
 
 	if err := os.Remove(p.Path(task.PixPath)); err != nil {
@@ -81,36 +80,36 @@ func (task *PurgePicTask) Run() error {
 	return nil
 }
 
-func findPicIdentsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicIdentifier, status.Status) {
+func findPicIdentsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicIdentifier, error) {
 	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicIdentColPicId)
 	if err != nil {
-		return nil, status.InternalError("Unable to Prepare Lookup", err)
+		return nil, status.InternalError(err, "Unable to Prepare Lookup")
 	}
 	defer stmt.Close()
 	pis, err := schema.FindPicIdentifiers(stmt, picId)
 	if err != nil {
-		return nil, status.InternalError("Error Looking up Pic Identifiers", err)
+		return nil, status.InternalError(err, "Error Looking up Pic Identifiers")
 	}
 	return pis, nil
 }
 
-func findPicTagsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicTag, status.Status) {
+func findPicTagsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicTag, error) {
 	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicTagColPicId)
 	if err != nil {
-		return nil, status.InternalError("Unable to Prepare Lookup", err)
+		return nil, status.InternalError(err, "Unable to Prepare Lookup")
 	}
 	defer stmt.Close()
 	pts, err := schema.FindPicTags(stmt, picId)
 	if err != nil {
-		return nil, status.InternalError("Error Looking up Pic Tags", err)
+		return nil, status.InternalError(err, "Error Looking up Pic Tags")
 	}
 	return pts, nil
 }
 
-func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, status.Status) {
+func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, error) {
 	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColId)
 	if err != nil {
-		return nil, status.InternalError("Unable to Prepare Lookup", err)
+		return nil, status.InternalError(err, "Unable to Prepare Lookup")
 	}
 	defer stmt.Close()
 
@@ -118,59 +117,59 @@ func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, status.S
 	for _, pt := range pts {
 		t, err := schema.LookupTag(stmt, pt.TagId)
 		if err != nil {
-			return nil, status.InternalError(fmt.Sprintf("Error Looking up Tag: %d", pt.TagId), err)
+			return nil, status.InternalErrorf(err, "Error Looking up Tag", pt.TagId)
 		}
 		ts = append(ts, t)
 	}
 	return ts, nil
 }
 
-func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) status.Status {
+func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) error {
 	for _, pt := range pts {
 		if err := pt.Delete(tx); err != nil {
-			return status.InternalError("Unable to Delete PicTag", err)
+			return status.InternalError(err, "Unable to Delete PicTag")
 		}
 	}
 	return nil
 }
 
-func deletePicIdents(pis []*schema.PicIdentifier, tx *sql.Tx) status.Status {
+func deletePicIdents(pis []*schema.PicIdentifier, tx *sql.Tx) error {
 	for _, pi := range pis {
 		if err := pi.Delete(tx); err != nil {
-			return status.InternalError("Unable to Delete PicIdentifier", err)
+			return status.InternalError(err, "Unable to Delete PicIdentifier")
 		}
 	}
 	return nil
 }
 
-func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, status.Status) {
+func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, error) {
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
 	if err != nil {
-		return nil, status.InternalError("Unable to Prepare Lookup", err)
+		return nil, status.InternalError(err, "Unable to Prepare Lookup")
 	}
 	defer stmt.Close()
 
 	p, err := schema.LookupPic(stmt, picId)
 	if err == sql.ErrNoRows {
-		return nil, status.NotFound(fmt.Sprintf("Could not find pic %d", picId), nil)
+		return nil, status.NotFound(nil, "Could not find pic", picId)
 	} else if err != nil {
-		return nil, status.InternalError("Error Looking up Pic", err)
+		return nil, status.InternalError(err, "Error Looking up Pic")
 	}
 	return p, nil
 }
 
 // if Update|Insert = Upsert, then Update|Delete = uplete?
-func upleteTags(ts []*schema.Tag, now time.Time, tx *sql.Tx) status.Status {
+func upleteTags(ts []*schema.Tag, now time.Time, tx *sql.Tx) error {
 	for _, t := range ts {
 		if t.UsageCount > 1 {
 			t.UsageCount--
 			t.SetModifiedTime(now)
 			if err := t.Update(tx); err != nil {
-				return status.InternalError("Unable to Update Tag", err)
+				return status.InternalError(err, "Unable to Update Tag")
 			}
 		} else {
 			if err := t.Delete(tx); err != nil {
-				return status.InternalError("Unable to Delete Tag", err)
+				return status.InternalError(err, "Unable to Delete Tag")
 			}
 		}
 	}

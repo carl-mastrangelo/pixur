@@ -54,9 +54,9 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	if err := task.Run(); err == nil {
 		t.Fatal("Expected an error")
 	} else {
-		s := err.(status.Status)
-		if s.GetCode() != status.Code_INVALID_ARGUMENT {
-			t.Fatalf("Expected code %v but was %v", status.Code_INVALID_ARGUMENT, s.GetCode())
+		s := err.(*status.Status)
+		if s.Code != status.Code_INVALID_ARGUMENT {
+			t.Fatalf("Expected code %v but was %v", status.Code_INVALID_ARGUMENT, s.Code)
 		}
 	}
 

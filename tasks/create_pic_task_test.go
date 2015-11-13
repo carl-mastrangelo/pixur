@@ -128,10 +128,10 @@ func TestDuplicateImageIgnored(t *testing.T) {
 		t.Fatal("Task should have failed")
 	}
 
-	if st, ok := err.(status.Status); !ok {
+	if st, ok := err.(*status.Status); !ok {
 		t.Fatalf("Expected a Status error: %t", err)
 	} else {
-		if st.GetCode() != status.Code_ALREADY_EXISTS {
+		if st.Code != status.Code_ALREADY_EXISTS {
 			t.Fatalf("Expected Already exists: %s", st)
 		}
 	}

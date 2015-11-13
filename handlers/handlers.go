@@ -36,9 +36,9 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 func returnTaskError(w http.ResponseWriter, err error) {
 	log.Println("Error in task: ", err)
 	w.Header().Set("Content-Type", "text/plain")
-	if s, ok := err.(status.Status); ok {
-		code := s.GetCode()
-		http.Error(w, code.String()+": "+s.GetMessage(), code.HttpStatus())
+	if s, ok := err.(*status.Status); ok {
+		code := s.Code
+		http.Error(w, code.String()+": "+s.Message, code.HttpStatus())
 		return
 	}
 

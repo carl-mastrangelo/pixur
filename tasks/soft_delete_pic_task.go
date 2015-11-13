@@ -29,12 +29,12 @@ type SoftDeletePicTask struct {
 
 func (task *SoftDeletePicTask) Run() error {
 	if task.Reason == schema.Pic_DeletionStatus_UNKNOWN {
-		return status.InternalError("Invalid deletion reason: "+task.Reason.String(), nil)
+		return status.InternalError(nil, "Invalid deletion reason", task.Reason)
 	}
 
 	tx, err := task.DB.Begin()
 	if err != nil {
-		return status.InternalError("Unable to Begin TX", err)
+		return status.InternalError(err, "Unable to Begin TX")
 	}
 	defer tx.Rollback()
 
@@ -47,7 +47,7 @@ func (task *SoftDeletePicTask) Run() error {
 
 	if p.DeletionStatus != nil {
 		if p.HardDeleted() {
-			return status.InvalidArgument("Pic is already Hard Deleted", nil)
+			return status.InvalidArgument(nil, "Pic is already Hard Deleted")
 		}
 	} else {
 		p.DeletionStatus = &schema.Pic_DeletionStatus{}
@@ -67,11 +67,11 @@ func (task *SoftDeletePicTask) Run() error {
 	}
 	p.SetModifiedTime(now)
 	if err := p.Update(tx); err != nil {
-		return status.InternalError("Unable to update", err)
+		return status.InternalError(err, "Unable to update")
 	}
 
 	if err := tx.Commit(); err != nil {
-		return status.InternalError("Unable to Commit", err)
+		return status.InternalError(err, "Unable to Commit")
 	}
 
 	return nil

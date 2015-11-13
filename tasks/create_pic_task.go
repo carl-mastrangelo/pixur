@@ -91,7 +91,7 @@ func (t *CreatePicTask) Run() error {
 	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.PixPath, "__")
 	if err != nil {
-		return status.InternalError("Unable to create tempfile", err)
+		return status.InternalError(err, "Unable to create tempfile")
 	}
 	defer wf.Close()
 	t.tempFilename = wf.Name()
@@ -109,13 +109,13 @@ func (t *CreatePicTask) Run() error {
 			return err
 		}
 	} else {
-		return status.InvalidArgument("No file uploaded", nil)
+		return status.InvalidArgument(nil, "No file uploaded")
 	}
 
 	img, err := imaging.FillImageConfig(wf, p)
 	if err != nil {
 		if err, ok := err.(*imaging.BadWebmFormatErr); ok {
-			return status.InvalidArgument("Bad Web Fmt", err)
+			return status.InvalidArgument(err, "Bad Web Fmt")
 		}
 		return err
 	}
@@ -143,16 +143,16 @@ func (t *CreatePicTask) Run() error {
 		return err
 	}
 	if len(sha256Idents) > 0 {
-		return status.AlreadyExists("Picture already uploaded", nil)
+		return status.AlreadyExists(nil, "Picture already uploaded")
 	}
 
 	if err := p.Insert(t.tx); err != nil {
 		if err, ok := err.(*mysql.MySQLError); ok {
 			if err.Number == duplicateEntryErrorNumber {
-				return status.AlreadyExists("Picture already uploaded", err)
+				return status.AlreadyExists(nil, "Picture already uploaded")
 			}
 		}
-		return status.InternalError("Unable to Insert Picture", err)
+		return status.InternalError(err, "Unable to Insert Picture")
 	}
 	if err := t.renameTempFile(p); err != nil {
 		return err
@@ -201,69 +201,68 @@ func (t *CreatePicTask) Run() error {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) status.Status {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) error {
 	// If the task is reset, this will need to seek to the beginning
 	if _, err := t.FileData.Seek(0, os.SEEK_SET); err != nil {
-		return status.InternalError(err.Error(), err)
+		return status.InternalError(err, "Can't Seek")
 	}
 	// TODO: check if the t.FileData is an os.File, and then try moving it.
 	if bytesWritten, err := io.Copy(tempFile, t.FileData); err != nil {
-		return status.InternalError("Unable to move uploaded file", err)
+		return status.InternalError(err, "Unable to move uploaded file")
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return status.InternalError("Failed to sync uploaded file", err)
+			return status.InternalError(err, "Failed to sync uploaded file")
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) status.Status {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
-		return status.InvalidArgument("Unable to download "+t.FileURL, err)
+		return status.InvalidArgument(err, "Unable to download", t.FileURL)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		message := fmt.Sprintf("Failed to Download Pic %s [%d]", t.FileURL, resp.StatusCode)
-		return status.InvalidArgument(message, nil)
+		return status.InvalidArgumentf(nil, "Failed to Download Pic %s [%d]",
+			t.FileURL, resp.StatusCode)
 	}
 
 	if bytesWritten, err := io.Copy(tempFile, resp.Body); err != nil {
-		return status.InternalError("Failed to copy downloaded file", err)
+		return status.InternalError(err, "Failed to copy downloaded file")
 	} else {
 		p.FileSize = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
 		if err := f.Sync(); err != nil {
-			return status.InternalError("Failed to sync file", err)
+			return status.InternalError(err, "Failed to sync file")
 		}
 	}
 	return nil
 }
 
-func (t *CreatePicTask) beginTransaction() status.Status {
+func (t *CreatePicTask) beginTransaction() error {
 	if tx, err := t.DB.Begin(); err != nil {
-		return status.InternalError("Unable to Begin TX", err)
+		return status.InternalError(err, "Unable to Begin TX")
 	} else {
 		t.tx = tx
 	}
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *schema.Pic) status.Status {
+func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 	if err := os.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
-		return status.InternalError("Unable to prepare pic dir: "+err.Error(), err)
+		return status.InternalError(err, "Unable to prepare pic dir")
 	}
 
 	if err := os.Rename(t.tempFilename, p.Path(t.PixPath)); err != nil {
-		message := fmt.Sprintf("Unable to move uploaded file %s -> %s",
+		return status.InternalErrorf(err, "Unable to move uploaded file %s -> %s",
 			t.tempFilename, p.Path(t.PixPath))
-		return status.InternalError(message, err)
 	}
 	// point this at the new file, incase the overall transaction fails
 	t.tempFilename = p.Path(t.PixPath)
@@ -356,10 +355,10 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 	return nil
 }
 
-func checkValidUnicode(tagNames []string) status.Status {
+func checkValidUnicode(tagNames []string) error {
 	for _, tn := range tagNames {
 		if !utf8.ValidString(tn) {
-			return status.InvalidArgument("Invalid tag name: "+tn, nil)
+			return status.InvalidArgument(nil, "Invalid tag name", tn)
 		}
 	}
 	return nil
@@ -411,7 +410,7 @@ func removeEmptyTagNames(tagNames []string) []string {
 	return nonEmptyTagNames
 }
 
-func cleanTagNames(rawTagNames []string) ([]string, status.Status) {
+func cleanTagNames(rawTagNames []string) ([]string, error) {
 	if err := checkValidUnicode(rawTagNames); err != nil {
 		return nil, err
 	}
@@ -436,7 +435,7 @@ func getPerceptualHash(p *schema.Pic, im image.Image) *schema.PicIdentifier {
 
 func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byte, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return nil, status.InternalError(err.Error(), err)
+		return nil, status.InternalError(err, "Can't Seek")
 	}
 	defer f.Seek(0, os.SEEK_SET)
 	h1 := sha256.New()
@@ -446,7 +445,7 @@ func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byt
 	w := io.MultiWriter(h1, h2, h3)
 
 	if _, err := io.Copy(w, f); err != nil {
-		return nil, status.InternalError(err.Error(), err)
+		return nil, status.InternalError(err, "Can't Copy")
 	}
 	return map[schema.PicIdentifier_Type][]byte{
 		schema.PicIdentifier_SHA256: h1.Sum(nil),

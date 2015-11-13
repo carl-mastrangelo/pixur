@@ -18,7 +18,7 @@ type IncrementViewCountTask struct {
 func (t *IncrementViewCountTask) Run() error {
 	tx, err := t.DB.Begin()
 	if err != nil {
-		return status.InternalError("Unable to Begin TX", err)
+		return status.InternalError(err, "Unable to Begin TX")
 	}
 	defer tx.Rollback()
 
@@ -28,7 +28,7 @@ func (t *IncrementViewCountTask) Run() error {
 	}
 
 	if p.HardDeleted() {
-		return status.InvalidArgument("Cannot update view count of deleted pic", nil)
+		return status.InvalidArgument(nil, "Cannot update view count of deleted pic")
 	}
 
 	// TODO: This needs some sort of debouncing to avoid being run up.
@@ -36,7 +36,7 @@ func (t *IncrementViewCountTask) Run() error {
 	p.SetModifiedTime(time.Now())
 
 	if err := p.Update(tx); err != nil {
-		return status.InternalError("Unable to Update Pic", err)
+		return status.InternalError(err, "Unable to Update Pic")
 	}
 
 	return tx.Commit()

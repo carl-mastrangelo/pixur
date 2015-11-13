@@ -1,6 +1,7 @@
 package status
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -72,52 +73,82 @@ func (c Code) HttpStatus() int {
 	return http.StatusInternalServerError
 }
 
-var _ Status = &statusError{}
+var _ error = &Status{}
 
-// eases conversion to and from error interface.
-type Status interface {
-	error
-	GetCode() Code
-	GetMessage() string
-}
-
-type statusError struct {
+type Status struct {
 	Code       Code
 	Message    string
 	Cause      error
 	StackTrace string
 }
 
-func InvalidArgument(message string, e error) Status {
-	return &statusError{
+func InvalidArgument(e error, v ...interface{}) *Status {
+	return &Status{
 		Code:       Code_INVALID_ARGUMENT,
-		Message:    message,
+		Message:    fmt.Sprint(v...),
+		Cause:      e,
 		StackTrace: getStackTrace(),
 	}
 }
 
-func InternalError(message string, e error) Status {
-	return &statusError{
+func InvalidArgumentf(e error, format string, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_INVALID_ARGUMENT,
+		Message:    fmt.Sprintf(format, v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
+func InternalError(e error, v ...interface{}) *Status {
+	return &Status{
 		Code:       Code_INTERNAL_ERROR,
-		Message:    message,
+		Message:    fmt.Sprint(v...),
 		Cause:      e,
 		StackTrace: getStackTrace(),
 	}
 }
 
-func NotFound(message string, e error) Status {
-	return &statusError{
+func InternalErrorf(e error, format string, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_INTERNAL_ERROR,
+		Message:    fmt.Sprintf(format, v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
+func NotFound(e error, v ...interface{}) *Status {
+	return &Status{
 		Code:       Code_NOT_FOUND,
-		Message:    message,
+		Message:    fmt.Sprint(v...),
 		Cause:      e,
 		StackTrace: getStackTrace(),
 	}
 }
 
-func AlreadyExists(message string, e error) Status {
-	return &statusError{
+func NotFoundf(e error, format string, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_NOT_FOUND,
+		Message:    fmt.Sprintf(format, v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
+func AlreadyExists(e error, v ...interface{}) *Status {
+	return &Status{
 		Code:       Code_ALREADY_EXISTS,
-		Message:    message,
+		Message:    fmt.Sprint(v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
+func AlreadyExistsf(e error, format string, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_ALREADY_EXISTS,
+		Message:    fmt.Sprintf(format, v...),
 		Cause:      e,
 		StackTrace: getStackTrace(),
 	}
@@ -132,14 +163,31 @@ func getStackTrace() string {
 	return strings.SplitN(stack, "\n", 6)[6-1]
 }
 
-func (s *statusError) GetCode() Code {
-	return s.Code
-}
-
-func (s *statusError) GetMessage() string {
-	return s.Message
-}
-
-func (s *statusError) Error() string {
-	return fmt.Sprintf("%s: %s\n\n%s", s.Code, s.Message, s.StackTrace)
+func (s *Status) Error() string {
+	var b bytes.Buffer
+	var err error = s
+	var first bool = true
+	for err != nil {
+		if first {
+			first = false
+			b.WriteString("Status ")
+		} else {
+			b.WriteString("Caused by ")
+		}
+		switch err := err.(type) {
+		case *Status:
+			if s.Message != "" {
+				b.WriteString(s.Code.String() + ": " + s.Message)
+			} else {
+				b.WriteString(s.Code.String())
+			}
+			if s.StackTrace != "" {
+				b.WriteRune('\n')
+				b.WriteString(strings.Join(strings.Split(s.StackTrace, "\n"), "\n\t"))
+			}
+		default:
+			b.WriteString(err.Error())
+		}
+	}
+	return b.String()
 }
