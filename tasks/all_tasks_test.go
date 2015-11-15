@@ -51,6 +51,15 @@ func (c *container) GetDB() *sql.DB {
 	return c.db
 }
 
+func (c *container) GetTx() *sql.Tx {
+	db := c.GetDB()
+	tx, err := db.Begin()
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	return tx
+}
+
 func (c *container) GetTempDir() string {
 	if c.tempDir != "" {
 		return c.tempDir
