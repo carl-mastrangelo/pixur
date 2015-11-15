@@ -176,6 +176,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 func (t *UpsertPicTask) merge(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 	fileURL string, tagNames []string) error {
 	p.SetModifiedTime(now)
+	// TODO: check if deleted.
 	// TODO: store file name
 	// TODO: store file URL
 	// TODO: handle tag merger

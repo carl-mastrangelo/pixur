@@ -18,15 +18,141 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestInsertPicHashes_MD5Exists(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	md5Ident := &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_MD5,
+		Value: md5Hash,
+	}
+	if err := md5Ident.Insert(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't insert md5",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestInsertPicHashes_SHA1Exists(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	sha1Ident := &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_SHA1,
+		Value: sha1Hash,
+	}
+	if err := sha1Ident.Insert(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't insert sha1",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestInsertPicHashes_SHA256Exists(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	sha256Ident := &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: sha256Hash,
+	}
+	if err := sha256Ident.Insert(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't insert sha256",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestInsertPicHashes(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+
+	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ ORDER BY %s;", tx, schema.PicIdentColValue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stmt.Close()
+	idents, err := schema.FindPicIdentifiers(stmt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(idents) != 3 {
+		t.Fatal("Too many idents", len(idents))
+	}
+	expected := &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_MD5,
+		Value: md5Hash,
+	}
+	if !proto.Equal(idents[0], expected) {
+		t.Fatal("mismatch", idents[0], expected)
+	}
+	expected = &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_SHA1,
+		Value: sha1Hash,
+	}
+	if !proto.Equal(idents[1], expected) {
+		t.Fatal("mismatch", idents[1], expected)
+	}
+	expected = &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: sha256Hash,
+	}
+	if !proto.Equal(idents[2], expected) {
+		t.Fatal("mismatch", idents[2], expected)
+	}
+}
+
 func TestInsertPerceptualHash(t *testing.T) {
 	c := NewContainer(t)
 	defer c.CleanUp()
 
-	db := c.GetDB()
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatal(err)
-	}
+	tx := c.GetTx()
 	defer tx.Rollback()
 
 	bounds := image.Rect(0, 0, 5, 10)
@@ -62,15 +188,14 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	defer c.CleanUp()
 
 	db := c.GetDB()
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer db.Close()
+	tx := c.GetTx()
+	// Forces tx to fail
 	tx.Rollback()
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
-	err = insertPerceptualHash(tx, 1234, img)
+	err := insertPerceptualHash(tx, 1234, img)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
