@@ -188,6 +188,7 @@ func (s *Status) Error() string {
 			err = e.Cause
 		default:
 			b.WriteString(err.Error())
+			err = nil
 		}
 	}
 	return b.String()
