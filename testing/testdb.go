@@ -51,6 +51,8 @@ func GetDB() (*sql.DB, error) {
 
 func CleanUp() {
 	close(done)
+	// Make sure setupDB is done.
+	GetDB()
 }
 
 func setupDB(done chan struct{}, dbs chan newDB) error {
