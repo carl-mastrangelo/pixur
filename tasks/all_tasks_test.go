@@ -88,16 +88,17 @@ func (c *container) CleanUp() {
 }
 
 func (c *container) CreatePic() *schema.Pic {
-	h1 := sha256.New()
-	h2 := sha1.New()
-	h3 := md5.New()
-	if err := binary.Write(io.MultiWriter(h1, h2, h3), binary.LittleEndian, rand.Int63()); err != nil {
-		c.t.Fatal(err)
-	}
 	p := &schema.Pic{}
 
 	if err := p.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
+	}
+
+	h1 := sha256.New()
+	h2 := sha1.New()
+	h3 := md5.New()
+	if err := binary.Write(io.MultiWriter(h1, h2, h3), binary.LittleEndian, p.PicId); err != nil {
+		c.t.Fatal(err)
 	}
 
 	pi1 := &schema.PicIdentifier{

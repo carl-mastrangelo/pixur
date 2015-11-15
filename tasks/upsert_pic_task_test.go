@@ -2,6 +2,8 @@ package tasks
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"io/ioutil"
@@ -17,6 +19,94 @@ import (
 	"pixur.org/pixur/schema"
 	s "pixur.org/pixur/status"
 )
+
+func TestFindExistingPic_None(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	p, err := findExistingPic(tx, schema.PicIdentifier_MD5, []byte("missing"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if p != nil {
+		t.Fatal("Should not have found pic ", p)
+	}
+}
+
+func TestFindExistingPic_Exists(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	existingPic := c.CreatePic()
+
+	h := md5.New()
+	// Same as in the test code
+	if err := binary.Write(h, binary.LittleEndian, existingPic.PicId); err != nil {
+		t.Fatal(err)
+	}
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	p, err := findExistingPic(tx, schema.PicIdentifier_MD5, h.Sum(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !proto.Equal(p, existingPic) {
+		t.Fatal("mismatch", p, existingPic)
+	}
+}
+
+func TestFindExistingPic_DuplicateHashes(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	sha256Ident := &schema.PicIdentifier{
+		PicId: 1234,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: []byte("sha256"),
+	}
+	if err := sha256Ident.Insert(tx); err != nil {
+		t.Fatal(err)
+	}
+	sha256Ident.PicId = 9999
+	// This should never happen normally, but we break the rules for the test
+	if err := sha256Ident.Insert(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := findExistingPic(tx, schema.PicIdentifier_SHA256, sha256Ident.Value)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Found duplicate idents",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestFindExistingPic_Failure(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	// force tx failure
+	tx.Rollback()
+
+	_, err := findExistingPic(tx, schema.PicIdentifier_SHA256, []byte("sha256"))
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't prepare identStmt",
+	}
+	compareStatus(t, *status, expected)
+}
 
 func TestInsertPicHashes_MD5Exists(t *testing.T) {
 	c := NewContainer(t)

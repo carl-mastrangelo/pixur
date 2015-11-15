@@ -86,6 +86,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	if err != nil {
 		return s.InternalError(err, "Can't create tempfile")
 	}
+
 	// on success, the name of f will change and it won't be removed.
 	defer os.Remove(f.Name())
 	defer f.Close()
