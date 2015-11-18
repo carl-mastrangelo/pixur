@@ -33,6 +33,45 @@ type BadWebmFormatErr struct {
 	error
 }
 
+type PixurImage struct {
+	image.Image
+	Mime          schema.Pic_Mime
+	AnimationInfo *schema.AnimationInfo
+}
+
+func ReadImage(r *io.SectionReader) (*PixurImage, error) {
+	im, name, err := image.Decode(r)
+	if err != nil {
+		return nil, err
+	}
+	pi := PixurImage{
+		Image: im,
+	}
+	if mime, err := schema.FromImageFormat(name); err != nil {
+		return nil, err
+	} else {
+		pi.Mime = mime
+	}
+	if name == "gif" {
+		if _, err := r.Seek(0, os.SEEK_SET); err != nil {
+			return nil, err
+		}
+		g, err := gif.DecodeAll(r)
+		if err != nil {
+			return nil, err
+		}
+		// Ignore gifs that have only one frame
+		if len(g.Delay) > 1 {
+			pi.AnimationInfo = &schema.AnimationInfo{
+				Duration: GetGifDuration(g),
+			}
+			// TODO: maybe skip the first second of frames like webm
+		}
+	}
+
+	return &pi, nil
+}
+
 func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, err
@@ -102,6 +141,11 @@ func MakeThumbnail(im image.Image) image.Image {
 	draw.Draw(largeSquareImage, bounds, im, bounds.Min, draw.Src)
 	return resize.Resize(DefaultThumbnailWidth, DefaultThumbnailHeight, largeSquareImage,
 		resize.NearestNeighbor)
+}
+
+func OutputThumbnail(im image.Image, f *os.File) error {
+	thumb := MakeThumbnail(im)
+	return jpeg.Encode(f, thumb, nil)
 }
 
 func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) error {
