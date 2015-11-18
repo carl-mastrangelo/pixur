@@ -75,92 +75,86 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	}
 	now := t.Now()
 	if len(t.Md5Hash) != 0 {
-		if p, err := findExistingPic(tx, schema.PicIdentifier_MD5, t.Md5Hash); err != nil {
+		p, err := findExistingPic(tx, schema.PicIdentifier_MD5, t.Md5Hash)
+		if err != nil {
 			return err
-		} else if p != nil {
-			return t.merge(tx, p, now, t.Header, t.FileURL, t.TagNames)
 		}
-	}
-
-	f, err := t.TempFile(t.PixPath, "__")
-	if err != nil {
-		return s.InternalError(err, "Can't create tempfile")
-	}
-
-	// on success, the name of f will change and it won't be removed.
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	var fh FileHeader
-	if t.File == nil {
-		if header, err := t.downloadFile(f, t.FileURL); err != nil {
-			return err
-		} else {
-			fh = *header
-		}
-	} else {
-		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
-		// Also get a copy of the size,
-		if n, err := io.Copy(f, t.File); err != nil {
-			return s.InternalError(err, "Can't save file")
-		} else {
-			fh = FileHeader{
-				Filename: t.Header.Filename,
-				Filesize: n,
+		if p != nil {
+			if p.HardDeleted() {
+				if !p.GetDeletionStatus().Temporary {
+					return s.InvalidArgument(nil, "Can't upload deleted pic.")
+				}
+				// Fallthrough.  We still need to download, and then remerge.
+			} else {
+				return t.merge(tx, p, now, t.Header, t.FileURL, t.TagNames)
 			}
 		}
 	}
 
-	// The file is now local.  Sync it, since external programs might read it.
-	if err := f.Sync(); err != nil {
-		return s.InternalError(err, "Can't sync file")
+	f, fh, err := t.prepareFile(t.File, t.Header, t.FileURL)
+	if err != nil {
+		return err
 	}
+	// on success, the name of f will change and it won't be removed.
+	defer os.Remove(f.Name())
+	defer f.Close()
 
-	// Avoids the need to have to f.Seek everywhere.
-	hashReader := io.NewSectionReader(f, 0, fh.Filesize)
-	md5Hash, sha1Hash, sha256Hash, err := generatePicHashes(hashReader)
+	md5Hash, sha1Hash, sha256Hash, err := generatePicHashes(io.NewSectionReader(f, 0, fh.Filesize))
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return s.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
-	// Still double check that the sha1 hash is not in use, even if the md5 one was
-	// checked up at the beginning of the function.
-	if p, err := findExistingPic(tx, schema.PicIdentifier_SHA1, sha1Hash); err != nil {
-		return err
-	} else if p != nil {
-		return t.merge(tx, p, now, fh, t.FileURL, t.TagNames)
-	}
-
-	var p = new(schema.Pic)
-	if err := p.Insert(tx); err != nil {
-		return s.InternalError(err, "Can't insert")
-	}
-	if err := insertPicHashes(tx, p.PicId, md5Hash, sha1Hash, sha256Hash); err != nil {
-		return err
-	}
-
-	p.SetCreatedTime(now)
-	// Modified time is set in merge
-	p.FileSize = fh.Filesize
-	// TODO: copy in the file name
-
-	// TODO: review this block of code
-	img, err := imaging.FillImageConfig(f, p)
+	im, err := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Filesize))
 	if err != nil {
-		if err, ok := err.(*imaging.BadWebmFormatErr); ok {
-			return s.InvalidArgument(err, "Bad Web Fmt")
-		}
 		return s.InvalidArgument(err, "Can't decode image")
 	}
-	if err := insertPerceptualHash(tx, p.PicId, img); err != nil {
+
+	// Still double check that the sha1 hash is not in use, even if the md5 one was
+	// checked up at the beginning of the function.
+	p, err := findExistingPic(tx, schema.PicIdentifier_SHA1, sha1Hash)
+	if err != nil {
 		return err
 	}
+	if p != nil {
+		if p.HardDeleted() {
+			if !p.GetDeletionStatus().Temporary {
+				return s.InvalidArgument(nil, "Can't upload deleted pic.")
+			}
+			//  fall through, picture needs to be undeleted.
+		} else {
+			return t.merge(tx, p, now, *fh, t.FileURL, t.TagNames)
+		}
+	} else {
+		p = &schema.Pic{
+			FileSize:      fh.Filesize,
+			Mime:          im.Mime,
+			Width:         int64(im.Bounds().Dx()),
+			Height:        int64(im.Bounds().Dy()),
+			AnimationInfo: im.AnimationInfo,
+			CreatedTs:     schema.FromTime(now),
+			// ModifiedTime is set in merge
+		}
+		if err := p.Insert(tx); err != nil {
+			return s.InternalError(err, "Can't insert")
+		}
+		if err := insertPicHashes(tx, p.PicId, md5Hash, sha1Hash, sha256Hash); err != nil {
+			return err
+		}
+		if err := insertPerceptualHash(tx, p.PicId, im); err != nil {
+			return err
+		}
+	}
 
-	thumbnail := imaging.MakeThumbnail(img)
-	if err := imaging.SaveThumbnail(thumbnail, p, t.PixPath); err != nil {
+	ft, err := t.TempFile(t.PixPath, "__")
+	if err != nil {
+		return s.InternalError(err, "Can't create tempfile")
+	}
+	defer os.Remove(ft.Name())
+	defer ft.Close()
+	if err := imaging.OutputThumbnail(im, ft); err != nil {
 		return s.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := t.merge(tx, p, now, fh, t.FileURL, t.TagNames); err != nil {
+	if err := t.merge(tx, p, now, *fh, t.FileURL, t.TagNames); err != nil {
 		return err
 	}
 
@@ -169,6 +163,9 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	}
 	if err := t.Rename(f.Name(), p.Path(t.PixPath)); err != nil {
 		return s.InternalErrorf(err, "Can't rename %v to %v", f.Name(), p.Path(t.PixPath))
+	}
+	if err := t.Rename(ft.Name(), p.ThumbnailPath(t.PixPath)); err != nil {
+		return s.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), p.ThumbnailPath(t.PixPath))
 	}
 
 	return nil
@@ -251,6 +248,41 @@ func insertPerceptualHash(tx *sql.Tx, picID int64, im image.Image) error {
 		return s.InternalError(err, "Can't insert dct0")
 	}
 	return nil
+}
+
+// prepareFile prepares the file for image processing.
+func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) (*os.File, *FileHeader, error) {
+	f, err := t.TempFile(t.PixPath, "__")
+	if err != nil {
+		return nil, nil, s.InternalError(err, "Can't create tempfile")
+	}
+
+	var h *FileHeader
+	if fd == nil {
+		if header, err := t.downloadFile(f, u); err != nil {
+			return nil, nil, err
+		} else {
+			h = header
+		}
+	} else {
+		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
+		// Also get a copy of the size,
+		if n, err := io.Copy(f, fd); err != nil {
+			return nil, nil, s.InternalError(err, "Can't save file")
+		} else {
+			h = &FileHeader{
+				Filename: fh.Filename,
+				Filesize: n,
+			}
+		}
+	}
+
+	// The file is now local.  Sync it, since external programs might read it.
+	if err := f.Sync(); err != nil {
+		return nil, nil, s.InternalError(err, "Can't sync file")
+	}
+
+	return f, h, nil
 }
 
 func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, error) {
