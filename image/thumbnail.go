@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"log"
 	"math"
@@ -12,13 +15,10 @@ import (
 	"os/exec"
 	"time"
 
-	"pixur.org/pixur/schema"
-
 	"github.com/nfnt/resize"
 
-	"image/gif"
-	"image/jpeg"
-	"image/png"
+	"pixur.org/pixur/image/webm"
+	"pixur.org/pixur/schema"
 )
 
 // TODO: maybe make this into it's own package
@@ -37,6 +37,8 @@ type PixurImage struct {
 	image.Image
 	Mime          schema.Pic_Mime
 	AnimationInfo *schema.AnimationInfo
+	// Metadata, not comprehensive
+	Tags map[string]string
 }
 
 func ReadImage(r *io.SectionReader) (*PixurImage, error) {
@@ -67,6 +69,12 @@ func ReadImage(r *io.SectionReader) (*PixurImage, error) {
 			}
 			// TODO: maybe skip the first second of frames like webm
 		}
+	} else if name == "webm" {
+		wim := im.(*webm.WebmImage)
+		pi.AnimationInfo = &schema.AnimationInfo{
+			Duration: schema.FromDuration(wim.Duration),
+		}
+		pi.Tags = wim.Tags
 	}
 
 	return &pi, nil
