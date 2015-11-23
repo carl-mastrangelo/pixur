@@ -72,6 +72,14 @@ func (c *container) GetTempDir() string {
 	return c.tempDir
 }
 
+func (c *container) GetTempFile() *os.File {
+	f, err := ioutil.TempFile(c.GetTempDir(), "__")
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	return f
+}
+
 func (c *container) CleanUp() {
 	if c.db != nil {
 		if err := c.db.Close(); err != nil {

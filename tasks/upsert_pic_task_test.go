@@ -20,6 +20,130 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestPrepareFile_CreateTempFileFails(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	srcFile := c.GetTempFile()
+
+	tempFileFn := func(dir, prefix string) (*os.File, error) {
+		return nil, fmt.Errorf("bad")
+	}
+	task := &UpsertPicTask{
+		TempFile: tempFileFn,
+	}
+
+	_, _, err := task.prepareFile(srcFile, FileHeader{}, "")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't create tempfile",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestPrepareFile_CopyFileFails(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	var capturedTempFile *os.File
+	tempFileFn := func(dir, prefix string) (*os.File, error) {
+		capturedTempFile = c.GetTempFile()
+		return capturedTempFile, nil
+	}
+	task := &UpsertPicTask{
+		TempFile: tempFileFn,
+	}
+
+	srcFile := c.GetTempFile()
+	srcFile.Close() // Reading from it should fail
+	_, _, err := task.prepareFile(srcFile, FileHeader{}, "")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't save file",
+	}
+	compareStatus(t, *status, expected)
+	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
+		if err != nil {
+			ff.Close()
+		}
+		t.Fatal("Expected file to not exist", err)
+	}
+}
+
+func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tempFileFn := func(dir, prefix string) (*os.File, error) {
+		return c.GetTempFile(), nil
+	}
+	task := &UpsertPicTask{
+		TempFile: tempFileFn,
+	}
+
+	srcFile := c.GetTempFile()
+	if _, err := srcFile.Write([]byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := srcFile.Seek(0, os.SEEK_SET); err != nil {
+		t.Fatal(err)
+	}
+	dstFile, fh, err := task.prepareFile(srcFile, FileHeader{Name: "name"}, "url")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := dstFile.Seek(0, os.SEEK_SET); err != nil {
+		t.Fatal(err)
+	}
+	data, err := ioutil.ReadAll(dstFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := string(data); s != "hello" {
+		t.Fatal("Bad copy", s)
+	}
+	expectedFh := FileHeader{
+		Name: "name",
+		Size: 5,
+	}
+	if *fh != expectedFh {
+		t.Fatal("File header mismatch", fh, expectedFh)
+	}
+}
+
+// TODO: maybe add a DownloadFileSucceeds case.
+
+func TestPrepareFile_DownloadFileFails(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	var capturedTempFile *os.File
+	tempFileFn := func(dir, prefix string) (*os.File, error) {
+		capturedTempFile = c.GetTempFile()
+		return capturedTempFile, nil
+	}
+	task := &UpsertPicTask{
+		TempFile: tempFileFn,
+	}
+
+	// Bogus url
+	_, _, err := task.prepareFile(nil, FileHeader{}, "::")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't parse",
+	}
+	compareStatus(t, *status, expected)
+	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
+		if err != nil {
+			ff.Close()
+		}
+		t.Fatal("Expected file to not exist", err)
+	}
+}
+
 func TestFindExistingPic_None(t *testing.T) {
 	c := NewContainer(t)
 	defer c.CleanUp()
@@ -453,8 +577,8 @@ func TestDownloadFile(t *testing.T) {
 		t.Fatal("File contents wrong", string(data))
 	}
 	expectedHeader := FileHeader{
-		Filename: "bar.jpg",
-		Filesize: 4,
+		Name: "bar.jpg",
+		Size: 4,
 	}
 	if *fh != expectedHeader {
 		t.Fatal(*fh, expectedHeader)
@@ -489,7 +613,7 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectedHeader := FileHeader{
-		Filesize: 4,
+		Size: 4,
 	}
 	if *fh != expectedHeader {
 		t.Fatal(*fh, expectedHeader)

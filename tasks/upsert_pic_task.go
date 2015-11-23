@@ -48,8 +48,8 @@ type UpsertPicTask struct {
 }
 
 type FileHeader struct {
-	Filename string
-	Filesize int64
+	Name string
+	Size int64
 }
 
 func (t *UpsertPicTask) Run() error {
@@ -99,11 +99,11 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	md5Hash, sha1Hash, sha256Hash, err := generatePicHashes(io.NewSectionReader(f, 0, fh.Filesize))
+	md5Hash, sha1Hash, sha256Hash, err := generatePicHashes(io.NewSectionReader(f, 0, fh.Size))
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return s.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
-	im, err := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Filesize))
+	im, err := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Size))
 	if err != nil {
 		return s.InvalidArgument(err, "Can't decode image")
 	}
@@ -125,7 +125,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 		}
 	} else {
 		p = &schema.Pic{
-			FileSize:      fh.Filesize,
+			FileSize:      fh.Size,
 			Mime:          im.Mime,
 			Width:         int64(im.Bounds().Dx()),
 			Height:        int64(im.Bounds().Dy()),
@@ -260,25 +260,29 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 	var h *FileHeader
 	if fd == nil {
 		if header, err := t.downloadFile(f, u); err != nil {
+			os.Remove(f.Name())
 			return nil, nil, err
 		} else {
 			h = header
 		}
 	} else {
 		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
-		// Also get a copy of the size,
+		// Also get a copy of the size.  We don't want to move the file if it is on the
+		// same partition, because then we can't retry the task on failure.
 		if n, err := io.Copy(f, fd); err != nil {
+			os.Remove(f.Name())
 			return nil, nil, s.InternalError(err, "Can't save file")
 		} else {
 			h = &FileHeader{
-				Filename: fh.Filename,
-				Filesize: n,
+				Name: fh.Name,
+				Size: n,
 			}
 		}
 	}
 
 	// The file is now local.  Sync it, since external programs might read it.
 	if err := f.Sync(); err != nil {
+		os.Remove(f.Name())
 		return nil, nil, s.InternalError(err, "Can't sync file")
 	}
 
@@ -309,11 +313,11 @@ func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, er
 		return nil, s.InvalidArgumentf(err, "Can't copy downloaded file")
 	}
 	header := &FileHeader{
-		Filesize: bytesRead,
+		Size: bytesRead,
 	}
 	// Can happen for a url that is a dir like http://foo.com/
 	if base := path.Base(u.Path); base != "." {
-		header.Filename = base
+		header.Name = base
 	}
 	// TODO: support Content-disposition
 	return header, nil
