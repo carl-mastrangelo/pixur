@@ -181,7 +181,7 @@ func (t *UpsertPicTask) merge(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileH
 		}
 	}
 
-	if err := upsertTags(tx, tagNames, p.PicId); err != nil {
+	if err := upsertTags(tx, tagNames, p.PicId, now); err != nil {
 		return err
 	}
 

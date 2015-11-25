@@ -20,6 +20,88 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	tx.Rollback()
+
+	_, _, err := findAttachedPicTags(tx, 0)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't prepare picTagStmt",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestFindAttachedPicTags_NoTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	tags, picTags, err := findAttachedPicTags(tx, p.PicId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 0 || len(picTags) != 0 {
+		t.Fatal("Shouldn't have found any tags", tags, picTags)
+	}
+}
+
+func TestFindAttachedPicTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+	tag := c.CreateTag()
+	picTag := c.CreatePicTag(p, tag)
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	tags, picTags, err := findAttachedPicTags(tx, p.PicId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 1 || len(picTags) != 1 {
+		t.Fatal("Wrong tags", tags, picTags)
+	}
+	if !proto.Equal(tags[0], tag) || !proto.Equal(picTags[0], picTag) {
+		t.Fatal("Tags mismatch", tags, picTags)
+	}
+}
+
+func TestFindAttachedPicTags_CorruptTag(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+	tag := c.CreateTag()
+	c.CreatePicTag(p, tag)
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	// This should never be true.  Pic tags must always have a tag
+	if err := tag.Delete(tx); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := findAttachedPicTags(tx, p.PicId)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't lookup tag",
+	}
+	compareStatus(t, *status, expected)
+}
+
 func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 	c := NewContainer(t)
 	defer c.CleanUp()
