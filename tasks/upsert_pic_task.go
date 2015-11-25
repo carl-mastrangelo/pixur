@@ -174,16 +174,171 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 func (t *UpsertPicTask) merge(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 	fileURL string, tagNames []string) error {
 	p.SetModifiedTime(now)
-	// TODO: check if deleted.
+	if ds := p.GetDeletionStatus(); ds != nil {
+		if ds.Temporary {
+			// If the pic was soft deleted, it stays deleted, unless it was temporary.
+			p.DeletionStatus = nil
+		}
+	}
+
+	if err := upsertTags(tx, tagNames, p.PicId); err != nil {
+		return err
+	}
+
 	// TODO: store file name
 	// TODO: store file URL
-	// TODO: handle tag merger
-
 	if err := p.Update(tx); err != nil {
 		return s.InternalError(err, "Can't update pic")
 	}
 
 	return nil
+}
+
+func upsertTags(tx *sql.Tx, rawTags []string, picID int64, now time.Time) error {
+	newTagNames, err := cleanTagNames(rawTags)
+	if err != nil {
+		return err
+	}
+
+	attachedTags, _, err := findAttachedPicTags(tx, picID)
+	if err != nil {
+		return err
+	}
+
+	unattachedTagNames := findUnattachedTagNames(attachedTags, newTagNames)
+	existingTags, unknownNames, err := findExistingTagsByName(tx, unattachedTagNames)
+	if err != nil {
+		return err
+	}
+
+	if err := updateExistingTags(tx, existingTags, now); err != nil {
+		return err
+	}
+	newTags, err := createNewTags(tx, unknownNames, now)
+	if err != nil {
+		return err
+	}
+
+	existingTags = append(existingTags, newTags...)
+	if _, err := createPicTags(tx, existingTags, picID, now); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func findAttachedPicTags(tx *sql.Tx, picID int64) ([]*schema.Tag, []*schema.PicTag, error) {
+	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;",
+		tx, schema.PicTagColPicId)
+	if err != nil {
+		return nil, nil, s.InternalError(err, "Can't prepare picTagStmt")
+	}
+	defer picTagStmt.Close()
+
+	picTags, err := schema.FindPicTags(picTagStmt, picID)
+	if err != nil {
+		return nil, nil, s.InternalError(err, "Can't find pictags")
+	}
+
+	tagStmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;",
+		tx, schema.TagColId)
+	if err != nil {
+		return nil, nil, s.InternalError(err, "Can't prepare tagStmt")
+	}
+	defer tagStmt.Close()
+
+	var tags []*schema.Tag
+	// TODO: maybe do something with lock ordering?
+	for _, picTag := range picTags {
+		tag, err := schema.LookupTag(tagStmt, picTag.TagId)
+		if err != nil {
+			return nil, nil, s.InternalError(err, "Can't lookup tag")
+		}
+		tags = append(tags, tag)
+	}
+	return tags, picTags, nil
+}
+
+func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []string {
+	attachedTagNames := make(map[string]struct{}, len(attachedTags))
+
+	for _, tag := range attachedTags {
+		attachedTagNames[tag.Name] = struct{}{}
+	}
+	var unattachedTagNames []string
+	for _, newTagName := range newTagNames {
+		if _, attached := attachedTagNames[newTagName]; !attached {
+			unattachedTagNames = append(unattachedTagNames, newTagName)
+		}
+	}
+
+	return unattachedTagNames
+}
+
+func findExistingTagsByName(tx *sql.Tx, names []string) (tags []*schema.Tag, unknownNames []string, err error) {
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColName)
+	if err != nil {
+		return nil, nil, s.InternalError(err, "Can't prepare stmt")
+	}
+	defer stmt.Close()
+
+	for _, name := range names {
+		tag, err := schema.LookupTag(stmt, name)
+		if err == sql.ErrNoRows {
+			unknownNames = append(unknownNames, name)
+		} else if err != nil {
+			return nil, nil, s.InternalError(err, "Can't lookup tag")
+		}
+		tags = append(tags, tag)
+	}
+
+	return
+}
+
+func updateExistingTags(tx *sql.Tx, tags []*schema.Tag, now time.Time) error {
+	for _, tag := range tags {
+		tag.SetModifiedTime(now)
+		tag.UsageCount++
+		if err := tag.Update(tx); err != nil {
+			return s.InternalError(err, "Can't update tag")
+		}
+	}
+	return nil
+}
+
+func createNewTags(tx *sql.Tx, tagNames []string, now time.Time) ([]*schema.Tag, error) {
+	var tags []*schema.Tag
+	for _, name := range tagNames {
+		tag := &schema.Tag{
+			Name:       name,
+			UsageCount: 1,
+			ModifiedTs: schema.FromTime(now),
+			CreatedTs:  schema.FromTime(now),
+		}
+		if err := tag.Insert(tx); err != nil {
+			return nil, s.InternalError(err, "Can't insert tag")
+		}
+		tags = append(tags, tag)
+	}
+	return tags, nil
+}
+
+func createPicTags(tx *sql.Tx, tags []*schema.Tag, picID int64, now time.Time) ([]*schema.PicTag, error) {
+	var picTags []*schema.PicTag
+	for _, tag := range tags {
+		pt := &schema.PicTag{
+			PicId:      picID,
+			TagId:      tag.TagId,
+			Name:       tag.Name,
+			ModifiedTs: schema.FromTime(now),
+			CreatedTs:  schema.FromTime(now),
+		}
+		if _, err := pt.Insert(tx); err != nil {
+			return nil, s.InternalError(err, "Can't insert pictag")
+		}
+		picTags = append(picTags, pt)
+	}
+	return picTags, nil
 }
 
 func findExistingPic(tx *sql.Tx, typ schema.PicIdentifier_Type, hash []byte) (*schema.Pic, error) {
