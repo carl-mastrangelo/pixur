@@ -21,6 +21,36 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestUpsertTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	attachedTag := c.CreateTag()
+	unattachedTag := c.CreateTag()
+	pic := c.CreatePic()
+	c.CreatePicTag(pic, attachedTag)
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	now := time.Now()
+
+	tagNames := []string{attachedTag.Name, unattachedTag.Name, "missing"}
+
+	err := upsertTags(tx, tagNames, pic.PicId, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	allTags, allPicTags, err := findAttachedPicTags(tx, pic.PicId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(allTags) != 3 || len(allPicTags) != 3 {
+		t.Fatal("not all tags created", allTags, allPicTags)
+	}
+}
+
 func TestCreatePicTags(t *testing.T) {
 	c := NewContainer(t)
 	defer c.CleanUp()
