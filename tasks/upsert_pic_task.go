@@ -259,6 +259,8 @@ func findAttachedPicTags(tx *sql.Tx, picID int64) ([]*schema.Tag, []*schema.PicT
 	return tags, picTags, nil
 }
 
+// findUnattachedTagNames finds tag names that are not part of a pic's tags.
+// While pic tags are the SoT for attachment, only the Tag is the SoT for the name.
 func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []string {
 	attachedTagNames := make(map[string]struct{}, len(attachedTags))
 
@@ -288,8 +290,9 @@ func findExistingTagsByName(tx *sql.Tx, names []string) (tags []*schema.Tag, unk
 			unknownNames = append(unknownNames, name)
 		} else if err != nil {
 			return nil, nil, s.InternalError(err, "Can't lookup tag")
+		} else {
+			tags = append(tags, tag)
 		}
-		tags = append(tags, tag)
 	}
 
 	return

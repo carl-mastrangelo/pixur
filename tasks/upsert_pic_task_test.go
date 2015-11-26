@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -19,6 +20,271 @@ import (
 	"pixur.org/pixur/schema"
 	s "pixur.org/pixur/status"
 )
+
+func TestCreatePicTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag := c.CreateTag()
+	pic := c.CreatePic()
+	now := time.Now()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	picTags, err := createPicTags(tx, []*schema.Tag{tag}, pic.PicId, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedPicTag := &schema.PicTag{
+		PicId:      pic.PicId,
+		TagId:      tag.TagId,
+		Name:       tag.Name,
+		CreatedTs:  schema.FromTime(now),
+		ModifiedTs: schema.FromTime(now),
+	}
+
+	if len(picTags) != 1 || !proto.Equal(picTags[0], expectedPicTag) {
+		t.Fatal("Pic tags mismatch", picTags, expectedPicTag)
+	}
+}
+
+func TestCreatePicTags_CantPrepare(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag := c.CreateTag()
+	pic := c.CreatePic()
+	now := time.Now()
+
+	tx := c.GetTx()
+	tx.Rollback()
+
+	_, err := createPicTags(tx, []*schema.Tag{tag}, pic.PicId, now)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't insert pictag",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestCreateNewTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	now := time.Now()
+
+	newTags, err := createNewTags(tx, []string{"a"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(newTags) != 1 {
+		t.Fatal("Didn't create tag", newTags)
+	}
+
+	expectedTag := &schema.Tag{
+		TagId:      newTags[0].TagId,
+		Name:       "a",
+		CreatedTs:  schema.FromTime(now),
+		ModifiedTs: schema.FromTime(now),
+		UsageCount: 1,
+	}
+	if !proto.Equal(newTags[0], expectedTag) {
+		t.Fatal("tag not expected", newTags[0], expectedTag)
+	}
+}
+
+func TestCreateNewTags_CantCreate(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tx := c.GetTx()
+	tx.Rollback()
+
+	now := time.Now()
+
+	_, err := createNewTags(tx, []string{"a"}, now)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't insert tag",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestUpdateExistingTags(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag := c.CreateTag()
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	now := tag.GetModifiedTime().Add(time.Nanosecond)
+	usage := tag.UsageCount
+
+	if err := updateExistingTags(tx, []*schema.Tag{tag}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	c.RefreshTag(&tag)
+	if tag.GetModifiedTime() != now {
+		t.Fatal("Modified time not updated")
+	}
+	if tag.UsageCount != usage+1 {
+		t.Fatal("Usage count not updated")
+	}
+}
+
+func TestUpdateExistingTags_CantPrepare(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag := c.CreateTag()
+	tx := c.GetTx()
+	tx.Rollback()
+
+	err := updateExistingTags(tx, []*schema.Tag{tag}, tag.GetModifiedTime())
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't update tag",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestFindExistingTagsByName_AllFound(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag1 := c.CreateTag()
+	tag2 := c.CreateTag()
+	// create another random tag, but we won't use it.
+	c.CreateTag()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	tags, unknown, err := findExistingTagsByName(tx, []string{tag2.Name, tag1.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Take advantage of the fact that findExistingTagsByName returns tags in order.
+	// This will have to change eventually.
+	if len(tags) != 2 || tags[0].TagId != tag2.TagId || tags[1].TagId != tag1.TagId {
+		t.Fatal("Tags mismatch", tags, tag1, tag2)
+	}
+	if len(unknown) != 0 {
+		t.Fatal("All tags should have been found", unknown)
+	}
+}
+
+func TestFindExistingTagsByName_SomeFound(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	tag1 := c.CreateTag()
+	// create another random tag, but we won't use it.
+	c.CreateTag()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", tag1.Name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 1 || tags[0].TagId != tag1.TagId {
+		t.Fatal("Tags mismatch", tags, tag1)
+	}
+	if len(unknown) != 1 || unknown[0] != "missing" {
+		t.Fatal("Unknown tag should have been found", unknown)
+	}
+}
+
+func TestFindExistingTagsByName_NoneFound(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	// create a random tag, but we won't use it.
+	c.CreateTag()
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", "othertag"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 0 {
+		t.Fatal("No tags should be found", tags)
+	}
+	// Again take advantage of deterministic ordering.
+	if len(unknown) != 2 || unknown[0] != "missing" || unknown[1] != "othertag" {
+		t.Fatal("Unknown tag should have been found", unknown)
+	}
+}
+
+func TestFindExistingTagsByName_CantPrepare(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	// create a random tag, but we won't use it.
+	c.CreateTag()
+
+	tx := c.GetTx()
+	tx.Rollback()
+
+	_, _, err := findExistingTagsByName(tx, nil)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't prepare stmt",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestFindUnattachedTagNames_AllNew(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+
+	names := findUnattachedTagNames(tags, []string{"missing"})
+	if len(names) != 1 || names[0] != "missing" {
+		t.Fatal("Names should have been found", names)
+	}
+}
+
+func TestFindUnattachedTagNames_SomeNew(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+
+	names := findUnattachedTagNames(tags, []string{"missing", tags[0].Name})
+	if len(names) != 1 || names[0] != "missing" {
+		t.Fatal("Names should have been found", names)
+	}
+}
+
+func TestFindUnattachedTagNames_NoneNew(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+
+	names := findUnattachedTagNames(tags, []string{tags[1].Name, tags[0].Name})
+	if len(names) != 0 {
+		t.Fatal("Names shouldn't have been found", names)
+	}
+}
 
 func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
 	c := NewContainer(t)
