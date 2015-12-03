@@ -193,8 +193,21 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 		return err
 	}
 
-	// TODO: store file name
-	// TODO: store file URL
+	if fileURL != "" {
+		// If filedata was provided, still check that the url is valid.  Also strips fragment
+		u, err := validateURL(fileURL)
+		if err != nil {
+			return err
+		}
+		p.Source = append(p.Source, &schema.Pic_FileSource{
+			Url:       u.String(),
+			CreatedTs: schema.FromTime(now),
+		})
+	}
+	if fh.Name != "" {
+		p.FileName = append(p.FileName, fh.Name)
+	}
+
 	if err := p.Update(tx); err != nil {
 		return s.InternalError(err, "Can't update pic")
 	}
@@ -432,6 +445,7 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 			h = header
 		}
 	} else {
+		// TODO: maybe extract the filename from the url, if not provided in FileHeader
 		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
 		// Also get a copy of the size.  We don't want to move the file if it is on the
 		// same partition, because then we can't retry the task on failure.
@@ -455,10 +469,30 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 	return f, h, nil
 }
 
-func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, error) {
+// TODO: add tests
+func validateURL(rawurl string) (*url.URL, error) {
+	if len(rawurl) > 1024 {
+		return nil, s.InvalidArgument(nil, "Can't use long URL")
+	}
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, s.InvalidArgument(err, "Can't parse ", rawurl)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, s.InvalidArgument(nil, "Can't use non HTTP")
+	}
+	if u.User != nil {
+		return nil, s.InvalidArgument(nil, "Can't provide userinfo")
+	}
+	u.Fragment = ""
+
+	return u, nil
+}
+
+func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, error) {
+	u, err := validateURL(rawurl)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO: make sure this isn't reading from ourself

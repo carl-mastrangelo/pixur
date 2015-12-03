@@ -108,8 +108,15 @@ func (t *CreatePicTask) Run() error {
 		if err := t.downloadFile(wf, p); err != nil {
 			return err
 		}
+		p.Source = []*schema.Pic_FileSource{{
+			Url:       t.FileURL,
+			CreatedTs: schema.FromTime(t.now),
+		}}
 	} else {
 		return status.InvalidArgument(nil, "No file uploaded")
+	}
+	if t.Filename != "" {
+		p.FileName = []string{t.Filename}
 	}
 
 	img, err := imaging.FillImageConfig(wf, p)

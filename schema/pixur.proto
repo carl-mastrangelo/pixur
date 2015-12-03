@@ -63,7 +63,19 @@ message Pic {
   }
 
   int64 view_count = 14;
+  
+  message FileSource {
+    string url = 1;
+    string referrer = 2;
+    Timestamp created_ts = 3;
+  }
+  
+  repeated FileSource source = 15;
+  
+  repeated string file_name = 16;
 }
+
+
 
 // A picture identifier
 message PicIdent {

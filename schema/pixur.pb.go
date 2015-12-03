@@ -121,8 +121,10 @@ type Pic struct {
 	// pic is actually "deleted" only the pic object is removed.
 	DeletionStatus *Pic_DeletionStatus `protobuf:"bytes,12,opt,name=deletion_status" json:"deletion_status,omitempty"`
 	// Only present on animated images.
-	AnimationInfo *AnimationInfo `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
-	ViewCount     int64          `protobuf:"varint,14,opt,name=view_count" json:"view_count,omitempty"`
+	AnimationInfo *AnimationInfo    `protobuf:"bytes,13,opt,name=animation_info" json:"animation_info,omitempty"`
+	ViewCount     int64             `protobuf:"varint,14,opt,name=view_count" json:"view_count,omitempty"`
+	Source        []*Pic_FileSource `protobuf:"bytes,15,rep,name=source" json:"source,omitempty"`
+	FileName      []string          `protobuf:"bytes,16,rep,name=file_name" json:"file_name,omitempty"`
 }
 
 func (m *Pic) Reset()         { *m = Pic{} }
@@ -153,6 +155,13 @@ func (m *Pic) GetDeletionStatus() *Pic_DeletionStatus {
 func (m *Pic) GetAnimationInfo() *AnimationInfo {
 	if m != nil {
 		return m.AnimationInfo
+	}
+	return nil
+}
+
+func (m *Pic) GetSource() []*Pic_FileSource {
+	if m != nil {
+		return m.Source
 	}
 	return nil
 }
@@ -196,6 +205,23 @@ func (m *Pic_DeletionStatus) GetPendingDeletedTs() *Timestamp {
 func (m *Pic_DeletionStatus) GetActualDeletedTs() *Timestamp {
 	if m != nil {
 		return m.ActualDeletedTs
+	}
+	return nil
+}
+
+type Pic_FileSource struct {
+	Url       string     `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
+	Referrer  string     `protobuf:"bytes,2,opt,name=referrer" json:"referrer,omitempty"`
+	CreatedTs *Timestamp `protobuf:"bytes,3,opt,name=created_ts" json:"created_ts,omitempty"`
+}
+
+func (m *Pic_FileSource) Reset()         { *m = Pic_FileSource{} }
+func (m *Pic_FileSource) String() string { return proto.CompactTextString(m) }
+func (*Pic_FileSource) ProtoMessage()    {}
+
+func (m *Pic_FileSource) GetCreatedTs() *Timestamp {
+	if m != nil {
+		return m.CreatedTs
 	}
 	return nil
 }

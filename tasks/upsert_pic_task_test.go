@@ -1383,11 +1383,11 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, err = task.downloadFile(f, "bad://")
+	_, err = task.downloadFile(f, "http://")
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't download bad://",
+		Message: "Can't download http://",
 	}
 	compareStatus(t, *status, expected)
 }
