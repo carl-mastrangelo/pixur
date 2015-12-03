@@ -147,7 +147,7 @@ PicsService.prototype.create = function(file, url) {
     transformRequest: angular.identity,
     headers: {'Content-Type': undefined},
   };
-  this.http_.post("/api/createPic", data, postConfig).then(
+  this.http_.post("/api/upsertPic", data, postConfig).then(
     function(data, status, headers, config) {
       deferred.resolve(data);
     },
