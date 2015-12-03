@@ -87,7 +87,7 @@ func (c *TestContainer) Tx() *sql.Tx {
 	return tx
 }
 
-func (c *TestContainer) Tempdir() string {
+func (c *TestContainer) TempDir() string {
 	if c.tempdir == "" {
 		path, err := ioutil.TempDir("", "pixurtest")
 		if err != nil {
@@ -98,11 +98,20 @@ func (c *TestContainer) Tempdir() string {
 	return c.tempdir
 }
 
+func (c *TestContainer) TempFile() *os.File {
+	f, err := ioutil.TempFile(c.TempDir(), "__")
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	return f
+}
+
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
 		CreatedTs:  schema.FromTime(now),
 		ModifiedTs: schema.FromTime(now),
+		Mime:       schema.Pic_GIF,
 	}
 
 	if err := p.Insert(c.DB()); err != nil {
@@ -114,22 +123,27 @@ func (c *TestContainer) CreatePic() *TestPic {
 	if err := gif.Encode(buf, img, &gif.Options{}); err != nil {
 		c.T.Fatal(err)
 	}
+	p.Width = int64(img.Bounds().Dx())
+	p.Height = int64(img.Bounds().Dx())
+	if err := p.Update(c.DB()); err != nil {
+		c.T.Fatal(err)
+	}
 
 	h1 := sha256.New()
 	h2 := sha1.New()
 	h3 := md5.New()
-	if err := os.MkdirAll(filepath.Dir(p.Path(c.Tempdir())), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p.Path(c.TempDir())), 0700); err != nil {
 		c.T.Fatal(err)
 	}
-	f, err := os.Create(p.Path(c.Tempdir()))
+	f, err := os.Create(p.Path(c.TempDir()))
 	if err != nil {
 		c.T.Fatal(err)
 	}
 	defer f.Close()
-	if err := os.MkdirAll(filepath.Dir(p.ThumbnailPath(c.Tempdir())), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p.ThumbnailPath(c.TempDir())), 0700); err != nil {
 		c.T.Fatal(err)
 	}
-	tf, err := os.Create(p.ThumbnailPath(c.Tempdir()))
+	tf, err := os.Create(p.ThumbnailPath(c.TempDir()))
 	if err != nil {
 		c.T.Fatal(err)
 	}
@@ -179,6 +193,12 @@ func makeImage(picID int64) image.Image {
 		Pix:    data,
 		Stride: 8,
 		Rect:   image.Rect(0, 0, 8, 1),
+	}
+}
+
+func (p *TestPic) Update() {
+	if err := p.Pic.Update(p.c.DB()); err != nil {
+		p.c.T.Fatal(err)
 	}
 }
 
@@ -242,6 +262,16 @@ func (p *TestPic) Idents() (picIdents []*TestPicIdent) {
 		})
 	}
 	return
+}
+
+func (p *TestPic) Md5() []byte {
+	for _, ident := range p.Idents() {
+		if ident.PicIdent.Type == schema.PicIdent_MD5 {
+			return ident.PicIdent.Value
+		}
+	}
+	p.c.T.Fatal("Can't find MD5")
+	return nil
 }
 
 func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {

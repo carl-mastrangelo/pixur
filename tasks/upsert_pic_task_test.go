@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"image/gif"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -54,6 +55,401 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 		Message: "No pic specified",
 	}
 	compareStatus(t, *status, expected)
+}
+
+func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	md5Hash := p.Md5()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		File:     f,
+		Md5Hash:  md5Hash,
+		TagNames: []string{"tag"},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	ts, pts := p.Tags()
+	if len(ts) != 1 || len(pts) != 1 {
+		t.Fatal("Pic not merged")
+	}
+	p.Refresh()
+	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Not updated")
+	}
+}
+
+func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.FromTime(time.Now()),
+		Temporary:       false,
+	}
+	p.Update()
+
+	md5Hash := p.Md5()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		File:     f,
+		Md5Hash:  md5Hash,
+		TagNames: []string{"tag"},
+	}
+
+	err = task.Run()
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't upload deleted pic.",
+	}
+	compareStatus(t, *status, expected)
+
+	p.Refresh()
+	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should not be updated")
+	}
+}
+
+func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	// pretend its deleted.
+	if err := os.Rename(p.Pic.Path(c.TempDir()), p.Pic.Path(c.TempDir())+"B"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(p.Pic.Path(c.TempDir()) + "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.FromTime(time.Now()),
+		Temporary:       true,
+	}
+	p.Update()
+
+	md5Hash := p.Md5()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		Md5Hash:  md5Hash,
+		TagNames: []string{"tag"},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should be updated")
+	}
+	if f, err := os.Open(p.Pic.Path(c.TempDir())); err != nil {
+		t.Fatal("Pic not uploaded")
+	} else {
+		f.Close()
+	}
+	if f, err := os.Open(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
+		t.Fatal("Thumbnail not created")
+	} else {
+		f.Close()
+	}
+}
+
+func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.FromTime(time.Now()),
+		Temporary:       true,
+	}
+	p.Update()
+
+	md5Hash := p.Md5()
+	md5Hash[0] = md5Hash[0] + 0x10
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		Md5Hash:  md5Hash,
+		TagNames: []string{"tag"},
+	}
+
+	status := task.Run().(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Md5 hash mismatch",
+	}
+	compareStatus(t, *status, expected)
+
+	p.Refresh()
+	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should not be updated")
+	}
+}
+
+func TestUpsertPicTask_BadImage(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		// empty
+		File:     c.TempFile(),
+		TagNames: []string{"tag"},
+	}
+
+	status := task.Run().(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't decode image",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestUpsertPicTask_Duplicate(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		TagNames: []string{"tag"},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	ts, pts := p.Tags()
+	if len(ts) != 1 || len(pts) != 1 {
+		t.Fatal("Pic not merged")
+	}
+	p.Refresh()
+	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Not updated")
+	}
+}
+
+func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.FromTime(time.Now()),
+		Temporary:       false,
+	}
+	p.Update()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		TagNames: []string{"tag"},
+	}
+
+	err = task.Run()
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't upload deleted pic.",
+	}
+	compareStatus(t, *status, expected)
+
+	p.Refresh()
+	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should not be updated")
+	}
+}
+
+func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	// pretend its deleted.
+	if err := os.Rename(p.Pic.Path(c.TempDir()), p.Pic.Path(c.TempDir())+"B"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(p.Pic.Path(c.TempDir()) + "B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.FromTime(time.Now()),
+		Temporary:       true,
+	}
+	p.Update()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		TagNames: []string{"tag"},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should be updated")
+	}
+	if f, err := os.Open(p.Pic.Path(c.TempDir())); err != nil {
+		t.Fatal("Pic not uploaded")
+	} else {
+		f.Close()
+	}
+	if f, err := os.Open(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
+		t.Fatal("Thumbnail not created")
+	} else {
+		f.Close()
+	}
+}
+
+func TestUpsertPicTask_NewPic(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	f := c.TempFile()
+	defer f.Close()
+	img := image.NewGray(image.Rect(0, 0, 8, 10))
+	if err := gif.Encode(f, img, &gif.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		t.Fatal(err)
+	}
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+
+		File:     f,
+		TagNames: []string{"tag"},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	p := task.CreatedPic
+	if p.Mime != schema.Pic_GIF {
+		t.Fatal("Mime not set")
+	}
+	if p.Width != 8 || p.Height != 10 {
+		t.Fatal("Dimensions wrong", p)
+	}
+
+	if !p.GetModifiedTime().Equal(time.Unix(100, 0)) {
+		t.Fatal("Should be updated")
+	}
+	if f, err := os.Open(p.Path(c.TempDir())); err != nil {
+		t.Fatal("Pic not uploaded")
+	} else {
+		f.Close()
+	}
+	if f, err := os.Open(p.ThumbnailPath(c.TempDir())); err != nil {
+		t.Fatal("Thumbnail not created")
+	} else {
+		f.Close()
+	}
 }
 
 func TestMerge(t *testing.T) {

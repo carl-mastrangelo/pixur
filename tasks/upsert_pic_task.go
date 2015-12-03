@@ -64,6 +64,9 @@ func (t *UpsertPicTask) Run() error {
 	}
 
 	if err := tx.Commit(); err != nil {
+		os.Remove(t.CreatedPic.Path(t.PixPath))
+		os.Remove(t.CreatedPic.ThumbnailPath(t.PixPath))
+		t.CreatedPic = nil
 		return s.InternalError(err, "Can't commit")
 	}
 	return nil
@@ -165,8 +168,11 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 		return s.InternalErrorf(err, "Can't rename %v to %v", f.Name(), p.Path(t.PixPath))
 	}
 	if err := t.Rename(ft.Name(), p.ThumbnailPath(t.PixPath)); err != nil {
+		os.Remove(p.Path(t.PixPath))
 		return s.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), p.ThumbnailPath(t.PixPath))
 	}
+
+	t.CreatedPic = p
 
 	return nil
 }
