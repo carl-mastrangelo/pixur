@@ -450,6 +450,11 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	} else {
 		f.Close()
 	}
+	tp := c.WrapPic(p)
+	// three hashes, 1 perceptual
+	if len(tp.Idents()) != 4 {
+		t.Fatal("Not all idents created")
+	}
 }
 
 func TestMerge(t *testing.T) {

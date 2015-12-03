@@ -106,6 +106,13 @@ func (c *TestContainer) TempFile() *os.File {
 	return f
 }
 
+func (c *TestContainer) WrapPic(p *schema.Pic) *TestPic {
+	return &TestPic{
+		Pic: p,
+		c:   c,
+	}
+}
+
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
@@ -180,10 +187,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		c.T.Fatal(err, p)
 	}
 
-	return &TestPic{
-		Pic: p,
-		c:   c,
-	}
+	return c.WrapPic(p)
 }
 
 func makeImage(picID int64) image.Image {
