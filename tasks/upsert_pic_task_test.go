@@ -1584,6 +1584,57 @@ func TestGeneratePicHashesError(t *testing.T) {
 	compareStatus(t, *status, expected)
 }
 
+func TestValidateURL_TooLong(t *testing.T) {
+	long := string(make([]byte, 1025))
+	_, err := validateURL(long)
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't use long URL",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestValidateURL_CantParse(t *testing.T) {
+	_, err := validateURL("::")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't parse",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestValidateURL_BadScheme(t *testing.T) {
+	_, err := validateURL("file:///etc/passwd")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't use non HTTP",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestValidateURL_UserInfo(t *testing.T) {
+	_, err := validateURL("http://me@google.com/")
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "Can't provide userinfo",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestValidateURL_RemoveFragment(t *testing.T) {
+	u, err := validateURL("https://best/thing#ever")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Fragment != "" {
+		t.Fatal("fragment present")
+	}
+}
+
 func compareStatus(t *testing.T, actual, expected s.Status) {
 	if actual.Code != expected.Code {
 		t.Fatal("Code mismatch", actual.Code, expected.Code)
