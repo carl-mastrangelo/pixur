@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"pixur.org/pixur/schema"
 	ptest "pixur.org/pixur/testing"
@@ -35,6 +36,221 @@ func NewContainer(t testing.TB) *container {
 	return &container{
 		t: t,
 	}
+}
+
+type TestContainer struct {
+	T       testing.TB
+	db      *sql.DB
+	tempdir string
+}
+
+func Container(t testing.TB) *TestContainer {
+	return &TestContainer{
+		T: t,
+	}
+}
+
+func (c *TestContainer) DB() *sql.DB {
+	if c.db == nil {
+		db, err := ptest.GetDB()
+		if err != nil {
+			c.T.Fatal(err)
+		}
+		if err := schema.CreateTables(db); err != nil {
+			c.T.Fatal(err)
+		}
+		c.db = db
+	}
+	return c.db
+}
+
+func (c *TestContainer) Close() {
+	if c.db != nil {
+		if err := c.db.Close(); err != nil {
+			c.T.Fatal(err)
+		}
+		c.db = nil
+	}
+	if c.tempdir != "" {
+		if err := os.RemoveAll(c.tempdir); err != nil {
+			c.T.Fatal(err)
+		}
+		c.tempdir = ""
+	}
+}
+
+func (c *TestContainer) Tx() *sql.Tx {
+	tx, err := c.DB().Begin()
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	return tx
+}
+
+func (c *TestContainer) Tempdir() string {
+	if c.tempdir == "" {
+		path, err := ioutil.TempDir("", "pixurtest")
+		if err != nil {
+			c.T.Fatal(err)
+		}
+		c.tempdir = path
+	}
+	return c.tempdir
+}
+
+func (c *TestContainer) CreatePic() *TestPic {
+	now := time.Now()
+	p := &schema.Pic{
+		CreatedTs:  schema.FromTime(now),
+		ModifiedTs: schema.FromTime(now),
+	}
+
+	if err := p.Insert(c.DB()); err != nil {
+		c.T.Fatal(err)
+	}
+
+	img := makeImage(p.PicId)
+	buf := bytes.NewBuffer(nil)
+	if err := gif.Encode(buf, img, &gif.Options{}); err != nil {
+		c.T.Fatal(err)
+	}
+
+	h1 := sha256.New()
+	h2 := sha1.New()
+	h3 := md5.New()
+	if err := os.MkdirAll(filepath.Dir(p.Path(c.Tempdir())), 0700); err != nil {
+		c.T.Fatal(err)
+	}
+	f, err := os.Create(p.Path(c.Tempdir()))
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	defer f.Close()
+	if err := os.MkdirAll(filepath.Dir(p.ThumbnailPath(c.Tempdir())), 0700); err != nil {
+		c.T.Fatal(err)
+	}
+	tf, err := os.Create(p.ThumbnailPath(c.Tempdir()))
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	defer tf.Close()
+
+	if _, err := io.Copy(io.MultiWriter(h1, h2, h3, f, tf), bytes.NewReader(buf.Bytes())); err != nil {
+		c.T.Fatal(err)
+	}
+
+	pi1 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_SHA256,
+		Value: h1.Sum(nil),
+	}
+	if err := pi1.Insert(c.DB()); err != nil {
+		c.T.Fatal(err, p)
+	}
+
+	pi2 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_SHA1,
+		Value: h2.Sum(nil),
+	}
+	if err := pi2.Insert(c.DB()); err != nil {
+		c.T.Fatal(err, p)
+	}
+
+	pi3 := &schema.PicIdentifier{
+		PicId: p.PicId,
+		Type:  schema.PicIdentifier_MD5,
+		Value: h3.Sum(nil),
+	}
+	if err := pi3.Insert(c.DB()); err != nil {
+		c.T.Fatal(err, p)
+	}
+
+	return &TestPic{
+		Pic: p,
+		c:   c,
+	}
+}
+
+func makeImage(picID int64) image.Image {
+	data := make([]uint8, 8)
+	binary.LittleEndian.PutUint64(data, uint64(picID))
+	return &image.Gray{
+		Pix:    data,
+		Stride: 8,
+		Rect:   image.Rect(0, 0, 8, 1),
+	}
+}
+
+func (p *TestPic) Refresh() (exists bool) {
+	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ?;", p.c.DB(), schema.PicColId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	if updated, err := schema.LookupPic(stmt, p.Pic.PicId); err == sql.ErrNoRows {
+		p.Pic = nil
+		return false
+	} else if err != nil {
+		p.c.T.Fatal(err)
+		return
+	} else {
+		p.Pic = updated
+		return true
+	}
+}
+
+type TestPic struct {
+	Pic *schema.Pic
+	c   *TestContainer
+}
+
+type TestTag struct {
+	Tag *schema.Tag
+	c   *TestContainer
+}
+
+type TestPicTag struct {
+	TestPic *TestPic
+	TestTag *TestTag
+	PicTag  *schema.PicTag
+	c       *TestContainer
+}
+
+func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
+	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ?;",
+		p.c.DB(), schema.PicTagColPicId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	defer picTagStmt.Close()
+	pts, err := schema.FindPicTags(picTagStmt, p.Pic.PicId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	tagStmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", p.c.DB(), schema.TagColId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	defer tagStmt.Close()
+	for _, pt := range pts {
+		tag, err := schema.LookupTag(tagStmt, pt.TagId)
+		if err != nil {
+			p.c.T.Fatal(err)
+		}
+		tt := &TestTag{
+			Tag: tag,
+			c:   p.c,
+		}
+		tags = append(tags, tt)
+		picTags = append(picTags, &TestPicTag{
+			TestPic: p,
+			TestTag: tt,
+			PicTag:  pt,
+			c:       p.c,
+		})
+	}
+
+	return
 }
 
 func (c *container) GetDB() *sql.DB {

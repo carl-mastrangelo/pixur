@@ -86,7 +86,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 				}
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
-				return t.merge(tx, p, now, t.Header, t.FileURL, t.TagNames)
+				return mergePic(tx, p, now, t.Header, t.FileURL, t.TagNames)
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			}
 			//  fall through, picture needs to be undeleted.
 		} else {
-			return t.merge(tx, p, now, *fh, t.FileURL, t.TagNames)
+			return mergePic(tx, p, now, *fh, t.FileURL, t.TagNames)
 		}
 	} else {
 		p = &schema.Pic{
@@ -131,7 +131,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			Height:        int64(im.Bounds().Dy()),
 			AnimationInfo: im.AnimationInfo,
 			CreatedTs:     schema.FromTime(now),
-			// ModifiedTime is set in merge
+			// ModifiedTime is set in mergePic
 		}
 		if err := p.Insert(tx); err != nil {
 			return s.InternalError(err, "Can't insert")
@@ -154,7 +154,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 		return s.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := t.merge(tx, p, now, *fh, t.FileURL, t.TagNames); err != nil {
+	if err := mergePic(tx, p, now, *fh, t.FileURL, t.TagNames); err != nil {
 		return err
 	}
 
@@ -171,7 +171,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	return nil
 }
 
-func (t *UpsertPicTask) merge(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
+func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 	fileURL string, tagNames []string) error {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {

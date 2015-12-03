@@ -21,6 +21,92 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestMerge(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	now := time.Now()
+	fh := FileHeader{}
+	fu := "http://url"
+	tagNames := []string{"a", "b"}
+
+	tx := c.Tx()
+	defer tx.Rollback()
+
+	err := mergePic(tx, p.Pic, now, fh, fu, tagNames)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if !now.Equal(schema.ToTime(p.Pic.ModifiedTs)) {
+		t.Fatal("Modified time not updated", now, schema.ToTime(p.Pic.ModifiedTs))
+	}
+	ts, pts := p.Tags()
+	if len(ts) != 2 || len(pts) != 2 {
+		t.Fatal("Tags not made", ts, pts)
+	}
+}
+
+func TestMergeClearsTempDeletionStatus(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+	p.DeletionStatus = &schema.Pic_DeletionStatus{
+		Temporary: true,
+	}
+	c.UpdatePic(p)
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	err := mergePic(tx, p, time.Now(), FileHeader{}, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	c.RefreshPic(&p)
+	if p.GetDeletionStatus() != nil {
+		t.Fatal("should have cleared deletion status")
+	}
+}
+
+func TestMergeLeavesDeletionStatus(t *testing.T) {
+	c := NewContainer(t)
+	defer c.CleanUp()
+
+	p := c.CreatePic()
+	p.DeletionStatus = &schema.Pic_DeletionStatus{}
+	c.UpdatePic(p)
+
+	tx := c.GetTx()
+	defer tx.Rollback()
+
+	err := mergePic(tx, p, time.Now(), FileHeader{}, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	c.RefreshPic(&p)
+	if p.GetDeletionStatus() == nil {
+		t.Fatal("shouldn't have cleared deletion status")
+	}
+}
+
 func TestUpsertTags(t *testing.T) {
 	c := NewContainer(t)
 	defer c.CleanUp()
