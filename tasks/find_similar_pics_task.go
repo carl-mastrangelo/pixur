@@ -33,26 +33,26 @@ func (t *FindSimilarPicsTask) Run() error {
 		return err
 	}
 
-	identStmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;", t.DB,
+	identStmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;", t.DB,
 		schema.PicIdentColPicId, schema.PicIdentColType)
 	if err != nil {
 		return err
 	}
 	defer identStmt.Close()
 
-	picIdent, err := schema.LookupPicIdentifier(identStmt, p.PicId, schema.PicIdentifier_DCT_0)
+	picIdent, err := schema.LookupPicIdent(identStmt, p.PicId, schema.PicIdent_DCT_0)
 	if err != nil {
 		return err
 	}
 	match := binary.BigEndian.Uint64(picIdent.Value)
 
-	allIdentStmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;", t.DB, schema.PicIdentColType)
+	allIdentStmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;", t.DB, schema.PicIdentColType)
 	if err != nil {
 		return err
 	}
 	defer allIdentStmt.Close()
 
-	idents, err := schema.FindPicIdentifiers(allIdentStmt, schema.PicIdentifier_DCT_0)
+	idents, err := schema.FindPicIdents(allIdentStmt, schema.PicIdent_DCT_0)
 	if err != nil {
 		return err
 	}

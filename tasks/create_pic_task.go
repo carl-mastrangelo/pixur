@@ -131,14 +131,14 @@ func (t *CreatePicTask) Run() error {
 
 	// TODO: Move this into its own function
 	// TODO: See if this can be a LOCK IN SHARE MODE
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
 		t.tx, schema.PicIdentColType, schema.PicIdentColValue)
 	if err != nil {
 		return err
 	}
 
-	sha256Idents, err := schema.FindPicIdentifiers(
-		stmt, schema.PicIdentifier_SHA256, identities[schema.PicIdentifier_SHA256])
+	sha256Idents, err := schema.FindPicIdents(
+		stmt, schema.PicIdent_SHA256, identities[schema.PicIdent_SHA256])
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (t *CreatePicTask) Run() error {
 
 	// This also must happen after the pic is inserted, to use PicId
 	for typ, val := range identities {
-		ident := &schema.PicIdentifier{
+		ident := &schema.PicIdent{
 			PicId: p.PicId,
 			Type:  typ,
 			Value: val,
@@ -423,17 +423,17 @@ func cleanTagNames(rawTagNames []string) ([]string, error) {
 	return uniqueTagNames, nil
 }
 
-func getPerceptualHash(p *schema.Pic, im image.Image) *schema.PicIdentifier {
+func getPerceptualHash(p *schema.Pic, im image.Image) *schema.PicIdent {
 	hash, inputs := imaging.PerceptualHash0(im)
-	return &schema.PicIdentifier{
+	return &schema.PicIdent{
 		PicId:      p.PicId,
-		Type:       schema.PicIdentifier_DCT_0,
+		Type:       schema.PicIdent_DCT_0,
 		Value:      hash,
 		Dct0Values: inputs,
 	}
 }
 
-func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byte, error) {
+func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdent_Type][]byte, error) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, status.InternalError(err, "Can't Seek")
 	}
@@ -447,9 +447,9 @@ func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdentifier_Type][]byt
 	if _, err := io.Copy(w, f); err != nil {
 		return nil, status.InternalError(err, "Can't Copy")
 	}
-	return map[schema.PicIdentifier_Type][]byte{
-		schema.PicIdentifier_SHA256: h1.Sum(nil),
-		schema.PicIdentifier_SHA1:   h2.Sum(nil),
-		schema.PicIdentifier_MD5:    h3.Sum(nil),
+	return map[schema.PicIdent_Type][]byte{
+		schema.PicIdent_SHA256: h1.Sum(nil),
+		schema.PicIdent_SHA1:   h2.Sum(nil),
+		schema.PicIdent_MD5:    h3.Sum(nil),
 	}, nil
 }

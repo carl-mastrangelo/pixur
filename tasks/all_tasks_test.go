@@ -139,27 +139,27 @@ func (c *TestContainer) CreatePic() *TestPic {
 		c.T.Fatal(err)
 	}
 
-	pi1 := &schema.PicIdentifier{
+	pi1 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: h1.Sum(nil),
 	}
 	if err := pi1.Insert(c.DB()); err != nil {
 		c.T.Fatal(err, p)
 	}
 
-	pi2 := &schema.PicIdentifier{
+	pi2 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_SHA1,
+		Type:  schema.PicIdent_SHA1,
 		Value: h2.Sum(nil),
 	}
 	if err := pi2.Insert(c.DB()); err != nil {
 		c.T.Fatal(err, p)
 	}
 
-	pi3 := &schema.PicIdentifier{
+	pi3 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_MD5,
+		Type:  schema.PicIdent_MD5,
 		Value: h3.Sum(nil),
 	}
 	if err := pi3.Insert(c.DB()); err != nil {
@@ -218,19 +218,19 @@ type TestPicTag struct {
 
 type TestPicIdent struct {
 	TestPic  *TestPic
-	PicIdent *schema.PicIdentifier
+	PicIdent *schema.PicIdent
 	c        *TestContainer
 }
 
 func (p *TestPic) Idents() (picIdents []*TestPicIdent) {
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
 		p.c.DB(), schema.PicIdentColPicId)
 	if err != nil {
 		p.c.T.Fatal(err)
 	}
 	defer stmt.Close()
 
-	pis, err := schema.FindPicIdentifiers(stmt, p.Pic.PicId)
+	pis, err := schema.FindPicIdents(stmt, p.Pic.PicId)
 	if err != nil {
 		p.c.T.Fatal(err)
 	}
@@ -353,27 +353,27 @@ func (c *container) CreatePic() *schema.Pic {
 		c.t.Fatal(err)
 	}
 
-	pi1 := &schema.PicIdentifier{
+	pi1 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: h1.Sum(nil),
 	}
 	if err := pi1.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
 
-	pi2 := &schema.PicIdentifier{
+	pi2 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_SHA1,
+		Type:  schema.PicIdent_SHA1,
 		Value: h2.Sum(nil),
 	}
 	if err := pi2.Insert(c.GetDB()); err != nil {
 		c.t.Fatal(err, p)
 	}
 
-	pi3 := &schema.PicIdentifier{
+	pi3 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdentifier_MD5,
+		Type:  schema.PicIdent_MD5,
 		Value: h3.Sum(nil),
 	}
 	if err := pi3.Insert(c.GetDB()); err != nil {

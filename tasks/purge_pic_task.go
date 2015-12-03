@@ -80,15 +80,15 @@ func (task *PurgePicTask) Run() error {
 	return nil
 }
 
-func findPicIdentsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicIdentifier, error) {
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicIdentColPicId)
+func findPicIdentsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicIdent, error) {
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicIdentColPicId)
 	if err != nil {
 		return nil, status.InternalError(err, "Unable to Prepare Lookup")
 	}
 	defer stmt.Close()
-	pis, err := schema.FindPicIdentifiers(stmt, picId)
+	pis, err := schema.FindPicIdents(stmt, picId)
 	if err != nil {
-		return nil, status.InternalError(err, "Error Looking up Pic Identifiers")
+		return nil, status.InternalError(err, "Error Looking up Pic Idents")
 	}
 	return pis, nil
 }
@@ -133,10 +133,10 @@ func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) error {
 	return nil
 }
 
-func deletePicIdents(pis []*schema.PicIdentifier, tx *sql.Tx) error {
+func deletePicIdents(pis []*schema.PicIdent, tx *sql.Tx) error {
 	for _, pi := range pis {
 		if err := pi.Delete(tx); err != nil {
-			return status.InternalError(err, "Unable to Delete PicIdentifier")
+			return status.InternalError(err, "Unable to Delete PicIdent")
 		}
 	}
 	return nil

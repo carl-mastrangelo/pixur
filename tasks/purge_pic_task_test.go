@@ -17,12 +17,12 @@ func TestPurgeWorkflow(test *testing.T) {
 	t := c.CreateTag()
 	pt := c.CreatePicTag(p, t)
 
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
 		c.GetDB(), schema.PicIdentColPicId)
 	if err != nil {
 		test.Fatal(err)
 	}
-	idents, err := schema.FindPicIdentifiers(stmt, p.PicId)
+	idents, err := schema.FindPicIdents(stmt, p.PicId)
 	if err != nil {
 		test.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestPurgeWorkflow(test *testing.T) {
 		test.Fatal("Expected PicTag to be deleted", pt)
 	}
 
-	idents, err = schema.FindPicIdentifiers(stmt, task.PicId)
+	idents, err = schema.FindPicIdents(stmt, task.PicId)
 	if err != nil {
 		test.Fatal(err)
 	}

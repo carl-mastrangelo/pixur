@@ -75,7 +75,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	}
 	now := t.Now()
 	if len(t.Md5Hash) != 0 {
-		p, err := findExistingPic(tx, schema.PicIdentifier_MD5, t.Md5Hash)
+		p, err := findExistingPic(tx, schema.PicIdent_MD5, t.Md5Hash)
 		if err != nil {
 			return err
 		}
@@ -110,7 +110,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 
 	// Still double check that the sha1 hash is not in use, even if the md5 one was
 	// checked up at the beginning of the function.
-	p, err := findExistingPic(tx, schema.PicIdentifier_SHA1, sha1Hash)
+	p, err := findExistingPic(tx, schema.PicIdent_SHA1, sha1Hash)
 	if err != nil {
 		return err
 	}
@@ -344,15 +344,15 @@ func createPicTags(tx *sql.Tx, tags []*schema.Tag, picID int64, now time.Time) (
 	return picTags, nil
 }
 
-func findExistingPic(tx *sql.Tx, typ schema.PicIdentifier_Type, hash []byte) (*schema.Pic, error) {
-	identStmt, err := schema.PicIdentifierPrepare(
+func findExistingPic(tx *sql.Tx, typ schema.PicIdent_Type, hash []byte) (*schema.Pic, error) {
+	identStmt, err := schema.PicIdentPrepare(
 		"SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
 		tx, schema.PicIdentColType, schema.PicIdentColValue)
 	if err != nil {
 		return nil, s.InternalError(err, "Can't prepare identStmt")
 	}
 	defer identStmt.Close()
-	idents, err := schema.FindPicIdentifiers(identStmt, typ, hash)
+	idents, err := schema.FindPicIdents(identStmt, typ, hash)
 	if err != nil {
 		return nil, s.InternalError(err, "Can't find idents")
 	}
@@ -367,25 +367,25 @@ func findExistingPic(tx *sql.Tx, typ schema.PicIdentifier_Type, hash []byte) (*s
 }
 
 func insertPicHashes(tx *sql.Tx, picID int64, md5Hash, sha1Hash, sha256Hash []byte) error {
-	md5Ident := &schema.PicIdentifier{
+	md5Ident := &schema.PicIdent{
 		PicId: picID,
-		Type:  schema.PicIdentifier_MD5,
+		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
 	if err := md5Ident.Insert(tx); err != nil {
 		return s.InternalError(err, "Can't insert md5")
 	}
-	sha1Ident := &schema.PicIdentifier{
+	sha1Ident := &schema.PicIdent{
 		PicId: picID,
-		Type:  schema.PicIdentifier_SHA1,
+		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
 	if err := sha1Ident.Insert(tx); err != nil {
 		return s.InternalError(err, "Can't insert sha1")
 	}
-	sha256Ident := &schema.PicIdentifier{
+	sha256Ident := &schema.PicIdent{
 		PicId: picID,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: sha256Hash,
 	}
 	if err := sha256Ident.Insert(tx); err != nil {
@@ -396,9 +396,9 @@ func insertPicHashes(tx *sql.Tx, picID int64, md5Hash, sha1Hash, sha256Hash []by
 
 func insertPerceptualHash(tx *sql.Tx, picID int64, im image.Image) error {
 	hash, inputs := imaging.PerceptualHash0(im)
-	dct0Ident := &schema.PicIdentifier{
+	dct0Ident := &schema.PicIdent{
 		PicId:      picID,
-		Type:       schema.PicIdentifier_DCT_0,
+		Type:       schema.PicIdent_DCT_0,
 		Value:      hash,
 		Dct0Values: inputs,
 	}

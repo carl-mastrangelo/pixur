@@ -21,6 +21,41 @@ import (
 	s "pixur.org/pixur/status"
 )
 
+func TestUpsertPicTask_CantBegin(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+	c.DB().Close()
+
+	task := &UpsertPicTask{
+		DB: c.DB(),
+	}
+
+	err := task.Run()
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INTERNAL_ERROR,
+		Message: "Can't begin TX",
+	}
+	compareStatus(t, *status, expected)
+}
+
+func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	task := &UpsertPicTask{
+		DB: c.DB(),
+	}
+
+	err := task.Run()
+	status := err.(*s.Status)
+	expected := s.Status{
+		Code:    s.Code_INVALID_ARGUMENT,
+		Message: "No pic specified",
+	}
+	compareStatus(t, *status, expected)
+}
+
 func TestMerge(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
@@ -615,7 +650,7 @@ func TestFindExistingPic_None(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 
-	p, err := findExistingPic(tx, schema.PicIdentifier_MD5, []byte("missing"))
+	p, err := findExistingPic(tx, schema.PicIdent_MD5, []byte("missing"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -640,7 +675,7 @@ func TestFindExistingPic_Exists(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 
-	p, err := findExistingPic(tx, schema.PicIdentifier_MD5, h.Sum(nil))
+	p, err := findExistingPic(tx, schema.PicIdent_MD5, h.Sum(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,9 +691,9 @@ func TestFindExistingPic_DuplicateHashes(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 
-	sha256Ident := &schema.PicIdentifier{
+	sha256Ident := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: []byte("sha256"),
 	}
 	if err := sha256Ident.Insert(tx); err != nil {
@@ -670,7 +705,7 @@ func TestFindExistingPic_DuplicateHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := findExistingPic(tx, schema.PicIdentifier_SHA256, sha256Ident.Value)
+	_, err := findExistingPic(tx, schema.PicIdent_SHA256, sha256Ident.Value)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -687,7 +722,7 @@ func TestFindExistingPic_Failure(t *testing.T) {
 	// force tx failure
 	tx.Rollback()
 
-	_, err := findExistingPic(tx, schema.PicIdentifier_SHA256, []byte("sha256"))
+	_, err := findExistingPic(tx, schema.PicIdent_SHA256, []byte("sha256"))
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -703,9 +738,9 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
-	md5Ident := &schema.PicIdentifier{
+	md5Ident := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_MD5,
+		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
 	if err := md5Ident.Insert(tx); err != nil {
@@ -729,9 +764,9 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
-	sha1Ident := &schema.PicIdentifier{
+	sha1Ident := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_SHA1,
+		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
 	if err := sha1Ident.Insert(tx); err != nil {
@@ -755,9 +790,9 @@ func TestInsertPicHashes_SHA256Exists(t *testing.T) {
 	tx := c.GetTx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
-	sha256Ident := &schema.PicIdentifier{
+	sha256Ident := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: sha256Hash,
 	}
 	if err := sha256Ident.Insert(tx); err != nil {
@@ -787,12 +822,12 @@ func TestInsertPicHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ ORDER BY %s;", tx, schema.PicIdentColValue)
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ ORDER BY %s;", tx, schema.PicIdentColValue)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer stmt.Close()
-	idents, err := schema.FindPicIdentifiers(stmt)
+	idents, err := schema.FindPicIdents(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -800,25 +835,25 @@ func TestInsertPicHashes(t *testing.T) {
 	if len(idents) != 3 {
 		t.Fatal("Too many idents", len(idents))
 	}
-	expected := &schema.PicIdentifier{
+	expected := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_MD5,
+		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
 	if !proto.Equal(idents[0], expected) {
 		t.Fatal("mismatch", idents[0], expected)
 	}
-	expected = &schema.PicIdentifier{
+	expected = &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_SHA1,
+		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
 	if !proto.Equal(idents[1], expected) {
 		t.Fatal("mismatch", idents[1], expected)
 	}
-	expected = &schema.PicIdentifier{
+	expected = &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdentifier_SHA256,
+		Type:  schema.PicIdent_SHA256,
 		Value: sha256Hash,
 	}
 	if !proto.Equal(idents[2], expected) {
@@ -836,9 +871,9 @@ func TestInsertPerceptualHash(t *testing.T) {
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
 	hash, inputs := imaging.PerceptualHash0(img)
-	dct0Ident := &schema.PicIdentifier{
+	dct0Ident := &schema.PicIdent{
 		PicId:      1234,
-		Type:       schema.PicIdentifier_DCT_0,
+		Type:       schema.PicIdent_DCT_0,
 		Value:      hash,
 		Dct0Values: inputs,
 	}
@@ -847,12 +882,12 @@ func TestInsertPerceptualHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_;", tx)
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_;", tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer stmt.Close()
-	ident, err := schema.LookupPicIdentifier(stmt)
+	ident, err := schema.LookupPicIdent(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -881,12 +916,12 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	}
 	compareStatus(t, *status, expected)
 
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_;", db)
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_;", db)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer stmt.Close()
-	idents, err := schema.FindPicIdentifiers(stmt)
+	idents, err := schema.FindPicIdents(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}

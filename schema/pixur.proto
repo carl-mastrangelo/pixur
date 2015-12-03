@@ -65,7 +65,8 @@ message Pic {
   int64 view_count = 14;
 }
 
-message PicIdentifier {
+// A picture identifier
+message PicIdent {
   int64 pic_id = 1;
   enum Type {
     UNKNOWN = 0;

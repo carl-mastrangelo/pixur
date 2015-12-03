@@ -10,7 +10,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	Pic
-	PicIdentifier
+	PicIdent
 	AnimationInfo
 	Tag
 	PicTag
@@ -79,24 +79,24 @@ func (x Pic_DeletionStatus_Reason) String() string {
 	return proto.EnumName(Pic_DeletionStatus_Reason_name, int32(x))
 }
 
-type PicIdentifier_Type int32
+type PicIdent_Type int32
 
 const (
-	PicIdentifier_UNKNOWN PicIdentifier_Type = 0
-	PicIdentifier_SHA256  PicIdentifier_Type = 1
-	PicIdentifier_SHA1    PicIdentifier_Type = 2
-	PicIdentifier_MD5     PicIdentifier_Type = 3
-	PicIdentifier_DCT_0   PicIdentifier_Type = 4
+	PicIdent_UNKNOWN PicIdent_Type = 0
+	PicIdent_SHA256  PicIdent_Type = 1
+	PicIdent_SHA1    PicIdent_Type = 2
+	PicIdent_MD5     PicIdent_Type = 3
+	PicIdent_DCT_0   PicIdent_Type = 4
 )
 
-var PicIdentifier_Type_name = map[int32]string{
+var PicIdent_Type_name = map[int32]string{
 	0: "UNKNOWN",
 	1: "SHA256",
 	2: "SHA1",
 	3: "MD5",
 	4: "DCT_0",
 }
-var PicIdentifier_Type_value = map[string]int32{
+var PicIdent_Type_value = map[string]int32{
 	"UNKNOWN": 0,
 	"SHA256":  1,
 	"SHA1":    2,
@@ -104,8 +104,8 @@ var PicIdentifier_Type_value = map[string]int32{
 	"DCT_0":   4,
 }
 
-func (x PicIdentifier_Type) String() string {
-	return proto.EnumName(PicIdentifier_Type_name, int32(x))
+func (x PicIdent_Type) String() string {
+	return proto.EnumName(PicIdent_Type_name, int32(x))
 }
 
 type Pic struct {
@@ -200,17 +200,18 @@ func (m *Pic_DeletionStatus) GetActualDeletedTs() *Timestamp {
 	return nil
 }
 
-type PicIdentifier struct {
-	PicId int64              `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
-	Type  PicIdentifier_Type `protobuf:"varint,2,opt,name=type,enum=pixur.PicIdentifier_Type" json:"type,omitempty"`
-	Value []byte             `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+// A picture identifier
+type PicIdent struct {
+	PicId int64         `protobuf:"varint,1,opt,name=pic_id" json:"pic_id,omitempty"`
+	Type  PicIdent_Type `protobuf:"varint,2,opt,name=type,enum=pixur.PicIdent_Type" json:"type,omitempty"`
+	Value []byte        `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	// dct0 are the upper 8x8 corner of the 32x32 dct of the image
 	Dct0Values []float32 `protobuf:"fixed32,4,rep,packed,name=dct0_values" json:"dct0_values,omitempty"`
 }
 
-func (m *PicIdentifier) Reset()         { *m = PicIdentifier{} }
-func (m *PicIdentifier) String() string { return proto.CompactTextString(m) }
-func (*PicIdentifier) ProtoMessage()    {}
+func (m *PicIdent) Reset()         { *m = PicIdent{} }
+func (m *PicIdent) String() string { return proto.CompactTextString(m) }
+func (*PicIdent) ProtoMessage()    {}
 
 type AnimationInfo struct {
 	// How long this animated image in time.  There must be more than 1 frame
@@ -304,5 +305,5 @@ func (*Duration) ProtoMessage()    {}
 func init() {
 	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
 	proto.RegisterEnum("pixur.Pic_DeletionStatus_Reason", Pic_DeletionStatus_Reason_name, Pic_DeletionStatus_Reason_value)
-	proto.RegisterEnum("pixur.PicIdentifier_Type", PicIdentifier_Type_name, PicIdentifier_Type_value)
+	proto.RegisterEnum("pixur.PicIdent_Type", PicIdent_Type_name, PicIdent_Type_value)
 }

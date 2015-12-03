@@ -152,13 +152,13 @@ func TestAllIdentitiesAdded(t *testing.T) {
 		t.Fatalf("%s %t", err, err)
 	}
 
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
 		ctnr.GetDB(), schema.PicIdentColPicId)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	idents, err := schema.FindPicIdentifiers(stmt, task.CreatedPic.PicId)
+	idents, err := schema.FindPicIdents(stmt, task.CreatedPic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,20 +167,20 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	if len(groupedIdents) != 4 {
 		t.Fatalf("Unexpected Idents: %s", groupedIdents)
 	}
-	if !bytes.Equal(mustHash(sha256.New(), imgData), groupedIdents[schema.PicIdentifier_SHA256]) {
-		t.Fatalf("sha256 mismatch: %s", groupedIdents[schema.PicIdentifier_SHA256])
+	if !bytes.Equal(mustHash(sha256.New(), imgData), groupedIdents[schema.PicIdent_SHA256]) {
+		t.Fatalf("sha256 mismatch: %s", groupedIdents[schema.PicIdent_SHA256])
 	}
-	if !bytes.Equal(mustHash(sha1.New(), imgData), groupedIdents[schema.PicIdentifier_SHA1]) {
-		t.Fatalf("sha1 mismatch: %s", groupedIdents[schema.PicIdentifier_SHA1])
+	if !bytes.Equal(mustHash(sha1.New(), imgData), groupedIdents[schema.PicIdent_SHA1]) {
+		t.Fatalf("sha1 mismatch: %s", groupedIdents[schema.PicIdent_SHA1])
 	}
-	if !bytes.Equal(mustHash(md5.New(), imgData), groupedIdents[schema.PicIdentifier_MD5]) {
-		t.Fatalf("md5 mismatch: %s", groupedIdents[schema.PicIdentifier_MD5])
+	if !bytes.Equal(mustHash(md5.New(), imgData), groupedIdents[schema.PicIdent_MD5]) {
+		t.Fatalf("md5 mismatch: %s", groupedIdents[schema.PicIdent_MD5])
 	}
 	// TODO: check the phash
 }
 
-func groupIdentifierByType(idents []*schema.PicIdentifier) map[schema.PicIdentifier_Type][]byte {
-	grouped := map[schema.PicIdentifier_Type][]byte{}
+func groupIdentifierByType(idents []*schema.PicIdent) map[schema.PicIdent_Type][]byte {
+	grouped := map[schema.PicIdent_Type][]byte{}
 	for _, id := range idents {
 		grouped[id.Type] = id.Value
 	}
