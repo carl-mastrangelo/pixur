@@ -216,6 +216,34 @@ type TestPicTag struct {
 	c       *TestContainer
 }
 
+type TestPicIdent struct {
+	TestPic  *TestPic
+	PicIdent *schema.PicIdentifier
+	c        *TestContainer
+}
+
+func (p *TestPic) Idents() (picIdents []*TestPicIdent) {
+	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ?;",
+		p.c.DB(), schema.PicIdentColPicId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	defer stmt.Close()
+
+	pis, err := schema.FindPicIdentifiers(stmt, p.Pic.PicId)
+	if err != nil {
+		p.c.T.Fatal(err)
+	}
+	for _, pi := range pis {
+		picIdents = append(picIdents, &TestPicIdent{
+			TestPic:  p,
+			PicIdent: pi,
+			c:        p.c,
+		})
+	}
+	return
+}
+
 func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
 	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ?;",
 		p.c.DB(), schema.PicTagColPicId)
