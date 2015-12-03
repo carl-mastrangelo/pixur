@@ -89,6 +89,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 				}
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
+				t.CreatedPic = p
 				return mergePic(tx, p, now, t.Header, t.FileURL, t.TagNames)
 			}
 		}
@@ -124,6 +125,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			}
 			//  fall through, picture needs to be undeleted.
 		} else {
+			t.CreatedPic = p
 			return mergePic(tx, p, now, *fh, t.FileURL, t.TagNames)
 		}
 	} else {

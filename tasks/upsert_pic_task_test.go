@@ -90,6 +90,9 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Not updated")
 	}
+	if task.CreatedPic.PicId != p.Pic.PicId {
+		t.Fatal("No Output")
+	}
 }
 
 func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
@@ -189,6 +192,9 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		t.Fatal("Thumbnail not created")
 	} else {
 		f.Close()
+	}
+	if task.CreatedPic.PicId != p.Pic.PicId {
+		t.Fatal("No Output")
 	}
 }
 
@@ -298,6 +304,9 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Not updated")
 	}
+	if task.CreatedPic.PicId != p.Pic.PicId {
+		t.Fatal("No Output")
+	}
 }
 
 func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
@@ -397,6 +406,9 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	} else {
 		f.Close()
 	}
+	if task.CreatedPic.PicId != p.Pic.PicId {
+		t.Fatal("No Output")
+	}
 }
 
 func TestUpsertPicTask_NewPic(t *testing.T) {
@@ -454,6 +466,9 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	// three hashes, 1 perceptual
 	if len(tp.Idents()) != 4 {
 		t.Fatal("Not all idents created")
+	}
+	if task.CreatedPic == nil {
+		t.Fatal("No Output")
 	}
 }
 
