@@ -1,4 +1,4 @@
-package image
+package imaging
 
 import (
 	"encoding/json"
@@ -17,8 +17,12 @@ import (
 
 	"github.com/nfnt/resize"
 
-	"pixur.org/pixur/image/webm"
+	"pixur.org/pixur/imaging/webm"
 	"pixur.org/pixur/schema"
+)
+
+var (
+	_ SubImager = &webm.WebmImage{}
 )
 
 // TODO: maybe make this into it's own package
@@ -34,7 +38,7 @@ type BadWebmFormatErr struct {
 }
 
 type PixurImage struct {
-	image.Image
+	SubImager
 	Mime          schema.Pic_Mime
 	AnimationInfo *schema.AnimationInfo
 	// Metadata, not comprehensive
@@ -47,7 +51,7 @@ func ReadImage(r *io.SectionReader) (*PixurImage, error) {
 		return nil, err
 	}
 	pi := PixurImage{
-		Image: im,
+		SubImager: im.(SubImager),
 	}
 	if mime, err := schema.FromImageFormat(name); err != nil {
 		return nil, err
@@ -142,18 +146,45 @@ func GetGifDuration(g *gif.GIF) *schema.Duration {
 	return schema.FromDuration(duration)
 }
 
+type SubImager interface {
+	image.Image
+	SubImage(image.Rectangle) image.Image
+}
+
 // TODO: interpret image rotation metadata
-func MakeThumbnail(im image.Image) image.Image {
-	bounds := findMaxSquare(im.Bounds())
-	largeSquareImage := image.NewNRGBA(bounds)
-	draw.Draw(largeSquareImage, bounds, im, bounds.Min, draw.Src)
+func MakeThumbnail(img image.Image) image.Image {
+	bounds := findMaxSquare(img.Bounds())
+
+	var largeSquareImage image.Image
+
+	if subImg, ok := img.(SubImager); ok {
+		largeSquareImage = subImg.SubImage(bounds)
+	} else {
+		// this should be really rare.  Rather than panic if not a SubImager,
+		// just use the slowpath.
+		log.Printf("Warning, image is not a subimager %T", img)
+		largeSquareImage = image.NewNRGBA(bounds)
+		draw.Draw(largeSquareImage.(draw.Image), bounds, img, bounds.Min, draw.Src)
+	}
+
 	return resize.Resize(DefaultThumbnailWidth, DefaultThumbnailHeight, largeSquareImage,
 		resize.NearestNeighbor)
 }
 
-func OutputThumbnail(im image.Image, f *os.File) error {
+func OutputThumbnail(im image.Image, mime schema.Pic_Mime, f *os.File) error {
 	thumb := MakeThumbnail(im)
-	return jpeg.Encode(f, thumb, nil)
+	switch mime {
+	case schema.Pic_JPEG:
+		return jpeg.Encode(f, thumb, nil)
+	case schema.Pic_GIF:
+		return png.Encode(f, thumb)
+	case schema.Pic_PNG:
+		return png.Encode(f, thumb)
+	case schema.Pic_WEBM:
+		return jpeg.Encode(f, thumb, nil)
+	default:
+		return fmt.Errorf("Unknown mime type %v", mime)
+	}
 }
 
 func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) error {

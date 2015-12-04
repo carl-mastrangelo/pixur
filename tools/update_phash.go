@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	imaging "pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tools/batch"
 )

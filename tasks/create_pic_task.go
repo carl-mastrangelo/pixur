@@ -20,7 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	imaging "pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 

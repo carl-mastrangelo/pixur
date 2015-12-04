@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strconv"
 
-	"pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tools/batch"
 )
@@ -118,7 +118,7 @@ func (f float32Slice) Len() int           { return len(f) }
 func (f float32Slice) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
 func (f float32Slice) Less(i, j int) bool { return f[i] < f[j] }
 
-func findMedians(pis []*schema.PicIdentifier) []float32 {
+func findMedians(pis []*schema.PicIdent) []float32 {
 	vals := make([][]float32, 64)
 	meds := make([]float32, 0, 64)
 
@@ -182,7 +182,7 @@ func compareHashes(first, second map[pair]*imgDiff) (allDiffs, firstOnly, second
 	return
 }
 
-func updateHashes(pis []*schema.PicIdentifier) {
+func updateHashes(pis []*schema.PicIdent) {
 	for _, pi := range pis {
 		var hash uint64
 		for i := uint(0); i < 64; i++ {
@@ -220,20 +220,20 @@ func writeDiffs(h heap.Interface) error {
 	return nil
 }
 
-func findSimilar(pis []*schema.PicIdentifier) heap.Interface {
+func findSimilar(pis []*schema.PicIdent) heap.Interface {
 	var comp = make(imgDiffs, 0)
 	heap.Init(&comp)
 	for i := 0; i < len(pis); i++ {
 		leftBits := binary.BigEndian.Uint64(pis[i].Value)
-		if image.CountBits(leftBits) < 20 {
+		if imaging.CountBits(leftBits) < 20 {
 			continue // skip, probably not worth our time
 		}
 		for k := i + 1; k < len(pis)-1; k++ {
 			rightBits := binary.BigEndian.Uint64(pis[k].Value)
-			if image.CountBits(rightBits) < 20 {
+			if imaging.CountBits(rightBits) < 20 {
 				continue // skip, probably not worth our time
 			}
-			if count := image.CountBits(leftBits ^ rightBits); count <= 20 {
+			if count := imaging.CountBits(leftBits ^ rightBits); count <= 20 {
 				heap.Push(&comp, imgDiff{
 					//leftBits:  leftBits,
 					//rightBits: rightBits,
@@ -248,7 +248,7 @@ func findSimilar(pis []*schema.PicIdentifier) heap.Interface {
 	return &comp
 }
 
-func hashBitHistogram(pis []*schema.PicIdentifier) ([]int, map[int]int) {
+func hashBitHistogram(pis []*schema.PicIdent) ([]int, map[int]int) {
 	hist := make([]int, 64)
 	histCount := make(map[int]int)
 	for _, pi := range pis {
@@ -283,14 +283,14 @@ func getDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func getIdents(db *sql.DB) ([]*schema.PicIdentifier, error) {
-	stmt, err := schema.PicIdentifierPrepare("SELECT * FROM_ WHERE %s = ? ORDER BY %s;",
+func getIdents(db *sql.DB) ([]*schema.PicIdent, error) {
+	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? ORDER BY %s;",
 		db, schema.PicIdentColType, schema.PicIdentColPicId)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
-	pis, err := schema.FindPicIdentifiers(stmt, schema.PicIdentifier_DCT_0)
+	pis, err := schema.FindPicIdents(stmt, schema.PicIdent_DCT_0)
 	if err != nil {
 		return nil, err
 	}

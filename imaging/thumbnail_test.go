@@ -1,4 +1,4 @@
-package image
+package imaging
 
 import (
 	"bytes"

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tools/batch"
 )
@@ -46,7 +46,7 @@ func main() {
 		}
 		defer f.Close()
 
-		if _, err := image.FillImageConfig(f, p); err != nil {
+		if _, err := imaging.FillImageConfig(f, p); err != nil {
 			log.Println("Bad", p)
 			return err
 		}

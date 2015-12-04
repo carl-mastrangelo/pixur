@@ -7,9 +7,11 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type WebmErr struct {
 }
 
 type WebmImage struct {
-	image.Image
+	SubImager
 
 	Duration time.Duration
 
@@ -29,6 +31,12 @@ type WebmImage struct {
 
 func (e *WebmErr) Error() string {
 	return e.Err.Error()
+}
+
+// copy of imaging.SubImager, to avoid a dependency loop
+type SubImager interface {
+	image.Image
+	SubImage(image.Rectangle) image.Image
 }
 
 const (
@@ -56,43 +64,64 @@ func decodeConfig(r io.Reader) (image.Config, error) {
 // A is not feasible.  B is possible, but will very likely result in copying
 // between partitions.  C is crummy too, since synchronization is now involved.
 func decode(r io.Reader) (image.Image, error) {
+	var wg sync.WaitGroup
+
 	pr, pw := io.Pipe()
 	defer pr.Close()
 	defer pw.Close()
-
-	var im image.Image
-	var convertError error
-	var convertDone = make(chan struct{}, 1)
+	var resp *probeResponse
+	var probeErr error
+	wg.Add(1)
 	go func() {
-		im, convertError = convert(pr)
-		close(convertDone)
+		defer wg.Done()
+		resp, probeErr = probe(pr)
+		// Throw away extra data, to not block the multiwriter
+		io.Copy(ioutil.Discard, pr)
 	}()
 
-	tr := io.TeeReader(r, pw)
+	cr, cw := io.Pipe()
+	defer cr.Close()
+	defer cw.Close()
+	var img SubImager
+	var convertErr error
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		img, convertErr = convert(cr)
+		io.Copy(ioutil.Discard, cr)
+	}()
 
-	resp, err := probe(tr)
-	pw.Close()
-	if err != nil {
+	if _, err := io.Copy(io.MultiWriter(pw, cw), r); err != nil {
+		pw.CloseWithError(err)
+		cw.CloseWithError(err)
 		return nil, err
+	} else {
+		pw.Close()
+		cw.Close()
 	}
+	wg.Wait()
+
+	if probeErr != nil {
+		return nil, probeErr
+	}
+	if convertErr != nil {
+		return nil, convertErr
+	}
+
 	if err := checkValidWebm(*resp); err != nil {
 		return nil, err
-	}
-	<-convertDone
-	if convertError != nil {
-		return nil, convertError
 	}
 	// duration was already checked in checkValidWebm
 	duration, _ := parseDuration(resp.Format.Duration)
 
 	return &WebmImage{
-		Image:    im,
-		Duration: duration,
-		Tags:     resp.Format.Tags,
+		SubImager: img,
+		Duration:  duration,
+		Tags:      resp.Format.Tags,
 	}, nil
 }
 
-func convert(r io.Reader) (image.Image, error) {
+func convert(r io.Reader) (SubImager, error) {
 	cmd := exec.Command(
 		"ffmpeg",
 		"-hide_banner",
@@ -123,19 +152,22 @@ func convert(r io.Reader) (image.Image, error) {
 	if err != nil {
 		return nil, &WebmErr{Err: err, DebugInfo: errBuf.String()}
 	}
-
+	// See explanation why in probe()
+	if err := stdout.Close(); err != nil {
+		return nil, err
+	}
 	if err := cmd.Wait(); err != nil {
 		return nil, &WebmErr{Err: err, DebugInfo: errBuf.String()}
 	}
-	return im, nil
+	return im.(SubImager), nil
 }
 
 // Reads in a concatenated set of images and returns the last one.
 // An error is returned if no images could be read, or the there was a
 // decode error.
-func keepLastImage(r io.Reader) (image.Image, error) {
+func keepLastImage(r io.Reader) (SubImager, error) {
 	maxFrames := 120
-	var im image.Image
+	var im SubImager
 	for i := 0; i < maxFrames; i++ {
 		// don't use image.Decode because it doesn't return EOF on EOF
 		lastIm, err := png.Decode(r)
@@ -145,7 +177,7 @@ func keepLastImage(r io.Reader) (image.Image, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		im = lastIm
+		im = lastIm.(SubImager)
 	}
 
 	if im == nil {
@@ -183,26 +215,25 @@ func probe(r io.Reader) (*probeResponse, error) {
 		"-show_streams",
 		"-")
 
+	// Use a buffer to avoid blocking Wait.
+	var outBuf bytes.Buffer
 	var errBuf bytes.Buffer
 
 	cmd.Stdin = r
 	cmd.Stderr = &errBuf
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	defer stdout.Close()
+	cmd.Stdout = &outBuf
 
 	if err := cmd.Start(); err != nil {
 		return nil, &WebmErr{Err: err, DebugInfo: errBuf.String()}
 	}
 	defer cmd.Process.Kill()
 
-	resp := new(probeResponse)
-	if err := json.NewDecoder(stdout).Decode(resp); err != nil {
+	if err := cmd.Wait(); err != nil {
 		return nil, &WebmErr{Err: err, DebugInfo: errBuf.String()}
 	}
-	if err := cmd.Wait(); err != nil {
+
+	resp := new(probeResponse)
+	if err := json.NewDecoder(&outBuf).Decode(resp); err != nil {
 		return nil, &WebmErr{Err: err, DebugInfo: errBuf.String()}
 	}
 

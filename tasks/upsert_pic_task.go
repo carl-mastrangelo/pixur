@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"time"
 
-	imaging "pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	s "pixur.org/pixur/status"
 )
@@ -155,7 +155,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	}
 	defer os.Remove(ft.Name())
 	defer ft.Close()
-	if err := imaging.OutputThumbnail(im, ft); err != nil {
+	if err := imaging.OutputThumbnail(im, p.Mime, ft); err != nil {
 		return s.InternalError(err, "Can't save thumbnail")
 	}
 

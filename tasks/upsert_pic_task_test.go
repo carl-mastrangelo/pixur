@@ -17,7 +17,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	imaging "pixur.org/pixur/image"
+	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
 	s "pixur.org/pixur/status"
 )
