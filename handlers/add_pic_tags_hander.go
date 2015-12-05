@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
@@ -34,7 +35,8 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var task = &tasks.AddPicTagsTask{
-		DB: h.DB,
+		DB:  h.DB,
+		Now: time.Now,
 
 		PicID:    requestedPicID,
 		TagNames: r.PostForm["tag"],

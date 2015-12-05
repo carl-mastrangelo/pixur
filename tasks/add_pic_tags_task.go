@@ -36,6 +36,8 @@ func (t *AddPicTagsTask) Run() error {
 	p, err := schema.LookupPic(stmt, t.PicID)
 	if err == sql.ErrNoRows {
 		return s.NotFound(err, "Can't find pic")
+	} else if err != nil {
+		return s.InternalError(err, "Can't lookup pic")
 	}
 
 	if err := upsertTags(tx, t.TagNames, p.PicId, t.Now()); err != nil {
