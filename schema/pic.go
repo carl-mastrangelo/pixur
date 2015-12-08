@@ -70,13 +70,13 @@ func thumbnailExt(p *Pic) string {
 }
 
 func (p *Pic) ThumbnailRelativeURL() string {
-	return fmt.Sprintf("pix/%su.%s", p.GetVarPicID(), thumbnailExt(p))
+	return fmt.Sprintf("pix/%s0.%s", p.GetVarPicID(), thumbnailExt(p))
 }
 
 func (p *Pic) ThumbnailPath(pixPath string) string {
 	return filepath.Join(
 		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%su.%s", p.GetVarPicID(), thumbnailExt(p)))
+		fmt.Sprintf("%s0.%s", p.GetVarPicID(), thumbnailExt(p)))
 }
 
 func PicBaseDir(pixPath string, id int64) string {

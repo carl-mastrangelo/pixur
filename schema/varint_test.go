@@ -7,39 +7,39 @@ import (
 func TestVarintEncodingZero(t *testing.T) {
 	var num Varint = 0
 
-	if text := num.Encode(); text != "g" {
-		t.Fatalf("Expected %v but was %v", "g", text)
+	if text := num.Encode(); text != "0" {
+		t.Fatalf("Expected %v but was %v", "0", text)
 	}
 }
 
 func TestVarintEncodingLarge(t *testing.T) {
 	var num Varint = 72374
 
-	if text := num.Encode(); text != "m15mn" {
-		t.Fatalf("Expected %v but was %v", "m15mn", text)
+	if text := num.Encode(); text != "k15m6" {
+		t.Fatalf("Expected %v but was %v", "k15m6", text)
 	}
 }
 
 func TestVarintEncodingNegative(t *testing.T) {
 	var num Varint = -1
 
-	if text := num.Encode(); text != "xeyyyyyyyyyyyy" {
-		t.Fatalf("Expected %v but was %v", "xeyyyyyyyyyyyy", text)
+	if text := num.Encode(); text != "weyyyyyyyyyyyf" {
+		t.Fatalf("Expected %v but was %v", "weyyyyyyyyyyyf", text)
 	}
 }
 
 func TestVarintEncodingSingle(t *testing.T) {
-	var num Varint = 0xF
+	var num Varint = 0x10
 
-	if text := num.Encode(); text != "he" {
-		t.Fatalf("Expected %v but was %v", "he", text)
+	if text := num.Encode(); text != "g0" {
+		t.Fatalf("Expected %v but was %v", "g0", text)
 	}
 }
 
 func TestVarintDecodingZero(t *testing.T) {
 	var num Varint = -1
 
-	consumed, err := num.Decode("g")
+	consumed, err := num.Decode("0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestVarintDecodingZero(t *testing.T) {
 func TestVarintDecodingLarge(t *testing.T) {
 	var num Varint
 
-	consumed, err := num.Decode("m15mn")
+	consumed, err := num.Decode("k15m6")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestVarintDecodingLarge(t *testing.T) {
 func TestVarintDecodingNegative(t *testing.T) {
 	var num Varint
 
-	consumed, err := num.Decode("xeyyyyyyyyyyyy")
+	consumed, err := num.Decode("weyyyyyyyyyyyf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,12 +84,12 @@ func TestVarintDecodingNegative(t *testing.T) {
 func TestVarintDecodingSingle(t *testing.T) {
 	var num Varint
 
-	consumed, err := num.Decode("hz")
+	consumed, err := num.Decode("g0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if num != 32 {
-		t.Fatalf("Expected %v but was %v", 32, num)
+	if num != 16 {
+		t.Fatalf("Expected %v but was %v", 16, num)
 	}
 	if consumed != 2 {
 		t.Fatal("not all bytes consumed")
@@ -141,21 +141,6 @@ func TestVarintDecodingFailOnEmpty(t *testing.T) {
 	}
 }
 
-func TestVarintDecodingFailOnTooLong(t *testing.T) {
-	var num Varint = 3
-
-	consumed, err := num.Decode("0123456789abcde")
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	if consumed != 0 {
-		t.Fatalf("Expected no bytes to be consumed")
-	}
-	if num != 3 {
-		t.Fatal("Should not have changed on bad input")
-	}
-}
-
 func TestVarintDecodingFailOnTooShort(t *testing.T) {
 	var num Varint = 3
 
@@ -174,7 +159,7 @@ func TestVarintDecodingFailOnTooShort(t *testing.T) {
 func TestVarintDecodingSucceedsOnExcess(t *testing.T) {
 	var num Varint = 3
 
-	consumed, err := num.Decode("gg")
+	consumed, err := num.Decode("00")
 	if err != nil {
 		t.Fatal(err)
 	}
