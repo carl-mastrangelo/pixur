@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	pixPathMatcher = regexp.MustCompile("^([0-9A-TV-Za-tv-z]+)u?\\.?")
+	pixPathMatcher = regexp.MustCompile("^([0-9A-TV-Za-tv-z]+)\\.?")
 )
 
 type fileServer struct {
@@ -31,7 +31,7 @@ func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var vid schema.Varint
-	if err := vid.DecodeAll(match[1]); err != nil {
+	if _, err := vid.Decode(match[1]); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
