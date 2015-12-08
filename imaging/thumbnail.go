@@ -168,7 +168,7 @@ func MakeThumbnail(img image.Image) image.Image {
 	}
 
 	return resize.Resize(DefaultThumbnailWidth, DefaultThumbnailHeight, largeSquareImage,
-		resize.NearestNeighbor)
+		resize.Lanczos2)
 }
 
 func OutputThumbnail(im image.Image, mime schema.Pic_Mime, f *os.File) error {
