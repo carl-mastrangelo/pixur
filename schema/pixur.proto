@@ -118,6 +118,32 @@ message PicTag {
   Timestamp modified_ts = 7;
 }
 
+message User {
+  int64 user_id = 1;
+  
+  // Hashed secret token
+  bytes secret = 2;
+  
+  repeated UserIdent ident = 3;
+
+  Timestamp created_ts = 4;
+  Timestamp modified_ts = 5;
+  Timestamp last_seen_ts = 6;
+  
+  enum Capability {
+    UNKNOWN = 0;
+    CREATE_PIC = 1;
+  }
+  
+  repeated Capability capability = 7;
+}
+
+message UserIdent {
+  oneof ident {
+    string email = 1;
+  }
+}
+
 // This is the same as google.protobuf.Timestamp, until it becomes standard.
 message Timestamp {
   int64 seconds = 1;

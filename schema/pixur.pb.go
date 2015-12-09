@@ -14,6 +14,8 @@ It has these top-level messages:
 	AnimationInfo
 	Tag
 	PicTag
+	User
+	UserIdent
 	Timestamp
 	Duration
 */
@@ -106,6 +108,26 @@ var PicIdent_Type_value = map[string]int32{
 
 func (x PicIdent_Type) String() string {
 	return proto.EnumName(PicIdent_Type_name, int32(x))
+}
+
+type User_Capability int32
+
+const (
+	User_UNKNOWN    User_Capability = 0
+	User_CREATE_PIC User_Capability = 1
+)
+
+var User_Capability_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "CREATE_PIC",
+}
+var User_Capability_value = map[string]int32{
+	"UNKNOWN":    0,
+	"CREATE_PIC": 1,
+}
+
+func (x User_Capability) String() string {
+	return proto.EnumName(User_Capability_name, int32(x))
 }
 
 type Pic struct {
@@ -308,6 +330,57 @@ func (m *PicTag) GetModifiedTs() *Timestamp {
 	return nil
 }
 
+type User struct {
+	UserId int64 `protobuf:"varint,1,opt,name=user_id" json:"user_id,omitempty"`
+	// Hashed secret token
+	Secret     []byte            `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
+	Ident      []*UserIdent      `protobuf:"bytes,3,rep,name=ident" json:"ident,omitempty"`
+	CreatedTs  *Timestamp        `protobuf:"bytes,4,opt,name=created_ts" json:"created_ts,omitempty"`
+	ModifiedTs *Timestamp        `protobuf:"bytes,5,opt,name=modified_ts" json:"modified_ts,omitempty"`
+	LastSeenTs *Timestamp        `protobuf:"bytes,6,opt,name=last_seen_ts" json:"last_seen_ts,omitempty"`
+	Capability []User_Capability `protobuf:"varint,7,rep,name=capability,enum=pixur.User_Capability" json:"capability,omitempty"`
+}
+
+func (m *User) Reset()         { *m = User{} }
+func (m *User) String() string { return proto.CompactTextString(m) }
+func (*User) ProtoMessage()    {}
+
+func (m *User) GetIdent() []*UserIdent {
+	if m != nil {
+		return m.Ident
+	}
+	return nil
+}
+
+func (m *User) GetCreatedTs() *Timestamp {
+	if m != nil {
+		return m.CreatedTs
+	}
+	return nil
+}
+
+func (m *User) GetModifiedTs() *Timestamp {
+	if m != nil {
+		return m.ModifiedTs
+	}
+	return nil
+}
+
+func (m *User) GetLastSeenTs() *Timestamp {
+	if m != nil {
+		return m.LastSeenTs
+	}
+	return nil
+}
+
+type UserIdent struct {
+	Email string `protobuf:"bytes,1,opt,name=email" json:"email,omitempty"`
+}
+
+func (m *UserIdent) Reset()         { *m = UserIdent{} }
+func (m *UserIdent) String() string { return proto.CompactTextString(m) }
+func (*UserIdent) ProtoMessage()    {}
+
 // This is the same as google.protobuf.Timestamp, until it becomes standard.
 type Timestamp struct {
 	Seconds int64 `protobuf:"varint,1,opt,name=seconds" json:"seconds,omitempty"`
@@ -332,4 +405,5 @@ func init() {
 	proto.RegisterEnum("pixur.Pic_Mime", Pic_Mime_name, Pic_Mime_value)
 	proto.RegisterEnum("pixur.Pic_DeletionStatus_Reason", Pic_DeletionStatus_Reason_name, Pic_DeletionStatus_Reason_value)
 	proto.RegisterEnum("pixur.PicIdent_Type", PicIdent_Type_name, PicIdent_Type_value)
+	proto.RegisterEnum("pixur.User_Capability", User_Capability_name, User_Capability_value)
 }
