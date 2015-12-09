@@ -29,19 +29,19 @@ var (
 )
 
 func (p *Pic) SetCreatedTime(now time.Time) {
-	p.CreatedTs = FromTime(now)
+	p.CreatedTs = ToTs(now)
 }
 
 func (p *Pic) SetModifiedTime(now time.Time) {
-	p.ModifiedTs = FromTime(now)
+	p.ModifiedTs = ToTs(now)
 }
 
 func (p *Pic) GetCreatedTime() time.Time {
-	return ToTime(p.CreatedTs)
+	return FromTs(p.CreatedTs)
 }
 
 func (p *Pic) GetModifiedTime() time.Time {
-	return ToTime(p.ModifiedTs)
+	return FromTs(p.ModifiedTs)
 }
 
 func (p *Pic) GetVarPicID() string {

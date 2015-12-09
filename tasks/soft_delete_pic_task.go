@@ -57,13 +57,13 @@ func (task *SoftDeletePicTask) Run() error {
 	p.DeletionStatus.Details = task.Details
 	p.DeletionStatus.Temporary = task.Temporary
 	if task.PendingDeletionTime != nil {
-		p.DeletionStatus.PendingDeletedTs = schema.FromTime(*task.PendingDeletionTime)
+		p.DeletionStatus.PendingDeletedTs = schema.ToTs(*task.PendingDeletionTime)
 	} else {
 		p.DeletionStatus.PendingDeletedTs = nil
 	}
 
 	if p.DeletionStatus.MarkedDeletedTs == nil {
-		p.DeletionStatus.MarkedDeletedTs = schema.FromTime(now)
+		p.DeletionStatus.MarkedDeletedTs = schema.ToTs(now)
 	}
 	p.SetModifiedTime(now)
 	if err := p.Update(tx); err != nil {

@@ -21,14 +21,14 @@ func toMillis(t time.Time) int64 {
 	return t.UnixNano() / int64(time.Millisecond)
 }
 
-func ToTime(ft *Timestamp) time.Time {
+func FromTs(ft *Timestamp) time.Time {
 	if ft == nil {
 		return time.Time{}.UTC()
 	}
 	return time.Unix(ft.Seconds, int64(ft.Nanos)).UTC()
 }
 
-func FromTime(ft time.Time) *Timestamp {
+func ToTs(ft time.Time) *Timestamp {
 	return &Timestamp{
 		Seconds: ft.Unix(),
 		Nanos:   int32(ft.Nanosecond()),

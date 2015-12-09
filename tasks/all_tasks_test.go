@@ -116,8 +116,8 @@ func (c *TestContainer) WrapPic(p *schema.Pic) *TestPic {
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
-		CreatedTs:  schema.FromTime(now),
-		ModifiedTs: schema.FromTime(now),
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
 		Mime:       schema.Pic_GIF,
 	}
 

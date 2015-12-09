@@ -135,7 +135,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			Width:         int64(im.Bounds().Dx()),
 			Height:        int64(im.Bounds().Dy()),
 			AnimationInfo: im.AnimationInfo,
-			CreatedTs:     schema.FromTime(now),
+			CreatedTs:     schema.ToTs(now),
 			// ModifiedTime is set in mergePic
 		}
 		if err := p.Insert(tx); err != nil {
@@ -201,7 +201,7 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 		}
 		p.Source = append(p.Source, &schema.Pic_FileSource{
 			Url:       u.String(),
-			CreatedTs: schema.FromTime(now),
+			CreatedTs: schema.ToTs(now),
 		})
 	}
 	if fh.Name != "" {
@@ -336,8 +336,8 @@ func createNewTags(tx *sql.Tx, tagNames []string, now time.Time) ([]*schema.Tag,
 		tag := &schema.Tag{
 			Name:       name,
 			UsageCount: 1,
-			ModifiedTs: schema.FromTime(now),
-			CreatedTs:  schema.FromTime(now),
+			ModifiedTs: schema.ToTs(now),
+			CreatedTs:  schema.ToTs(now),
 		}
 		if err := tag.Insert(tx); err != nil {
 			return nil, s.InternalError(err, "Can't insert tag")
@@ -354,8 +354,8 @@ func createPicTags(tx *sql.Tx, tags []*schema.Tag, picID int64, now time.Time) (
 			PicId:      picID,
 			TagId:      tag.TagId,
 			Name:       tag.Name,
-			ModifiedTs: schema.FromTime(now),
-			CreatedTs:  schema.FromTime(now),
+			ModifiedTs: schema.ToTs(now),
+			CreatedTs:  schema.ToTs(now),
 		}
 		if _, err := pt.Insert(tx); err != nil {
 			return nil, s.InternalError(err, "Can't insert pictag")

@@ -107,7 +107,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.FromTime(time.Now()),
+		ActualDeletedTs: schema.ToTs(time.Now()),
 		Temporary:       false,
 	}
 	p.Update()
@@ -155,7 +155,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.FromTime(time.Now()),
+		ActualDeletedTs: schema.ToTs(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -210,7 +210,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.FromTime(time.Now()),
+		ActualDeletedTs: schema.ToTs(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -321,7 +321,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.FromTime(time.Now()),
+		ActualDeletedTs: schema.ToTs(time.Now()),
 		Temporary:       false,
 	}
 	p.Update()
@@ -371,7 +371,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.FromTime(time.Now()),
+		ActualDeletedTs: schema.ToTs(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -495,8 +495,8 @@ func TestMerge(t *testing.T) {
 	}
 
 	p.Refresh()
-	if !now.Equal(schema.ToTime(p.Pic.ModifiedTs)) {
-		t.Fatal("Modified time not updated", now, schema.ToTime(p.Pic.ModifiedTs))
+	if !now.Equal(schema.FromTs(p.Pic.ModifiedTs)) {
+		t.Fatal("Modified time not updated", now, schema.FromTs(p.Pic.ModifiedTs))
 	}
 	ts, pts := p.Tags()
 	if len(ts) != 2 || len(pts) != 2 {
@@ -608,8 +608,8 @@ func TestCreatePicTags(t *testing.T) {
 		PicId:      pic.PicId,
 		TagId:      tag.TagId,
 		Name:       tag.Name,
-		CreatedTs:  schema.FromTime(now),
-		ModifiedTs: schema.FromTime(now),
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
 	}
 
 	if len(picTags) != 1 || !proto.Equal(picTags[0], expectedPicTag) {
@@ -658,8 +658,8 @@ func TestCreateNewTags(t *testing.T) {
 	expectedTag := &schema.Tag{
 		TagId:      newTags[0].TagId,
 		Name:       "a",
-		CreatedTs:  schema.FromTime(now),
-		ModifiedTs: schema.FromTime(now),
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
 		UsageCount: 1,
 	}
 	if !proto.Equal(newTags[0], expectedTag) {

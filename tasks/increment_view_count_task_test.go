@@ -38,7 +38,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 
 	p := ctnr.CreatePic()
 
-	nowTs := schema.FromTime(time.Now())
+	nowTs := schema.ToTs(time.Now())
 	p.DeletionStatus = &schema.Pic_DeletionStatus{
 		MarkedDeletedTs:  nowTs,
 		PendingDeletedTs: nowTs,

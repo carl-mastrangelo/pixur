@@ -28,19 +28,19 @@ type PicTagKey struct {
 }
 
 func (pt *PicTag) SetCreatedTime(now time.Time) {
-	pt.CreatedTs = FromTime(now)
+	pt.CreatedTs = ToTs(now)
 }
 
 func (pt *PicTag) SetModifiedTime(now time.Time) {
-	pt.ModifiedTs = FromTime(now)
+	pt.ModifiedTs = ToTs(now)
 }
 
 func (pt *PicTag) GetCreatedTime() time.Time {
-	return ToTime(pt.CreatedTs)
+	return FromTs(pt.CreatedTs)
 }
 
 func (pt *PicTag) GetModifiedTime() time.Time {
-	return ToTime(pt.ModifiedTs)
+	return FromTs(pt.ModifiedTs)
 }
 
 func (pt *PicTag) fillFromRow(s scanTo) error {

@@ -110,7 +110,7 @@ func (t *CreatePicTask) Run() error {
 		}
 		p.Source = []*schema.Pic_FileSource{{
 			Url:       t.FileURL,
-			CreatedTs: schema.FromTime(t.now),
+			CreatedTs: schema.ToTs(t.now),
 		}}
 	} else {
 		return status.InvalidArgument(nil, "No file uploaded")

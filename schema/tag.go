@@ -23,19 +23,19 @@ var (
 )
 
 func (t *Tag) SetCreatedTime(now time.Time) {
-	t.CreatedTs = FromTime(now)
+	t.CreatedTs = ToTs(now)
 }
 
 func (t *Tag) SetModifiedTime(now time.Time) {
-	t.ModifiedTs = FromTime(now)
+	t.ModifiedTs = ToTs(now)
 }
 
 func (t *Tag) GetCreatedTime() time.Time {
-	return ToTime(t.CreatedTs)
+	return FromTs(t.CreatedTs)
 }
 
 func (t *Tag) GetModifiedTime() time.Time {
-	return ToTime(t.ModifiedTs)
+	return FromTs(t.ModifiedTs)
 }
 
 func (t *Tag) fillFromRow(s scanTo) error {

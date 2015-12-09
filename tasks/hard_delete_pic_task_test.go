@@ -51,8 +51,8 @@ func TestHardDeleteFromSoftDeleted(test *testing.T) {
 	c := NewContainer(test)
 	defer c.CleanUp()
 
-	nowTs := schema.FromTime(time.Now())
-	laterTs := schema.FromTime(time.Now().AddDate(0, 0, 7))
+	nowTs := schema.ToTs(time.Now())
+	laterTs := schema.ToTs(time.Now().AddDate(0, 0, 7))
 
 	p := c.CreatePic()
 	p.DeletionStatus = &schema.Pic_DeletionStatus{
