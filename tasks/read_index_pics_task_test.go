@@ -10,63 +10,44 @@ import (
 )
 
 func TestReadIndexTaskWorkflow(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	p := ctnr.CreatePic()
+	p := c.CreatePic()
 
 	task := ReadIndexPicsTask{
-		DB: ctnr.GetDB(),
+		DB: c.DB(),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
 	}
 
-	// Other pics may have been created by other tests.  Just check we found ours.
-	var foundPic bool
-	for _, actual := range task.Pics {
-		if proto.Equal(p, actual) {
-			foundPic = true
-			break
-		}
-	}
-
-	if !foundPic {
+	if len(task.Pics) != 1 || !proto.Equal(p.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p, task.Pics)
 	}
 }
 
 func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	p1 := ctnr.CreatePic()
-	p3 := ctnr.CreatePic()
+	p1 := c.CreatePic()
+	p3 := c.CreatePic()
 	// A hard deletion
-	p3.DeletionStatus = &schema.Pic_DeletionStatus{
+	p3.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		ActualDeletedTs: schema.ToTs(time.Now()),
 	}
+	p3.Update()
 
 	task := ReadIndexPicsTask{
-		DB: ctnr.GetDB(),
+		DB: c.DB(),
 	}
 
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
 	}
 
-	// Other pics may have been created by other tests.  Just check we found ours.
-	var foundPic bool
-	for _, actual := range task.Pics {
-		if proto.Equal(p1, actual) {
-			foundPic = true
-		}
-		if proto.Equal(p3, actual) {
-			t.Fatalf("Found a hidden pic")
-		}
-	}
-
-	if !foundPic {
+	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p1, task.Pics)
 	}
 }

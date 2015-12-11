@@ -9,47 +9,47 @@ import (
 )
 
 func TestPicViewCountUpdated(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	p := ctnr.CreatePic()
-	oldTime := p.GetModifiedTime()
+	p := c.CreatePic()
+	oldTime := p.Pic.GetModifiedTime()
 
 	task := IncrementViewCountTask{
-		DB:    ctnr.GetDB(),
-		PicID: p.PicId,
+		DB:    c.DB(),
+		PicID: p.Pic.PicId,
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
 	}
 
-	ctnr.RefreshPic(&p)
-	if p.ViewCount != 1 {
-		t.Fatalf("Expected view count %v but was %v", 1, p.ViewCount)
+	p.Refresh()
+	if p.Pic.ViewCount != 1 {
+		t.Fatalf("Expected view count %v but was %v", 1, p.Pic.ViewCount)
 	}
-	if p.GetModifiedTime() == oldTime {
+	if p.Pic.GetModifiedTime() == oldTime {
 		t.Fatalf("Expected Modified Time to be updated but is  %v but was %v", oldTime)
 	}
 }
 
 func TestPicViewCountFailsIfDeleted(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	p := ctnr.CreatePic()
+	p := c.CreatePic()
 
 	nowTs := schema.ToTs(time.Now())
-	p.DeletionStatus = &schema.Pic_DeletionStatus{
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		MarkedDeletedTs:  nowTs,
 		PendingDeletedTs: nowTs,
 		ActualDeletedTs:  nowTs,
 	}
 
-	ctnr.UpdatePic(p)
+	p.Update()
 
 	task := IncrementViewCountTask{
-		DB:    ctnr.GetDB(),
-		PicID: p.PicId,
+		DB:    c.DB(),
+		PicID: p.Pic.PicId,
 	}
 	if err := task.Run(); err == nil {
 		t.Fatal("Expected an error")
@@ -60,8 +60,8 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 		}
 	}
 
-	ctnr.RefreshPic(&p)
-	if p.ViewCount != 0 {
-		t.Fatalf("Expected view count %v but was %v", 0, p.ViewCount)
+	p.Refresh()
+	if p.Pic.ViewCount != 0 {
+		t.Fatalf("Expected view count %v but was %v", 0, p.Pic.ViewCount)
 	}
 }

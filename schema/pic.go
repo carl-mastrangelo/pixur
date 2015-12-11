@@ -99,6 +99,9 @@ func (p *Pic) fillFromRow(s scanTo) error {
 }
 
 func (p *Pic) Insert(prep preparer) error {
+	if p.PicId <= 0 {
+		return fmt.Errorf("PicId unset")
+	}
 	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		PicTableName, strings.Join(picColNames, ","), picColFmt)
 	stmt, err := prep.Prepare(rawstmt)
@@ -111,7 +114,7 @@ func (p *Pic) Insert(prep preparer) error {
 		return err
 	}
 
-	res, err := stmt.Exec(
+	_, err = stmt.Exec(
 		p.PicId,
 		data,
 		toMillis(p.GetCreatedTime()),
@@ -119,14 +122,7 @@ func (p *Pic) Insert(prep preparer) error {
 	if err != nil {
 		return err
 	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	p.PicId = id
-
-	return p.Update(prep)
+	return nil
 }
 
 func (p *Pic) Update(prep preparer) error {

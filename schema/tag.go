@@ -47,6 +47,9 @@ func (t *Tag) fillFromRow(s scanTo) error {
 }
 
 func (t *Tag) Insert(prep preparer) error {
+	if t.TagId <= 0 {
+		return fmt.Errorf("TagId unset")
+	}
 	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
 		TagTableName, strings.Join(tagColNames, ","), tagColFmt)
 	stmt, err := prep.Prepare(rawstmt)
@@ -58,16 +61,11 @@ func (t *Tag) Insert(prep preparer) error {
 	if err != nil {
 		return err
 	}
-	res, err := stmt.Exec(t.TagId, data, t.Name)
+	_, err = stmt.Exec(t.TagId, data, t.Name)
 	if err != nil {
 		return err
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	t.TagId = id
-	return t.Update(prep)
+	return nil
 }
 
 func (t *Tag) Update(prep preparer) error {

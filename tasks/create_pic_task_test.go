@@ -6,8 +6,8 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"database/sql"
-	"fmt"
 	"hash"
+	"image/gif"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,48 +19,19 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (c *container) mustFindTagByName(name string) *schema.Tag {
-	tag, err := c.findTagByName(name)
-	if err != nil {
-		c.t.Fatal(err)
-	}
-
-	return tag
-}
-
-func (c *container) findTagByName(name string) (*schema.Tag, error) {
-	tx, err := c.GetDB().Begin()
-	if err != nil {
-		c.t.Fatal(err)
-	}
+// TODO: Remove this
+func mustFindTagByName(name string, c *TestContainer) *TestTag {
+	tx := c.Tx()
 	defer tx.Rollback()
-
-	t, err := findTagByName(name, tx)
-	return t, err
-}
-
-func (c *container) createTag(name string) *schema.Tag {
-	tag := &schema.Tag{
-		Name: name,
-	}
-	tx, err := c.GetDB().Begin()
+	tag, err := findTagByName(name, tx)
 	if err != nil {
-		c.t.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	if tag, err := findTagByName(name, tx); err == nil {
-		return tag
+		c.T.Fatal(err)
 	}
 
-	if err := tag.Insert(tx); err != nil {
-		c.t.Fatal(err)
+	return &TestTag{
+		Tag: tag,
+		c:   c,
 	}
-	if err := tx.Commit(); err != nil {
-		c.t.Fatal(err)
-	}
-
-	return tag
 }
 
 func TestWorkflowFileUpload(t *testing.T) {
@@ -213,71 +184,41 @@ func findPicTagsByPicId(picId int64, db *sql.DB) ([]*schema.PicTag, error) {
 	return schema.FindPicTags(stmt, picId)
 }
 
-func TestWorkflowAllTagsAdded(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
-
-	task := &CreatePicTask{
-		DB:       ctnr.GetDB(),
-		PixPath:  ctnr.GetTempDir(),
-		FileData: ctnr.getRandomImageData(),
-		TagNames: []string{"foo", "bar"},
-	}
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
-	}
-
-	fooTag := ctnr.mustFindTagByName("foo")
-	barTag := ctnr.mustFindTagByName("bar")
-
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, ctnr.GetDB())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(picTags) != 2 {
-		t.Fatal(fmt.Errorf("Wrong number of pic tags", picTags))
-	}
-	var picTagsGroupedByName = groupPicTagsByTagName(picTags)
-	if picTagsGroupedByName["foo"].TagId != fooTag.TagId {
-		t.Fatal(fmt.Errorf("Tag ID does not match PicTag TagId", fooTag.TagId))
-	}
-	if picTagsGroupedByName["bar"].TagId != barTag.TagId {
-		t.Fatal(fmt.Errorf("Tag ID does not match PicTag TagId", barTag.TagId))
-	}
-}
-
 func TestWorkflowAlreadyExistingTags(t *testing.T) {
-	ctnr := NewContainer(t)
-	defer ctnr.CleanUp()
-	imgData := ctnr.getRandomImageData()
-	bazTag := ctnr.createTag("baz")
-	quxTag := ctnr.createTag("qux")
+	c := Container(t)
+	defer c.Close()
+	f := c.TempFile()
+	defer f.Close()
+	if err := gif.Encode(f, makeImage(c.ID()), &gif.Options{}); err != nil {
+		c.T.Fatal(err)
+	}
+	tag1 := c.CreateTag()
+	tag2 := c.CreateTag()
 
 	task := &CreatePicTask{
-		DB:       ctnr.GetDB(),
-		PixPath:  ctnr.GetTempDir(),
-		FileData: imgData,
-		TagNames: []string{"baz", "qux"},
+		DB:       c.DB(),
+		PixPath:  c.TempDir(),
+		FileData: f,
+		TagNames: []string{tag1.Tag.Name, tag2.Tag.Name},
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
 		t.Fatal(err)
 	}
 
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, ctnr.GetDB())
-	if err != nil {
-		t.Fatal(err)
-	}
+	p := c.WrapPic(task.CreatedPic)
+
+	_, picTags := p.Tags()
+
 	if len(picTags) != 2 {
 		t.Fatalf("Wrong number of pic tags %+v", picTags)
 	}
 	var picTagsGroupedByName = groupPicTagsByTagName(picTags)
-	if picTagsGroupedByName["baz"].TagId != bazTag.TagId {
-		t.Fatal("Tag ID does not match PicTag TagId", bazTag.TagId)
+	if picTagsGroupedByName[tag1.Tag.Name].PicTag.TagId != tag1.Tag.TagId {
+		t.Fatal("Tag ID does not match PicTag TagId", tag1.Tag.TagId)
 	}
-	if picTagsGroupedByName["qux"].TagId != quxTag.TagId {
-		t.Fatal("Tag ID does not match PicTag TagId", quxTag.TagId)
+	if picTagsGroupedByName[tag2.Tag.Name].PicTag.TagId != tag2.Tag.TagId {
+		t.Fatal("Tag ID does not match PicTag TagId", tag2.Tag.TagId)
 	}
 }
 
@@ -466,10 +407,10 @@ func TestMoveUploadedFile(t *testing.T) {
 	}
 }
 
-func groupPicTagsByTagName(pts []*schema.PicTag) map[string]*schema.PicTag {
-	var grouped = make(map[string]*schema.PicTag, len(pts))
+func groupPicTagsByTagName(pts []*TestPicTag) map[string]*TestPicTag {
+	var grouped = make(map[string]*TestPicTag, len(pts))
 	for _, pt := range pts {
-		grouped[pt.Name] = pt
+		grouped[pt.PicTag.Name] = pt
 	}
 	return grouped
 }

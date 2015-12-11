@@ -23,9 +23,10 @@ import (
 
 type UpsertPicTask struct {
 	// Deps
-	PixPath    string
-	DB         *sql.DB
-	HTTPClient *http.Client
+	PixPath     string
+	DB          *sql.DB
+	HTTPClient  *http.Client
+	IDAllocator *schema.IDAllocator
 	// os functions
 	TempFile func(dir, prefix string) (*os.File, error)
 	Rename   func(oldpath, newpath string) error
@@ -76,6 +77,9 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	if t.File == nil && t.FileURL == "" {
 		return s.InvalidArgument(nil, "No pic specified")
 	}
+	idalloc := func() (int64, error) {
+		return t.IDAllocator.Next(t.DB)
+	}
 	now := t.Now()
 	if len(t.Md5Hash) != 0 {
 		p, err := findExistingPic(tx, schema.PicIdent_MD5, t.Md5Hash)
@@ -90,7 +94,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(tx, p, now, t.Header, t.FileURL, t.TagNames)
+				return mergePic(tx, p, now, t.Header, t.FileURL, t.TagNames, idalloc)
 			}
 		}
 	}
@@ -126,10 +130,15 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(tx, p, now, *fh, t.FileURL, t.TagNames)
+			return mergePic(tx, p, now, *fh, t.FileURL, t.TagNames, idalloc)
 		}
 	} else {
+		picID, err := idalloc()
+		if err != nil {
+			return s.InternalError(err, "no next id")
+		}
 		p = &schema.Pic{
+			PicId:         picID,
 			FileSize:      fh.Size,
 			Mime:          im.Mime,
 			Width:         int64(im.Bounds().Dx()),
@@ -138,6 +147,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			CreatedTs:     schema.ToTs(now),
 			// ModifiedTime is set in mergePic
 		}
+
 		if err := p.Insert(tx); err != nil {
 			return s.InternalError(err, "Can't insert")
 		}
@@ -159,7 +169,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 		return s.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := mergePic(tx, p, now, *fh, t.FileURL, t.TagNames); err != nil {
+	if err := mergePic(tx, p, now, *fh, t.FileURL, t.TagNames, idalloc); err != nil {
 		return err
 	}
 
@@ -180,7 +190,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 }
 
 func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
-	fileURL string, tagNames []string) error {
+	fileURL string, tagNames []string, idalloc func() (int64, error)) error {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
 		if ds.Temporary {
@@ -189,7 +199,7 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 		}
 	}
 
-	if err := upsertTags(tx, tagNames, p.PicId, now); err != nil {
+	if err := upsertTags(tx, tagNames, p.PicId, now, idalloc); err != nil {
 		return err
 	}
 
@@ -215,7 +225,7 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 	return nil
 }
 
-func upsertTags(tx *sql.Tx, rawTags []string, picID int64, now time.Time) error {
+func upsertTags(tx *sql.Tx, rawTags []string, picID int64, now time.Time, idalloc func() (int64, error)) error {
 	newTagNames, err := cleanTagNames(rawTags)
 	if err != nil {
 		return err
@@ -235,7 +245,7 @@ func upsertTags(tx *sql.Tx, rawTags []string, picID int64, now time.Time) error 
 	if err := updateExistingTags(tx, existingTags, now); err != nil {
 		return err
 	}
-	newTags, err := createNewTags(tx, unknownNames, now)
+	newTags, err := createNewTags(tx, unknownNames, now, idalloc)
 	if err != nil {
 		return err
 	}
@@ -330,10 +340,15 @@ func updateExistingTags(tx *sql.Tx, tags []*schema.Tag, now time.Time) error {
 	return nil
 }
 
-func createNewTags(tx *sql.Tx, tagNames []string, now time.Time) ([]*schema.Tag, error) {
+func createNewTags(tx *sql.Tx, tagNames []string, now time.Time, idalloc func() (int64, error)) ([]*schema.Tag, error) {
 	var tags []*schema.Tag
 	for _, name := range tagNames {
+		tagID, err := idalloc()
+		if err != nil {
+			return nil, s.InternalError(err, "Can't allocate tag id")
+		}
 		tag := &schema.Tag{
+			TagId:      tagID,
 			Name:       name,
 			UsageCount: 1,
 			ModifiedTs: schema.ToTs(now),

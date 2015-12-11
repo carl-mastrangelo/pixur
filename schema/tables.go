@@ -6,32 +6,32 @@ import (
 
 var (
 	rawSchemaTable = []string{
-		"CREATE TABLE IF NOT EXISTS " + PicTableName + " (" +
-			"  " + PicColId + " bigint(20) NOT NULL AUTO_INCREMENT," +
+		"CREATE TABLE " + PicTableName + " (" +
+			"  " + PicColId + " bigint(20) NOT NULL," +
 			"  " + PicColData + " blob NOT NULL," +
 			"  " + PicColCreatedTime + " bigint(20) NOT NULL," +
 			"  " + PicColHidden + " bool NOT NULL," +
 			"  PRIMARY KEY (" + PicColId + ")," +
 			"  KEY " + PicColCreatedTime + " (" + PicColCreatedTime + ")," +
 			"  KEY " + PicColHidden + " (" + PicColHidden + ")" +
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 
-		"CREATE TABLE IF NOT EXISTS " + TagTableName + " (" +
-			"  " + TagColId + " bigint(20) NOT NULL AUTO_INCREMENT," +
+		"CREATE TABLE " + TagTableName + " (" +
+			"  " + TagColId + " bigint(20) NOT NULL," +
 			"  " + TagColData + " blob NOT NULL," +
 			"  " + TagColName + " varchar(255) NOT NULL," +
 			"  PRIMARY KEY (" + TagColId + ")," +
 			"  UNIQUE KEY (" + TagColName + ") " +
-			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;",
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 
-		"CREATE TABLE IF NOT EXISTS " + PicTagTableName + " (" +
+		"CREATE TABLE " + PicTagTableName + " (" +
 			"  " + PicTagColPicId + " bigint(20) NOT NULL," +
 			"  " + PicTagColTagId + " bigint(20) NOT NULL," +
 			"  " + PicTagColData + " blob NOT NULL," +
 			"  PRIMARY KEY (" + PicTagColPicId + "," + PicTagColTagId + ")" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 
-		"CREATE TABLE IF NOT EXISTS " + PicIdentTableName + " (" +
+		"CREATE TABLE " + PicIdentTableName + " (" +
 			"  " + PicIdentColPicId + " bigint(20) NOT NULL," +
 			"  " + PicIdentColType + " bigint(20) NOT NULL," +
 			"  " + PicIdentColValue + " tinyblob NOT NULL," +
@@ -40,13 +40,20 @@ var (
 			"  KEY " + PicIdentColValue + " (" + PicIdentColType + "," + PicIdentColValue + "(255))" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 
-		"CREATE TABLE IF NOT EXISTS " + UserTableName + " (" +
+		"CREATE TABLE " + UserTableName + " (" +
 			"  " + UserColId + " bigint(20) NOT NULL," +
 			"  " + UserColEmail + " tinyblob NOT NULL," +
 			"  " + UserColData + " blob NOT NULL," +
 			"  PRIMARY KEY (" + UserColId + ")," +
 			"  KEY " + UserColEmail + " (" + UserColEmail + "(255))" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
+
+		// Special
+		"CREATE TABLE " + SeqTableName + " (" +
+			"  " + SeqColSeq + " bigint(20) NOT NULL" +
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
+
+		"INSERT INTO " + SeqTableName + " (" + SeqColSeq + ") VALUES (1);",
 	}
 )
 

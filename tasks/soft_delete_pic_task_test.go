@@ -9,15 +9,15 @@ import (
 	"pixur.org/pixur/status"
 )
 
-func TestSoftDeleteWorkflow(test *testing.T) {
-	c := NewContainer(test)
-	defer c.CleanUp()
+func TestSoftDeleteWorkflow(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 
 	task := &SoftDeletePicTask{
-		DB:        c.GetDB(),
-		PicID:     p.PicId,
+		DB:        c.DB(),
+		PicID:     p.Pic.PicId,
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
 		Temporary: true,
@@ -25,96 +25,92 @@ func TestSoftDeleteWorkflow(test *testing.T) {
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Path(c.GetTempDir())); os.IsNotExist(err) {
-		test.Fatal("Expected file to exist", err)
+	if _, err := os.Stat(p.Pic.Path(c.TempDir())); os.IsNotExist(err) {
+		t.Fatal("Expected file to exist", err)
 	}
 
-	c.RefreshPic(&p)
+	p.Refresh()
 
-	if !p.SoftDeleted() {
-		test.Fatal("Expected pic to be soft deleted", p)
+	if !p.Pic.SoftDeleted() {
+		t.Fatal("Expected pic to be soft deleted", p)
 	}
-	if p.HardDeleted() {
-		test.Fatal("Expected pic not to be hard deleted", p)
-	}
-
-	if p.DeletionStatus.Details != "LowQuality" {
-		test.Fatal("Details not preserved", p)
+	if p.Pic.HardDeleted() {
+		t.Fatal("Expected pic not to be hard deleted", p)
 	}
 
-	if !p.DeletionStatus.Temporary {
-		test.Fatal("Deletion should be temporary", p)
+	if p.Pic.DeletionStatus.Details != "LowQuality" {
+		t.Fatal("Details not preserved", p)
 	}
 
-	if p.DeletionStatus.Reason != schema.Pic_DeletionStatus_RULE_VIOLATION {
-		test.Fatal("Reason not preserved", p)
+	if !p.Pic.DeletionStatus.Temporary {
+		t.Fatal("Deletion should be temporary", p)
 	}
 
-	if p.DeletionStatus.PendingDeletedTs != nil {
-		test.Fatal("Should not have a pending deleted timestamp", p)
+	if p.Pic.DeletionStatus.Reason != schema.Pic_DeletionStatus_RULE_VIOLATION {
+		t.Fatal("Reason not preserved", p)
+	}
+
+	if p.Pic.DeletionStatus.PendingDeletedTs != nil {
+		t.Fatal("Should not have a pending deleted timestamp", p)
 	}
 }
 
-func TestSoftDelete_OverwritePendingTimestamp(test *testing.T) {
-	c := NewContainer(test)
-	defer c.CleanUp()
+func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
 
 	now := time.Now().UTC()
 	then := now.AddDate(0, 0, -1)
 
 	p := c.CreatePic()
-	p.DeletionStatus = &schema.Pic_DeletionStatus{
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		MarkedDeletedTs:  schema.ToTs(then),
 		PendingDeletedTs: schema.ToTs(then),
 	}
-	if err := p.Update(c.GetDB()); err != nil {
-		test.Fatal(err)
-	}
+	p.Update()
 
 	task := &SoftDeletePicTask{
-		DB:                  c.GetDB(),
-		PicID:               p.PicId,
+		DB:                  c.DB(),
+		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
 
-	c.RefreshPic(&p)
+	p.Refresh()
 
-	if schema.FromTs(p.DeletionStatus.MarkedDeletedTs) != then {
-		test.Fatal("Marked deleted timestamp not preserved", p, then)
+	if schema.FromTs(p.Pic.DeletionStatus.MarkedDeletedTs) != then {
+		t.Fatal("Marked deleted timestamp not preserved", p, then)
 	}
 
-	if schema.FromTs(p.DeletionStatus.PendingDeletedTs) != now {
-		test.Fatal("Pending deleted timestamp not incremented", p, then)
+	if schema.FromTs(p.Pic.DeletionStatus.PendingDeletedTs) != now {
+		t.Fatal("Pending deleted timestamp not incremented", p, then)
 	}
 }
 
-func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
-	c := NewContainer(test)
-	defer c.CleanUp()
+func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
 
 	now := time.Now().UTC()
 
 	p := c.CreatePic()
-	p.DeletionStatus = &schema.Pic_DeletionStatus{
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		MarkedDeletedTs: schema.ToTs(now),
 		ActualDeletedTs: schema.ToTs(now),
 	}
-	if err := p.Update(c.GetDB()); err != nil {
-		test.Fatal(err)
-	}
+	p.Update()
 
 	task := &SoftDeletePicTask{
-		DB:                  c.GetDB(),
-		PicID:               p.PicId,
+		DB:                  c.DB(),
+		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
@@ -122,10 +118,10 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(test *testing.T) {
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
 		if st, ok := err.(*status.Status); !ok {
-			test.Fatal(err)
+			t.Fatal(err)
 		} else {
 			if st.Code != status.Code_INVALID_ARGUMENT {
-				test.Fatal(st)
+				t.Fatal(st)
 			}
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -116,6 +117,7 @@ func (c *TestContainer) WrapPic(p *schema.Pic) *TestPic {
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
+		PicId:      c.ID(),
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 		Mime:       schema.Pic_GIF,
@@ -313,6 +315,104 @@ func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
 	}
 
 	return
+}
+
+func (c *TestContainer) CreateTag() *TestTag {
+	now := time.Now()
+	id := c.ID()
+
+	t := &schema.Tag{
+		TagId:      id,
+		Name:       "tag" + strconv.FormatInt(id, 10),
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+	}
+	if err := t.Insert(c.DB()); err != nil {
+		c.T.Fatal(err, t)
+	}
+	return &TestTag{
+		Tag: t,
+		c:   c,
+	}
+}
+
+func (t *TestTag) Update() {
+	if err := t.Tag.Update(t.c.DB()); err != nil {
+		t.c.T.Fatal(err)
+	}
+}
+
+func (t *TestTag) Refresh() (exists bool) {
+	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", t.c.DB(), schema.TagColId)
+	if err != nil {
+		t.c.T.Fatal(err)
+	}
+	if updated, err := schema.LookupTag(stmt, t.Tag.TagId); err == sql.ErrNoRows {
+		t.Tag = nil
+		return false
+	} else if err != nil {
+		t.c.T.Fatal(err)
+		return
+	} else {
+		t.Tag = updated
+		return true
+	}
+}
+
+func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
+	now := time.Now()
+	pt := &schema.PicTag{
+		PicId:      p.Pic.PicId,
+		TagId:      t.Tag.TagId,
+		Name:       t.Tag.Name,
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+	}
+	if _, err := pt.Insert(c.DB()); err != nil {
+		c.T.Fatal(err, pt)
+	}
+	t.Tag.UsageCount++
+	t.Tag.ModifiedTs = schema.ToTs(now)
+	t.Update()
+	return &TestPicTag{
+		TestPic: p,
+		TestTag: t,
+		PicTag:  pt,
+		c:       c,
+	}
+}
+
+func (pt *TestPicTag) Refresh() (exists bool) {
+	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;", pt.c.DB(),
+		schema.PicTagColPicId, schema.PicTagColTagId)
+	if err != nil {
+		pt.c.T.Fatal(err)
+	}
+	if updated, err := schema.LookupPicTag(stmt, pt.PicTag.PicId, pt.PicTag.TagId); err == sql.ErrNoRows {
+		pt.PicTag = nil
+		return false
+	} else if err != nil {
+		pt.c.T.Fatal(err)
+		return
+	} else {
+		pt.PicTag = updated
+		return true
+	}
+}
+
+func (c *TestContainer) ID() int64 {
+	id, err := c.IDAlloc()()
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	return id
+}
+
+func (c *TestContainer) IDAlloc() func() (int64, error) {
+	return func() (int64, error) {
+		var alloc *schema.IDAllocator
+		return alloc.Next(c.DB())
+	}
 }
 
 func (c *container) GetDB() *sql.DB {

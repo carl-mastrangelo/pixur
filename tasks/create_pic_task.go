@@ -45,8 +45,9 @@ type readAtSeeker interface {
 
 type CreatePicTask struct {
 	// Deps
-	PixPath string
-	DB      *sql.DB
+	PixPath     string
+	DB          *sql.DB
+	IDAllocator *schema.IDAllocator
 
 	// Inputs
 	Filename string
@@ -152,6 +153,11 @@ func (t *CreatePicTask) Run() error {
 	if len(sha256Idents) > 0 {
 		return status.AlreadyExists(nil, "Picture already uploaded")
 	}
+	picID, err := t.IDAllocator.Next(t.DB)
+	if err != nil {
+		return status.InternalError(err, "Couldn't allocate ID")
+	}
+	p.PicId = picID
 
 	if err := p.Insert(t.tx); err != nil {
 		if err, ok := err.(*mysql.MySQLError); ok {
@@ -279,6 +285,9 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
 func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
+	idalloc := func() (int64, error) {
+		return t.IDAllocator.Next(t.DB)
+	}
 	cleanedTags, err := cleanTagNames(t.TagNames)
 	if err != nil {
 		return nil, err
@@ -286,7 +295,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	sort.Strings(cleanedTags)
 	var allTags []*schema.Tag
 	for _, tagName := range cleanedTags {
-		tag, err := findAndUpsertTag(tagName, t.now, t.tx)
+		tag, err := findAndUpsertTag(tagName, t.now, t.tx, idalloc)
 		if err != nil {
 			return nil, err
 		}
@@ -298,10 +307,11 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
+func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx, idalloc func() (int64, error)) (
+	*schema.Tag, error) {
 	tag, err := findTagByName(tagName, tx)
 	if err == ErrTagNotFound {
-		tag, err = createTag(tagName, now, tx)
+		tag, err = createTag(tagName, now, tx, idalloc)
 	} else if err != nil {
 		return nil, err
 	} else {
@@ -317,8 +327,14 @@ func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, e
 	return tag, nil
 }
 
-func createTag(tagName string, now time.Time, tx *sql.Tx) (*schema.Tag, error) {
+func createTag(tagName string, now time.Time, tx *sql.Tx, idalloc func() (int64, error)) (
+	*schema.Tag, error) {
+	id, err := idalloc()
+	if err != nil {
+		return nil, err
+	}
 	tag := &schema.Tag{
+		TagId:      id,
 		Name:       tagName,
 		UsageCount: 1,
 	}

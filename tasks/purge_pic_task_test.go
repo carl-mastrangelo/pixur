@@ -7,90 +7,87 @@ import (
 	"pixur.org/pixur/schema"
 )
 
-func TestPurgeWorkflow(test *testing.T) {
-	c := NewContainer(test)
-	defer c.CleanUp()
+func TestPurgeWorkflow(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 	// This exists to show that it is not deleted.
 	p2 := c.CreatePic()
-	t := c.CreateTag()
-	pt := c.CreatePicTag(p, t)
+	tag := c.CreateTag()
+	pt := c.CreatePicTag(p, tag)
 
 	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
-		c.GetDB(), schema.PicIdentColPicId)
+		c.DB(), schema.PicIdentColPicId)
 	if err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
-	idents, err := schema.FindPicIdents(stmt, p.PicId)
-	if err != nil {
-		test.Fatal(err)
-	}
+	idents := p.Idents()
 	if len(idents) != 3 {
-		test.Fatalf("Wrong number of identifiers: %s", idents)
+		t.Fatalf("Wrong number of identifiers: %s", len(idents))
 	}
 
 	task := &PurgePicTask{
-		DB:      c.GetDB(),
-		PixPath: c.GetTempDir(),
-		PicId:   p.PicId,
+		DB:      c.DB(),
+		PixPath: c.TempDir(),
+		PicId:   p.Pic.PicId,
 	}
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Path(c.GetTempDir())); !os.IsNotExist(err) {
-		test.Fatal("Expected file to be deleted", err)
+	if _, err := os.Stat(p.Pic.Path(c.TempDir())); !os.IsNotExist(err) {
+		t.Fatal("Expected file to be deleted", err)
 	}
-	if c.RefreshPic(&p); p != nil {
-		test.Fatal("Expected Pic to be deleted", p)
+	if p.Refresh() {
+		t.Fatal("Expected Pic to be deleted", p)
 	}
-	if c.RefreshTag(&t); t != nil {
-		test.Fatal("Expected Tag to be deleted", t)
+	if tag.Refresh() {
+		t.Fatal("Expected Tag to be deleted", tag)
 	}
-	if c.RefreshPicTag(&pt); pt != nil {
-		test.Fatal("Expected PicTag to be deleted", pt)
+	if pt.Refresh() {
+		t.Fatal("Expected PicTag to be deleted", pt)
 	}
 
-	idents, err = schema.FindPicIdents(stmt, task.PicId)
+	afterIdents, err := schema.FindPicIdents(stmt, task.PicId)
 	if err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
-	if len(idents) != 0 {
-		test.Fatalf("Wrong number of identifiers: %s", idents)
+	if len(afterIdents) != 0 {
+		t.Fatalf("Wrong number of identifiers: %s", afterIdents)
 	}
 
-	if c.RefreshPic(&p2); p2 == nil {
-		test.Fatal("Expected Other pic to exist", p2)
+	if !p2.Refresh() {
+		t.Fatal("Expected Other pic to exist", p2)
 	}
 }
 
-func TestPurge_TagsDecremented(test *testing.T) {
-	c := NewContainer(test)
-	defer c.CleanUp()
+func TestPurge_TagsDecremented(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 	p2 := c.CreatePic()
-	t := c.CreateTag()
-	c.CreatePicTag(p2, t)
+	tag := c.CreateTag()
+	c.CreatePicTag(p2, tag)
 
 	task := &PurgePicTask{
-		DB:      c.GetDB(),
-		PixPath: c.GetTempDir(),
-		PicId:   p.PicId,
+		DB:      c.DB(),
+		PixPath: c.TempDir(),
+		PicId:   p.Pic.PicId,
 	}
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
 
-	if c.RefreshTag(&t); t == nil {
-		test.Fatal("Expected Tag to exist")
+	if !tag.Refresh() {
+		t.Fatal("Expected Tag to exist")
 	}
-	if t.UsageCount != 1 {
-		test.Fatal("Incorrect Tag Count", t)
+	if tag.Tag.UsageCount != 1 {
+		t.Fatal("Incorrect Tag Count", tag)
 	}
 }

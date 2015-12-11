@@ -10,8 +10,9 @@ import (
 
 type AddPicTagsTask struct {
 	// Deps
-	DB  *sql.DB
-	Now func() time.Time
+	DB          *sql.DB
+	Now         func() time.Time
+	IDAllocator *schema.IDAllocator
 
 	// Inputs
 	PicID    int64
@@ -25,6 +26,9 @@ func (t *AddPicTagsTask) Run() error {
 		return s.InternalError(err, "Can't Begin tx")
 	}
 	defer tx.Rollback()
+	idalloc := func() (int64, error) {
+		return t.IDAllocator.Next(t.DB)
+	}
 
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;",
 		tx, schema.PicColId)
@@ -40,7 +44,7 @@ func (t *AddPicTagsTask) Run() error {
 		return s.InternalError(err, "Can't lookup pic")
 	}
 
-	if err := upsertTags(tx, t.TagNames, p.PicId, t.Now()); err != nil {
+	if err := upsertTags(tx, t.TagNames, p.PicId, t.Now(), idalloc); err != nil {
 		return err
 	}
 

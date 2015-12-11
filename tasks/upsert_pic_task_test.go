@@ -2,8 +2,6 @@ package tasks
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/binary"
 	"fmt"
 	"image"
 	"image/gif"
@@ -485,7 +483,7 @@ func TestMerge(t *testing.T) {
 	tx := c.Tx()
 	defer tx.Rollback()
 
-	err := mergePic(tx, p.Pic, now, fh, fu, tagNames)
+	err := mergePic(tx, p.Pic, now, fh, fu, tagNames, c.IDAlloc())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,19 +503,19 @@ func TestMerge(t *testing.T) {
 }
 
 func TestMergeClearsTempDeletionStatus(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
-	p.DeletionStatus = &schema.Pic_DeletionStatus{
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		Temporary: true,
 	}
-	c.UpdatePic(p)
+	p.Update()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	err := mergePic(tx, p, time.Now(), FileHeader{}, "", nil)
+	err := mergePic(tx, p.Pic, time.Now(), FileHeader{}, "", nil, c.IDAlloc())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,24 +524,24 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c.RefreshPic(&p)
-	if p.GetDeletionStatus() != nil {
+	p.Refresh()
+	if p.Pic.GetDeletionStatus() != nil {
 		t.Fatal("should have cleared deletion status")
 	}
 }
 
 func TestMergeLeavesDeletionStatus(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
-	p.DeletionStatus = &schema.Pic_DeletionStatus{}
-	c.UpdatePic(p)
+	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{}
+	p.Update()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	err := mergePic(tx, p, time.Now(), FileHeader{}, "", nil)
+	err := mergePic(tx, p.Pic, time.Now(), FileHeader{}, "", nil, c.IDAlloc())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -552,34 +550,34 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c.RefreshPic(&p)
-	if p.GetDeletionStatus() == nil {
+	p.Refresh()
+	if p.Pic.GetDeletionStatus() == nil {
 		t.Fatal("shouldn't have cleared deletion status")
 	}
 }
 
 func TestUpsertTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	attachedTag := c.CreateTag()
 	unattachedTag := c.CreateTag()
 	pic := c.CreatePic()
 	c.CreatePicTag(pic, attachedTag)
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	now := time.Now()
 
-	tagNames := []string{attachedTag.Name, unattachedTag.Name, "missing"}
+	tagNames := []string{attachedTag.Tag.Name, unattachedTag.Tag.Name, "missing"}
 
-	err := upsertTags(tx, tagNames, pic.PicId, now)
+	err := upsertTags(tx, tagNames, pic.Pic.PicId, now, c.IDAlloc())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	allTags, allPicTags, err := findAttachedPicTags(tx, pic.PicId)
+	allTags, allPicTags, err := findAttachedPicTags(tx, pic.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -589,25 +587,25 @@ func TestUpsertTags(t *testing.T) {
 }
 
 func TestCreatePicTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag := c.CreateTag()
 	pic := c.CreatePic()
 	now := time.Now()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	picTags, err := createPicTags(tx, []*schema.Tag{tag}, pic.PicId, now)
+	picTags, err := createPicTags(tx, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expectedPicTag := &schema.PicTag{
-		PicId:      pic.PicId,
-		TagId:      tag.TagId,
-		Name:       tag.Name,
+		PicId:      pic.Pic.PicId,
+		TagId:      tag.Tag.TagId,
+		Name:       tag.Tag.Name,
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
@@ -618,17 +616,17 @@ func TestCreatePicTags(t *testing.T) {
 }
 
 func TestCreatePicTags_CantPrepare(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag := c.CreateTag()
 	pic := c.CreatePic()
 	now := time.Now()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	tx.Rollback()
 
-	_, err := createPicTags(tx, []*schema.Tag{tag}, pic.PicId, now)
+	_, err := createPicTags(tx, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -638,15 +636,15 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 }
 
 func TestCreateNewTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	now := time.Now()
 
-	newTags, err := createNewTags(tx, []string{"a"}, now)
+	newTags, err := createNewTags(tx, []string{"a"}, now, c.IDAlloc())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,15 +666,15 @@ func TestCreateNewTags(t *testing.T) {
 }
 
 func TestCreateNewTags_CantCreate(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	tx.Rollback()
 
 	now := time.Now()
 
-	_, err := createNewTags(tx, []string{"a"}, now)
+	_, err := createNewTags(tx, []string{"a"}, now, c.IDAlloc())
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -686,41 +684,41 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 }
 
 func TestUpdateExistingTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag := c.CreateTag()
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	now := tag.GetModifiedTime().Add(time.Nanosecond)
-	usage := tag.UsageCount
+	now := tag.Tag.GetModifiedTime().Add(time.Nanosecond)
+	usage := tag.Tag.UsageCount
 
-	if err := updateExistingTags(tx, []*schema.Tag{tag}, now); err != nil {
+	if err := updateExistingTags(tx, []*schema.Tag{tag.Tag}, now); err != nil {
 		t.Fatal(err)
 	}
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
-	c.RefreshTag(&tag)
-	if tag.GetModifiedTime() != now {
+	tag.Refresh()
+	if tag.Tag.GetModifiedTime() != now {
 		t.Fatal("Modified time not updated")
 	}
-	if tag.UsageCount != usage+1 {
+	if tag.Tag.UsageCount != usage+1 {
 		t.Fatal("Usage count not updated")
 	}
 }
 
 func TestUpdateExistingTags_CantPrepare(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag := c.CreateTag()
-	tx := c.GetTx()
+	tx := c.Tx()
 	tx.Rollback()
 
-	err := updateExistingTags(tx, []*schema.Tag{tag}, tag.GetModifiedTime())
+	err := updateExistingTags(tx, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -730,24 +728,24 @@ func TestUpdateExistingTags_CantPrepare(t *testing.T) {
 }
 
 func TestFindExistingTagsByName_AllFound(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag1 := c.CreateTag()
 	tag2 := c.CreateTag()
 	// create another random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(tx, []string{tag2.Name, tag1.Name})
+	tags, unknown, err := findExistingTagsByName(tx, []string{tag2.Tag.Name, tag1.Tag.Name})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Take advantage of the fact that findExistingTagsByName returns tags in order.
 	// This will have to change eventually.
-	if len(tags) != 2 || tags[0].TagId != tag2.TagId || tags[1].TagId != tag1.TagId {
+	if len(tags) != 2 || tags[0].TagId != tag2.Tag.TagId || tags[1].TagId != tag1.Tag.TagId {
 		t.Fatal("Tags mismatch", tags, tag1, tag2)
 	}
 	if len(unknown) != 0 {
@@ -756,21 +754,21 @@ func TestFindExistingTagsByName_AllFound(t *testing.T) {
 }
 
 func TestFindExistingTagsByName_SomeFound(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tag1 := c.CreateTag()
 	// create another random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", tag1.Name})
+	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", tag1.Tag.Name})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tags) != 1 || tags[0].TagId != tag1.TagId {
+	if len(tags) != 1 || tags[0].TagId != tag1.Tag.TagId {
 		t.Fatal("Tags mismatch", tags, tag1)
 	}
 	if len(unknown) != 1 || unknown[0] != "missing" {
@@ -779,13 +777,13 @@ func TestFindExistingTagsByName_SomeFound(t *testing.T) {
 }
 
 func TestFindExistingTagsByName_NoneFound(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	// create a random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", "othertag"})
@@ -802,13 +800,13 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 }
 
 func TestFindExistingTagsByName_CantPrepare(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	// create a random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	tx.Rollback()
 
 	_, _, err := findExistingTagsByName(tx, nil)
@@ -821,9 +819,9 @@ func TestFindExistingTagsByName_CantPrepare(t *testing.T) {
 }
 
 func TestFindUnattachedTagNames_AllNew(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
-	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+	c := Container(t)
+	defer c.Close()
+	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	names := findUnattachedTagNames(tags, []string{"missing"})
 	if len(names) != 1 || names[0] != "missing" {
@@ -832,9 +830,9 @@ func TestFindUnattachedTagNames_AllNew(t *testing.T) {
 }
 
 func TestFindUnattachedTagNames_SomeNew(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
-	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+	c := Container(t)
+	defer c.Close()
+	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	names := findUnattachedTagNames(tags, []string{"missing", tags[0].Name})
 	if len(names) != 1 || names[0] != "missing" {
@@ -843,9 +841,9 @@ func TestFindUnattachedTagNames_SomeNew(t *testing.T) {
 }
 
 func TestFindUnattachedTagNames_NoneNew(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
-	tags := []*schema.Tag{c.CreateTag(), c.CreateTag()}
+	c := Container(t)
+	defer c.Close()
+	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	names := findUnattachedTagNames(tags, []string{tags[1].Name, tags[0].Name})
 	if len(names) != 0 {
@@ -854,10 +852,10 @@ func TestFindUnattachedTagNames_NoneNew(t *testing.T) {
 }
 
 func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	tx.Rollback()
 
 	_, _, err := findAttachedPicTags(tx, 0)
@@ -870,15 +868,15 @@ func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
 }
 
 func TestFindAttachedPicTags_NoTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	tags, picTags, err := findAttachedPicTags(tx, p.PicId)
+	tags, picTags, err := findAttachedPicTags(tx, p.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -888,45 +886,45 @@ func TestFindAttachedPicTags_NoTags(t *testing.T) {
 }
 
 func TestFindAttachedPicTags(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 	tag := c.CreateTag()
 	picTag := c.CreatePicTag(p, tag)
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	tags, picTags, err := findAttachedPicTags(tx, p.PicId)
+	tags, picTags, err := findAttachedPicTags(tx, p.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(tags) != 1 || len(picTags) != 1 {
 		t.Fatal("Wrong tags", tags, picTags)
 	}
-	if !proto.Equal(tags[0], tag) || !proto.Equal(picTags[0], picTag) {
+	if !proto.Equal(tags[0], tag.Tag) || !proto.Equal(picTags[0], picTag.PicTag) {
 		t.Fatal("Tags mismatch", tags, picTags)
 	}
 }
 
 func TestFindAttachedPicTags_CorruptTag(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	p := c.CreatePic()
 	tag := c.CreateTag()
 	c.CreatePicTag(p, tag)
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	// This should never be true.  Pic tags must always have a tag
-	if err := tag.Delete(tx); err != nil {
+	if err := tag.Tag.Delete(tx); err != nil {
 		t.Fatal(err)
 	}
 
-	_, _, err := findAttachedPicTags(tx, p.PicId)
+	_, _, err := findAttachedPicTags(tx, p.Pic.PicId)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
@@ -936,10 +934,10 @@ func TestFindAttachedPicTags_CorruptTag(t *testing.T) {
 }
 
 func TestPrepareFile_CreateTempFileFails(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	srcFile := c.GetTempFile()
+	srcFile := c.TempFile()
 
 	tempFileFn := func(dir, prefix string) (*os.File, error) {
 		return nil, fmt.Errorf("bad")
@@ -1077,27 +1075,21 @@ func TestFindExistingPic_None(t *testing.T) {
 }
 
 func TestFindExistingPic_Exists(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	existingPic := c.CreatePic()
 
-	h := md5.New()
-	// Same as in the test code
-	if err := binary.Write(h, binary.LittleEndian, existingPic.PicId); err != nil {
-		t.Fatal(err)
-	}
-
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
-	p, err := findExistingPic(tx, schema.PicIdent_MD5, h.Sum(nil))
+	p, err := findExistingPic(tx, schema.PicIdent_MD5, existingPic.Md5())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !proto.Equal(p, existingPic) {
-		t.Fatal("mismatch", p, existingPic)
+	if !proto.Equal(p, existingPic.Pic) {
+		t.Fatal("mismatch", p, existingPic.Pic)
 	}
 }
 
