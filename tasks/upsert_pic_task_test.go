@@ -956,19 +956,19 @@ func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 }
 
 func TestPrepareFile_CopyFileFails(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	var capturedTempFile *os.File
 	tempFileFn := func(dir, prefix string) (*os.File, error) {
-		capturedTempFile = c.GetTempFile()
+		capturedTempFile = c.TempFile()
 		return capturedTempFile, nil
 	}
 	task := &UpsertPicTask{
 		TempFile: tempFileFn,
 	}
 
-	srcFile := c.GetTempFile()
+	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
 	_, _, err := task.prepareFile(srcFile, FileHeader{}, "")
 	status := err.(*s.Status)
@@ -986,17 +986,17 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 }
 
 func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	tempFileFn := func(dir, prefix string) (*os.File, error) {
-		return c.GetTempFile(), nil
+		return c.TempFile(), nil
 	}
 	task := &UpsertPicTask{
 		TempFile: tempFileFn,
 	}
 
-	srcFile := c.GetTempFile()
+	srcFile := c.TempFile()
 	if _, err := srcFile.Write([]byte("hello")); err != nil {
 		t.Fatal(err)
 	}
@@ -1029,12 +1029,12 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 // TODO: maybe add a DownloadFileSucceeds case.
 
 func TestPrepareFile_DownloadFileFails(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	var capturedTempFile *os.File
 	tempFileFn := func(dir, prefix string) (*os.File, error) {
-		capturedTempFile = c.GetTempFile()
+		capturedTempFile = c.TempFile()
 		return capturedTempFile, nil
 	}
 	task := &UpsertPicTask{
@@ -1058,10 +1058,10 @@ func TestPrepareFile_DownloadFileFails(t *testing.T) {
 }
 
 func TestFindExistingPic_None(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	p, err := findExistingPic(tx, schema.PicIdent_MD5, []byte("missing"))
@@ -1094,9 +1094,9 @@ func TestFindExistingPic_Exists(t *testing.T) {
 }
 
 func TestFindExistingPic_DuplicateHashes(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
-	tx := c.GetTx()
+	c := Container(t)
+	defer c.Close()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	sha256Ident := &schema.PicIdent{
@@ -1123,10 +1123,10 @@ func TestFindExistingPic_DuplicateHashes(t *testing.T) {
 }
 
 func TestFindExistingPic_Failure(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	// force tx failure
 	tx.Rollback()
 
@@ -1140,10 +1140,10 @@ func TestFindExistingPic_Failure(t *testing.T) {
 }
 
 func TestInsertPicHashes_MD5Exists(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	md5Ident := &schema.PicIdent{
@@ -1166,10 +1166,10 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 }
 
 func TestInsertPicHashes_SHA1Exists(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	sha1Ident := &schema.PicIdent{
@@ -1192,10 +1192,10 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 }
 
 func TestInsertPicHashes_SHA256Exists(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	sha256Ident := &schema.PicIdent{
@@ -1218,10 +1218,10 @@ func TestInsertPicHashes_SHA256Exists(t *testing.T) {
 }
 
 func TestInsertPicHashes(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 
@@ -1270,10 +1270,10 @@ func TestInsertPicHashes(t *testing.T) {
 }
 
 func TestInsertPerceptualHash(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	tx := c.GetTx()
+	tx := c.Tx()
 	defer tx.Rollback()
 
 	bounds := image.Rect(0, 0, 5, 10)
@@ -1305,12 +1305,12 @@ func TestInsertPerceptualHash(t *testing.T) {
 }
 
 func TestInsertPerceptualHash_Failure(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	db := c.GetDB()
+	db := c.DB()
 	defer db.Close()
-	tx := c.GetTx()
+	tx := c.Tx()
 	// Forces tx to fail
 	tx.Rollback()
 
@@ -1339,10 +1339,10 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 }
 
 func TestDownloadFile_BadURL(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1362,10 +1362,10 @@ func TestDownloadFile_BadURL(t *testing.T) {
 }
 
 func TestDownloadFile_BadAddress(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1385,8 +1385,8 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 }
 
 func TestDownloadFile_BadStatus(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -1395,7 +1395,7 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1415,8 +1415,8 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 }
 
 func TestDownloadFile_BadTransfer(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Length", "100")
@@ -1427,7 +1427,7 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1447,8 +1447,8 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 }
 
 func TestDownloadFile(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte("good")); err != nil {
@@ -1459,7 +1459,7 @@ func TestDownloadFile(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1493,8 +1493,8 @@ func TestDownloadFile(t *testing.T) {
 }
 
 func TestDownloadFile_DirectoryURL(t *testing.T) {
-	c := NewContainer(t)
-	defer c.CleanUp()
+	c := Container(t)
+	defer c.Close()
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte("good")); err != nil {
@@ -1505,7 +1505,7 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.GetTempDir(), "")
+	f, err := ioutil.TempFile(c.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
