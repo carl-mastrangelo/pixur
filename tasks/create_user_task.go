@@ -54,8 +54,9 @@ func (t *CreateUserTask) Run() error {
 		ModifiedTs: schema.ToTs(now),
 		// Don't set last seen.
 		Ident: []*schema.UserIdent{{
-			Email: t.Email,
-		}},
+			Ident: &schema.UserIdent_Email{
+				Email: t.Email,
+			}}},
 	}
 
 	if err := user.Insert(tx); err != nil {

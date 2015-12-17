@@ -47,8 +47,8 @@ func (u *User) Insert(prep preparer) error {
 
 	var email string
 	for _, ident := range u.Ident {
-		if ident.Email != "" {
-			email = ident.Email
+		if ident.GetEmail() != "" {
+			email = ident.GetEmail()
 			break
 		}
 	}
@@ -81,8 +81,8 @@ func (u *User) Update(prep preparer) error {
 	// TODO: eventually support better indexes
 	var email string
 	for _, ident := range u.Ident {
-		if ident.Email != "" {
-			email = ident.Email
+		if ident.GetEmail() != "" {
+			email = ident.GetEmail()
 			break
 		}
 	}
