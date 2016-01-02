@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"pixur.org/pixur"
+	"pixur.org/pixur/server"
 )
 
 var (
@@ -16,8 +16,8 @@ var (
 	pixPath     = flag.String("pix_path", "pix", "Default picture storage directory")
 )
 
-func getConfig(path string) (*pixur.Config, error) {
-	var config = new(pixur.Config)
+func getConfig(path string) (*server.Config, error) {
+	var config = new(server.Config)
 	f, err := os.Open(path)
 
 	if os.IsNotExist(err) {
@@ -49,7 +49,7 @@ func main() {
 	c.HttpSpec = *spec
 	c.PixPath = *pixPath
 
-	s := &pixur.Server{}
+	s := &server.Server{}
 
 	log.Fatal(s.StartAndWait(c))
 }

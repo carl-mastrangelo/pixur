@@ -1,4 +1,4 @@
-package pixur
+package server
 
 import (
 	"database/sql"
