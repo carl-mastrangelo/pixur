@@ -3,13 +3,12 @@ package handlers
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"log"
 	"testing"
 	"time"
 )
 
 func TestJwt(t *testing.T) {
-	key, err := rsa.GenerateKey(rand.Reader, 768)
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +33,7 @@ func TestJwt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	log.Println(payload)
+	if payload.Subject != "meeee!" {
+		t.Fatal("subjects did not match")
+	}
 }
