@@ -1,8 +1,12 @@
 package server
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -12,15 +16,19 @@ import (
 )
 
 type Config struct {
-	MysqlConfig string `json:"mysql_config"`
-	HttpSpec    string `json:"spec"`
-	PixPath     string `json:"pix_path"`
+	MysqlConfig           string `json:"mysql_config"`
+	HttpSpec              string `json:"spec"`
+	PixPath               string `json:"pix_path"`
+	SessionPrivateKeyPath string `json:"priv_key"`
+	SessionPublicKeyPath  string `json:"pub_key"`
 }
 
 type Server struct {
-	db      *sql.DB
-	s       *http.Server
-	pixPath string
+	db         *sql.DB
+	s          *http.Server
+	pixPath    string
+	publicKey  *rsa.PublicKey
+	privateKey *rsa.PrivateKey
 }
 
 func (s *Server) setup(c *Config) error {
@@ -49,6 +57,58 @@ func (s *Server) setup(c *Config) error {
 		return fmt.Errorf("%s is not a directory", c.PixPath)
 	}
 	s.pixPath = c.PixPath
+
+	if c.SessionPrivateKeyPath != "" {
+		f, err := os.Open(c.SessionPrivateKeyPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		block, _ := pem.Decode(data)
+		if block == nil {
+			return fmt.Errorf("No key in %s", c.SessionPrivateKeyPath)
+		}
+		if block.Type != "RSA PRIVATE KEY" {
+			return fmt.Errorf("Wrong private key type")
+		}
+		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return err
+		}
+		s.privateKey = key
+	}
+
+	if c.SessionPublicKeyPath != "" {
+		f, err := os.Open(c.SessionPublicKeyPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		data, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+		block, _ := pem.Decode(data)
+		if block == nil {
+			return fmt.Errorf("No key in %s", c.SessionPublicKeyPath)
+		}
+		if block.Type != "PUBLIC KEY" {
+			return fmt.Errorf("Wrong public key type")
+		}
+		key, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return err
+		}
+		if rsaKey, ok := key.(*rsa.PublicKey); ok {
+			s.publicKey = rsaKey
+		} else {
+			return fmt.Errorf("Wrong public key type %T", key)
+		}
+	}
 
 	s.s = new(http.Server)
 	s.s.Addr = c.HttpSpec

@@ -10,10 +10,12 @@ import (
 )
 
 var (
-	config      = flag.String("config", ".config.json", "The default configuration file")
-	mysqlConfig = flag.String("mysql_config", "", "The default mysql config")
-	spec        = flag.String("spec", ":8888", "Default HTTP port")
-	pixPath     = flag.String("pix_path", "pix", "Default picture storage directory")
+	config                = flag.String("config", ".config.json", "The default configuration file")
+	mysqlConfig           = flag.String("mysql_config", "", "The default mysql config")
+	spec                  = flag.String("spec", ":8888", "Default HTTP port")
+	pixPath               = flag.String("pix_path", "pix", "Default picture storage directory")
+	sessionPrivateKeyPath = flag.String("priv_key", "", "Path to the session signing private key")
+	sessionPublicKeyPath  = flag.String("pub_key", "", "Path to the session signing public key")
 )
 
 func getConfig(path string) (*server.Config, error) {
@@ -48,6 +50,8 @@ func main() {
 	}
 	c.HttpSpec = *spec
 	c.PixPath = *pixPath
+	c.SessionPrivateKeyPath = *sessionPrivateKeyPath
+	c.SessionPublicKeyPath = *sessionPublicKeyPath
 
 	s := &server.Server{}
 
