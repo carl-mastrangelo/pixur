@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"compress/gzip"
+	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -19,8 +20,10 @@ var (
 )
 
 type ServerConfig struct {
-	DB      *sql.DB
-	PixPath string
+	DB         *sql.DB
+	PixPath    string
+	PrivateKey *rsa.PrivateKey
+	PublicKey  *rsa.PublicKey
 }
 
 func register(rf registerFunc) {

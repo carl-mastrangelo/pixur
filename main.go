@@ -50,8 +50,12 @@ func main() {
 	}
 	c.HttpSpec = *spec
 	c.PixPath = *pixPath
-	c.SessionPrivateKeyPath = *sessionPrivateKeyPath
-	c.SessionPublicKeyPath = *sessionPublicKeyPath
+	if *sessionPrivateKeyPath != "" {
+		c.SessionPrivateKeyPath = *sessionPrivateKeyPath
+	}
+	if *sessionPublicKeyPath != "" {
+		c.SessionPublicKeyPath = *sessionPublicKeyPath
+	}
 
 	s := &server.Server{}
 
