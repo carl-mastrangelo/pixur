@@ -79,6 +79,7 @@ func (s *Server) setup(c *Config) error {
 		if err != nil {
 			return err
 		}
+		key.Precompute()
 		s.privateKey = key
 	}
 
@@ -116,8 +117,10 @@ func (s *Server) setup(c *Config) error {
 	s.s.Handler = mux
 
 	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
-		DB:      db,
-		PixPath: s.pixPath,
+		DB:         db,
+		PixPath:    s.pixPath,
+		PrivateKey: s.privateKey,
+		PublicKey:  s.publicKey,
 	})
 	return nil
 }
