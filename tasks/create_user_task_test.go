@@ -40,8 +40,9 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 		Ident: []*schema.UserIdent{{
-			Email: "email",
-		}},
+			Ident: &schema.UserIdent_Email{
+				Email: "email",
+			}}},
 	}
 	if !proto.Equal(expected, task.CreatedUser) {
 		t.Fatal("not equal", expected, task.CreatedUser)
