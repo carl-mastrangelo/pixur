@@ -43,6 +43,7 @@ func (t *CreateUserTask) Run() error {
 
 	key := make([]byte, 8)
 	binary.BigEndian.PutUint64(key, uint64(userID))
+	// TODO: use bcrypt or scrypt or something more standard.
 	mac := hmac.New(sha256.New, key)
 	mac.Write([]byte(t.Secret))
 	now := t.Now()
