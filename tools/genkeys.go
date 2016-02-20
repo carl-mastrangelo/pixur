@@ -10,7 +10,7 @@ import (
 )
 
 func run() error {
-	priv, err := rsa.GenerateKey(rand.Reader, 1024)
+	priv, err := rsa.GenerateMultiPrimeKey(rand.Reader, 3, 2048)
 	if err != nil {
 		return err
 	}
