@@ -28,7 +28,7 @@ func main() {
 			return nil
 		}
 
-		pendingTime := schema.ToTime(p.DeletionStatus.PendingDeletedTs)
+		pendingTime := schema.FromTs(p.DeletionStatus.PendingDeletedTs)
 		// It is pending deletion, just not yet.
 		if !now.After(pendingTime) {
 			return nil

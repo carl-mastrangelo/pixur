@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"pixur.org/pixur"
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/server"
 )
 
 // copy of starter/
@@ -88,8 +88,8 @@ func ForEachPic(fn func(*schema.Pic, *ServerConfig, error) error) error {
 	return nil
 }
 
-func getConfig(path string) (*pixur.Config, error) {
-	var config = new(pixur.Config)
+func getConfig(path string) (*server.Config, error) {
+	var config = new(server.Config)
 	f, err := os.Open(path)
 
 	if os.IsNotExist(err) {
