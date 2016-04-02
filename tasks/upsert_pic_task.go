@@ -176,8 +176,14 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	if err := t.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
 		return s.InternalError(err, "Can't prepare pic dir")
 	}
+	if err := f.Close(); err != nil {
+		return s.InternalErrorf(err, "Can't close %v", f.Name())
+	}
 	if err := t.Rename(f.Name(), p.Path(t.PixPath)); err != nil {
 		return s.InternalErrorf(err, "Can't rename %v to %v", f.Name(), p.Path(t.PixPath))
+	}
+	if err := ft.Close(); err != nil {
+		return s.InternalErrorf(err, "Can't close %v", ft.Name())
 	}
 	if err := t.Rename(ft.Name(), p.ThumbnailPath(t.PixPath)); err != nil {
 		os.Remove(p.Path(t.PixPath))
@@ -445,16 +451,20 @@ func insertPerceptualHash(tx *sql.Tx, picID int64, im image.Image) error {
 }
 
 // prepareFile prepares the file for image processing.
-func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) (*os.File, *FileHeader, error) {
+func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) (_ *os.File, _ *FileHeader, errCap error) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
 		return nil, nil, s.InternalError(err, "Can't create tempfile")
 	}
+	defer func() {
+		if errCap != nil {
+			closeAndRemove(f)
+		}
+	}()
 
 	var h *FileHeader
 	if fd == nil {
 		if header, err := t.downloadFile(f, u); err != nil {
-			os.Remove(f.Name())
 			return nil, nil, err
 		} else {
 			h = header
@@ -465,7 +475,6 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 		// Also get a copy of the size.  We don't want to move the file if it is on the
 		// same partition, because then we can't retry the task on failure.
 		if n, err := io.Copy(f, fd); err != nil {
-			os.Remove(f.Name())
 			return nil, nil, s.InternalError(err, "Can't save file")
 		} else {
 			h = &FileHeader{
@@ -477,11 +486,17 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 
 	// The file is now local.  Sync it, since external programs might read it.
 	if err := f.Sync(); err != nil {
-		os.Remove(f.Name())
 		return nil, nil, s.InternalError(err, "Can't sync file")
 	}
 
 	return f, h, nil
+}
+
+// closeAndRemove cleans up in the event of an error.  Windows needs the file to
+// be closed so it is important to do it in order.
+func closeAndRemove(f *os.File) {
+	f.Close()
+	os.Remove(f.Name())
 }
 
 // TODO: add tests
