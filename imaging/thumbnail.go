@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/nfnt/resize"
 
 	"pixur.org/pixur/imaging/webm"
@@ -135,15 +136,15 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 // short delay frames (from 0-5 hundredths) and allow the browser js to
 // reinterpret the duration.
 // TODO: add tests for this
-func GetGifDuration(g *gif.GIF) *schema.Duration {
-	var duration time.Duration
+func GetGifDuration(g *gif.GIF) *duration.Duration {
+	var dur time.Duration
 	// TODO: check for overflow
 	// each delay unit is 1/100 of a second
 	for _, frameHundredths := range g.Delay {
-		duration += time.Millisecond * time.Duration(10*frameHundredths)
+		dur += time.Millisecond * time.Duration(10*frameHundredths)
 	}
 
-	return schema.FromDuration(duration)
+	return schema.FromDuration(dur)
 }
 
 type SubImager interface {

@@ -4,6 +4,9 @@ package pixur;
 
 option go_package = "schema";
 
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
 message Pic {
   int64 pic_id = 1;
   int64 file_size = 2;
@@ -21,8 +24,8 @@ message Pic {
   int64 height = 5;
   // TAG 9 unused
 
-  Timestamp created_ts = 10;
-  Timestamp modified_ts = 11;
+  google.protobuf.Timestamp created_ts = 10;
+  google.protobuf.Timestamp modified_ts = 11;
 
   // If present, the pic is on the path to removal.  When the pic is marked
   // for deletion, it is delisted from normal indexing operations.  When the
@@ -34,13 +37,13 @@ message Pic {
 
   message DeletionStatus {
     // Represents when this Pic was marked for deletion
-    Timestamp marked_deleted_ts = 1;
+    google.protobuf.Timestamp marked_deleted_ts = 1;
     // Represents when this picture will be auto deleted.  Note that the Pic
     // may exist for a short period after this time.  (may be absent)
-    Timestamp pending_deleted_ts = 2;
+    google.protobuf.Timestamp pending_deleted_ts = 2;
     // Determines when Pic was actually deleted.  (present after the Pic is 
     // hard deleted, a.k.a purging)
-    Timestamp actual_deleted_ts = 3;
+    google.protobuf.Timestamp actual_deleted_ts = 3;
     // Gives an explanation for why this pic was removed.
     string details = 4;
     
@@ -67,7 +70,7 @@ message Pic {
   message FileSource {
     string url = 1;
     string referrer = 2;
-    Timestamp created_ts = 3;
+    google.protobuf.Timestamp created_ts = 3;
   }
   
   repeated FileSource source = 15;
@@ -99,23 +102,23 @@ message PicIdent {
 message AnimationInfo {
   // How long this animated image in time.  There must be more than 1 frame
   // for this value to be set.
-  Duration duration = 1;
+  google.protobuf.Duration duration = 1;
 }
 
 message Tag {
   int64 tag_id = 1;
   string name = 2;
   int64 usage_count = 3;
-  Timestamp created_ts = 6;
-  Timestamp modified_ts = 7;
+  google.protobuf.Timestamp created_ts = 6;
+  google.protobuf.Timestamp modified_ts = 7;
 }
 
 message PicTag {
   int64 pic_id = 1;
   int64 tag_id = 2;
   string name = 3;
-  Timestamp created_ts = 6;
-  Timestamp modified_ts = 7;
+  google.protobuf.Timestamp created_ts = 6;
+  google.protobuf.Timestamp modified_ts = 7;
 }
 
 message User {
@@ -126,9 +129,9 @@ message User {
   
   repeated UserIdent ident = 3;
 
-  Timestamp created_ts = 4;
-  Timestamp modified_ts = 5;
-  Timestamp last_seen_ts = 6;
+  google.protobuf.Timestamp created_ts = 4;
+  google.protobuf.Timestamp modified_ts = 5;
+  google.protobuf.Timestamp last_seen_ts = 6;
   
   enum Capability {
     UNKNOWN = 0;
@@ -142,18 +145,4 @@ message UserIdent {
   oneof ident {
     string email = 1;
   }
-}
-
-// This is the same as google.protobuf.Timestamp, until it becomes standard.
-message Timestamp {
-  int64 seconds = 1;
-
-  int32 nanos = 2;
-}
-
-// This is the same as google.protobuf.Duration, until it becomes standard.
-message Duration {
-  int64 seconds = 1;
-
-  int32 nanos = 2;
 }
