@@ -78,8 +78,6 @@ message Pic {
   repeated string file_name = 16;
 }
 
-
-
 // A picture identifier
 message PicIdent {
   int64 pic_id = 1;

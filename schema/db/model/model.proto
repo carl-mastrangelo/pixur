@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package pixur.db.model;
+
+option go_package = "model";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions {
+  TableOptions tab_opts = 65537;
+}
+
+enum KeyType {
+  NONE = 0;
+  PRIMARY = 1;
+  INDEX = 2;
+  UNIQUE = 3;
+}
+
+message TableOptions {
+  string name = 1;
+
+  message Key {
+    repeated string col = 1;
+    KeyType key_type = 2;
+    string name = 3;
+  }
+
+  repeated Key key = 2;
+}
