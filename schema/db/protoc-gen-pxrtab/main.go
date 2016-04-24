@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,12 +12,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	descriptor "google/protobuf"
+	plugin "google/protobuf/compiler"
 
 	"pixur.org/pixur/schema/db/model"
-)
-
-var (
-	srcPath = flag.String("src", "", "The source proto descriptor file")
 )
 
 const (
@@ -27,6 +23,10 @@ package tables
 
 import (
   "database/sql"
+  
+  "github.com/golang/protobuf/proto"
+  
+  "pixur.org/pixur/schema/db"
 )
 
 type Job struct {
@@ -38,6 +38,10 @@ var SqlTables = []string{
   {{- .SqlString -}}
 {{end -}}
 }
+
+{{range .}}
+{{.ScanString}}
+{{end -}}
 `
 )
 
@@ -72,6 +76,7 @@ type index struct {
 
 type table struct {
 	Name    string
+	GoType  string
 	Columns []column
 	Indexes []index
 	msg     *descriptor.DescriptorProto
@@ -124,14 +129,48 @@ func (t table) SqlString() string {
 	return buf.String()
 }
 
+func (t table) FindString() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, `func (j Job) Find%s(opts Opts) ([]%s, error) {`, t.Name, t.GoType)
+	buf.WriteRune('\n')
+	fmt.Fprintf(&buf, "\t"+`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.Name)
+	buf.WriteRune('\n')
+	fmt.Fprintf(&buf, "\t\t"+`var pb %s`, t.GoType)
+	buf.WriteRune('\n')
+	buf.WriteString("\t\tif err := proto.Unmarshal(data, &pb); err != nil {\n")
+	buf.WriteString("\t\t\treturn err\n")
+	buf.WriteString("\t\t}\n")
+	buf.WriteString("\treturn cb(pb)\n")
+	buf.WriteRune('}')
+	return buf.String()
+}
+
+func (t table) ScanString() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, `func (j Job) Scan%s(opts Opts, cb func(%s) error) error {`, t.Name, t.GoType)
+	buf.WriteRune('\n')
+	fmt.Fprintf(&buf, "\t"+`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.Name)
+	buf.WriteRune('\n')
+	fmt.Fprintf(&buf, "\t\t"+`var pb %s`, t.GoType)
+	buf.WriteRune('\n')
+	buf.WriteString("\t\tif err := proto.Unmarshal(data, &pb); err != nil {\n")
+	buf.WriteString("\t\t\treturn err\n")
+	buf.WriteString("\t\t}\n")
+	buf.WriteString("\treturn cb(pb)\n")
+	buf.WriteRune('}')
+	return buf.String()
+}
+
 func run() error {
-	fds, err := getDescriptorSet(*srcPath)
+	fds, err := getRequest()
 	if err != nil {
 		return err
 	}
 
+	log.Println(fds.String())
+
 	var tables []table
-	for _, fd := range fds.File {
+	for _, fd := range fds.ProtoFile {
 		for _, msg := range fd.MessageType {
 			if msg.Options == nil || !proto.HasExtension(msg.Options, model.E_TabOpts) {
 				continue
@@ -153,30 +192,26 @@ func run() error {
 	return nil
 }
 
-func getDescriptorSet(path string) (*descriptor.FileDescriptorSet, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadAll(f)
+func getRequest() (*plugin.CodeGeneratorRequest, error) {
+	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		return nil, err
 	}
 
-	fd := new(descriptor.FileDescriptorSet)
-	if err := proto.Unmarshal(data, fd); err != nil {
+	req := new(plugin.CodeGeneratorRequest)
+	if err := proto.Unmarshal(data, req); err != nil {
 		return nil, err
 	}
 
-	return fd, nil
+	return req, nil
 }
 
 func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (table, error) {
 	t := table{
 		msg: msg,
 	}
+
+	log.Fatal(*msg)
 
 	if opts.Name != "" {
 		t.Name = opts.Name
@@ -270,8 +305,6 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (tabl
 }
 
 func main() {
-	flag.Parse()
-
 	if err := run(); err != nil {
 		log.Fatalln(err)
 	}
