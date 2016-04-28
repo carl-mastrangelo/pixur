@@ -41,8 +41,8 @@ var SqlTables = []string{
 }
 
 {{range .}}
-  {{.ScanString}}
-  {{.FindString}}
+{{.ScanString}}
+{{.FindString}}
 {{end}}
 `
 )
@@ -133,17 +133,13 @@ func (t table) SqlString() string {
 
 func (t table) FindString() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, `func (j Job) Find%s(opts Opts) ([]%s, error) {`, t.Name, t.GoType)
+	fmt.Fprintf(&buf, `func (j Job) Find%s(opts db.Opts) (rows []%s, err error) {`, t.Name, t.GoType)
 	buf.WriteRune('\n')
-	fmt.Fprintf(&buf, "\tvar pbs []%s\n", t.GoType)
-	fmt.Fprintf(&buf, "\t\terr := j.Scan%s(opts, func(data %s) error {\n", t.Name, t.GoType)
-	buf.WriteString("\t\tpbs = append(pbs, data)\n")
+	fmt.Fprintf(&buf, "\terr = j.Scan%s(opts, func(data %s) error {\n", t.Name, t.GoType)
+	buf.WriteString("\t\trows = append(rows, data)\n")
 	buf.WriteString("\t\treturn nil\n")
 	buf.WriteString("\t})\n")
-	buf.WriteString("if err != nil {\n")
-	buf.WriteString("\treturn nil, err\n")
-	buf.WriteString("}\n")
-	buf.WriteString("return pbs, nil\n")
+	buf.WriteString("return\n")
 	buf.WriteString("}")
 
 	return buf.String()
@@ -151,7 +147,7 @@ func (t table) FindString() string {
 
 func (t table) ScanString() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, `func (j Job) Scan%s(opts Opts, cb func(%s) error) error {`, t.Name, t.GoType)
+	fmt.Fprintf(&buf, `func (j Job) Scan%s(opts db.Opts, cb func(%s) error) error {`, t.Name, t.GoType)
 	buf.WriteRune('\n')
 	fmt.Fprintf(&buf, "\t"+`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.Name)
 	buf.WriteRune('\n')

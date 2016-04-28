@@ -1,7 +1,10 @@
 package db
 
 import (
+	"bytes"
 	"database/sql"
+	"fmt"
+	"strings"
 )
 
 type Lock int
@@ -32,7 +35,7 @@ func Scan(q querier, name string, opts Opts, cb func(data []byte) error) error {
 
 	for rows.Next() {
 		var tmp []byte
-		if err := rows.Scan(&temp); err != nil {
+		if err := rows.Scan(&tmp); err != nil {
 			return err
 		}
 		if err := cb(tmp); err != nil {
@@ -50,13 +53,13 @@ func buildScan(name string, opts Opts) (string, []interface{}) {
 	var buf bytes.Buffer
 	var args []interface{}
 	fmt.Fprintf(&buf, `SELECT "data" FROM "%s" `, name)
-	if len(opts.Start) != 0 || len(opts.Stop) != 0 {
+	if len(opts.Start.Vals()) != 0 || len(opts.Stop.Vals()) != 0 {
 		buf.WriteString("WHERE ")
 	}
 	// WHERE Clause
-	if len(opts.Start) != 0 {
-		cols = opts.Start.Cols()
-		vals = opts.Start.Vals()
+	if len(opts.Start.Vals()) != 0 {
+		cols := opts.Start.Cols()
+		vals := opts.Start.Vals()
 		if len(vals) > len(cols) {
 			panic("More vals than cols")
 		}
@@ -80,18 +83,18 @@ func buildScan(name string, opts Opts) (string, []interface{}) {
 				}
 				ands = append(ands, fmt.Sprintf(`"%s" %s ?`, cols[k], cmp))
 			}
-			ors = append(ors, string.Join(ands, " AND "))
+			ors = append(ors, strings.Join(ands, " AND "))
 		}
 		buf.WriteRune('(')
 		buf.WriteString(strings.Join(ors, " OR "))
 		buf.WriteString(") ")
 	}
-	if len(opts.Start) != 0 && len(opts.Stop) != 0 {
+	if len(opts.Start.Vals()) != 0 && len(opts.Stop.Vals()) != 0 {
 		buf.WriteString("AND ")
 	}
-	if len(opts.Stop) != 0 {
-		cols = opts.Stop.Cols()
-		vals = opts.Stop.Vals()
+	if len(opts.Stop.Vals()) != 0 {
+		cols := opts.Stop.Cols()
+		vals := opts.Stop.Vals()
 		if len(vals) > len(cols) {
 			panic("More vals than cols")
 		}
@@ -112,7 +115,7 @@ func buildScan(name string, opts Opts) (string, []interface{}) {
 				}
 				ands = append(ands, fmt.Sprintf(`"%s" %s ?`, cols[k], cmp))
 			}
-			ors = append(ors, string.Join(ands, " AND "))
+			ors = append(ors, strings.Join(ands, " AND "))
 		}
 		buf.WriteRune('(')
 		buf.WriteString(strings.Join(ors, " OR "))
