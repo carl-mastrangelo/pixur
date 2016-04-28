@@ -18,32 +18,31 @@ import (
 )
 
 const (
-	tpl = `
-package tables
+	tpl = `package tables
 
 import (
-  "database/sql"
-  
-  "github.com/golang/protobuf/proto"
-  
-  "pixur.org/pixur/schema/db"
-  "pixur.org/pixur/schema"
+	"database/sql"
+
+	"github.com/golang/protobuf/proto"
+
+	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 )
 
 type Job struct {
-  Tx *sql.Tx
+	Tx *sql.Tx
 }
 
 var SqlTables = []string{
 {{range .}}
-  {{- .SqlString -}}
+	{{- .SqlString -}}
 {{end -}}
 }
 
 {{range .}}
-{{.ScanString}}
+{{- .ScanString}}
 {{.FindString}}
-{{end}}
+{{end -}}
 `
 )
 
@@ -86,10 +85,10 @@ type table struct {
 
 func (t table) SqlString() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, `  "CREATE TABLE \"%s\" (" +`, t.Name)
+	fmt.Fprintf(&buf, `	"CREATE TABLE \"%s\" (" +`, t.Name)
 	buf.WriteRune('\n')
 	for _, col := range t.Columns {
-		fmt.Fprintf(&buf, `    "\"%s\" %s NOT NULL, " +`, col.Name, col.ColumnType)
+		fmt.Fprintf(&buf, `		"\"%s\" %s NOT NULL, " +`, col.Name, col.ColumnType)
 		buf.WriteRune('\n')
 	}
 	var inlineIndexes []index
@@ -115,16 +114,16 @@ func (t table) SqlString() string {
 		if i == len(inlineIndexes)-1 {
 			last = ""
 		}
-		fmt.Fprintf(&buf, `    "%s(%s)%s" +`, idx.KeyType, strings.Join(cols, ", "), last)
+		fmt.Fprintf(&buf, `		"%s(%s)%s" +`, idx.KeyType, strings.Join(cols, ", "), last)
 		buf.WriteRune('\n')
 	}
-	buf.WriteString("  \");\",\n")
+	buf.WriteString("\t\t\");\",\n")
 	for _, idx := range indexes {
 		var cols []string
 		for _, col := range idx.Columns {
 			cols = append(cols, fmt.Sprintf(`\"%s\"`, col))
 		}
-		fmt.Fprintf(&buf, `  "CREATE INDEX \"%s\" ON \"%s\" (%s);",`,
+		fmt.Fprintf(&buf, `	"CREATE INDEX \"%s\" ON \"%s\" (%s);",`,
 			idx.Name, t.Name, strings.Join(cols, ", "))
 		buf.WriteRune('\n')
 	}
@@ -139,8 +138,8 @@ func (t table) FindString() string {
 	buf.WriteString("\t\trows = append(rows, data)\n")
 	buf.WriteString("\t\treturn nil\n")
 	buf.WriteString("\t})\n")
-	buf.WriteString("return\n")
-	buf.WriteString("}")
+	buf.WriteString("\treturn\n")
+	buf.WriteString("}\n")
 
 	return buf.String()
 }
@@ -156,8 +155,8 @@ func (t table) ScanString() string {
 	buf.WriteString("\t\tif err := proto.Unmarshal(data, &pb); err != nil {\n")
 	buf.WriteString("\t\t\treturn err\n")
 	buf.WriteString("\t\t}\n")
-	buf.WriteString("\treturn cb(pb)\n")
-	buf.WriteString("})\n")
+	buf.WriteString("\t\treturn cb(pb)\n")
+	buf.WriteString("\t})\n")
 	buf.WriteString("}\n")
 	return buf.String()
 }

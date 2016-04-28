@@ -4,8 +4,8 @@ package pixur.tables;
 
 option go_package = "tables";
 
-import "schema/pixur.proto";
-import "schema/db/model/model.proto";
+import "pixur.org/pixur/schema/pixur.proto";
+import "pixur.org/pixur/schema/db/model/model.proto";
 
 message PicTable {
   option (pixur.db.model.tab_opts) = {
