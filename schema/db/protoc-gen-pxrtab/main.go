@@ -27,6 +27,7 @@ import (
   "github.com/golang/protobuf/proto"
   
   "pixur.org/pixur/schema/db"
+  "pixur.org/pixur/schema"
 )
 
 type Job struct {
@@ -40,8 +41,9 @@ var SqlTables = []string{
 }
 
 {{range .}}
-{{.ScanString}}
-{{end -}}
+  {{.ScanString}}
+  {{.FindString}}
+{{end}}
 `
 )
 
@@ -133,15 +135,17 @@ func (t table) FindString() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, `func (j Job) Find%s(opts Opts) ([]%s, error) {`, t.Name, t.GoType)
 	buf.WriteRune('\n')
-	fmt.Fprintf(&buf, "\t"+`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.Name)
-	buf.WriteRune('\n')
-	fmt.Fprintf(&buf, "\t\t"+`var pb %s`, t.GoType)
-	buf.WriteRune('\n')
-	buf.WriteString("\t\tif err := proto.Unmarshal(data, &pb); err != nil {\n")
-	buf.WriteString("\t\t\treturn err\n")
-	buf.WriteString("\t\t}\n")
-	buf.WriteString("\treturn cb(pb)\n")
-	buf.WriteRune('}')
+	fmt.Fprintf(&buf, "\tvar pbs []%s\n", t.GoType)
+	fmt.Fprintf(&buf, "\t\terr := j.Scan%s(opts, func(data %s) error {\n", t.Name, t.GoType)
+	buf.WriteString("\t\tpbs = append(pbs, data)\n")
+	buf.WriteString("\t\treturn nil\n")
+	buf.WriteString("\t})\n")
+	buf.WriteString("if err != nil {\n")
+	buf.WriteString("\treturn nil, err\n")
+	buf.WriteString("}\n")
+	buf.WriteString("return pbs, nil\n")
+	buf.WriteString("}")
+
 	return buf.String()
 }
 
@@ -157,39 +161,46 @@ func (t table) ScanString() string {
 	buf.WriteString("\t\t\treturn err\n")
 	buf.WriteString("\t\t}\n")
 	buf.WriteString("\treturn cb(pb)\n")
-	buf.WriteRune('}')
+	buf.WriteString("})\n")
+	buf.WriteString("}\n")
 	return buf.String()
 }
 
-func run() error {
-	fds, err := getRequest()
-	if err != nil {
-		return err
+func run(req *plugin.CodeGeneratorRequest) (*plugin.CodeGeneratorResponse, error) {
+	if len(req.FileToGenerate) != 1 {
+		return nil, errors.New("Can only generate 1 file.")
 	}
-
-	log.Println(fds.String())
-
 	var tables []table
-	for _, fd := range fds.ProtoFile {
+	for _, fd := range req.ProtoFile {
+		if fd.GetOptions().GetGoPackage() == "" {
+			return nil, errors.New("Must have a Go package")
+		}
 		for _, msg := range fd.MessageType {
 			if msg.Options == nil || !proto.HasExtension(msg.Options, model.E_TabOpts) {
 				continue
 			}
 			opts, err := proto.GetExtension(msg.Options, model.E_TabOpts)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			t, err := buildTable(msg, opts.(*model.TableOptions))
 			if err != nil {
-				return err
+				return nil, err
 			}
 			tables = append(tables, t)
 		}
 	}
 
 	temp := template.Must(template.New("inline").Parse(tpl))
-	temp.Execute(os.Stderr, tables)
-	return nil
+	var buf bytes.Buffer
+	temp.Execute(&buf, tables)
+	resp := new(plugin.CodeGeneratorResponse)
+	resp.File = []*plugin.CodeGeneratorResponse_File{{
+		Name:    proto.String(strings.Replace(req.FileToGenerate[0], ".proto", ".tab.go", -1)),
+		Content: proto.String(buf.String()),
+	}}
+
+	return resp, nil
 }
 
 func getRequest() (*plugin.CodeGeneratorRequest, error) {
@@ -210,8 +221,6 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (tabl
 	t := table{
 		msg: msg,
 	}
-
-	log.Fatal(*msg)
 
 	if opts.Name != "" {
 		t.Name = opts.Name
@@ -260,6 +269,11 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (tabl
 			ColumnType: typ,
 			field:      f,
 		})
+
+		if *f.Name == "data" {
+			parts := strings.Split(*f.TypeName, ".")
+			t.GoType = "schema." + parts[len(parts)-1]
+		}
 	}
 	if !fieldNames["data"] {
 		return t, errors.New("Missing data col on table " + t.Name)
@@ -305,7 +319,21 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (tabl
 }
 
 func main() {
-	if err := run(); err != nil {
+	req, err := getRequest()
+	if err != nil {
 		log.Fatalln(err)
+	}
+
+	resp, err := run(req)
+	if err != nil {
+		resp = new(plugin.CodeGeneratorResponse)
+		resp.Error = proto.String(err.Error())
+	}
+	if data, err := proto.Marshal(resp); err != nil {
+		log.Fatalln(err)
+	} else {
+		if _, err := os.Stdout.Write(data); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
