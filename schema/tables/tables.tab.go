@@ -21,8 +21,8 @@ var SqlTables = []string{
 		"\"data\" bytea NOT NULL, " +
 		"PRIMARY KEY(\"id\")" +
 		");",
-	"CREATE INDEX \"BumpOrder\" ON \"Pics\" (\"created_time\");",
-	"CREATE INDEX \"Hidden\" ON \"Pics\" (\"is_hidden\");",
+	"CREATE INDEX \"PicsBumpOrder\" ON \"Pics\" (\"created_time\");",
+	"CREATE INDEX \"PicsHidden\" ON \"Pics\" (\"is_hidden\");",
 	"CREATE TABLE \"Tags\" (" +
 		"\"id\" bigint NOT NULL, " +
 		"\"name\" bytea NOT NULL, " +
@@ -43,7 +43,7 @@ var SqlTables = []string{
 		"\"data\" bytea NOT NULL, " +
 		"PRIMARY KEY(\"pic_id\", \"type\", \"value\")" +
 		");",
-	"CREATE INDEX \"Ident\" ON \"PicIdents\" (\"type\", \"value\");",
+	"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\", \"value\");",
 	"CREATE TABLE \"Users\" (" +
 		"\"id\" bigint NOT NULL, " +
 		"\"ident\" bytea NOT NULL, " +
@@ -51,6 +51,126 @@ var SqlTables = []string{
 		"PRIMARY KEY(\"id\"), " +
 		"UNIQUE(\"ident\")" +
 		");",
+}
+
+var _ db.Idx = PicsPrimary{}
+
+type PicsPrimary struct {
+}
+
+func (idx PicsPrimary) Cols() []string {
+	return []string{"id"}
+}
+
+func (idx PicsPrimary) Vals() []interface{} {
+}
+
+var _ db.Idx = PicsBumpOrder{}
+
+type PicsBumpOrder struct {
+}
+
+func (idx PicsBumpOrder) Cols() []string {
+	return []string{"created_time"}
+}
+
+func (idx PicsBumpOrder) Vals() []interface{} {
+}
+
+var _ db.Idx = PicsHidden{}
+
+type PicsHidden struct {
+}
+
+func (idx PicsHidden) Cols() []string {
+	return []string{"is_hidden"}
+}
+
+func (idx PicsHidden) Vals() []interface{} {
+}
+
+var _ db.Idx = TagsPrimary{}
+
+type TagsPrimary struct {
+}
+
+func (idx TagsPrimary) Cols() []string {
+	return []string{"id"}
+}
+
+func (idx TagsPrimary) Vals() []interface{} {
+}
+
+var _ db.Idx = TagsName{}
+
+type TagsName struct {
+}
+
+func (idx TagsName) Cols() []string {
+	return []string{"name"}
+}
+
+func (idx TagsName) Vals() []interface{} {
+}
+
+var _ db.Idx = PicTagsPrimary{}
+
+type PicTagsPrimary struct {
+}
+
+func (idx PicTagsPrimary) Cols() []string {
+	return []string{"pic_id", "tag_id"}
+}
+
+func (idx PicTagsPrimary) Vals() []interface{} {
+}
+
+var _ db.Idx = PicIdentsPrimary{}
+
+type PicIdentsPrimary struct {
+}
+
+func (idx PicIdentsPrimary) Cols() []string {
+	return []string{"pic_id", "type", "value"}
+}
+
+func (idx PicIdentsPrimary) Vals() []interface{} {
+}
+
+var _ db.Idx = PicIdentsIdent{}
+
+type PicIdentsIdent struct {
+}
+
+func (idx PicIdentsIdent) Cols() []string {
+	return []string{"type", "value"}
+}
+
+func (idx PicIdentsIdent) Vals() []interface{} {
+}
+
+var _ db.Idx = UsersPrimary{}
+
+type UsersPrimary struct {
+}
+
+func (idx UsersPrimary) Cols() []string {
+	return []string{"id"}
+}
+
+func (idx UsersPrimary) Vals() []interface{} {
+}
+
+var _ db.Idx = UsersIdent{}
+
+type UsersIdent struct {
+}
+
+func (idx UsersIdent) Cols() []string {
+	return []string{"ident"}
+}
+
+func (idx UsersIdent) Vals() []interface{} {
 }
 
 func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {

@@ -40,6 +40,12 @@ var SqlTables = []string{
 }
 
 {{range .}}
+{{range .Indexes}}
+{{.IndexString}}
+{{end -}}
+{{end -}}
+
+{{range .}}
 {{- .ScanString}}
 {{.FindString}}
 {{end -}}
@@ -161,12 +167,31 @@ func (t table) ScanString() string {
 	return buf.String()
 }
 
+func (idx index) IndexString() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "var _ db.Idx = %s{}\n", idx.Name)
+	fmt.Fprintf(&buf, "type %s struct {\n", idx.Name)
+	fmt.Fprintf(&buf, "}\n\n")
+	fmt.Fprintf(&buf, "func (idx %s) Cols() []string {\n", idx.Name)
+	var escaped []string
+	for _, s := range idx.Columns {
+		escaped = append(escaped, "\""+s+"\"")
+	}
+	fmt.Fprintf(&buf, "\treturn []string{%s}\n", strings.Join(escaped, ", "))
+	fmt.Fprintf(&buf, "}\n\n")
+	fmt.Fprintf(&buf, "func (idx %s) Vals() []interface{} {\n", idx.Name)
+
+	fmt.Fprintf(&buf, "}\n\n")
+	return buf.String()
+}
+
 func run(req *plugin.CodeGeneratorRequest) (*plugin.CodeGeneratorResponse, error) {
 	if len(req.FileToGenerate) != 1 {
 		return nil, errors.New("Can only generate 1 file.")
 	}
 	var tables []table
 	for _, fd := range req.ProtoFile {
+		log.Println(*fd.Name)
 		if fd.GetOptions().GetGoPackage() == "" {
 			return nil, errors.New("Must have a Go package")
 		}
@@ -304,7 +329,7 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) (tabl
 			return t, errors.New("Unknown key type on table " + t.Name)
 		}
 		t.Indexes = append(t.Indexes, index{
-			Name:    name,
+			Name:    t.Name + name,
 			KeyType: typ,
 			Columns: k.Col,
 		})
