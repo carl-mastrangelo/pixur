@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	_ "math"
 )
 
 const (
@@ -244,6 +243,7 @@ var (
 	errInvalidSymbol = errors.New("varint: invalid symbol")
 	errEof           = errors.New("varint: eof")
 	errOverflow      = errors.New("varint: overflow")
+	errExcessInput   = errors.New("varint: excess input")
 )
 
 // DecodeBytes sets v to the value of raw, and returns the number of bytes consumed.
@@ -286,7 +286,7 @@ func (v *Varint) DecodeAll(raw string) error {
 		return err
 	}
 	if n != len(raw) {
-		return fmt.Errorf("excess input")
+		return errExcessInput
 	}
 	// Don't overwrite it on error
 	*v = tmp

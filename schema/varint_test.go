@@ -21,6 +21,14 @@ func TestVarintEncodingLarge(t *testing.T) {
 	}
 }
 
+func TestVarintString(t *testing.T) {
+	var num Varint = 72374
+
+	if text := num.String(); text != "k15m6(72374)" {
+		t.Fatalf("Expected %v but was %v", "k15m6(72374)", text)
+	}
+}
+
 func TestVarintEncodingNegative(t *testing.T) {
 	var num Varint = -1
 
@@ -172,11 +180,68 @@ func TestVarintDecodingSucceedsOnExcess(t *testing.T) {
 	}
 }
 
+func TestVarintDecodeAllSucceeds(t *testing.T) {
+	var num Varint = 0
+
+	err := num.DecodeAll("F")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if num != 0xF {
+		t.Fatalf("Expected %v but was %v", 0xF, num)
+	}
+}
+
+func TestVarintDecodeAllFailsOnBadInput(t *testing.T) {
+	var num Varint = 0
+
+	err := num.DecodeAll("G")
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+}
+
+func TestVarintDecodeAllFailsOnExcessInput(t *testing.T) {
+	var num Varint = 0
+
+	err := num.DecodeAll("11")
+	if err != errExcessInput {
+		t.Fatal("Expected error")
+	}
+	if num != 0 {
+		t.Fatal("Should not have touched num")
+	}
+}
+
 func TestDecodeFailsOnOverflow(t *testing.T) {
 	v := new(Varint)
 	_, err := v.Decode("y00b00es00000000")
 	if err == nil {
 		t.Fatal("expected overflow")
+	}
+}
+
+func TestDecodeFailsOnOverflowEdge(t *testing.T) {
+	v := new(Varint)
+	_, err := v.Decode("weyyyyyyyyyyyg")
+	if err == nil {
+		t.Fatal("expected overflow")
+	}
+}
+
+func TestDecodeFailsOnEmpty(t *testing.T) {
+	v := new(Varint)
+	_, err := v.DecodeBytes(nil)
+	if err != errNoInput {
+		t.Fatal("expected error")
+	}
+}
+
+func TestDecodeFailsOnBadLength(t *testing.T) {
+	v := new(Varint)
+	_, err := v.Decode("u")
+	if err != errInvalidLength {
+		t.Fatal("expected error")
 	}
 }
 
