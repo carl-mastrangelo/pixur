@@ -258,7 +258,7 @@ func (v *Varint) DecodeBytes(raw []byte) (int, error) {
 	if length > len(raw) {
 		return 0, errEof
 	}
-	if length >= maxLength && bytes.Compare(raw, maxValue) > 0 {
+	if length >= maxLength && bytes.Compare(bytes.ToLower(raw), maxValue) > 0 {
 		return 0, errOverflow
 	}
 

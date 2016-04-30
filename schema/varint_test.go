@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -172,16 +172,37 @@ func TestVarintDecodingSucceedsOnExcess(t *testing.T) {
 	}
 }
 
-func TestRoundTripLowers(t *testing.T) {
-	data := []byte{'A'}
+func TestDecodeFailsOnOverflow(t *testing.T) {
 	v := new(Varint)
-	n, err := v.DecodeBytes(data)
-	if err != nil {
-		t.Fatal(err)
+	_, err := v.Decode("y00b00es00000000")
+	if err == nil {
+		t.Fatal("expected overflow")
 	}
-	out := v.EncodeBytes()
-	if bytes.Compare(out, bytes.ToLower(data[:n])) != 0 {
-		t.Fatal("mismatch!", out, data)
+}
+
+func TestDecodeFailsOnOverflowUppercase(t *testing.T) {
+	v := new(Varint)
+	_, err := v.Decode("Y00b00es00000000")
+	if err == nil {
+		t.Fatal("expected overflow")
+	}
+}
+
+func TestRoundTripLowers(t *testing.T) {
+	cases := []string{
+		"A",
+	}
+	for _, data := range cases {
+		v := new(Varint)
+		n, err := v.Decode(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := v.Encode()
+		if strings.Compare(out, strings.ToLower(data[:n])) != 0 {
+			t.Log("mismatch! ", out, strings.ToLower(data[:n]))
+			t.Fail()
+		}
 	}
 }
 
