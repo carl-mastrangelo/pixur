@@ -170,3 +170,21 @@ func TestVarintDecodingSucceedsOnExcess(t *testing.T) {
 		t.Fatal("wrong number of bytes consumed")
 	}
 }
+
+func BenchmarkEncode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		num := Varint(i)
+		num.Encode()
+	}
+}
+
+func BenchmarkRoundTrip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		num := Varint(i)
+		text := num.Encode()
+		num = 0
+		if err := num.DecodeAll(text); err != nil || int(num) != i {
+			b.Fatal("bad encode")
+		}
+	}
+}
