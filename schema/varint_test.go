@@ -114,7 +114,7 @@ func TestVarintDecodingMatchCase(t *testing.T) {
 func TestVarintDecodingFailOnInvalidInput(t *testing.T) {
 	var num Varint
 
-	consumed, err := num.Decode("hu")
+	consumed, err := num.Decode("gu")
 	if err == nil {
 		t.Fatal("expected an error")
 	}
