@@ -11,7 +11,7 @@ const (
 	// bits per symbol
 	bits = 5
 	// number of possible symbols
-	symbolcount = 1 << bits
+	symbolCount = 1 << bits
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 
 // Prefix counts.
 const (
-	prefixg = (1<<(bits*iota)-1)*symbolcount/(symbolcount-1) + (symbolcount / 2)
+	prefixg = (1<<(bits*iota)-1)*symbolCount/(symbolCount-1) + (symbolCount / 2)
 	prefixh
 	prefixj
 	prefixk
@@ -41,7 +41,7 @@ const (
 	prefixz
 )
 
-var prefixTable = [256]uint64{
+var prefixDecodeTable = [256]uint64{
 	'0': 0,
 	'1': 1,
 	'2': 2,
@@ -73,6 +73,22 @@ var prefixTable = [256]uint64{
 	'T': prefixt, 't': prefixt,
 	'V': prefixv, 'v': prefixv,
 	'W': prefixw, 'w': prefixw,
+}
+
+var prefixEncodeTable = [32]uint64{
+	16: prefixg,
+	17: prefixh,
+	18: prefixj,
+	19: prefixk,
+	20: prefixm,
+	21: prefixn,
+	22: prefixp,
+	23: prefixq,
+	24: prefixr,
+	25: prefixs,
+	26: prefixt,
+	27: prefixv,
+	28: prefixw,
 }
 
 // Number of symbols to expect, given the prefix.
@@ -149,46 +165,73 @@ var valueTable = [256]uint64{
 	'Z': 31, 'z': 31,
 }
 
+var encodeTable = [32]byte{
+	0:  '0',
+	1:  '1',
+	2:  '2',
+	3:  '3',
+	4:  '4',
+	5:  '5',
+	6:  '6',
+	7:  '7',
+	8:  '8',
+	9:  '9',
+	10: 'a',
+	11: 'b',
+	12: 'c',
+	13: 'd',
+	14: 'e',
+	15: 'f',
+	16: 'g',
+	17: 'h',
+	18: 'j',
+	19: 'k',
+	20: 'm',
+	21: 'n',
+	22: 'p',
+	23: 'q',
+	24: 'r',
+	25: 's',
+	26: 't',
+	27: 'v',
+	28: 'w',
+	29: 'x',
+	30: 'y',
+	31: 'z',
+}
+
 type Varint int64
 
-var (
-	varintEncodeTable, varintDecodeTable = buildCodingTables()
-)
-
-func (v Varint) EncodeBytes() (raw []byte) {
+func (v Varint) Append(dest []byte) []byte {
 	n := uint64(v)
-	// Fast path, small numbers use the lower bytes
 	if n < 0x10 {
-		return []byte{varintEncodeTable[byte(n)]}
+		return append(dest, encodeTable[n])
 	}
-	n -= 0x10
-	// Length is tricky.  It represents the number of groups +1.  Thus, a length
-	// of 0 means 1 group, 1 means 2 groups.  This is a side effect of cramming
-	// the first 16 (0-15) digits in the low order lengths.
-	length := 1
-	// Subtract ubtract offsets less than 2^64, and start at a group count of 1 (5 bits).
-	for i := uint(5); i < 64; i += 5 {
-		var groupMax uint64 = 1 << i
-		if n >= groupMax {
-			n -= groupMax
-			length++
-		} else {
-			break
+	var suffix []byte
+	if n < prefixw {
+		for i := 0x10; i < len(prefixEncodeTable); i++ {
+			if n < prefixEncodeTable[i+1] {
+				n -= prefixEncodeTable[i]
+				suffix = make([]byte, lengthTable[encodeTable[i]])
+				suffix[0] = encodeTable[i]
+				break
+			}
 		}
+	} else {
+		n -= prefixw
+		suffix = make([]byte, lengthTable['w'])
+		suffix[0] = 'w'
+	}
+	for i := len(suffix) - 1; i >= 1; i-- {
+		suffix[i] = encodeTable[n&(symbolCount-1)]
+		n >>= bits
 	}
 
-	raw = append(raw, varintEncodeTable[byte(length+0x10-1)])
-	var lsgBuf []byte
-	for length > 0 {
-		lsgBuf = append(lsgBuf, byte(n&0x1F))
-		n >>= 5
-		length--
-	}
-	for i := len(lsgBuf) - 1; i >= 0; i-- {
-		raw = append(raw, varintEncodeTable[lsgBuf[i]])
-	}
+	return append(dest, suffix...)
+}
 
-	return
+func (v Varint) EncodeBytes() []byte {
+	return v.Append(nil)
 }
 
 func (v Varint) Encode() string {
@@ -228,7 +271,7 @@ func (v *Varint) DecodeBytes(raw []byte) (int, error) {
 		num = num<<5 + val
 	}
 
-	*v = Varint(int64(num + prefixTable[raw[0]]))
+	*v = Varint(int64(num + prefixDecodeTable[raw[0]]))
 	return length, nil
 }
 
@@ -252,29 +295,4 @@ func (v *Varint) DecodeAll(raw string) error {
 
 func (v Varint) String() string {
 	return fmt.Sprintf("%s(%d)", v.Encode(), v)
-}
-
-func buildCodingTables() (encoding, decoding []byte) {
-	encoding = make([]byte, 256)
-	for i := 0; i < len(encoding); i++ {
-		encoding[i] = 0xFF
-	}
-	decoding = make([]byte, 256)
-	for i := 0; i < len(decoding); i++ {
-		decoding[i] = 0xFF
-	}
-
-	mapping := map[byte]byte{
-		'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-		'8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15,
-		'g': 16, 'h': 17, 'j': 18, 'k': 19, 'm': 20, 'n': 21, 'p': 22, 'q': 23,
-		'r': 24, 's': 25, 't': 26, 'v': 27, 'w': 28, 'x': 29, 'y': 30, 'z': 31,
-	}
-
-	for c, v := range mapping {
-		decoding[int(c)] = v
-		encoding[int(v)] = c
-	}
-
-	return
 }

@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -168,6 +169,19 @@ func TestVarintDecodingSucceedsOnExcess(t *testing.T) {
 	}
 	if consumed != 1 {
 		t.Fatal("wrong number of bytes consumed")
+	}
+}
+
+func TestRoundTripLowers(t *testing.T) {
+	data := []byte{'A'}
+	v := new(Varint)
+	n, err := v.DecodeBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := v.EncodeBytes()
+	if bytes.Compare(out, bytes.ToLower(data[:n])) != 0 {
+		t.Fatal("mismatch!", out, data)
 	}
 }
 

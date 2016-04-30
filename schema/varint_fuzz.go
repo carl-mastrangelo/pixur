@@ -18,7 +18,7 @@ func Fuzz(data []byte) int {
 		return 0
 	}
 	out := v.EncodeBytes()
-	if bytes.Compare(out, data[:n]) != 0 {
+	if bytes.Compare(out, bytes.ToLower(data[:n])) != 0 {
 		panic("mismatch!")
 	}
 	return 1
