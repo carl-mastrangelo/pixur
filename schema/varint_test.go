@@ -279,11 +279,19 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func BenchmarkRoundTrip(b *testing.B) {
+	var num Varint
+
+	buf := make([]byte, 0, 32)
 	for i := 0; i < b.N; i++ {
-		num := Varint(i)
-		text := num.Encode()
-		num = 0
-		if err := num.DecodeAll(text); err != nil || int(num) != i {
+		var total int
+		for k := 0; k < 1<<16; k++ {
+			num = Varint(k)
+			buf = num.Append(buf)
+			num.DecodeBytes(buf)
+			total += int(num)
+			buf = buf[:0]
+		}
+		if total != 65535*32768 {
 			b.Fatal("bad encode")
 		}
 	}
