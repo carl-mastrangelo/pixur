@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pixur.tables;
 
-option go_package = "pixur.org/pixur/schema/tables";
+option go_package = "tables";
 
 import "pixur.org/pixur/schema/pixur.proto";
 import "pixur.org/pixur/schema/db/model/model.proto";
