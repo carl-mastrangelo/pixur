@@ -302,19 +302,6 @@ func renderIndexes(w *indentWriter, f file) {
 	}
 }
 
-/*
-  var done bool
-  if idx.PicId != nil {
-    if done {
-      panic("extra value PicId")
-    }
-    vals = append(vals, *idx.PicId)
-  } else {
-    done = true
-  }
-
-*/
-
 func colNameToGoName(name string) string {
 	parts := strings.Split(name, "_")
 	for i := 0; i < len(parts); i++ {
@@ -405,7 +392,7 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 		t.name = *msg.Name
 	}
 	t.gotype = *msg.Name
-	if strings.ContainsAny(t.name, "\"\\") {
+	if strings.ContainsAny(t.name, `\"`) {
 		return t, fmt.Errorf("Invalid characters in table name %s", t.name)
 	}
 	fieldNames := make(map[string]*column, len(msg.Field))
