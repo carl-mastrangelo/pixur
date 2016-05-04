@@ -61,3 +61,35 @@ func TestInsertMultiVal(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestQuoteIdentifier(t *testing.T) {
+	quoted := quoteIdentifier("foo")
+
+	if quoted != `"foo"` {
+		t.Fatal("not quoted", quoted)
+	}
+}
+
+func TestQuoteIdentifierPanicsOnQuote(t *testing.T) {
+	defer func() {
+		val := recover()
+		if val == nil {
+			t.Fatal("expected a panic")
+		}
+	}()
+	quoteIdentifier("f\"oo")
+
+	t.Fatal("should never reach here")
+}
+
+func TestQuoteIdentifierPanicsOnNull(t *testing.T) {
+	defer func() {
+		val := recover()
+		if val == nil {
+			t.Fatal("expected a panic")
+		}
+	}()
+	quoteIdentifier("f\x00oo")
+
+	t.Fatal("should never reach here")
+}

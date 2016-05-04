@@ -155,7 +155,7 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}) error
 	return exec.Exec(query, vals...)
 }
 
-func Delete(tx *sql.Tx, name string, key Idx) error {
+func Delete(exec Executor, name string, key Idx) error {
 	cols := key.Cols()
 	vals := key.Vals()
 	if len(cols) != len(vals) {
@@ -171,8 +171,7 @@ func Delete(tx *sql.Tx, name string, key Idx) error {
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
 	query := fmt.Sprintf(`DELETE FROM "%s" WHERE %s LIMIT 1;`, name, colFmt)
-	_, err := tx.Exec(query, vals...)
-	return err
+	return exec.Exec(query, vals...)
 }
 
 func Update(tx *sql.Tx, name string, cols []string, vals []interface{}, key Idx) error {
@@ -194,13 +193,13 @@ func Update(tx *sql.Tx, name string, cols []string, vals []interface{}, key Idx)
 
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, `"`+col+`" = ?`)
+		colFmtParts = append(colFmtParts, quoteIdentifier(col)+" = ?")
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
 
 	idxColFmtParts := make([]string, 0, len(idxCols))
 	for _, idxCol := range idxCols {
-		idxColFmtParts = append(idxColFmtParts, `"`+idxCol+`" = ?`)
+		idxColFmtParts = append(idxColFmtParts, quoteIdentifier(idxCol)+" = ?")
 	}
 	idxColFmt := strings.Join(idxColFmtParts, " AND ")
 
@@ -208,7 +207,15 @@ func Update(tx *sql.Tx, name string, cols []string, vals []interface{}, key Idx)
 	allVals = append(allVals, vals)
 	allVals = append(allVals, idxVals)
 
-	query := fmt.Sprintf(`UPDATE "%s" SET %s WHERE %s LIMIT 1;`, name, colFmt, idxColFmt)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt, idxColFmt)
 	_, err := tx.Exec(query, allVals...)
 	return err
+}
+
+// quoteIdentifier quotes the PostgreSQL way.  Panics on invalid identifiers.
+func quoteIdentifier(ident string) string {
+	if strings.ContainsAny(ident, "\"\x00") {
+		panic(fmt.Sprintf("Invalid identifier %#v", ident))
+	}
+	return `"` + ident + `"`
 }
