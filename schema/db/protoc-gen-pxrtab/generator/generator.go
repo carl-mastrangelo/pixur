@@ -199,6 +199,8 @@ func renderTables(f file) string {
 	w.writeln("")
 	renderScanFuncs(w, f)
 	renderFindFuncs(w, f)
+	renderInsertFuncs(w, f)
+	renderDeleteFuncs(w, f)
 
 	return w.String()
 }
@@ -215,6 +217,11 @@ func renderScanFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
 		w.writefln(`func (j Job) Scan%s(opts db.Opts, cb func(%s) error) error {`, t.name, t.datagotype)
 		w.in()
+		var cols []string
+		for _, col := range t.columns {
+			cols = append(cols, `"`+col.name+`"`)
+		}
+		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
 		w.writefln(`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.name)
 		w.in()
 		w.writefln(`var pb %s`, t.datagotype)
@@ -225,7 +232,37 @@ func renderScanFuncs(w *indentWriter, f file) {
 		w.writeln("}")
 		w.writeln("return cb(pb)")
 		w.out()
-		w.writeln("})")
+		w.writeln("}, cols)")
+		w.out()
+		w.writeln("}")
+		w.writeln("")
+	}
+}
+
+func renderDeleteFuncs(w *indentWriter, f file) {
+	for _, t := range f.tables {
+		w.writefln(`func (j Job) Delete%s(key %sPrimary) error {`, t.gotype, t.name)
+		w.in()
+		w.writefln(`return db.Delete(j.Tx, "%s", key)`, t.name)
+		w.out()
+		w.writeln("}")
+		w.writeln("")
+	}
+}
+
+func renderInsertFuncs(w *indentWriter, f file) {
+	for _, t := range f.tables {
+		w.writefln(`func (j Job) Insert%s(row %s) error {`, t.gotype, t.gotype)
+		w.in()
+		var vals []string
+		var cols []string
+		for _, col := range t.columns {
+			cols = append(cols, `"`+col.name+`"`)
+			vals = append(vals, "row."+colNameToGoName(col.name))
+		}
+		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
+		w.writefln(`vals := []interface{}{%s}`, strings.Join(vals, ", "))
+		w.writefln(`return db.Insert(j.Tx, "%s", cols, vals)`, t.name)
 		w.out()
 		w.writeln("}")
 		w.writeln("")

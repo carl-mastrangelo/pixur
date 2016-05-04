@@ -26,8 +26,8 @@ type querier interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
-func Scan(q querier, name string, opts Opts, cb func(data []byte) error) error {
-	query, queryArgs := buildScan(name, opts)
+func Scan(q querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
+	query, queryArgs := buildScan(name, opts, keyCols)
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func Scan(q querier, name string, opts Opts, cb func(data []byte) error) error {
 	return rows.Close()
 }
 
-func buildScan(name string, opts Opts) (string, []interface{}) {
+func buildScan(name string, opts Opts, keyCols []string) (string, []interface{}) {
 	var buf bytes.Buffer
 	var args []interface{}
 	fmt.Fprintf(&buf, `SELECT "data" FROM "%s" `, name)
