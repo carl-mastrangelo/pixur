@@ -26,6 +26,10 @@ type querier interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
+type Executor interface {
+	Exec(string, ...interface{}) error
+}
+
 func Scan(q querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
 	query, queryArgs := buildScan(name, opts, keyCols)
 	rows, err := q.Query(query, queryArgs...)
@@ -133,7 +137,7 @@ var (
 	ErrNoCols           = errors.New("db: no columns provided")
 )
 
-func Insert(tx *sql.Tx, name string, cols []string, vals []interface{}) error {
+func Insert(exec Executor, name string, cols []string, vals []interface{}) error {
 	if len(cols) != len(vals) {
 		return ErrColsValsMismatch
 	}
@@ -148,8 +152,7 @@ func Insert(tx *sql.Tx, name string, cols []string, vals []interface{}) error {
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
 	query := fmt.Sprintf(`INSERT INTO "%s" (%s) VALUES (%s);`, name, colFmt, valFmt)
-	_, err := tx.Exec(query, vals...)
-	return err
+	return exec.Exec(query, vals...)
 }
 
 func Delete(tx *sql.Tx, name string, key Idx) error {
