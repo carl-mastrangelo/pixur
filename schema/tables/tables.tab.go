@@ -51,11 +51,13 @@ var SqlTables = []string{
 		");",
 }
 
-var _ db.Idx = PicsPrimary{}
+var _ db.UniqueIdx = PicsPrimary{}
 
 type PicsPrimary struct {
 	Id *int64
 }
+
+func (_ PicsPrimary) Unique() {}
 
 func (idx PicsPrimary) Cols() []string {
 	return []string{"id"}
@@ -120,11 +122,13 @@ func (idx PicsHidden) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = TagsPrimary{}
+var _ db.UniqueIdx = TagsPrimary{}
 
 type TagsPrimary struct {
 	Id *int64
 }
+
+func (_ TagsPrimary) Unique() {}
 
 func (idx TagsPrimary) Cols() []string {
 	return []string{"id"}
@@ -143,11 +147,13 @@ func (idx TagsPrimary) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = TagsName{}
+var _ db.UniqueIdx = TagsName{}
 
 type TagsName struct {
 	Name *string
 }
+
+func (_ TagsName) Unique() {}
 
 func (idx TagsName) Cols() []string {
 	return []string{"name"}
@@ -166,12 +172,14 @@ func (idx TagsName) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = PicTagsPrimary{}
+var _ db.UniqueIdx = PicTagsPrimary{}
 
 type PicTagsPrimary struct {
 	PicId *int64
 	TagId *int64
 }
+
+func (_ PicTagsPrimary) Unique() {}
 
 func (idx PicTagsPrimary) Cols() []string {
 	return []string{"pic_id", "tag_id"}
@@ -198,13 +206,15 @@ func (idx PicTagsPrimary) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = PicIdentsPrimary{}
+var _ db.UniqueIdx = PicIdentsPrimary{}
 
 type PicIdentsPrimary struct {
 	PicId *int64
 	Type  *schema.PicIdent_Type
 	Value *[]byte
 }
+
+func (_ PicIdentsPrimary) Unique() {}
 
 func (idx PicIdentsPrimary) Cols() []string {
 	return []string{"pic_id", "type", "value"}
@@ -271,11 +281,13 @@ func (idx PicIdentsIdent) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = UsersPrimary{}
+var _ db.UniqueIdx = UsersPrimary{}
 
 type UsersPrimary struct {
 	Id *int64
 }
+
+func (_ UsersPrimary) Unique() {}
 
 func (idx UsersPrimary) Cols() []string {
 	return []string{"id"}
@@ -294,11 +306,13 @@ func (idx UsersPrimary) Vals() (vals []interface{}) {
 	return
 }
 
-var _ db.Idx = UsersIdent{}
+var _ db.UniqueIdx = UsersIdent{}
 
 type UsersIdent struct {
 	Ident *string
 }
+
+func (_ UsersIdent) Unique() {}
 
 func (idx UsersIdent) Cols() []string {
 	return []string{"ident"}
@@ -321,9 +335,19 @@ type Job struct {
 	Tx *sql.Tx
 }
 
+func (j Job) Exec(query string, args ...interface{}) (db.Result, error) {
+	res, err := j.Tx.Exec(query, args...)
+	return db.Result(res), err
+}
+
+func (j Job) Query(query string, args ...interface{}) (db.Rows, error) {
+	rows, err := j.Tx.Query(query, args...)
+	return db.Rows(rows), err
+}
+
 func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
 	cols := []string{"id", "created_time", "is_hidden", "data"}
-	return db.Scan(j.Tx, "Pics", opts, func(data []byte) error {
+	return db.Scan(j, "Pics", opts, func(data []byte) error {
 		var pb schema.Pic
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
@@ -334,7 +358,7 @@ func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
 
 func (j Job) ScanTags(opts db.Opts, cb func(schema.Tag) error) error {
 	cols := []string{"id", "name", "data"}
-	return db.Scan(j.Tx, "Tags", opts, func(data []byte) error {
+	return db.Scan(j, "Tags", opts, func(data []byte) error {
 		var pb schema.Tag
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
@@ -345,7 +369,7 @@ func (j Job) ScanTags(opts db.Opts, cb func(schema.Tag) error) error {
 
 func (j Job) ScanPicTags(opts db.Opts, cb func(schema.PicTag) error) error {
 	cols := []string{"pic_id", "tag_id", "data"}
-	return db.Scan(j.Tx, "PicTags", opts, func(data []byte) error {
+	return db.Scan(j, "PicTags", opts, func(data []byte) error {
 		var pb schema.PicTag
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
@@ -356,7 +380,7 @@ func (j Job) ScanPicTags(opts db.Opts, cb func(schema.PicTag) error) error {
 
 func (j Job) ScanPicIdents(opts db.Opts, cb func(schema.PicIdent) error) error {
 	cols := []string{"pic_id", "type", "value", "data"}
-	return db.Scan(j.Tx, "PicIdents", opts, func(data []byte) error {
+	return db.Scan(j, "PicIdents", opts, func(data []byte) error {
 		var pb schema.PicIdent
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
@@ -367,7 +391,7 @@ func (j Job) ScanPicIdents(opts db.Opts, cb func(schema.PicIdent) error) error {
 
 func (j Job) ScanUsers(opts db.Opts, cb func(schema.User) error) error {
 	cols := []string{"id", "ident", "data"}
-	return db.Scan(j.Tx, "Users", opts, func(data []byte) error {
+	return db.Scan(j, "Users", opts, func(data []byte) error {
 		var pb schema.User
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
@@ -419,49 +443,49 @@ func (j Job) FindUsers(opts db.Opts) (rows []schema.User, err error) {
 func (j Job) InsertPicRow(row PicRow) error {
 	cols := []string{"id", "created_time", "is_hidden", "data"}
 	vals := []interface{}{row.Id, row.CreatedTime, row.IsHidden, row.Data}
-	return db.Insert(j.Tx, "Pics", cols, vals)
+	return db.Insert(j, "Pics", cols, vals)
 }
 
 func (j Job) InsertTagRow(row TagRow) error {
 	cols := []string{"id", "name", "data"}
 	vals := []interface{}{row.Id, row.Name, row.Data}
-	return db.Insert(j.Tx, "Tags", cols, vals)
+	return db.Insert(j, "Tags", cols, vals)
 }
 
 func (j Job) InsertPicTagRow(row PicTagRow) error {
 	cols := []string{"pic_id", "tag_id", "data"}
 	vals := []interface{}{row.PicId, row.TagId, row.Data}
-	return db.Insert(j.Tx, "PicTags", cols, vals)
+	return db.Insert(j, "PicTags", cols, vals)
 }
 
 func (j Job) InsertPicIdentRow(row PicIdentRow) error {
 	cols := []string{"pic_id", "type", "value", "data"}
 	vals := []interface{}{row.PicId, row.Type, row.Value, row.Data}
-	return db.Insert(j.Tx, "PicIdents", cols, vals)
+	return db.Insert(j, "PicIdents", cols, vals)
 }
 
 func (j Job) InsertUserRow(row UserRow) error {
 	cols := []string{"id", "ident", "data"}
 	vals := []interface{}{row.Id, row.Ident, row.Data}
-	return db.Insert(j.Tx, "Users", cols, vals)
+	return db.Insert(j, "Users", cols, vals)
 }
 
 func (j Job) DeletePicRow(key PicsPrimary) error {
-	return db.Delete(j.Tx, "Pics", key)
+	return db.Delete(j, "Pics", key)
 }
 
 func (j Job) DeleteTagRow(key TagsPrimary) error {
-	return db.Delete(j.Tx, "Tags", key)
+	return db.Delete(j, "Tags", key)
 }
 
 func (j Job) DeletePicTagRow(key PicTagsPrimary) error {
-	return db.Delete(j.Tx, "PicTags", key)
+	return db.Delete(j, "PicTags", key)
 }
 
 func (j Job) DeletePicIdentRow(key PicIdentsPrimary) error {
-	return db.Delete(j.Tx, "PicIdents", key)
+	return db.Delete(j, "PicIdents", key)
 }
 
 func (j Job) DeleteUserRow(key UsersPrimary) error {
-	return db.Delete(j.Tx, "Users", key)
+	return db.Delete(j, "Users", key)
 }

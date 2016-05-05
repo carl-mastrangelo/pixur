@@ -4,12 +4,6 @@ import (
 	"testing"
 )
 
-type execCap struct {
-	query string
-	args  []interface{}
-	err   error
-}
-
 type testIdx struct {
 	cols []string
 	vals []interface{}
@@ -38,10 +32,16 @@ func (idx *testUniqueIdx) Vals() []interface{} {
 
 func (idx *testUniqueIdx) Unique() {}
 
-func (exec *execCap) Exec(query string, args ...interface{}) error {
+type execCap struct {
+	query string
+	args  []interface{}
+	err   error
+}
+
+func (exec *execCap) Exec(query string, args ...interface{}) (Result, error) {
 	exec.query = query
 	exec.args = args
-	return exec.err
+	return nil, exec.err
 }
 
 func TestInsertWrongColsCount(t *testing.T) {

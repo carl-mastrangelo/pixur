@@ -211,6 +211,23 @@ func renderDefaultTypes(w *indentWriter, f file) {
 	w.writeln("Tx *sql.Tx")
 	w.out()
 	w.writeln("}")
+	w.writeln("")
+
+	w.writeln("func (j Job) Exec(query string, args ...interface{}) (db.Result, error) {")
+	w.in()
+	w.writeln("res, err := j.Tx.Exec(query, args...)")
+	w.writeln("return db.Result(res), err")
+	w.out()
+	w.writeln("}")
+	w.writeln("")
+
+	w.writeln("func (j Job) Query(query string, args ...interface{}) (db.Rows, error) {")
+	w.in()
+	w.writeln("rows, err := j.Tx.Query(query, args...)")
+	w.writeln("return db.Rows(rows), err")
+	w.out()
+	w.writeln("}")
+	w.writeln("")
 }
 
 func renderScanFuncs(w *indentWriter, f file) {
@@ -222,7 +239,7 @@ func renderScanFuncs(w *indentWriter, f file) {
 			cols = append(cols, `"`+col.name+`"`)
 		}
 		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
-		w.writefln(`return db.Scan(j.Tx, "%s", opts, func(data []byte) error {`, t.name)
+		w.writefln(`return db.Scan(j, "%s", opts, func(data []byte) error {`, t.name)
 		w.in()
 		w.writefln(`var pb %s`, t.datagotype)
 		w.writeln("if err := proto.Unmarshal(data, &pb); err != nil {")
@@ -243,7 +260,7 @@ func renderDeleteFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
 		w.writefln(`func (j Job) Delete%s(key %sPrimary) error {`, t.gotype, t.name)
 		w.in()
-		w.writefln(`return db.Delete(j.Tx, "%s", key)`, t.name)
+		w.writefln(`return db.Delete(j, "%s", key)`, t.name)
 		w.out()
 		w.writeln("}")
 		w.writeln("")
@@ -262,7 +279,7 @@ func renderInsertFuncs(w *indentWriter, f file) {
 		}
 		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
 		w.writefln(`vals := []interface{}{%s}`, strings.Join(vals, ", "))
-		w.writefln(`return db.Insert(j.Tx, "%s", cols, vals)`, t.name)
+		w.writefln(`return db.Insert(j, "%s", cols, vals)`, t.name)
 		w.out()
 		w.writeln("}")
 		w.writeln("")
@@ -293,7 +310,11 @@ func renderPackage(w *indentWriter, f file) {
 func renderIndexes(w *indentWriter, f file) {
 	for _, t := range f.tables {
 		for _, idx := range t.indexes {
-			w.writefln(`var _ db.Idx = %s{}`, idx.name)
+			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
+				w.writefln(`var _ db.UniqueIdx = %s{}`, idx.name)
+			} else {
+				w.writefln(`var _ db.Idx = %s{}`, idx.name)
+			}
 			w.writefln(`type %s struct {`, idx.name)
 			w.in()
 			for _, c := range idx.columns {
@@ -302,6 +323,10 @@ func renderIndexes(w *indentWriter, f file) {
 			w.out()
 			w.writeln("}")
 			w.writeln("")
+			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
+				w.writefln(`func (_ %s) Unique() {}`, idx.name)
+				w.writeln("")
+			}
 			w.writefln(`func (idx %s) Cols() []string {`, idx.name)
 			var escaped []string
 			for _, c := range idx.columns {

@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,11 +29,26 @@ type UniqueIdx interface {
 }
 
 type Querier interface {
-	Query(query string, args ...interface{}) (*sql.Rows, error)
+	Query(query string, args ...interface{}) (Rows, error)
 }
 
 type Executor interface {
-	Exec(string, ...interface{}) error
+	Exec(string, ...interface{}) (Result, error)
+}
+
+// Result is a clone of database/sql.Result
+type Result interface {
+	LastInsertId() (int64, error)
+	RowsAffected() (int64, error)
+}
+
+// Rows is a clone of database/sql.Rows
+type Rows interface {
+	Close() error
+	Columns() ([]string, error)
+	Err() error
+	Next() bool
+	Scan(dest ...interface{}) error
 }
 
 func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
@@ -159,7 +173,8 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}) error
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", quoteIdentifier(name), colFmt, valFmt)
-	return exec.Exec(query, vals...)
+	_, err := exec.Exec(query, vals...)
+	return err
 }
 
 func Delete(exec Executor, name string, key UniqueIdx) error {
@@ -178,7 +193,8 @@ func Delete(exec Executor, name string, key UniqueIdx) error {
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt)
-	return exec.Exec(query, vals...)
+	_, err := exec.Exec(query, vals...)
+	return err
 }
 
 func Update(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx) error {
@@ -215,7 +231,8 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 	allVals = append(allVals, idxVals...)
 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt, idxColFmt)
-	return exec.Exec(query, allVals...)
+	_, err := exec.Exec(query, allVals...)
+	return err
 }
 
 // quoteIdentifier quotes the PostgreSQL way.  Panics on invalid identifiers.
