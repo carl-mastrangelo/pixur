@@ -10,6 +10,19 @@ type execCap struct {
 	err   error
 }
 
+type testIdx struct {
+	cols []string
+	vals []interface{}
+}
+
+func (idx *testIdx) Cols() []string {
+	return idx.cols
+}
+
+func (idx *testIdx) Vals() []interface{} {
+	return idx.vals
+}
+
 func (exec *execCap) Exec(query string, args ...interface{}) error {
 	exec.query = query
 	exec.args = args
@@ -53,6 +66,70 @@ func TestInsertMultiVal(t *testing.T) {
 	Insert(exec, "Foo", []string{"bar", "baz"}, []interface{}{1, true})
 
 	if exec.query != `INSERT INTO "Foo" ("bar", "baz") VALUES (?, ?);` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != true {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestDeleteWrongColsCount(t *testing.T) {
+	idx := &testIdx{
+		cols: []string{"bar"},
+	}
+
+	exec := &execCap{}
+
+	err := Delete(exec, "Foo", idx)
+	if err != ErrColsValsMismatch {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestDeleteNoCols(t *testing.T) {
+	idx := &testIdx{}
+
+	exec := &execCap{}
+
+	err := Delete(exec, "Foo", idx)
+	if err != ErrNoCols {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestDeleteOneCol(t *testing.T) {
+	idx := &testIdx{
+		cols: []string{"bar"},
+		vals: []interface{}{1},
+	}
+	exec := &execCap{}
+	if err := Delete(exec, "Foo", idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? LIMIT 1;` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 1 || exec.args[0] != 1 {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestDeleteMultiCols(t *testing.T) {
+	idx := &testIdx{
+		cols: []string{"bar", "baz"},
+		vals: []interface{}{1, true},
+	}
+	exec := &execCap{}
+	if err := Delete(exec, "Foo", idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? AND "baz" = ? LIMIT 1;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}

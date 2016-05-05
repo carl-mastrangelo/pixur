@@ -148,10 +148,10 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}) error
 	valFmt := strings.Repeat("?, ", len(vals)-1) + "?"
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, `"`+col+`"`)
+		colFmtParts = append(colFmtParts, quoteIdentifier(col))
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
-	query := fmt.Sprintf(`INSERT INTO "%s" (%s) VALUES (%s);`, name, colFmt, valFmt)
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", quoteIdentifier(name), colFmt, valFmt)
 	return exec.Exec(query, vals...)
 }
 
@@ -167,10 +167,10 @@ func Delete(exec Executor, name string, key Idx) error {
 
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, `"`+col+`" = ?`)
+		colFmtParts = append(colFmtParts, quoteIdentifier(col)+" = ?")
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
-	query := fmt.Sprintf(`DELETE FROM "%s" WHERE %s LIMIT 1;`, name, colFmt)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt)
 	return exec.Exec(query, vals...)
 }
 
