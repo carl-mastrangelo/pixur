@@ -22,7 +22,14 @@ type Idx interface {
 	Vals() []interface{}
 }
 
-type querier interface {
+// UniqueIdx is a tagging interface that indentifies indexes that uniquely identify a row.
+// Columns that are UNIQUE or PRIMARY fit this interface.
+type UniqueIdx interface {
+	Idx
+	Unique()
+}
+
+type Querier interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
@@ -30,7 +37,7 @@ type Executor interface {
 	Exec(string, ...interface{}) error
 }
 
-func Scan(q querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
+func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
 	query, queryArgs := buildScan(name, opts, keyCols)
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
@@ -155,7 +162,7 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}) error
 	return exec.Exec(query, vals...)
 }
 
-func Delete(exec Executor, name string, key Idx) error {
+func Delete(exec Executor, name string, key UniqueIdx) error {
 	cols := key.Cols()
 	vals := key.Vals()
 	if len(cols) != len(vals) {
@@ -174,7 +181,7 @@ func Delete(exec Executor, name string, key Idx) error {
 	return exec.Exec(query, vals...)
 }
 
-func Update(tx *sql.Tx, name string, cols []string, vals []interface{}, key Idx) error {
+func Update(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx) error {
 	if len(cols) != len(vals) {
 		return ErrColsValsMismatch
 	}
@@ -204,12 +211,11 @@ func Update(tx *sql.Tx, name string, cols []string, vals []interface{}, key Idx)
 	idxColFmt := strings.Join(idxColFmtParts, " AND ")
 
 	allVals := make([]interface{}, 0, len(vals)+len(idxVals))
-	allVals = append(allVals, vals)
-	allVals = append(allVals, idxVals)
+	allVals = append(allVals, vals...)
+	allVals = append(allVals, idxVals...)
 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt, idxColFmt)
-	_, err := tx.Exec(query, allVals...)
-	return err
+	return exec.Exec(query, allVals...)
 }
 
 // quoteIdentifier quotes the PostgreSQL way.  Panics on invalid identifiers.

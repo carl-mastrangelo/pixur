@@ -23,6 +23,21 @@ func (idx *testIdx) Vals() []interface{} {
 	return idx.vals
 }
 
+type testUniqueIdx struct {
+	cols []string
+	vals []interface{}
+}
+
+func (idx *testUniqueIdx) Cols() []string {
+	return idx.cols
+}
+
+func (idx *testUniqueIdx) Vals() []interface{} {
+	return idx.vals
+}
+
+func (idx *testUniqueIdx) Unique() {}
+
 func (exec *execCap) Exec(query string, args ...interface{}) error {
 	exec.query = query
 	exec.args = args
@@ -76,31 +91,27 @@ func TestInsertMultiVal(t *testing.T) {
 }
 
 func TestDeleteWrongColsCount(t *testing.T) {
-	idx := &testIdx{
+	idx := &testUniqueIdx{
 		cols: []string{"bar"},
 	}
 
-	exec := &execCap{}
-
-	err := Delete(exec, "Foo", idx)
+	err := Delete(nil, "Foo", idx)
 	if err != ErrColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
 
 func TestDeleteNoCols(t *testing.T) {
-	idx := &testIdx{}
+	idx := &testUniqueIdx{}
 
-	exec := &execCap{}
-
-	err := Delete(exec, "Foo", idx)
+	err := Delete(nil, "Foo", idx)
 	if err != ErrNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
 }
 
 func TestDeleteOneCol(t *testing.T) {
-	idx := &testIdx{
+	idx := &testUniqueIdx{
 		cols: []string{"bar"},
 		vals: []interface{}{1},
 	}
@@ -120,7 +131,7 @@ func TestDeleteOneCol(t *testing.T) {
 }
 
 func TestDeleteMultiCols(t *testing.T) {
-	idx := &testIdx{
+	idx := &testUniqueIdx{
 		cols: []string{"bar", "baz"},
 		vals: []interface{}{1, true},
 	}
@@ -134,6 +145,131 @@ func TestDeleteMultiCols(t *testing.T) {
 		t.Fail()
 	}
 	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != true {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestUpdateWrongColCount(t *testing.T) {
+	err := Update(nil, "Foo", []string{"bar"}, nil /*vals*/, nil)
+	if err != ErrColsValsMismatch {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestUpdateNoCols(t *testing.T) {
+	err := Update(nil, "Foo", nil /*cols*/, nil /*vals*/, nil)
+	if err != ErrNoCols {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestUpdateWrongIdxColCount(t *testing.T) {
+	cols := []string{"foo"}
+	vals := []interface{}{1}
+	idx := &testUniqueIdx{
+		cols: []string{"bar"},
+	}
+	err := Update(nil, "Foo", cols, vals, idx)
+	if err != ErrColsValsMismatch {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestUpdateNoIdxCols(t *testing.T) {
+	cols := []string{"foo"}
+	vals := []interface{}{1}
+	idx := &testUniqueIdx{}
+	err := Update(nil, "Foo", cols, vals, idx)
+	if err != ErrNoCols {
+		t.Fatal("Expected error, but was", err)
+	}
+}
+
+func TestUpdateOneColOneIdxCol(t *testing.T) {
+	cols := []string{"foo"}
+	vals := []interface{}{1}
+	idx := &testUniqueIdx{
+		cols: []string{"bar"},
+		vals: []interface{}{2},
+	}
+	exec := &execCap{}
+	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? LIMIT 1;` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != 2 {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestUpdateOneColMultiIdxCol(t *testing.T) {
+	cols := []string{"foo"}
+	vals := []interface{}{1}
+	idx := &testUniqueIdx{
+		cols: []string{"bar", "baz"},
+		vals: []interface{}{2, false},
+	}
+	exec := &execCap{}
+	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? AND "baz" = ? LIMIT 1;` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 3 || exec.args[0] != 1 || exec.args[1] != 2 || exec.args[2] != false {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestUpdateMultiColOneIdxCol(t *testing.T) {
+	cols := []string{"foo", "bar"}
+	vals := []interface{}{1, true}
+	idx := &testUniqueIdx{
+		cols: []string{"baz"},
+		vals: []interface{}{2},
+	}
+	exec := &execCap{}
+	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? LIMIT 1;` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 3 || exec.args[0] != 1 || exec.args[1] != true || exec.args[2] != 2 {
+		t.Log("Args didn't match", exec.args)
+		t.Fail()
+	}
+}
+
+func TestUpdateMultiColMultiIdxCol(t *testing.T) {
+	cols := []string{"foo", "bar"}
+	vals := []interface{}{1, true}
+	idx := &testUniqueIdx{
+		cols: []string{"baz", "qux"},
+		vals: []interface{}{2, false},
+	}
+	exec := &execCap{}
+	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? AND "qux" = ? LIMIT 1;` {
+		t.Log("Query didn't match", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 4 ||
+		exec.args[0] != 1 || exec.args[1] != true || exec.args[2] != 2 || exec.args[3] != false {
 		t.Log("Args didn't match", exec.args)
 		t.Fail()
 	}
