@@ -7,7 +7,26 @@ import (
 	"strings"
 )
 
+var dbAdapter = DbAdapter{
+	Quote: func(ident string) string {
+		if strings.ContainsAny(ident, "\"\x00") {
+			panic(fmt.Sprintf("Invalid identifier %#v", ident))
+		}
+		return `"` + ident + `"`
+	},
+}
+
+type DbAdapter struct {
+	Quote func(string) string
+}
+
 type Lock int
+
+var (
+	LockNone  Lock = -1
+	LockRead  Lock = 0
+	LockWrite Lock = 1
+)
 
 type Opts struct {
 	Start, Stop Idx
@@ -78,79 +97,120 @@ func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols
 func buildScan(name string, opts Opts, keyCols []string) (string, []interface{}) {
 	var buf bytes.Buffer
 	var args []interface{}
-	fmt.Fprintf(&buf, `SELECT "data" FROM "%s" `, name)
-	if len(opts.Start.Vals()) != 0 || len(opts.Stop.Vals()) != 0 {
-		buf.WriteString("WHERE ")
+	fmt.Fprintf(&buf, `SELECT %s FROM %s`, quoteIdentifier("name"), quoteIdentifier(name))
+	var (
+		startCols, stopCols []string
+		startVals, stopVals []interface{}
+	)
+	if opts.Start != nil {
+		startCols, startVals = opts.Start.Cols(), opts.Start.Vals()
 	}
-	// WHERE Clause
-	if len(opts.Start.Vals()) != 0 {
-		cols := opts.Start.Cols()
-		vals := opts.Start.Vals()
-		if len(vals) > len(cols) {
-			panic("More vals than cols")
-		}
-		// Disjunctive normal form, you nerd!
-		// Start always has the last argument be a ">="
-		// 1, 2, 3 arg scans look like:
-		// ((A >= ?))
-		// ((A > ?) OR (A = ? AND B >= ?))
-		// ((A > ?) OR (A = ? AND B > ?) OR (A = ? AND B = ? AND C >= ?))
-		var ors []string
-		for i := 0; i < len(vals); i++ {
-			var ands []string
-			for k := 0; k < i; k++ {
-				var cmp string
-				if i == len(vals)-1 && k == len(vals)-1 {
-					cmp = ">="
-				} else if k == len(vals)-1 {
-					cmp = ">"
-				} else {
-					cmp = "="
-				}
-				ands = append(ands, fmt.Sprintf(`"%s" %s ?`, cols[k], cmp))
-			}
-			ors = append(ors, strings.Join(ands, " AND "))
-		}
-		buf.WriteRune('(')
-		buf.WriteString(strings.Join(ors, " OR "))
-		buf.WriteString(") ")
+	if opts.Stop != nil {
+		stopCols, stopVals = opts.Stop.Cols(), opts.Stop.Vals()
 	}
-	if len(opts.Start.Vals()) != 0 && len(opts.Stop.Vals()) != 0 {
-		buf.WriteString("AND ")
+	if len(startVals) != 0 || len(stopVals) != 0 {
+		buf.WriteString(" WHERE ")
 	}
-	if len(opts.Stop.Vals()) != 0 {
-		cols := opts.Stop.Cols()
-		vals := opts.Stop.Vals()
-		if len(vals) > len(cols) {
-			panic("More vals than cols")
-		}
-		// Stop always has the last argument be a "<"
-		// 1, 2, 3 arg scans look like:
-		// ((A < ?))
-		// ((A < ?) OR (A = ? AND B < ?))
-		// ((A < ?) OR (A = ? AND B < ?) OR (A = ? AND B = ? AND C < ?))
-		var ors []string
-		for i := 0; i < len(vals); i++ {
-			var ands []string
-			for k := 0; k < i; k++ {
-				var cmp string
-				if k == len(vals)-1 {
-					cmp = "<"
-				} else {
-					cmp = "="
-				}
-				ands = append(ands, fmt.Sprintf(`"%s" %s ?`, cols[k], cmp))
-			}
-			ors = append(ors, strings.Join(ands, " AND "))
-		}
-		buf.WriteRune('(')
-		buf.WriteString(strings.Join(ors, " OR "))
-		buf.WriteString(") ")
+	if len(startVals) != 0 {
+		startStmt, startArgs := buildStart(startCols, startVals)
+		args = append(args, startArgs...)
+		buf.WriteString(startStmt)
 	}
-	// ORDER BY
-	// Always order by the primary Key,
+	if len(startVals) != 0 && len(stopVals) != 0 {
+		buf.WriteString(" AND ")
+	}
+	if len(stopVals) != 0 {
+		stopStmt, stopArgs := buildStop(stopCols, stopVals)
+		args = append(args, stopArgs...)
+		buf.WriteString(stopStmt)
+	}
+	// Always order by the unique Key.
+	buf.WriteString(" ORDER BY ")
+	buf.WriteString(buildOrderStmt(keyCols, opts.Reverse))
+
+	if opts.Limit > 0 {
+		fmt.Fprintf(&buf, " LIMIT %d ", opts.Limit)
+	}
 
 	return buf.String(), args
+}
+
+type Columns []string
+
+func (cols Columns) String() string {
+	var parts []string
+	for _, col := range cols {
+		parts = append(parts, quoteIdentifier(col))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func buildOrderStmt(cols []string, reverse bool) string {
+	var order string
+	if !reverse {
+		order = " ASC"
+	} else {
+		order = " DESC"
+	}
+
+	var colParts []string
+	for _, col := range cols {
+		colParts = append(colParts, quoteIdentifier(col)+order)
+	}
+	return strings.Join(colParts, ", ")
+}
+
+func buildStart(cols []string, vals []interface{}) (string, []interface{}) {
+	if len(vals) > len(cols) {
+		panic("More vals than cols")
+	}
+	var args []interface{}
+	// Disjunctive normal form, you nerd!
+	// Start always has the last argument be a ">="
+	// 1, 2, 3 arg scans look like:
+	// ((A >= ?))
+	// ((A > ?) OR (A = ? AND B >= ?))
+	// ((A > ?) OR (A = ? AND B > ?) OR (A = ? AND B = ? AND C >= ?))
+	var ors []string
+	for i := 0; i < len(vals); i++ {
+		var ands []string
+		for k := 0; k < i; k++ {
+			ands = append(ands, quoteIdentifier(cols[k])+" = ?")
+			args = append(args, vals[k])
+		}
+		if i == len(vals)-1 {
+			ands = append(ands, quoteIdentifier(cols[i])+" >= ?")
+		} else {
+			ands = append(ands, quoteIdentifier(cols[i])+" > ?")
+		}
+		args = append(args, vals[i])
+		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
+	}
+	return "(" + strings.Join(ors, " OR ") + ")", args
+}
+
+func buildStop(cols []string, vals []interface{}) (string, []interface{}) {
+	if len(vals) > len(cols) {
+		panic("More vals than cols")
+	}
+	var args []interface{}
+	// Stop always has the last argument be a "<"
+	// 1, 2, 3 arg scans look like:
+	// ((A < ?))
+	// ((A < ?) OR (A = ? AND B < ?))
+	// ((A < ?) OR (A = ? AND B < ?) OR (A = ? AND B = ? AND C < ?))
+	var ors []string
+	for i := 0; i < len(vals); i++ {
+		var ands []string
+		for k := 0; k < i; k++ {
+			ands = append(ands, quoteIdentifier(cols[k])+" = ?")
+			args = append(args, vals[k])
+		}
+		ands = append(ands, quoteIdentifier(cols[i])+" < ?")
+		args = append(args, vals[i])
+		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
+	}
+	return "(" + strings.Join(ors, " OR ") + ")", args
 }
 
 var (
@@ -235,10 +295,7 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 	return err
 }
 
-// quoteIdentifier quotes the PostgreSQL way.  Panics on invalid identifiers.
+// quoteIdentifier quotes the ANSI way.  Panics on invalid identifiers.
 func quoteIdentifier(ident string) string {
-	if strings.ContainsAny(ident, "\"\x00") {
-		panic(fmt.Sprintf("Invalid identifier %#v", ident))
-	}
-	return `"` + ident + `"`
+	return dbAdapter.Quote(ident)
 }

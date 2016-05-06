@@ -44,6 +44,80 @@ func (exec *execCap) Exec(query string, args ...interface{}) (Result, error) {
 	return nil, exec.err
 }
 
+func TestBuildStopOneVal(t *testing.T) {
+	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1})
+	if stmt != `(("A" < ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
+func TestBuildStopTwoVals(t *testing.T) {
+	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1, 2})
+	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
+func TestBuildStopThreeVals(t *testing.T) {
+	stmt, args := buildStop([]string{"A", "B", "C"}, []interface{}{1, 2, 3})
+	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?) OR ("A" = ? AND "B" = ? AND "C" < ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
+		args[3] != 1 || args[4] != 2 || args[5] != 3 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
+func TestBuildStartOneVal(t *testing.T) {
+	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1})
+	if stmt != `(("A" >= ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
+func TestBuildStartTwoVals(t *testing.T) {
+	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1, 2})
+	if stmt != `(("A" > ?) OR ("A" = ? AND "B" >= ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
+func TestBuildStartThreeVals(t *testing.T) {
+	stmt, args := buildStart([]string{"A", "B", "C"}, []interface{}{1, 2, 3})
+	if stmt != `(("A" > ?) OR ("A" = ? AND "B" > ?) OR ("A" = ? AND "B" = ? AND "C" >= ?))` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
+	}
+	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
+		args[3] != 1 || args[4] != 2 || args[5] != 3 {
+		t.Log("Args didn't match", args)
+		t.Fail()
+	}
+}
+
 func TestInsertWrongColsCount(t *testing.T) {
 	err := Insert(nil, "Foo", []string{"one"}, []interface{}{1, 2})
 
