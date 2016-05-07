@@ -41,9 +41,9 @@ type coltype struct {
 }
 
 type column struct {
-	name   string
-	coltyp coltype
-	field  *descriptor.FieldDescriptorProto
+	name    string
+	coltype coltype
+	field   *descriptor.FieldDescriptorProto
 }
 
 type index struct {
@@ -333,7 +333,7 @@ func renderIndexes(w *indentWriter, f file) {
 			w.writefln("type %s struct {", idx.name)
 			w.in()
 			for _, c := range idx.columns {
-				w.writefln("%s *%s", colNameToGoName(c.name), c.coltyp.gotype)
+				w.writefln("%s *%s", colNameToGoName(c.name), c.coltype.gotype)
 			}
 			w.out()
 			w.writeln("}")
@@ -420,7 +420,7 @@ func renderSqlTables(w *indentWriter, f file) {
 		w.in()
 		for _, col := range t.columns {
 			colName := db.GetAdapter().Quote(col.name)
-			sqlLine := fmt.Sprintf("%s %s NOT NULL, ", colName, col.coltyp.sqltype)
+			sqlLine := fmt.Sprintf("%s %s NOT NULL, ", colName, col.coltype.sqltype)
 			w.writeln(strconv.Quote(sqlLine) + "+")
 		}
 		var inlineIndexes []index
@@ -440,7 +440,11 @@ func renderSqlTables(w *indentWriter, f file) {
 			}
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, db.GetAdapter().Quote(col.name))
+				if col.coltype.sqltype == db.GetAdapter().BlobType {
+					cols = append(cols, db.GetAdapter().QuoteCreateBlobIdxCol(col.name))
+				} else {
+					cols = append(cols, db.GetAdapter().Quote(col.name))
+				}
 			}
 			last := ", "
 			if i == len(inlineIndexes)-1 {
@@ -455,7 +459,11 @@ func renderSqlTables(w *indentWriter, f file) {
 		for _, idx := range indexes {
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, db.GetAdapter().Quote(col.name))
+				if col.coltype.sqltype == db.GetAdapter().BlobType {
+					cols = append(cols, db.GetAdapter().QuoteCreateBlobIdxCol(col.name))
+				} else {
+					cols = append(cols, db.GetAdapter().Quote(col.name))
+				}
 			}
 			indexName := db.GetAdapter().Quote(idx.name)
 			colNames := strings.Join(cols, ", ")
@@ -535,9 +543,9 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 			return t, fmt.Errorf("No type for %s", f.Type)
 		}
 		col := &column{
-			name:   *f.Name,
-			coltyp: coltyp,
-			field:  f,
+			name:    *f.Name,
+			coltype: coltyp,
+			field:   f,
 		}
 		fieldNames[*f.Name] = col
 		t.columns = append(t.columns, col)

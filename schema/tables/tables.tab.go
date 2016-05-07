@@ -11,42 +11,42 @@ import (
 )
 
 var SqlTables = []string{
-	"CREATE TABLE \"Pics\" (" +
-		"\"id\" bigint NOT NULL, " +
-		"\"created_time\" bigint NOT NULL, " +
-		"\"is_hidden\" boolean NOT NULL, " +
-		"\"data\" bytea NOT NULL, " +
-		"PRIMARY KEY(\"id\")" +
+	"CREATE TABLE `Pics` (" +
+		"`id` bigint(20) NOT NULL, " +
+		"`created_time` bigint(20) NOT NULL, " +
+		"`is_hidden` bool NOT NULL, " +
+		"`data` blob NOT NULL, " +
+		"PRIMARY KEY(`id`)" +
 		");",
-	"CREATE INDEX \"PicsBumpOrder\" ON \"Pics\" (\"created_time\");",
-	"CREATE INDEX \"PicsHidden\" ON \"Pics\" (\"is_hidden\");",
-	"CREATE TABLE \"Tags\" (" +
-		"\"id\" bigint NOT NULL, " +
-		"\"name\" bytea NOT NULL, " +
-		"\"data\" bytea NOT NULL, " +
-		"PRIMARY KEY(\"id\"), " +
-		"UNIQUE(\"name\")" +
+	"CREATE INDEX `PicsBumpOrder` ON `Pics` (`created_time`);",
+	"CREATE INDEX `PicsHidden` ON `Pics` (`is_hidden`);",
+	"CREATE TABLE `Tags` (" +
+		"`id` bigint(20) NOT NULL, " +
+		"`name` blob NOT NULL, " +
+		"`data` blob NOT NULL, " +
+		"PRIMARY KEY(`id`), " +
+		"UNIQUE(`name`(255))" +
 		");",
-	"CREATE TABLE \"PicTags\" (" +
-		"\"pic_id\" bigint NOT NULL, " +
-		"\"tag_id\" bigint NOT NULL, " +
-		"\"data\" bytea NOT NULL, " +
-		"PRIMARY KEY(\"pic_id\", \"tag_id\")" +
+	"CREATE TABLE `PicTags` (" +
+		"`pic_id` bigint(20) NOT NULL, " +
+		"`tag_id` bigint(20) NOT NULL, " +
+		"`data` blob NOT NULL, " +
+		"PRIMARY KEY(`pic_id`, `tag_id`)" +
 		");",
-	"CREATE TABLE \"PicIdents\" (" +
-		"\"pic_id\" bigint NOT NULL, " +
-		"\"type\" integer NOT NULL, " +
-		"\"value\" bytea NOT NULL, " +
-		"\"data\" bytea NOT NULL, " +
-		"PRIMARY KEY(\"pic_id\", \"type\", \"value\")" +
+	"CREATE TABLE `PicIdents` (" +
+		"`pic_id` bigint(20) NOT NULL, " +
+		"`type` int NOT NULL, " +
+		"`value` blob NOT NULL, " +
+		"`data` blob NOT NULL, " +
+		"PRIMARY KEY(`pic_id`, `type`, `value`(255))" +
 		");",
-	"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\", \"value\");",
-	"CREATE TABLE \"Users\" (" +
-		"\"id\" bigint NOT NULL, " +
-		"\"ident\" bytea NOT NULL, " +
-		"\"data\" bytea NOT NULL, " +
-		"PRIMARY KEY(\"id\"), " +
-		"UNIQUE(\"ident\")" +
+	"CREATE INDEX `PicIdentsIdent` ON `PicIdents` (`type`, `value`(255));",
+	"CREATE TABLE `Users` (" +
+		"`id` bigint(20) NOT NULL, " +
+		"`ident` blob NOT NULL, " +
+		"`data` blob NOT NULL, " +
+		"PRIMARY KEY(`id`), " +
+		"UNIQUE(`ident`(255))" +
 		");",
 }
 

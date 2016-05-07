@@ -3,6 +3,8 @@ package db
 import (
 	"bytes"
 	"errors"
+	"flag"
+	"os"
 	"testing"
 )
 
@@ -713,4 +715,10 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 	appendLock(3, "foo")
 
 	t.Fatal("should never reach here")
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	setPostgreSQLForTest()
+	os.Exit(m.Run())
 }

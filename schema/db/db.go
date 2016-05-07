@@ -7,33 +7,73 @@ import (
 	"strings"
 )
 
-var dbAdapter = DbAdapter{
-	Quote: func(ident string) string {
-		if strings.ContainsAny(ident, "\"\x00") {
-			panic(fmt.Sprintf("Invalid identifier %#v", ident))
-		}
-		return `"` + ident + `"`
-	},
-	LockStmt: func(lock Lock, query string) string {
-		switch lock {
-		case LockNone:
-			return query
-		case LockRead:
-			return query + " FOR SHARE"
-		case LockWrite:
-			return query + " FOR UPDATE"
-		default:
-			panic(fmt.Errorf("Unknown lock %v", lock))
-		}
-	},
-	BoolType:   "bool",
-	IntType:    "integer",
-	BigIntType: "bigint",
-	BlobType:   "bytea",
-}
+var (
+	mysqlAdapter = DbAdapter{
+		Quote: func(ident string) string {
+			if strings.ContainsAny(ident, "\"\x00`") {
+				panic(fmt.Sprintf("Invalid identifier %#v", ident))
+			}
+			return "`" + ident + "`"
+		},
+		QuoteCreateBlobIdxCol: func(ident string) string {
+			if strings.ContainsAny(ident, "\"\x00`") {
+				panic(fmt.Sprintf("Invalid identifier %#v", ident))
+			}
+			return "`" + ident + "`(255)"
+		},
+		LockStmt: func(lock Lock, query string) string {
+			switch lock {
+			case LockNone:
+				return query
+			case LockRead:
+				return query + " LOCK IN SHARE MODE"
+			case LockWrite:
+				return query + " FOR UPDATE"
+			default:
+				panic(fmt.Errorf("Unknown lock %v", lock))
+			}
+		},
+		BoolType:   "bool",
+		IntType:    "int",
+		BigIntType: "bigint(20)",
+		BlobType:   "blob",
+	}
+
+	postgresqlAdapter = DbAdapter{
+		Quote: func(ident string) string {
+			if strings.ContainsAny(ident, "\"\x00") {
+				panic(fmt.Sprintf("Invalid identifier %#v", ident))
+			}
+			return `"` + ident + `"`
+		},
+		QuoteCreateBlobIdxCol: func(ident string) string {
+			if strings.ContainsAny(ident, "\"\x00") {
+				panic(fmt.Sprintf("Invalid identifier %#v", ident))
+			}
+			return `"` + ident + `"`
+		},
+		LockStmt: func(lock Lock, query string) string {
+			switch lock {
+			case LockNone:
+				return query
+			case LockRead:
+				return query + " FOR SHARE"
+			case LockWrite:
+				return query + " FOR UPDATE"
+			default:
+				panic(fmt.Errorf("Unknown lock %v", lock))
+			}
+		},
+		BoolType:   "bool",
+		IntType:    "integer",
+		BigIntType: "bigint",
+		BlobType:   "bytea",
+	}
+)
+var dbAdapter DbAdapter
 
 type DbAdapter struct {
-	Quote                                   func(string) string
+	Quote, QuoteCreateBlobIdxCol            func(string) string
 	LockStmt                                func(Lock, string) string
 	BoolType, IntType, BigIntType, BlobType string
 }
@@ -329,4 +369,8 @@ func quoteIdentifier(ident string) string {
 // Don't use this.  Seriously.
 func GetAdapter() DbAdapter {
 	return dbAdapter
+}
+
+func setPostgreSQLForTest() {
+	dbAdapter = postgresqlAdapter
 }
