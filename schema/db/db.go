@@ -320,3 +320,8 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 func quoteIdentifier(ident string) string {
 	return dbAdapter.Quote(ident)
 }
+
+// Don't use this.
+func InternalQuoteIdentifier(ident string) string {
+	return quoteIdentifier(ident)
+}

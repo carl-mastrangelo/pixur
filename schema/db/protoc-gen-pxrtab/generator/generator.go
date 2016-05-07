@@ -2,16 +2,19 @@ package generator
 
 import (
 	"fmt"
+	"go/format"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	descriptor "google/protobuf"
 	plugin "google/protobuf/compiler"
 
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/schema/db/model"
 )
 
@@ -127,10 +130,17 @@ func (g *Generator) run(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorR
 		}
 	}
 
+	fmtContent, err := format.Source([]byte(content))
+	if err != nil {
+		return &plugin.CodeGeneratorResponse{
+			Error: proto.String(err.Error()),
+		}
+	}
+
 	return &plugin.CodeGeneratorResponse{
 		File: []*plugin.CodeGeneratorResponse_File{{
 			Name:    proto.String(strings.Replace(req.FileToGenerate[0], ".proto", ".tab.go", -1)),
-			Content: proto.String(content),
+			Content: proto.String(string(fmtContent)),
 		}},
 	}
 }
@@ -237,16 +247,16 @@ func renderDefaultTypes(w *indentWriter, f file) {
 
 func renderScanFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
-		w.writefln(`func (j Job) Scan%s(opts db.Opts, cb func(%s) error) error {`, t.name, t.datagotype)
+		w.writefln("func (j Job) Scan%s(opts db.Opts, cb func(%s) error) error {", t.name, t.datagotype)
 		w.in()
 		var cols []string
 		for _, col := range t.columns {
-			cols = append(cols, `"`+col.name+`"`)
+			cols = append(cols, col.name)
 		}
-		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
-		w.writefln(`return db.Scan(j, "%s", opts, func(data []byte) error {`, t.name)
+		w.writefln("cols := %#v", cols)
+		w.writefln("return db.Scan(j, %s, opts, func(data []byte) error {", strconv.Quote(t.name))
 		w.in()
-		w.writefln(`var pb %s`, t.datagotype)
+		w.writefln("var pb %s", t.datagotype)
 		w.writeln("if err := proto.Unmarshal(data, &pb); err != nil {")
 		w.in()
 		w.writeln("return err")
@@ -263,9 +273,9 @@ func renderScanFuncs(w *indentWriter, f file) {
 
 func renderDeleteFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
-		w.writefln(`func (j Job) Delete%s(key %sPrimary) error {`, t.gotype, t.name)
+		w.writefln("func (j Job) Delete%s(key %sPrimary) error {", t.gotype, t.name)
 		w.in()
-		w.writefln(`return db.Delete(j, "%s", key)`, t.name)
+		w.writefln("return db.Delete(j, %s, key)", strconv.Quote(t.name))
 		w.out()
 		w.writeln("}")
 		w.writeln("")
@@ -274,17 +284,17 @@ func renderDeleteFuncs(w *indentWriter, f file) {
 
 func renderInsertFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
-		w.writefln(`func (j Job) Insert%s(row %s) error {`, t.gotype, t.gotype)
+		w.writefln("func (j Job) Insert%s(row %s) error {", t.gotype, t.gotype)
 		w.in()
 		var vals []string
 		var cols []string
 		for _, col := range t.columns {
-			cols = append(cols, `"`+col.name+`"`)
+			cols = append(cols, col.name)
 			vals = append(vals, "row."+colNameToGoName(col.name))
 		}
-		w.writefln(`cols := []string{%s}`, strings.Join(cols, ", "))
-		w.writefln(`vals := []interface{}{%s}`, strings.Join(vals, ", "))
-		w.writefln(`return db.Insert(j, "%s", cols, vals)`, t.name)
+		w.writefln("cols := %#v", cols)
+		w.writefln("vals := []interface{}{%s}", strings.Join(vals, ", "))
+		w.writefln("return db.Insert(j, %s, cols, vals)", strconv.Quote(t.name))
 		w.out()
 		w.writeln("}")
 		w.writeln("")
@@ -293,15 +303,15 @@ func renderInsertFuncs(w *indentWriter, f file) {
 
 func renderFindFuncs(w *indentWriter, f file) {
 	for _, t := range f.tables {
-		w.writefln(`func (j Job) Find%s(opts db.Opts) (rows []%s, err error) {`, t.name, t.datagotype)
+		w.writefln("func (j Job) Find%s(opts db.Opts) (rows []%s, err error) {", t.name, t.datagotype)
 		w.in()
-		w.writefln(`err = j.Scan%s(opts, func(data %s) error {`, t.name, t.datagotype)
+		w.writefln("err = j.Scan%s(opts, func(data %s) error {", t.name, t.datagotype)
 		w.in()
-		w.writeln(`rows = append(rows, data)`)
-		w.writeln(`return nil`)
+		w.writeln("rows = append(rows, data)")
+		w.writeln("return nil")
 		w.out()
-		w.writeln(`})`)
-		w.writeln(`return`)
+		w.writeln("})")
+		w.writeln("return")
 		w.out()
 		w.writeln("}")
 		w.writeln("")
@@ -316,34 +326,33 @@ func renderIndexes(w *indentWriter, f file) {
 	for _, t := range f.tables {
 		for _, idx := range t.indexes {
 			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
-				w.writefln(`var _ db.UniqueIdx = %s{}`, idx.name)
+				w.writefln("var _ db.UniqueIdx = %s{}", idx.name)
 			} else {
-				w.writefln(`var _ db.Idx = %s{}`, idx.name)
+				w.writefln("var _ db.Idx = %s{}", idx.name)
 			}
-			w.writeln("")
-			w.writefln(`type %s struct {`, idx.name)
+			w.writefln("type %s struct {", idx.name)
 			w.in()
 			for _, c := range idx.columns {
-				w.writefln(`%s *%s`, colNameToGoName(c.name), c.coltyp.gotype)
+				w.writefln("%s *%s", colNameToGoName(c.name), c.coltyp.gotype)
 			}
 			w.out()
 			w.writeln("}")
 			w.writeln("")
 			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
-				w.writefln(`func (_ %s) Unique() {}`, idx.name)
+				w.writefln("func (_ %s) Unique() {}", idx.name)
 				w.writeln("")
 			}
-			w.writefln(`func (idx %s) Cols() []string {`, idx.name)
-			var escaped []string
+			w.writefln("func (idx %s) Cols() []string {", idx.name)
+			var columnNames []string
 			for _, c := range idx.columns {
-				escaped = append(escaped, `"`+c.name+`"`)
+				columnNames = append(columnNames, c.name)
 			}
 			w.in()
-			w.writefln(`return []string{%s}`, strings.Join(escaped, ", "))
+			w.writefln(`return %#v`, columnNames)
 			w.out()
 			w.writeln("}")
 			w.writeln("")
-			w.writefln(`func (idx %s) Vals() (vals []interface{}) {`, idx.name)
+			w.writefln("func (idx %s) Vals() (vals []interface{}) {", idx.name)
 			w.in()
 			w.writeln("var done bool")
 			for _, c := range idx.columns {
@@ -351,7 +360,7 @@ func renderIndexes(w *indentWriter, f file) {
 				w.in()
 				w.writeln("if done {")
 				w.in()
-				w.writefln(`panic("Extra value %s")`, colNameToGoName(c.name))
+				w.writefln(`panic(%s)`, strconv.Quote("Extra value "+colNameToGoName(c.name)))
 				w.out()
 				w.writeln("}")
 				w.writefln("vals = append(vals, *idx.%s)", colNameToGoName(c.name))
@@ -405,10 +414,14 @@ func renderSqlTables(w *indentWriter, f file) {
 	w.writeln("var SqlTables = []string{")
 	w.in()
 	for _, t := range f.tables {
-		w.writefln(`"CREATE TABLE \"%s\" (" +`, t.name)
+		tableName := db.InternalQuoteIdentifier(t.name)
+		sqlLine := fmt.Sprintf("CREATE TABLE %s (", tableName)
+		w.writeln(strconv.Quote(sqlLine) + "+")
 		w.in()
 		for _, col := range t.columns {
-			w.writefln(`"\"%s\" %s NOT NULL, " +`, col.name, col.coltyp.sqltype)
+			colName := db.InternalQuoteIdentifier(col.name)
+			sqlLine := fmt.Sprintf("%s %s NOT NULL, ", colName, col.coltyp.sqltype)
+			w.writeln(strconv.Quote(sqlLine) + "+")
 		}
 		var inlineIndexes []index
 		var indexes []index
@@ -427,23 +440,27 @@ func renderSqlTables(w *indentWriter, f file) {
 			}
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, fmt.Sprintf(`\"%s\"`, col.name))
+				cols = append(cols, db.InternalQuoteIdentifier(col.name))
 			}
 			last := ", "
 			if i == len(inlineIndexes)-1 {
 				last = ""
 			}
-			w.writefln(`"%s(%s)%s" +`, idx.keyType, strings.Join(cols, ", "), last)
+			colNames := strings.Join(cols, ", ")
+			sqlLine := fmt.Sprintf("%s(%s)%s", idx.keyType, colNames, last)
+			w.writeln(strconv.Quote(sqlLine) + "+")
 		}
-		w.writeln(`");",`)
+		w.writeln(strconv.Quote(");") + ",")
 		w.out()
 		for _, idx := range indexes {
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, fmt.Sprintf(`\"%s\"`, col.name))
+				cols = append(cols, db.InternalQuoteIdentifier(col.name))
 			}
-			w.writefln(`"CREATE INDEX \"%s\" ON \"%s\" (%s);",`,
-				idx.name, t.name, strings.Join(cols, ", "))
+			indexName := db.InternalQuoteIdentifier(idx.name)
+			colNames := strings.Join(cols, ", ")
+			sqlLine := fmt.Sprintf("CREATE INDEX %s ON %s (%s);", indexName, tableName, colNames)
+			w.writeln(strconv.Quote(sqlLine) + ",")
 		}
 	}
 
