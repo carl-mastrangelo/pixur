@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package pixur.tables;
+
+option go_package = "tables";
+
+import "pixur.org/pixur/schema/pixur.proto";
+import "pixur.org/pixur/schema/db/model/model.proto";
+
+message PicRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "Pics"
+    key: {
+      key_type: PRIMARY
+      col: "id"
+    }
+    key: {
+      name: "BumpOrder"
+      key_type: INDEX
+      col: "created_time"
+    }
+    key: {
+      name: "Hidden"
+      key_type: INDEX
+      col: "is_hidden"
+    }
+  };
+
+  int64 id = 1;
+
+  int64 created_time = 2;
+
+  bool is_hidden = 3;
+
+  pixur.Pic data = 4;
+}
+
+message TagRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "Tags"
+    key: {
+      key_type: PRIMARY
+      col: "id"
+    }
+    key: {
+      name: "Name"
+      key_type: UNIQUE
+      col: "name"
+    }
+  };
+
+  int64 id = 1;
+
+  string name = 2;
+
+  pixur.Tag data = 3;
+}
+
+message PicTagRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "PicTags"
+    key: {
+      key_type: PRIMARY
+      col: "pic_id"
+      col: "tag_id"
+    }
+  };
+
+  int64 pic_id = 1;
+  int64 tag_id = 2;
+
+  pixur.PicTag data = 3;
+}
+
+message PicIdentRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "PicIdents"
+    key: {
+      key_type: PRIMARY
+      col: "pic_id"
+      col: "type"
+      col: "value"
+    }
+    key: {
+      name: "Ident"
+      key_type: INDEX
+      col: "type"
+      col: "value"
+    }
+  };
+
+  int64 pic_id = 1;
+
+  pixur.PicIdent.Type type = 2;
+
+  bytes value = 3;
+
+  pixur.PicIdent data = 4;
+}
+
+message UserRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "Users"
+    key: {
+      key_type: PRIMARY
+      col: "id"
+    }
+    key: {
+      name: "Ident"
+      key_type: UNIQUE
+      col: "ident"
+    }
+  };
+
+  int64 id = 1;
+  
+  string ident = 2;
+  
+  pixur.User data = 3;
+}
