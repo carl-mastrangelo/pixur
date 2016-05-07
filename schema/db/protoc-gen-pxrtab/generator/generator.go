@@ -192,8 +192,8 @@ func (g *Generator) generateFile(fds []*descriptor.FileDescriptorProto) (string,
 		if *fd.Package == "pixur.db.model" {
 			continue
 		}
-		imp := fmt.Sprintf(`%s "%s"`,
-			filepath.Base(fd.GetOptions().GetGoPackage()), filepath.Dir(dep))
+		imp := fmt.Sprintf(`%s %s`,
+			filepath.Base(fd.GetOptions().GetGoPackage()), strconv.Quote(filepath.Dir(dep)))
 		f.imports = append(f.imports, imp)
 	}
 
@@ -414,12 +414,12 @@ func renderSqlTables(w *indentWriter, f file) {
 	w.writeln("var SqlTables = []string{")
 	w.in()
 	for _, t := range f.tables {
-		tableName := db.InternalQuoteIdentifier(t.name)
+		tableName := db.GetAdapter().Quote(t.name)
 		sqlLine := fmt.Sprintf("CREATE TABLE %s (", tableName)
 		w.writeln(strconv.Quote(sqlLine) + "+")
 		w.in()
 		for _, col := range t.columns {
-			colName := db.InternalQuoteIdentifier(col.name)
+			colName := db.GetAdapter().Quote(col.name)
 			sqlLine := fmt.Sprintf("%s %s NOT NULL, ", colName, col.coltyp.sqltype)
 			w.writeln(strconv.Quote(sqlLine) + "+")
 		}
@@ -440,7 +440,7 @@ func renderSqlTables(w *indentWriter, f file) {
 			}
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, db.InternalQuoteIdentifier(col.name))
+				cols = append(cols, db.GetAdapter().Quote(col.name))
 			}
 			last := ", "
 			if i == len(inlineIndexes)-1 {
@@ -455,9 +455,9 @@ func renderSqlTables(w *indentWriter, f file) {
 		for _, idx := range indexes {
 			var cols []string
 			for _, col := range idx.columns {
-				cols = append(cols, db.InternalQuoteIdentifier(col.name))
+				cols = append(cols, db.GetAdapter().Quote(col.name))
 			}
-			indexName := db.InternalQuoteIdentifier(idx.name)
+			indexName := db.GetAdapter().Quote(idx.name)
 			colNames := strings.Join(cols, ", ")
 			sqlLine := fmt.Sprintf("CREATE INDEX %s ON %s (%s);", indexName, tableName, colNames)
 			w.writeln(strconv.Quote(sqlLine) + ",")
@@ -490,15 +490,15 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SINT32:
 			fallthrough
-		case descriptor.FieldDescriptorProto_TYPE_ENUM:
-			coltyp = coltype{
-				sqltype: "integer",
-				gotype:  typeNameToGoName(*f.TypeName, packmap),
-			}
 		case descriptor.FieldDescriptorProto_TYPE_INT32:
 			coltyp = coltype{
-				sqltype: "integer",
+				sqltype: db.GetAdapter().IntType,
 				gotype:  "int32",
+			}
+		case descriptor.FieldDescriptorProto_TYPE_ENUM:
+			coltyp = coltype{
+				sqltype: db.GetAdapter().IntType,
+				gotype:  typeNameToGoName(*f.TypeName, packmap),
 			}
 		case descriptor.FieldDescriptorProto_TYPE_FIXED64:
 			fallthrough
@@ -508,27 +508,27 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_INT64:
 			coltyp = coltype{
-				sqltype: "bigint",
+				sqltype: db.GetAdapter().BigIntType,
 				gotype:  "int64",
 			}
 		case descriptor.FieldDescriptorProto_TYPE_BOOL:
 			coltyp = coltype{
-				sqltype: "boolean",
+				sqltype: db.GetAdapter().BoolType,
 				gotype:  "bool",
 			}
 		case descriptor.FieldDescriptorProto_TYPE_STRING:
 			coltyp = coltype{
-				sqltype: "bytea",
+				sqltype: db.GetAdapter().BlobType,
 				gotype:  "string",
 			}
 		case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 			coltyp = coltype{
-				sqltype: "bytea",
+				sqltype: db.GetAdapter().BlobType,
 				gotype:  typeNameToGoName(*f.TypeName, packmap),
 			}
 		case descriptor.FieldDescriptorProto_TYPE_BYTES:
 			coltyp = coltype{
-				sqltype: "bytea",
+				sqltype: db.GetAdapter().BlobType,
 				gotype:  "[]byte",
 			}
 		default:

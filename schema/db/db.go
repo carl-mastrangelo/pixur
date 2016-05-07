@@ -26,11 +26,16 @@ var dbAdapter = DbAdapter{
 			panic(fmt.Errorf("Unknown lock %v", lock))
 		}
 	},
+	BoolType:   "bool",
+	IntType:    "integer",
+	BigIntType: "bigint",
+	BlobType:   "bytea",
 }
 
 type DbAdapter struct {
-	Quote    func(string) string
-	LockStmt func(Lock, string) string
+	Quote                                   func(string) string
+	LockStmt                                func(Lock, string) string
+	BoolType, IntType, BigIntType, BlobType string
 }
 
 type Lock int
@@ -321,7 +326,7 @@ func quoteIdentifier(ident string) string {
 	return dbAdapter.Quote(ident)
 }
 
-// Don't use this.
-func InternalQuoteIdentifier(ident string) string {
-	return quoteIdentifier(ident)
+// Don't use this.  Seriously.
+func GetAdapter() DbAdapter {
+	return dbAdapter
 }
