@@ -8,7 +8,6 @@ import (
 	"pixur.org/pixur/schema/db"
 
 	schema "pixur.org/pixur/schema"
-	_ "pixur.org/pixur/schema/db/model"
 )
 
 var SqlTables = []string{

@@ -177,6 +177,11 @@ func (g *Generator) generateFile(fds []*descriptor.FileDescriptorProto) (string,
 		if !ok {
 			panic("Missing file " + dep)
 		}
+		// hack to exclude model.proto
+		// TODO: check which messages are actually referenced, and import appropriately.
+		if *fd.Package == "pixur.db.model" {
+			continue
+		}
 		imp := fmt.Sprintf(`%s "%s"`,
 			filepath.Base(fd.GetOptions().GetGoPackage()), filepath.Dir(dep))
 		f.imports = append(f.imports, imp)
@@ -315,6 +320,7 @@ func renderIndexes(w *indentWriter, f file) {
 			} else {
 				w.writefln(`var _ db.Idx = %s{}`, idx.name)
 			}
+			w.writeln("")
 			w.writefln(`type %s struct {`, idx.name)
 			w.in()
 			for _, c := range idx.columns {
