@@ -14,10 +14,23 @@ var dbAdapter = DbAdapter{
 		}
 		return `"` + ident + `"`
 	},
+	LockStmt: func(lock Lock, query string) string {
+		switch lock {
+		case LockNone:
+			return query
+		case LockRead:
+			return query + " FOR SHARE"
+		case LockWrite:
+			return query + " FOR UPDATE"
+		default:
+			panic(fmt.Errorf("Unknown lock %v", lock))
+		}
+	},
 }
 
 type DbAdapter struct {
-	Quote func(string) string
+	Quote    func(string) string
+	LockStmt func(Lock, string) string
 }
 
 type Lock int
@@ -70,13 +83,17 @@ type Rows interface {
 	Scan(dest ...interface{}) error
 }
 
-func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) error {
+func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) (errCap error) {
 	query, queryArgs := buildScan(name, opts, keyCols)
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if newErr := rows.Close(); errCap == nil {
+			errCap = newErr
+		}
+	}()
 
 	for rows.Next() {
 		var tmp []byte
@@ -91,13 +108,13 @@ func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols
 		return err
 	}
 
-	return rows.Close()
+	return nil
 }
 
 func buildScan(name string, opts Opts, keyCols []string) (string, []interface{}) {
 	var buf bytes.Buffer
 	var args []interface{}
-	fmt.Fprintf(&buf, `SELECT %s FROM %s`, quoteIdentifier("name"), quoteIdentifier(name))
+	fmt.Fprintf(&buf, `SELECT %s FROM %s`, quoteIdentifier("data"), quoteIdentifier(name))
 	var (
 		startCols, stopCols []string
 		startVals, stopVals []interface{}
@@ -129,10 +146,10 @@ func buildScan(name string, opts Opts, keyCols []string) (string, []interface{})
 	buf.WriteString(buildOrderStmt(keyCols, opts.Reverse))
 
 	if opts.Limit > 0 {
-		fmt.Fprintf(&buf, " LIMIT %d ", opts.Limit)
+		fmt.Fprintf(&buf, " LIMIT %d", opts.Limit)
 	}
 
-	return buf.String(), args
+	return appendLock(opts.Lock, buf.String()) + ";", args
 }
 
 type Columns []string
@@ -211,6 +228,10 @@ func buildStop(cols []string, vals []interface{}) (string, []interface{}) {
 		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
 	}
 	return "(" + strings.Join(ors, " OR ") + ")", args
+}
+
+func appendLock(lock Lock, query string) string {
+	return dbAdapter.LockStmt(lock, query)
 }
 
 var (

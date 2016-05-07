@@ -1,6 +1,8 @@
 package db
 
 import (
+	"bytes"
+	"errors"
 	"testing"
 )
 
@@ -33,15 +35,321 @@ func (idx *testUniqueIdx) Vals() []interface{} {
 func (idx *testUniqueIdx) Unique() {}
 
 type execCap struct {
-	query string
-	args  []interface{}
-	err   error
+	query  string
+	args   []interface{}
+	rows   Rows
+	result Result
+	err    error
 }
 
 func (exec *execCap) Exec(query string, args ...interface{}) (Result, error) {
 	exec.query = query
 	exec.args = args
-	return nil, exec.err
+	return exec.result, exec.err
+}
+
+func (exec *execCap) Query(query string, args ...interface{}) (Rows, error) {
+	exec.query = query
+	exec.args = args
+	return exec.rows, exec.err
+}
+
+type testRows struct {
+	err, closeErr, scanErr error
+	vals                   [][]byte
+}
+
+func (rs *testRows) Close() error {
+	return rs.closeErr
+}
+
+func (rs *testRows) Columns() ([]string, error) {
+	panic(nil)
+}
+
+func (rs *testRows) Err() error {
+	return rs.err
+}
+
+func (rs *testRows) Next() bool {
+	return len(rs.vals) > 0
+}
+
+func (rs *testRows) Scan(dest ...interface{}) error {
+	if len(dest) != 1 {
+		panic("wrong dest count")
+	}
+	*(dest[0].(*[]byte)) = rs.vals[0]
+	rs.vals = rs.vals[1:]
+	return rs.scanErr
+}
+
+func TestScanQueryFails(t *testing.T) {
+	expected := errors.New("expected")
+	exec := &execCap{
+		err: expected,
+	}
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		return nil
+	}, []string{"col"})
+
+	if err != expected {
+		t.Log("Expected error", err)
+		t.Fail()
+	}
+}
+
+func TestScanQueryEmpty(t *testing.T) {
+	exec := &execCap{
+		rows: &testRows{},
+	}
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		panic("don't call me")
+	}, []string{"col"})
+
+	if err != nil {
+		t.Log("Unexpected error", err)
+		t.Fail()
+	}
+}
+
+func TestScanQueryCloseFails(t *testing.T) {
+	expected := errors.New("expected")
+	exec := &execCap{
+		rows: &testRows{
+			closeErr: expected,
+		},
+	}
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		panic("don't call me")
+	}, []string{"col"})
+
+	if err != expected {
+		t.Log("Expected error", err)
+		t.Fail()
+	}
+}
+
+func TestScanQueryOneRow(t *testing.T) {
+	exec := &execCap{
+		rows: &testRows{
+			vals: [][]byte{[]byte("bar")},
+		},
+	}
+	var dataCap [][]byte
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		dataCap = append(dataCap, data)
+		return nil
+	}, []string{"col"})
+
+	if err != nil {
+		t.Log("Unexpected error", err)
+		t.Fail()
+	}
+	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
+		t.Log("Wrong rows", dataCap)
+		t.Fail()
+	}
+
+	if exec.query != `SELECT "data" FROM "foo" ORDER BY "col" ASC;` {
+		t.Log("Wrong query", exec.query)
+		t.Fail()
+	}
+	if len(exec.args) != 0 {
+		t.Log("Wrong args", exec.args)
+		t.Fail()
+	}
+}
+
+func TestScanQueryMultiRow(t *testing.T) {
+	exec := &execCap{
+		rows: &testRows{
+			vals: [][]byte{[]byte("bar"), []byte("baz")},
+		},
+	}
+	var dataCap [][]byte
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		dataCap = append(dataCap, data)
+		return nil
+	}, []string{"col"})
+
+	if err != nil {
+		t.Log("Unexpected error", err)
+		t.Fail()
+	}
+	if len(dataCap) != 2 || !bytes.Equal(dataCap[0], []byte("bar")) ||
+		!bytes.Equal(dataCap[1], []byte("baz")) {
+		t.Log("Wrong rows", dataCap)
+		t.Fail()
+	}
+}
+
+func TestScanScanFails(t *testing.T) {
+	expected := errors.New("expected")
+	exec := &execCap{
+		rows: &testRows{
+			vals:    [][]byte{[]byte("bar")},
+			scanErr: expected,
+		},
+	}
+	var dataCap [][]byte
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		dataCap = append(dataCap, data)
+		return nil
+	}, []string{"col"})
+
+	if err != expected {
+		t.Log("Expected error", err)
+		t.Fail()
+	}
+	if len(dataCap) != 0 {
+		t.Log("Wrong rows", dataCap)
+		t.Fail()
+	}
+}
+
+func TestScanCallbackFails(t *testing.T) {
+	expected := errors.New("expected")
+	exec := &execCap{
+		rows: &testRows{
+			vals: [][]byte{[]byte("bar")},
+		},
+	}
+	var dataCap [][]byte
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		dataCap = append(dataCap, data)
+		return expected
+	}, []string{"col"})
+
+	if err != expected {
+		t.Log("Expected error", err)
+		t.Fail()
+	}
+	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
+		t.Log("Wrong rows", dataCap)
+		t.Fail()
+	}
+}
+
+func TestScanStopEarly(t *testing.T) {
+	expected := errors.New("expected")
+	exec := &execCap{
+		rows: &testRows{
+			vals: [][]byte{[]byte("bar")},
+			err:  expected,
+		},
+	}
+	var dataCap [][]byte
+	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
+		dataCap = append(dataCap, data)
+		return nil
+	}, []string{"col"})
+
+	if err != expected {
+		t.Log("Expected error", err)
+		t.Fail()
+	}
+	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
+		t.Log("Wrong rows", dataCap)
+		t.Fail()
+	}
+}
+
+func TestBuildScan(t *testing.T) {
+	query, args := buildScan("foo", Opts{}, []string{"col"})
+	if query != `SELECT "data" FROM "foo" ORDER BY "col" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 0 {
+		t.Log("Should have no args", args)
+		t.Fail()
+	}
+}
+
+func TestBuildScanStart(t *testing.T) {
+	query, args := buildScan("foo", Opts{
+		Start: &testIdx{
+			cols: []string{"bar"},
+			vals: []interface{}{1},
+		},
+	}, []string{"col"})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "col" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
+func TestBuildScanStop(t *testing.T) {
+	query, args := buildScan("foo", Opts{
+		Stop: &testIdx{
+			cols: []string{"bar"},
+			vals: []interface{}{1},
+		},
+	}, []string{"col"})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" < ?)) ORDER BY "col" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
+func TestBuildScanStartStop(t *testing.T) {
+	query, args := buildScan("foo", Opts{
+		Start: &testIdx{
+			cols: []string{"bar"},
+			vals: []interface{}{1},
+		},
+		Stop: &testIdx{
+			cols: []string{"baz"},
+			vals: []interface{}{2},
+		},
+	}, []string{"col"})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?)) ORDER BY "col" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 2 || args[0] != 1 || args[1] != 2 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
+func TestBuildScanLimitReverseLock(t *testing.T) {
+	query, args := buildScan("foo", Opts{
+		Limit:   1,
+		Reverse: true,
+		Lock:    LockNone,
+	}, []string{"col"})
+	if query != `SELECT "data" FROM "foo" ORDER BY "col" DESC LIMIT 1;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 0 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
+func TestBuildOrderStmt(t *testing.T) {
+	stmt := buildOrderStmt([]string{"bar", "baz"}, false)
+	if stmt != `"bar" ASC, "baz" ASC` {
+		t.Log("Statement didn't match")
+	}
+}
+
+func TestBuildOrderStmtReverse(t *testing.T) {
+	stmt := buildOrderStmt([]string{"foo"}, true)
+	if stmt != `"foo" ASC` {
+		t.Log("Statement didn't match")
+	}
 }
 
 func TestBuildStopOneVal(t *testing.T) {
@@ -377,6 +685,32 @@ func TestQuoteIdentifierPanicsOnNull(t *testing.T) {
 		}
 	}()
 	quoteIdentifier("f\x00oo")
+
+	t.Fatal("should never reach here")
+}
+
+func TestAppendLock(t *testing.T) {
+	expected := []struct {
+		query string
+		lock  Lock
+	}{{"foo", LockNone}, {"foo FOR SHARE", LockRead}, {"foo FOR UPDATE", LockWrite}}
+	for _, tuple := range expected {
+		newQuery := appendLock(tuple.lock, "foo")
+		if newQuery != tuple.query {
+			t.Logf("Mismatched query %s != %s", newQuery, tuple.query)
+			t.Fail()
+		}
+	}
+}
+
+func TestAppendLockPanicsOnBad(t *testing.T) {
+	defer func() {
+		val := recover()
+		if val == nil {
+			t.Fatal("expected a panic")
+		}
+	}()
+	appendLock(3, "foo")
 
 	t.Fatal("should never reach here")
 }
