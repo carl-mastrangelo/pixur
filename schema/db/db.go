@@ -70,7 +70,9 @@ var (
 		BlobType:   "bytea",
 	}
 )
-var dbAdapter DbAdapter
+
+// default
+var dbAdapter DbAdapter = mysqlAdapter
 
 type DbAdapter struct {
 	Quote, QuoteCreateBlobIdxCol            func(string) string

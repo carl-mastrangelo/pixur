@@ -1,14 +1,15 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 	"go/format"
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/golang/protobuf/proto"
 	descriptor "google/protobuf"
@@ -17,56 +18,6 @@ import (
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/schema/db/model"
 )
-
-type file struct {
-	name    string
-	pack    string
-	imports deps
-	packmap map[string]string
-	tables  []table
-}
-
-type table struct {
-	name       string
-	gotype     string
-	datagotype string
-	columns    []*column
-	indexes    []index
-	msg        *descriptor.DescriptorProto
-}
-
-type coltype struct {
-	sqltype string
-	gotype  string
-}
-
-type column struct {
-	name    string
-	coltype coltype
-	field   *descriptor.FieldDescriptorProto
-}
-
-type index struct {
-	name    string
-	keyType keyType
-	columns []*column
-}
-
-type deps []string
-
-func (d deps) Less(i, k int) bool {
-	left := strings.Split(d[i], " ")
-	right := strings.Split(d[k], " ")
-	return strings.Compare(left[1], right[1]) < 0
-}
-
-func (d deps) Len() int {
-	return len(d)
-}
-
-func (d deps) Swap(i, k int) {
-	d[k], d[i] = d[i], d[k]
-}
 
 type keyType string
 
@@ -77,6 +28,16 @@ var (
 )
 
 type Generator struct {
+	args                          *tplArgs
+	protoPackageMap, protoNameMap map[string]*descriptor.FileDescriptorProto
+}
+
+func New() *Generator {
+	return &Generator{
+		args:            new(tplArgs),
+		protoPackageMap: make(map[string]*descriptor.FileDescriptorProto),
+		protoNameMap:    make(map[string]*descriptor.FileDescriptorProto),
+	}
 }
 
 func (g *Generator) Run(out io.Writer, in io.Reader) error {
@@ -123,14 +84,7 @@ func (g *Generator) run(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorR
 		}
 	}
 
-	content, err := g.generateFile(req.ProtoFile)
-	if err != nil {
-		return &plugin.CodeGeneratorResponse{
-			Error: proto.String(err.Error()),
-		}
-	}
-
-	fmtContent, err := format.Source([]byte(content))
+	name, content, err := g.generateFile(req.FileToGenerate[0], req.ProtoFile)
 	if err != nil {
 		return &plugin.CodeGeneratorResponse{
 			Error: proto.String(err.Error()),
@@ -139,26 +93,52 @@ func (g *Generator) run(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorR
 
 	return &plugin.CodeGeneratorResponse{
 		File: []*plugin.CodeGeneratorResponse_File{{
-			Name:    proto.String(strings.Replace(req.FileToGenerate[0], ".proto", ".tab.go", -1)),
-			Content: proto.String(string(fmtContent)),
+			Name:    proto.String(name),
+			Content: proto.String(string(content)),
 		}},
 	}
 }
 
-func (g *Generator) generateFile(fds []*descriptor.FileDescriptorProto) (string, error) {
-	var f file
-	f.packmap = make(map[string]string)
-	nameToDesc := make(map[string]*descriptor.FileDescriptorProto)
-	for i, fd := range fds {
-		if fd.GetOptions().GetGoPackage() == "" {
-			return "", fmt.Errorf("%s doesn't have go_package", *fd.Name)
-		}
-		nameToDesc[*fd.Name] = fd
-		if i == len(fds)-1 {
-			// Make ourself the empty package
-			f.packmap[*fd.Package] = ""
+func (g *Generator) addDefaultImports() {
+	g.args.Imports = append(g.args.Imports, tplImport{
+		FullName: "database/sql",
+	})
+	g.args.Imports = append(g.args.Imports, tplImport{
+		FullName: "github.com/golang/protobuf/proto",
+	})
+	g.args.Imports = append(g.args.Imports, tplImport{
+		FullName: "pixur.org/pixur/schema/db",
+	})
+}
+
+func (g *Generator) addProtoImports(srcName string) {
+	for _, dep := range g.protoNameMap[srcName].Dependency {
+		fd := g.protoNameMap[dep]
+		var shortName, dummyName string
+		if len(fd.MessageType) > 0 {
+			shortName = filepath.Base(fd.GetOptions().GetGoPackage())
+			dummyName = fmt.Sprintf("%s.%s{}", shortName, *fd.MessageType[0].Name)
 		} else {
-			f.packmap[*fd.Package] = fd.GetOptions().GetGoPackage()
+			shortName = "_"
+		}
+		g.args.Imports = append(g.args.Imports, tplImport{
+			ShortName: shortName,
+			FullName:  filepath.Dir(dep),
+			Dummy:     dummyName,
+		})
+	}
+}
+
+func (g *Generator) generateFile(
+	srcName string, fds []*descriptor.FileDescriptorProto) (string, []byte, error) {
+	for _, fd := range fds {
+		if fd.GetOptions().GetGoPackage() == "" {
+			return "", nil, fmt.Errorf("%s doesn't have go_package", *fd.Name)
+		}
+		g.protoNameMap[*fd.Name] = fd
+		g.protoPackageMap[*fd.Package] = fd
+		if *fd.Name == srcName {
+			g.args.Name = fd.GetOptions().GetGoPackage()
 		}
 
 		for _, msg := range fd.MessageType {
@@ -167,216 +147,76 @@ func (g *Generator) generateFile(fds []*descriptor.FileDescriptorProto) (string,
 			}
 			opts, err := proto.GetExtension(msg.Options, model.E_TabOpts)
 			if err != nil {
-				return "", err
+				return "", nil, err
 			}
-			t, err := buildTable(msg, opts.(*model.TableOptions), f.packmap)
-			if err != nil {
-				return "", err
+			if err := g.addTable(msg, opts.(*model.TableOptions)); err != nil {
+				return "", nil, err
 			}
-
-			f.tables = append(f.tables, t)
 		}
 	}
 
-	// plugin.proto says files are ordered by dependency, and we only allow one source file,
-	// so it must be last.
+	g.addDefaultImports()
+	g.addProtoImports(srcName)
 
-	f.pack = fds[len(fds)-1].GetOptions().GetGoPackage()
-	for _, dep := range fds[len(fds)-1].Dependency {
-		fd, ok := nameToDesc[dep]
-		if !ok {
-			panic("Missing file " + dep)
-		}
-		// hack to exclude model.proto
-		// TODO: check which messages are actually referenced, and import appropriately.
-		if *fd.Package == "pixur.db.model" {
-			continue
-		}
-		imp := fmt.Sprintf(`%s %s`,
-			filepath.Base(fd.GetOptions().GetGoPackage()), strconv.Quote(filepath.Dir(dep)))
-		f.imports = append(f.imports, imp)
+	dstName := strings.Replace(srcName, ".proto", ".tab.go", -1)
+	content, err := g.renderTables()
+	return dstName, content, err
+}
+
+func (g *Generator) renderTables() ([]byte, error) {
+	buf := bytes.Buffer{}
+	funcs := template.FuncMap{
+		"goesc": func(input string) interface{} {
+			return strconv.Quote(input)
+		},
+		"sqlesc": func(input string) interface{} {
+			return db.GetAdapter().Quote(input)
+		},
+		"sqlblobidxesc": func(input string) interface{} {
+			return db.GetAdapter().QuoteCreateBlobIdxCol(input)
+		},
 	}
 
-	return renderTables(f), nil
-}
-
-func renderTables(f file) string {
-	w := &indentWriter{}
-	renderPackage(w, f)
-	w.writeln("")
-	renderImports(w, f)
-	w.writeln("")
-	renderSqlTables(w, f)
-	w.writeln("")
-	renderIndexes(w, f)
-	w.writeln("")
-	renderDefaultTypes(w, f)
-	w.writeln("")
-	renderScanFuncs(w, f)
-	renderFindFuncs(w, f)
-	renderInsertFuncs(w, f)
-	renderDeleteFuncs(w, f)
-
-	return w.String()
-}
-
-func renderDefaultTypes(w *indentWriter, f file) {
-	w.writeln("type Job struct {")
-	w.in()
-	w.writeln("Tx *sql.Tx")
-	w.out()
-	w.writeln("}")
-	w.writeln("")
-
-	w.writeln("func (j Job) Exec(query string, args ...interface{}) (db.Result, error) {")
-	w.in()
-	w.writeln("res, err := j.Tx.Exec(query, args...)")
-	w.writeln("return db.Result(res), err")
-	w.out()
-	w.writeln("}")
-	w.writeln("")
-
-	w.writeln("func (j Job) Query(query string, args ...interface{}) (db.Rows, error) {")
-	w.in()
-	w.writeln("rows, err := j.Tx.Query(query, args...)")
-	w.writeln("return db.Rows(rows), err")
-	w.out()
-	w.writeln("}")
-	w.writeln("")
-}
-
-func renderScanFuncs(w *indentWriter, f file) {
-	for _, t := range f.tables {
-		w.writefln("func (j Job) Scan%s(opts db.Opts, cb func(%s) error) error {", t.name, t.datagotype)
-		w.in()
-		var cols []string
-		for _, col := range t.columns {
-			cols = append(cols, col.name)
-		}
-		w.writefln("cols := %#v", cols)
-		w.writefln("return db.Scan(j, %s, opts, func(data []byte) error {", strconv.Quote(t.name))
-		w.in()
-		w.writefln("var pb %s", t.datagotype)
-		w.writeln("if err := proto.Unmarshal(data, &pb); err != nil {")
-		w.in()
-		w.writeln("return err")
-		w.out()
-		w.writeln("}")
-		w.writeln("return cb(pb)")
-		w.out()
-		w.writeln("}, cols)")
-		w.out()
-		w.writeln("}")
-		w.writeln("")
+	if err := tpl.Funcs(funcs).Execute(&buf, g.args); err != nil {
+		return nil, err
 	}
-}
 
-func renderDeleteFuncs(w *indentWriter, f file) {
-	for _, t := range f.tables {
-		w.writefln("func (j Job) Delete%s(key %sPrimary) error {", t.gotype, t.name)
-		w.in()
-		w.writefln("return db.Delete(j, %s, key)", strconv.Quote(t.name))
-		w.out()
-		w.writeln("}")
-		w.writeln("")
+	data := buf.Bytes()
+	fmtData, err := format.Source(data)
+	if err != nil {
+		err = fmt.Errorf("%v\n%s", err, string(data))
 	}
+	return fmtData, err
 }
 
-func renderInsertFuncs(w *indentWriter, f file) {
-	for _, t := range f.tables {
-		w.writefln("func (j Job) Insert%s(row %s) error {", t.gotype, t.gotype)
-		w.in()
-		var vals []string
-		var cols []string
-		for _, col := range t.columns {
-			cols = append(cols, col.name)
-			vals = append(vals, "row."+colNameToGoName(col.name))
-		}
-		w.writefln("cols := %#v", cols)
-		w.writefln("vals := []interface{}{%s}", strings.Join(vals, ", "))
-		w.writefln("return db.Insert(j, %s, cols, vals)", strconv.Quote(t.name))
-		w.out()
-		w.writeln("}")
-		w.writeln("")
-	}
+type tplArgs struct {
+	Name    string
+	Imports []tplImport
+	Tables  []tplTable
 }
 
-func renderFindFuncs(w *indentWriter, f file) {
-	for _, t := range f.tables {
-		w.writefln("func (j Job) Find%s(opts db.Opts) (rows []%s, err error) {", t.name, t.datagotype)
-		w.in()
-		w.writefln("err = j.Scan%s(opts, func(data %s) error {", t.name, t.datagotype)
-		w.in()
-		w.writeln("rows = append(rows, data)")
-		w.writeln("return nil")
-		w.out()
-		w.writeln("})")
-		w.writeln("return")
-		w.out()
-		w.writeln("}")
-		w.writeln("")
-	}
+type tplImport struct {
+	ShortName, FullName, Dummy string
 }
 
-func renderPackage(w *indentWriter, f file) {
-	w.writeln("package " + f.pack)
+type tplTable struct {
+	Name, GoType, GoDataType string
+	Columns                  []tplColumn
+	Indexes                  []tplIndex
 }
 
-func renderIndexes(w *indentWriter, f file) {
-	for _, t := range f.tables {
-		for _, idx := range t.indexes {
-			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
-				w.writefln("var _ db.UniqueIdx = %s{}", idx.name)
-			} else {
-				w.writefln("var _ db.Idx = %s{}", idx.name)
-			}
-			w.writefln("type %s struct {", idx.name)
-			w.in()
-			for _, c := range idx.columns {
-				w.writefln("%s *%s", colNameToGoName(c.name), c.coltype.gotype)
-			}
-			w.out()
-			w.writeln("}")
-			w.writeln("")
-			if idx.keyType == uniqueKey || idx.keyType == primaryKey {
-				w.writefln("func (_ %s) Unique() {}", idx.name)
-				w.writeln("")
-			}
-			w.writefln("func (idx %s) Cols() []string {", idx.name)
-			var columnNames []string
-			for _, c := range idx.columns {
-				columnNames = append(columnNames, c.name)
-			}
-			w.in()
-			w.writefln(`return %#v`, columnNames)
-			w.out()
-			w.writeln("}")
-			w.writeln("")
-			w.writefln("func (idx %s) Vals() (vals []interface{}) {", idx.name)
-			w.in()
-			w.writeln("var done bool")
-			for _, c := range idx.columns {
-				w.writefln("if idx.%s != nil {", colNameToGoName(c.name))
-				w.in()
-				w.writeln("if done {")
-				w.in()
-				w.writefln(`panic(%s)`, strconv.Quote("Extra value "+colNameToGoName(c.name)))
-				w.out()
-				w.writeln("}")
-				w.writefln("vals = append(vals, *idx.%s)", colNameToGoName(c.name))
-				w.out()
-				w.writeln("} else {")
-				w.in()
-				w.writeln("done = true")
-				w.out()
-				w.writeln("}")
-			}
-			w.writeln("return")
-			w.out()
-			w.writeln("}")
-			w.writeln("")
-		}
-	}
+type tplColumn struct {
+	GoName, SqlName, GoType, SqlType string
+}
+
+func (t tplColumn) IsBlobIdxCol() bool {
+	return t.SqlType == db.GetAdapter().BlobType
+}
+
+type tplIndex struct {
+	Name    string
+	KeyType keyType
+	Columns []tplColumn
 }
 
 func colNameToGoName(name string) string {
@@ -387,110 +227,21 @@ func colNameToGoName(name string) string {
 	return strings.Join(parts, "")
 }
 
-func renderImports(w *indentWriter, f file) {
-	sort.Sort(deps(f.imports))
-	w.writeln("import (")
-	w.in()
-	w.writeln(`"database/sql"`)
-	w.out()
-	w.writeln("")
-	w.in()
-	w.writeln(`"github.com/golang/protobuf/proto"`)
-	w.out()
-	w.writeln("")
-	w.in()
-	w.writeln(`"pixur.org/pixur/schema/db"`)
-	w.out()
-	w.writeln("")
-	w.in()
-	for _, imp := range f.imports {
-		w.writeln(imp)
+func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableOptions) error {
+	t := tplTable{
+		Name:   opts.Name,
+		GoType: *msg.Name,
 	}
-	w.out()
-	w.writeln(")")
-}
-
-func renderSqlTables(w *indentWriter, f file) {
-	w.writeln("var SqlTables = []string{")
-	w.in()
-	for _, t := range f.tables {
-		tableName := db.GetAdapter().Quote(t.name)
-		sqlLine := fmt.Sprintf("CREATE TABLE %s (", tableName)
-		w.writeln(strconv.Quote(sqlLine) + "+")
-		w.in()
-		for _, col := range t.columns {
-			colName := db.GetAdapter().Quote(col.name)
-			sqlLine := fmt.Sprintf("%s %s NOT NULL, ", colName, col.coltype.sqltype)
-			w.writeln(strconv.Quote(sqlLine) + "+")
-		}
-		var inlineIndexes []index
-		var indexes []index
-		for _, idx := range t.indexes {
-			if idx.keyType == indexKey {
-				indexes = append(indexes, idx)
-			} else {
-				inlineIndexes = append(inlineIndexes, idx)
-			}
-		}
-
-		for i, idx := range inlineIndexes {
-			switch idx.keyType {
-			case indexKey:
-				continue
-			}
-			var cols []string
-			for _, col := range idx.columns {
-				if col.coltype.sqltype == db.GetAdapter().BlobType {
-					cols = append(cols, db.GetAdapter().QuoteCreateBlobIdxCol(col.name))
-				} else {
-					cols = append(cols, db.GetAdapter().Quote(col.name))
-				}
-			}
-			last := ", "
-			if i == len(inlineIndexes)-1 {
-				last = ""
-			}
-			colNames := strings.Join(cols, ", ")
-			sqlLine := fmt.Sprintf("%s(%s)%s", idx.keyType, colNames, last)
-			w.writeln(strconv.Quote(sqlLine) + "+")
-		}
-		w.writeln(strconv.Quote(");") + ",")
-		w.out()
-		for _, idx := range indexes {
-			var cols []string
-			for _, col := range idx.columns {
-				if col.coltype.sqltype == db.GetAdapter().BlobType {
-					cols = append(cols, db.GetAdapter().QuoteCreateBlobIdxCol(col.name))
-				} else {
-					cols = append(cols, db.GetAdapter().Quote(col.name))
-				}
-			}
-			indexName := db.GetAdapter().Quote(idx.name)
-			colNames := strings.Join(cols, ", ")
-			sqlLine := fmt.Sprintf("CREATE INDEX %s ON %s (%s);", indexName, tableName, colNames)
-			w.writeln(strconv.Quote(sqlLine) + ",")
-		}
+	if t.Name == "" {
+		t.Name = *msg.Name
 	}
 
-	w.out()
-	w.writeln("}")
-}
-
-func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
-	packmap map[string]string) (table, error) {
-	t := table{}
-	if opts.Name != "" {
-		t.name = opts.Name
-	} else {
-		t.name = *msg.Name
-	}
-	t.gotype = *msg.Name
-	if strings.ContainsAny(t.name, `\"`) {
-		return t, fmt.Errorf("Invalid characters in table name %s", t.name)
-	}
-	fieldNames := make(map[string]*column, len(msg.Field))
+	colNames := make(map[string]tplColumn)
 	for _, f := range msg.Field {
-		var coltyp coltype
+		col := tplColumn{
+			SqlName: *f.Name,
+			GoName:  colNameToGoName(*f.Name),
+		}
 		switch *f.Type {
 		case descriptor.FieldDescriptorProto_TYPE_FIXED32:
 			fallthrough
@@ -499,15 +250,11 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 		case descriptor.FieldDescriptorProto_TYPE_SINT32:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_INT32:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().IntType,
-				gotype:  "int32",
-			}
+			col.GoType = "int32"
+			col.SqlType = db.GetAdapter().IntType
 		case descriptor.FieldDescriptorProto_TYPE_ENUM:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().IntType,
-				gotype:  typeNameToGoName(*f.TypeName, packmap),
-			}
+			col.GoType = g.typeNameToGoName(*f.TypeName)
+			col.SqlType = db.GetAdapter().IntType
 		case descriptor.FieldDescriptorProto_TYPE_FIXED64:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
@@ -515,105 +262,89 @@ func buildTable(msg *descriptor.DescriptorProto, opts *model.TableOptions,
 		case descriptor.FieldDescriptorProto_TYPE_SINT64:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_INT64:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().BigIntType,
-				gotype:  "int64",
-			}
+			col.GoType = "int64"
+			col.SqlType = db.GetAdapter().BigIntType
 		case descriptor.FieldDescriptorProto_TYPE_BOOL:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().BoolType,
-				gotype:  "bool",
-			}
+			col.GoType = "bool"
+			col.SqlType = db.GetAdapter().BoolType
 		case descriptor.FieldDescriptorProto_TYPE_STRING:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().BlobType,
-				gotype:  "string",
-			}
+			col.GoType = "string"
+			col.SqlType = db.GetAdapter().BlobType
 		case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().BlobType,
-				gotype:  typeNameToGoName(*f.TypeName, packmap),
-			}
+			col.GoType = g.typeNameToGoName(*f.TypeName)
+			col.SqlType = db.GetAdapter().BlobType
 		case descriptor.FieldDescriptorProto_TYPE_BYTES:
-			coltyp = coltype{
-				sqltype: db.GetAdapter().BlobType,
-				gotype:  "[]byte",
-			}
+			col.GoType = "[]byte"
+			col.SqlType = db.GetAdapter().BlobType
 		default:
-			return t, fmt.Errorf("No type for %s", f.Type)
+			return fmt.Errorf("No type for %s", f.Type)
 		}
-		col := &column{
-			name:    *f.Name,
-			coltype: coltyp,
-			field:   f,
-		}
-		fieldNames[*f.Name] = col
-		t.columns = append(t.columns, col)
+		colNames[*f.Name] = col
+		t.Columns = append(t.Columns, col)
 		if *f.Name == "data" {
-			t.datagotype = typeNameToGoName(*f.TypeName, packmap)
+			t.GoDataType = g.typeNameToGoName(*f.TypeName)
 		}
 	}
-	if fieldNames["data"] == nil {
-		return t, fmt.Errorf("Missing data col on table %s", t.name)
+	if _, present := colNames["data"]; !present {
+		return fmt.Errorf("Missing data col on table %s", t.Name)
 	}
 
 	for _, k := range opts.Key {
 		if len(k.Col) == 0 {
-			return t, fmt.Errorf("No cols in key on table %s", t.name)
+			return fmt.Errorf("No cols in key on table %s", t.Name)
 		}
-		var cols []*column
+		idx := tplIndex{
+			Name: k.Name,
+		}
 		for _, c := range k.Col {
-			if fieldNames[c] == nil {
-				return t, fmt.Errorf("Unknown col on table %s", t.name)
+			if _, present := colNames[c]; !present {
+				return fmt.Errorf("Unknown col on table %s", t.Name)
 			}
-			cols = append(cols, fieldNames[c])
+			idx.Columns = append(idx.Columns, colNames[c])
 		}
-		name := k.Name
-		var typ keyType
+
 		switch k.KeyType {
 		case model.KeyType_PRIMARY:
-			typ = primaryKey
-			if k.Name == "" {
-				name = "Primary"
+			idx.KeyType = primaryKey
+			if idx.Name == "" {
+				idx.Name = "Primary"
 			}
 		case model.KeyType_UNIQUE:
-			typ = uniqueKey
-			if k.Name == "" {
-				return t, fmt.Errorf("Missing name for key on table %s", t.name)
+			idx.KeyType = uniqueKey
+			if idx.Name == "" {
+				return fmt.Errorf("Missing name for key on table %s", t.Name)
 			}
 		case model.KeyType_INDEX:
-			typ = indexKey
-			if k.Name == "" {
-				return t, fmt.Errorf("Missing name for key on table %s", t.name)
+			idx.KeyType = indexKey
+			if idx.Name == "" {
+				return fmt.Errorf("Missing name for key on table %s", t.Name)
 			}
 		default:
-			return t, fmt.Errorf("Unknown key type on table %s", t.name)
+			return fmt.Errorf("Unknown key type on table %s", t.Name)
 		}
-		t.indexes = append(t.indexes, index{
-			name:    t.name + name,
-			keyType: typ,
-			columns: cols,
-		})
+		idx.Name = t.Name + idx.Name
+		t.Indexes = append(t.Indexes, idx)
 	}
+	g.args.Tables = append(g.args.Tables, t)
 
-	return t, nil
+	return nil
 }
 
-func typeNameToGoName(tn string, packmap map[string]string) string {
+func (g *Generator) typeNameToGoName(fqProtoName string) string {
 	var best string
-	for k := range packmap {
-		if strings.HasPrefix(tn, "."+k+".") {
-			if len(k) > len(best) {
-				best = k
+	for pack := range g.protoPackageMap {
+		if strings.HasPrefix(fqProtoName, "."+pack+".") {
+			if len(pack) > len(best) {
+				best = pack
 			}
 		}
 	}
 	if best != "" {
-		msg := strings.TrimPrefix(tn, "."+best+".")
-		if gopackage := packmap[best]; gopackage != "" {
-			return gopackage + "." + strings.Join(strings.Split(msg, "."), "_")
+		msg := strings.TrimPrefix(fqProtoName, "."+best+".")
+		if pack := g.protoPackageMap[best].GetOptions().GetGoPackage(); pack != g.args.Name {
+			return pack + "." + strings.Join(strings.Split(msg, "."), "_")
 		}
 		return strings.Join(strings.Split(msg, "."), "_")
 	}
-	panic("Could not find type!" + tn)
+	panic("Could not find type!" + fqProtoName)
 }

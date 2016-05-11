@@ -8,8 +8,7 @@ import (
 )
 
 func main() {
-	gen := new(generator.Generator)
-	if err := gen.Run(os.Stdout, os.Stdin); err != nil {
+	if err := generator.New().Run(os.Stdout, os.Stdin); err != nil {
 		log.Fatalln(err)
 	}
 }
