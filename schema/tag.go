@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	TagTableName string = "`tags`"
+	TagTableName string = "`Tags`"
 
 	TagColId   string = "`id`"
 	TagColData string = "`data`"

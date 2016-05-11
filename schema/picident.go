@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	PicIdentTableName string = "`picidents`"
+	PicIdentTableName string = "`PicIdents`"
 
 	PicIdentColPicId string = "`pic_id`"
 	PicIdentColType  string = "`type`"

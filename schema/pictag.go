@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	PicTagTableName string = "`pictags`"
+	PicTagTableName string = "`PicTags`"
 
 	PicTagColPicId string = "`pic_id`"
 	PicTagColTagId string = "`tag_id`"

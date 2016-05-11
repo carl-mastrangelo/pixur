@@ -129,6 +129,12 @@ func (g *Generator) addProtoImports(srcName string) {
 	}
 }
 
+func (g *Generator) addSequenceTable() {
+	g.args.SequenceTableName = db.SequenceTableName
+	g.args.SequenceColName = db.SequenceColName
+	g.args.SequenceColSqlType = db.GetAdapter().BigIntType
+}
+
 func (g *Generator) generateFile(
 	srcName string, fds []*descriptor.FileDescriptorProto) (string, []byte, error) {
 	for _, fd := range fds {
@@ -157,6 +163,7 @@ func (g *Generator) generateFile(
 
 	g.addDefaultImports()
 	g.addProtoImports(srcName)
+	g.addSequenceTable()
 
 	dstName := strings.Replace(srcName, ".proto", ".tab.go", -1)
 	content, err := g.renderTables()
@@ -190,9 +197,12 @@ func (g *Generator) renderTables() ([]byte, error) {
 }
 
 type tplArgs struct {
-	Name    string
-	Imports []tplImport
-	Tables  []tplTable
+	Name               string
+	Imports            []tplImport
+	Tables             []tplTable
+	SequenceTableName  string
+	SequenceColName    string
+	SequenceColSqlType string
 }
 
 type tplImport struct {

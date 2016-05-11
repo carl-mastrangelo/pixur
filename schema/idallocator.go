@@ -12,9 +12,9 @@ var (
 )
 
 const (
-	SeqTableName string = "`sequences`"
+	SeqTableName string = "`_SequenceTable`"
 
-	SeqColSeq string = "`seq`"
+	SeqColSeq string = "`the_sequence`"
 )
 
 type IDAllocator struct {

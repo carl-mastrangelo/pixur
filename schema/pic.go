@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	PicTableName string = "`pics`"
+	PicTableName string = "`Pics`"
 
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
 	PicColCreatedTime string = "`created_time`"
-	PicColHidden      string = "`hidden`"
+	PicColHidden      string = "`is_hidden`"
 )
 
 var (

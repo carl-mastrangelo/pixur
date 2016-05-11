@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/tables"
 	ptest "pixur.org/pixur/testing"
 )
 
@@ -39,8 +40,15 @@ func (c *TestContainer) DB() *sql.DB {
 		if err != nil {
 			c.T.Fatal(err)
 		}
-		if err := schema.CreateTables(db); err != nil {
-			c.T.Fatal(err)
+		for _, t := range tables.SqlTables {
+			if _, err := db.Exec(t); err != nil {
+				c.T.Fatal(err)
+			}
+		}
+		for _, t := range tables.SqlInitTables {
+			if _, err := db.Exec(t); err != nil {
+				c.T.Fatal(err)
+			}
 		}
 		c.db = db
 	}

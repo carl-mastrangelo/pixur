@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	UserTableName string = "`users`"
+	UserTableName string = "`Users`"
 
-	UserColId    string = "`user_id`"
-	UserColEmail string = "`email`"
+	UserColId    string = "`id`"
+	UserColEmail string = "`ident`"
 	UserColData  string = "`data`"
 )
 
