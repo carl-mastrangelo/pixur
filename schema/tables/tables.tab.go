@@ -112,9 +112,16 @@ func NewJob(DB *sql.DB) (Job, error) {
 	}, nil
 }
 
+func TestJob(beginner db.QuerierExecutorBeginner, committer db.QuerierExecutorCommitter) Job {
+	return Job{
+		db: beginner,
+		tx: committer,
+	}
+}
+
 type Job struct {
-	db dbWrapper
-	tx txWrapper
+	db db.QuerierExecutorBeginner
+	tx db.QuerierExecutorCommitter
 }
 
 func (j Job) Commit() error {
