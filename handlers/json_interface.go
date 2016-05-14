@@ -19,21 +19,21 @@ type JsonPic struct {
 	ViewCount            int64   `json:"view_count,omitempty"`
 }
 
-func interfacePic(p *schema.Pic) *JsonPic {
+func interfacePic(p schema.Pic) JsonPic {
 	jp := &JsonPic{}
 	jp.Fill(p)
-	return jp
+	return *jp
 }
 
-func interfacePics(ps []*schema.Pic) []*JsonPic {
-	jps := make([]*JsonPic, 0, len(ps))
+func interfacePics(ps []schema.Pic) []JsonPic {
+	jps := make([]JsonPic, 0, len(ps))
 	for _, p := range ps {
 		jps = append(jps, interfacePic(p))
 	}
 	return jps
 }
 
-func (jp *JsonPic) Fill(p *schema.Pic) {
+func (jp *JsonPic) Fill(p schema.Pic) {
 	*jp = JsonPic{
 		Id:                   p.GetVarPicID(),
 		Width:                p.Width,

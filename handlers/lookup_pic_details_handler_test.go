@@ -56,9 +56,9 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	jp := interfacePic(lookupPicTask.Pic)
-	if *results.Pic != *jp {
-		t.Fatal("Not equal", *results.Pic, *jp)
+	jp := interfacePic(*lookupPicTask.Pic)
+	if results.Pic != jp {
+		t.Fatal("Not equal", results.Pic, jp)
 	}
 
 	jpts := interfacePicTags(lookupPicTask.PicTags)

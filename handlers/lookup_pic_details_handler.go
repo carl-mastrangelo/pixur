@@ -9,7 +9,7 @@ import (
 )
 
 type lookupPicResults struct {
-	Pic     *JsonPic      `json:"pic"`
+	Pic     JsonPic       `json:"pic"`
 	PicTags []*JsonPicTag `json:"pic_tags,omitempty"`
 }
 
@@ -50,7 +50,8 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 
 	returnJSON(w, r, lookupPicResults{
-		Pic:     interfacePic(task.Pic),
+		// TODO: just pass the struct around
+		Pic:     interfacePic(*task.Pic),
 		PicTags: interfacePicTags(task.PicTags),
 	})
 }
