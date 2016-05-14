@@ -254,7 +254,7 @@ func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
 			return err
 		}
 		return cb(pb)
-	}, colsPics)
+	})
 }
 
 func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
@@ -341,7 +341,7 @@ func (j Job) ScanTags(opts db.Opts, cb func(schema.Tag) error) error {
 			return err
 		}
 		return cb(pb)
-	}, colsTags)
+	})
 }
 
 func (j Job) FindTags(opts db.Opts) (rows []schema.Tag, err error) {
@@ -410,7 +410,7 @@ func (j Job) ScanPicTags(opts db.Opts, cb func(schema.PicTag) error) error {
 			return err
 		}
 		return cb(pb)
-	}, colsPicTags)
+	})
 }
 
 func (j Job) FindPicTags(opts db.Opts) (rows []schema.PicTag, err error) {
@@ -528,7 +528,7 @@ func (j Job) ScanPicIdents(opts db.Opts, cb func(schema.PicIdent) error) error {
 			return err
 		}
 		return cb(pb)
-	}, colsPicIdents)
+	})
 }
 
 func (j Job) FindPicIdents(opts db.Opts) (rows []schema.PicIdent, err error) {
@@ -615,7 +615,7 @@ func (j Job) ScanUsers(opts db.Opts, cb func(schema.User) error) error {
 			return err
 		}
 		return cb(pb)
-	}, colsUsers)
+	})
 }
 
 func (j Job) FindUsers(opts db.Opts) (rows []schema.User, err error) {

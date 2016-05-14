@@ -93,7 +93,7 @@ func TestScanQueryFails(t *testing.T) {
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		return nil
-	}, []string{"col"})
+	})
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -107,7 +107,7 @@ func TestScanQueryEmpty(t *testing.T) {
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		panic("don't call me")
-	}, []string{"col"})
+	})
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -124,7 +124,7 @@ func TestScanQueryCloseFails(t *testing.T) {
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		panic("don't call me")
-	}, []string{"col"})
+	})
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -142,7 +142,7 @@ func TestScanQueryOneRow(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	}, []string{"col"})
+	})
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -153,7 +153,7 @@ func TestScanQueryOneRow(t *testing.T) {
 		t.Fail()
 	}
 
-	if exec.query != `SELECT "data" FROM "foo" ORDER BY "col" ASC;` {
+	if exec.query != `SELECT "data" FROM "foo";` {
 		t.Log("Wrong query", exec.query)
 		t.Fail()
 	}
@@ -173,7 +173,7 @@ func TestScanQueryMultiRow(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	}, []string{"col"})
+	})
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -198,7 +198,7 @@ func TestScanScanFails(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	}, []string{"col"})
+	})
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -221,7 +221,7 @@ func TestScanCallbackFails(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return expected
-	}, []string{"col"})
+	})
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -245,7 +245,7 @@ func TestScanStopEarly(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	}, []string{"col"})
+	})
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -258,8 +258,8 @@ func TestScanStopEarly(t *testing.T) {
 }
 
 func TestBuildScan(t *testing.T) {
-	query, args := buildScan("foo", Opts{}, []string{"col"})
-	if query != `SELECT "data" FROM "foo" ORDER BY "col" ASC FOR SHARE;` {
+	query, args := buildScan("foo", Opts{})
+	if query != `SELECT "data" FROM "foo" FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
@@ -275,8 +275,8 @@ func TestBuildScanStart(t *testing.T) {
 			cols: []string{"bar"},
 			vals: []interface{}{1},
 		},
-	}, []string{"col"})
-	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "col" ASC FOR SHARE;` {
+	})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
@@ -292,8 +292,8 @@ func TestBuildScanStop(t *testing.T) {
 			cols: []string{"bar"},
 			vals: []interface{}{1},
 		},
-	}, []string{"col"})
-	if query != `SELECT "data" FROM "foo" WHERE (("bar" < ?)) ORDER BY "col" ASC FOR SHARE;` {
+	})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" < ?)) ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
@@ -313,8 +313,8 @@ func TestBuildScanStartStop(t *testing.T) {
 			cols: []string{"baz"},
 			vals: []interface{}{2},
 		},
-	}, []string{"col"})
-	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?)) ORDER BY "col" ASC FOR SHARE;` {
+	})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?)) ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
@@ -326,29 +326,40 @@ func TestBuildScanStartStop(t *testing.T) {
 
 func TestBuildScanLimitReverseLock(t *testing.T) {
 	query, args := buildScan("foo", Opts{
+		Start: &testIdx{
+			cols: []string{"bar"},
+			vals: []interface{}{1},
+		},
 		Limit:   1,
 		Reverse: true,
 		Lock:    LockNone,
-	}, []string{"col"})
-	if query != `SELECT "data" FROM "foo" ORDER BY "col" DESC LIMIT 1;` {
+	})
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" DESC LIMIT 1;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
-	if len(args) != 0 {
+	if len(args) != 1 || args[0] != 1 {
 		t.Log("Wrong args", args)
 		t.Fail()
 	}
 }
 
-func TestBuildOrderStmt(t *testing.T) {
-	stmt := buildOrderStmt([]string{"bar", "baz"}, false)
+func TestBuildOrderStmtStart(t *testing.T) {
+	stmt := buildOrderStmt([]string{"bar", "baz"}, nil, false)
+	if stmt != `"bar" ASC, "baz" ASC` {
+		t.Log("Statement didn't match")
+	}
+}
+
+func TestBuildOrderStmtStop(t *testing.T) {
+	stmt := buildOrderStmt(nil, []string{"bar", "baz"}, false)
 	if stmt != `"bar" ASC, "baz" ASC` {
 		t.Log("Statement didn't match")
 	}
 }
 
 func TestBuildOrderStmtReverse(t *testing.T) {
-	stmt := buildOrderStmt([]string{"foo"}, true)
+	stmt := buildOrderStmt([]string{"foo"}, nil, true)
 	if stmt != `"foo" ASC` {
 		t.Log("Statement didn't match")
 	}

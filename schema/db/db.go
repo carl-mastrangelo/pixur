@@ -130,8 +130,8 @@ type Rows interface {
 	Scan(dest ...interface{}) error
 }
 
-func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols []string) (errCap error) {
-	query, queryArgs := buildScan(name, opts, keyCols)
+func Scan(q Querier, name string, opts Opts, cb func(data []byte) error) (errCap error) {
+	query, queryArgs := buildScan(name, opts)
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, keyCols
 	return nil
 }
 
-func buildScan(name string, opts Opts, keyCols []string) (string, []interface{}) {
+func buildScan(name string, opts Opts) (string, []interface{}) {
 	var buf bytes.Buffer
 	var args []interface{}
 	fmt.Fprintf(&buf, `SELECT %s FROM %s`, quoteIdentifier("data"), quoteIdentifier(name))
@@ -188,10 +188,10 @@ func buildScan(name string, opts Opts, keyCols []string) (string, []interface{})
 		args = append(args, stopArgs...)
 		buf.WriteString(stopStmt)
 	}
-	// Always order by the unique Key.
-	buf.WriteString(" ORDER BY ")
-	buf.WriteString(buildOrderStmt(keyCols, opts.Reverse))
-
+	if len(startVals) != 0 || len(stopVals) != 0 {
+		buf.WriteString(" ORDER BY ")
+		buf.WriteString(buildOrderStmt(startCols, stopCols, opts.Reverse))
+	}
 	if opts.Limit > 0 {
 		fmt.Fprintf(&buf, " LIMIT %d", opts.Limit)
 	}
@@ -209,7 +209,7 @@ func (cols Columns) String() string {
 	return strings.Join(parts, ", ")
 }
 
-func buildOrderStmt(cols []string, reverse bool) string {
+func buildOrderStmt(startCols, stopCols []string, reverse bool) string {
 	var order string
 	if !reverse {
 		order = " ASC"
@@ -218,6 +218,14 @@ func buildOrderStmt(cols []string, reverse bool) string {
 	}
 
 	var colParts []string
+	var cols []string
+	if len(startCols) > 0 {
+		cols = startCols
+	} else if len(stopCols) > 0 {
+		cols = stopCols
+	} else {
+		panic("No order on scan.")
+	}
 	for _, col := range cols {
 		colParts = append(colParts, quoteIdentifier(col)+order)
 	}

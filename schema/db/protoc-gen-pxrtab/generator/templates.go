@@ -171,7 +171,7 @@ func (j Job) Scan{{.Name}}(opts db.Opts, cb func({{.GoDataType}}) error) error {
 			return err
 		}
 		return cb(pb)
-	}, cols{{.Name}})
+	})
 }
 `))
 	_ = template.Must(tpl.New("cols").Parse(`
