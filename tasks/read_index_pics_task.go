@@ -53,8 +53,9 @@ func lookupStartPic(j tab.Job, id int64, asc bool) (*schema.Pic, error) {
 	if asc {
 		opts.Start = idx
 	} else {
-		id += 1 // Stop is exclusive.
+		id += 1 // Stop is exclusive, we want inclusive.
 		opts.Stop = idx
+		opts.Reverse = true
 	}
 	startPics, err := j.FindPics(opts)
 	if err != nil {

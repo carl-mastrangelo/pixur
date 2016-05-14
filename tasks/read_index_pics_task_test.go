@@ -5,9 +5,89 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	tab "pixur.org/pixur/schema/tables"
 
 	"github.com/golang/protobuf/proto"
 )
+
+func TestReadIndex_LookupStartPicAsc(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p1 := c.CreatePic()
+	p2 := c.CreatePic()
+	var smaller *TestPic
+	if p1.Pic.PicId < p2.Pic.PicId {
+		smaller = p1
+	} else {
+		smaller = p2
+	}
+
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Rollback()
+
+	sp, err := lookupStartPic(j, smaller.Pic.PicId-1, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !proto.Equal(sp, smaller.Pic) {
+		t.Fatalf("got %v: want %v", sp, smaller.Pic)
+	}
+}
+
+func TestReadIndex_LookupStartPicDesc(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p1 := c.CreatePic()
+	p2 := c.CreatePic()
+	var larger *TestPic
+	if p1.Pic.PicId > p2.Pic.PicId {
+		larger = p1
+	} else {
+		larger = p2
+	}
+
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Rollback()
+
+	sp, err := lookupStartPic(j, larger.Pic.PicId+1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !proto.Equal(sp, larger.Pic) {
+		t.Fatalf("got %v: want %v", sp, larger.Pic)
+	}
+}
+
+func TestReadIndex_LookupStartPicNone(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Rollback()
+
+	sp, err := lookupStartPic(j, p.Pic.PicId-1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sp != nil {
+		t.Fatalf("got %v: want nil", sp)
+	}
+}
 
 func TestReadIndexTaskWorkflow(t *testing.T) {
 	c := Container(t)
