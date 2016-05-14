@@ -44,8 +44,15 @@ func (p *Pic) GetModifiedTime() time.Time {
 	return FromTs(p.ModifiedTs)
 }
 
+func (p *Pic) NonHiddenIndexOrder() int64 {
+	return p.GetCreatedTime().UnixNano()
+}
+
 func (p *Pic) IndexOrder() int64 {
-	return toMillis(p.GetCreatedTime())
+	if p.isHidden() {
+		return -1
+	}
+	return p.NonHiddenIndexOrder()
 }
 
 func (p *Pic) GetVarPicID() string {

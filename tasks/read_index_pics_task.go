@@ -47,6 +47,8 @@ func lookupStartPic(j tab.Job, id int64, asc bool) (*schema.Pic, error) {
 	opts := db.Opts{
 		Limit: 1,
 	}
+	// TODO: This should actually scan for non hidden pics.  If a hidden pic
+	// id is used here, the index order will be negative.
 	idx := tab.PicsPrimary{
 		Id: &id,
 	}
@@ -91,9 +93,9 @@ func (t *ReadIndexPicsTask) Run() (errCap error) {
 			return nil
 		}
 		if t.Ascending {
-			indexID = startPic.IndexOrder()
+			indexID = startPic.NonHiddenIndexOrder()
 		} else {
-			indexID = startPic.IndexOrder() + 1
+			indexID = startPic.NonHiddenIndexOrder() + 1
 		}
 	} else {
 		if t.Ascending {
@@ -120,6 +122,10 @@ func (t *ReadIndexPicsTask) Run() (errCap error) {
 	} else {
 		opts.Stop = tab.PicsIndexOrder{
 			IndexOrder: &indexID,
+		}
+		min := int64(defaultAscIndexID)
+		opts.Start = tab.PicsIndexOrder{
+			IndexOrder: &min,
 		}
 		opts.Reverse = true
 	}
