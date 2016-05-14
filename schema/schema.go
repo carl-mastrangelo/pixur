@@ -20,10 +20,6 @@ type preparer interface {
 
 type tableName string
 
-func toMillis(t time.Time) int64 {
-	return t.UnixNano() / int64(time.Millisecond)
-}
-
 func FromTs(ft *timestamp.Timestamp) time.Time {
 	if ft == nil {
 		return time.Time{}.UTC()
