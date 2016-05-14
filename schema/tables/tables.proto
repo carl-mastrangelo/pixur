@@ -15,9 +15,9 @@ message PicRow {
       col: "id"
     }
     key: {
-      name: "BumpOrder"
+      name: "IndexOrder"
       key_type: INDEX
-      col: "created_time"
+      col: "index_order"
     }
     key: {
       name: "Hidden"
@@ -28,7 +28,7 @@ message PicRow {
 
   int64 id = 1;
 
-  int64 created_time = 2;
+  int64 index_order = 2;
 
   bool is_hidden = 3;
 

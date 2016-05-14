@@ -24,7 +24,7 @@ var SqlTables = []string{
 
 		"`id` bigint(20) NOT NULL, " +
 
-		"`created_time` bigint(20) NOT NULL, " +
+		"`index_order` bigint(20) NOT NULL, " +
 
 		"`is_hidden` bool NOT NULL, " +
 
@@ -34,7 +34,7 @@ var SqlTables = []string{
 
 		");",
 
-	"CREATE INDEX `PicsBumpOrder` ON `Pics` (`created_time`);",
+	"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
 
 	"CREATE INDEX `PicsHidden` ON `Pics` (`is_hidden`);",
 
@@ -191,26 +191,26 @@ func (idx PicsPrimary) Vals() (vals []interface{}) {
 	return
 }
 
-type PicsBumpOrder struct {
-	CreatedTime *int64
+type PicsIndexOrder struct {
+	IndexOrder *int64
 }
 
-var _ db.Idx = PicsBumpOrder{}
+var _ db.Idx = PicsIndexOrder{}
 
-var colsPicsBumpOrder = []string{"created_time"}
+var colsPicsIndexOrder = []string{"index_order"}
 
-func (idx PicsBumpOrder) Cols() []string {
-	return colsPicsBumpOrder
+func (idx PicsIndexOrder) Cols() []string {
+	return colsPicsIndexOrder
 }
 
-func (idx PicsBumpOrder) Vals() (vals []interface{}) {
+func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 	var done bool
 
-	if idx.CreatedTime != nil {
+	if idx.IndexOrder != nil {
 		if done {
-			panic("Extra value CreatedTime")
+			panic("Extra value IndexOrder")
 		}
-		vals = append(vals, *idx.CreatedTime)
+		vals = append(vals, *idx.IndexOrder)
 	} else {
 		done = true
 	}
@@ -245,7 +245,7 @@ func (idx PicsHidden) Vals() (vals []interface{}) {
 	return
 }
 
-var colsPics = []string{"id", "created_time", "is_hidden", "data"}
+var colsPics = []string{"id", "index_order", "is_hidden", "data"}
 
 func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
 	return db.Scan(j.tx, "Pics", opts, func(data []byte) error {
@@ -266,7 +266,7 @@ func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
 }
 
 func (j Job) InsertPics(row PicRow) error {
-	vals := []interface{}{row.Id, row.CreatedTime, row.IsHidden, row.Data}
+	vals := []interface{}{row.Id, row.IndexOrder, row.IsHidden, row.Data}
 	return db.Insert(j.tx, "Pics", colsPics, vals)
 }
 

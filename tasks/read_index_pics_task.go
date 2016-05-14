@@ -5,11 +5,14 @@ import (
 	"math"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/status"
 )
 
 const (
-	defaultDescStartID = math.MaxInt64
-	defaultAscStartID  = math.MinInt64
+	defaultDescIndexID = math.MaxInt64
+	defaultAscIndexID  = 0
 	DefaultMaxPics     = 30
 )
 
@@ -21,15 +24,15 @@ type ReadIndexPicsTask struct {
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
 	StartID int64
 	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
-	// may be less than the number requested.  If unset, the de
-	MaxPics int64
+	// may be less than the number requested.  If unset, the default is used.
+	MaxPics int
 	// Ascending determines the order of pics returned.
 	Ascending bool
 
 	// State
 
 	// Results
-	Pics []*schema.Pic
+	Pics []schema.Pic
 }
 
 func (t *ReadIndexPicsTask) ResetForRetry() {
@@ -40,47 +43,91 @@ func (t *ReadIndexPicsTask) CleanUp() {
 	// no op
 }
 
-func (t *ReadIndexPicsTask) Run() error {
-	var startID int64
-	if t.StartID != 0 {
-		startID = t.StartID
-	} else if t.Ascending {
-		startID = defaultAscStartID
+func lookupStartPic(j tab.Job, id int64, asc bool) (*schema.Pic, error) {
+	opts := db.Opts{
+		Limit: 1,
+	}
+	idx := tab.PicsPrimary{
+		Id: &id,
+	}
+	if asc {
+		opts.Start = idx
 	} else {
-		startID = defaultDescStartID
+		id += 1 // Stop is exclusive.
+		opts.Stop = idx
+	}
+	startPics, err := j.FindPics(opts)
+	if err != nil {
+		return nil, status.InternalError(err, "Unable to get Start Pic")
+	}
+	if len(startPics) == 0 {
+		// TODO: log info that there were no pics
+		return nil, nil
+	}
+	return &startPics[0], nil
+}
+
+func (t *ReadIndexPicsTask) Run() (errCap error) {
+	j, err := tab.NewJob(t.DB)
+	if err != nil {
+		return status.InternalError(err, "Unable to Begin TX")
 	}
 
-	var maxPics int64
+	defer func() {
+		if err := j.Rollback(); errCap == nil {
+			errCap = err
+		}
+		// TODO: log rollback error
+	}()
+
+	var indexID int64
+	if t.StartID != 0 {
+		startPic, err := lookupStartPic(j, t.StartID, t.Ascending)
+		if err != nil {
+			return err
+		}
+		if startPic == nil {
+			return nil
+		}
+		if t.Ascending {
+			indexID = startPic.IndexOrder()
+		} else {
+			indexID = startPic.IndexOrder() + 1
+		}
+	} else {
+		if t.Ascending {
+			indexID = defaultAscIndexID
+		} else {
+			indexID = defaultDescIndexID
+		}
+	}
+
+	var maxPics int
 	if t.MaxPics != 0 {
 		maxPics = t.MaxPics
 	} else {
 		maxPics = DefaultMaxPics
 	}
 
-	var sql string
+	opts := db.Opts{
+		Limit: maxPics,
+	}
 	if t.Ascending {
-		sql = "SELECT * FROM_ WHERE %s >= ? AND NOT %s ORDER BY %s ASC LIMIT ?;"
+		opts.Start = tab.PicsIndexOrder{
+			IndexOrder: &indexID,
+		}
 	} else {
-		sql = "SELECT * FROM_ WHERE %s <= ? AND NOT %s ORDER BY %s DESC LIMIT ?;"
+		opts.Stop = tab.PicsIndexOrder{
+			IndexOrder: &indexID,
+		}
+		opts.Reverse = true
 	}
 
-	stmt, err := schema.PicPrepare(
-		sql,
-		t.DB,
-		schema.PicColId,
-		schema.PicColHidden,
-		schema.PicColCreatedTime)
+	pics, err := j.FindPics(opts)
 	if err != nil {
-		return err
+		return status.InternalError(err, "Unable to find pics")
 	}
-	defer stmt.Close()
 
-	// Technically an initial lookup of the created time of the provided Pic ID id needed.
-	// TODO: decide if this is worth the extra DB call.
-	pics, err := schema.FindPics(stmt, startID, maxPics)
-	if err != nil {
-		return err
-	}
 	t.Pics = pics
 
 	return nil

@@ -15,7 +15,7 @@ const (
 
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
-	PicColCreatedTime string = "`created_time`"
+	PicColCreatedTime string = "`index_order`"
 	PicColHidden      string = "`is_hidden`"
 )
 
@@ -42,6 +42,10 @@ func (p *Pic) GetCreatedTime() time.Time {
 
 func (p *Pic) GetModifiedTime() time.Time {
 	return FromTs(p.ModifiedTs)
+}
+
+func (p *Pic) IndexOrder() int64 {
+	return toMillis(p.GetCreatedTime())
 }
 
 func (p *Pic) GetVarPicID() string {
@@ -117,7 +121,7 @@ func (p *Pic) Insert(prep preparer) error {
 	_, err = stmt.Exec(
 		p.PicId,
 		data,
-		toMillis(p.GetCreatedTime()),
+		p.IndexOrder(),
 		p.isHidden())
 	if err != nil {
 		return err
@@ -143,7 +147,7 @@ func (p *Pic) Update(prep preparer) error {
 	if _, err := stmt.Exec(
 		p.PicId,
 		data,
-		toMillis(p.GetCreatedTime()),
+		p.IndexOrder(),
 		p.isHidden(),
 		p.PicId); err != nil {
 		return err
