@@ -6,6 +6,34 @@ import (
 	"pixur.org/pixur/schema"
 )
 
+func apiPics(srcs []schema.Pic) ApiPics {
+	dsts := ApiPics{}
+	for _, src := range srcs {
+		dst := apiPic(src)
+		dsts.Pic = append(dsts.Pic, &dst)
+	}
+	return dsts
+}
+
+func apiPic(src schema.Pic) ApiPic {
+	dst := ApiPic{
+		Id:                   src.GetVarPicID(),
+		Width:                int32(src.Width),
+		Height:               int32(src.Height),
+		Version:              src.GetModifiedTime().UnixNano(),
+		Type:                 src.Mime.String(),
+		RelativeUrl:          src.RelativeURL(),
+		ThumbnailRelativeUrl: src.ThumbnailRelativeURL(),
+		PendingDeletion:      src.SoftDeleted(),
+		ViewCount:            src.ViewCount,
+	}
+	if src.GetAnimationInfo().GetDuration() != nil {
+		d := src.GetAnimationInfo().GetDuration()
+		dst.Duration = float64(d.Seconds) + float64(d.Nanos)/1e9
+	}
+	return dst
+}
+
 type JsonPic struct {
 	Id                   string  `json:"id"`
 	Width                int64   `json:"width"`

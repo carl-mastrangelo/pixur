@@ -99,10 +99,10 @@ PicsService.prototype.getNextIndexPics = function(startId) {
   }
   this.http_.get("/api/findNextIndexPics", httpConfig).then(
     function(res, status, headers, config) {
-      res.data.forEach(function(pic){
+      res.data.pic.forEach(function(pic){
         picCache.put(pic.id, pic);
       });
-      deferred.resolve(res.data);
+      deferred.resolve(res.data.pic);
     },
     function(error) {
       deferred.reject(error);
@@ -123,10 +123,10 @@ PicsService.prototype.getPreviousIndexPics = function(startId) {
   }
   this.http_.get("/api/findPreviousIndexPics", httpConfig).then(
     function(res, status, headers, config) {
-      res.data.forEach(function(pic){
+      res.data.pic.forEach(function(pic){
         picCache.put(pic.id, pic);
       });
-      deferred.resolve(res.data);
+      deferred.resolve(res.data.pic);
     },
     function(error) {
       deferred.reject(error);

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package pixur.api;
+
+option go_package = "handlers";
+
+message ApiPics {
+  repeated ApiPic pic = 1;
+}
+
+message ApiPic {
+  string id = 1;
+  int32 width = 2;
+  int32 height = 3;
+  int64 version = 4;
+  string type = 5;
+  string relative_url = 6;
+  string thumbnail_relative_url = 7;
+  double duration = 8;
+  bool pending_deletion = 9;
+  int64 view_count = 10;
+}

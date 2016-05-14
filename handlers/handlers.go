@@ -1,3 +1,4 @@
+//go:generate protoc api.proto --go_out=.
 package handlers
 
 import (
@@ -9,6 +10,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/status"
 )
@@ -46,6 +50,35 @@ func returnTaskError(w http.ResponseWriter, err error) {
 	}
 
 	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+var protoJSONMarshaller = &jsonpb.Marshaler{}
+
+func returnProtoJSON(w http.ResponseWriter, r *http.Request, pb proto.Message) {
+	var writer io.Writer = w
+
+	if encs := r.Header.Get("Accept-Encoding"); encs != "" {
+		for _, enc := range strings.Split(encs, ",") {
+			if strings.TrimSpace(enc) == "gzip" {
+				if gw, err := gzip.NewWriterLevel(writer, gzip.BestSpeed); err != nil {
+					panic(err)
+				} else {
+					defer gw.Close()
+					// TODO: log this
+
+					writer = gw
+				}
+				w.Header().Set("Content-Encoding", "gzip")
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := protoJSONMarshaller.Marshal(writer, pb); err != nil {
+		log.Println("Error writing JSON", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func returnJSON(w http.ResponseWriter, r *http.Request, obj interface{}) {
