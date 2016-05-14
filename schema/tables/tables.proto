@@ -19,18 +19,14 @@ message PicRow {
       key_type: INDEX
       col: "index_order"
     }
-    key: {
-      name: "Hidden"
-      key_type: INDEX
-      col: "is_hidden"
-    }
   };
 
   int64 id = 1;
 
   int64 index_order = 2;
 
-  bool is_hidden = 3;
+  reserved 3;
+  reserved "is_hidden";
 
   pixur.Pic data = 4;
 }

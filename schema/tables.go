@@ -10,10 +10,8 @@ var (
 			"  " + PicColId + " bigint(20) NOT NULL," +
 			"  " + PicColData + " blob NOT NULL," +
 			"  " + PicColCreatedTime + " bigint(20) NOT NULL," +
-			"  " + PicColHidden + " bool NOT NULL," +
 			"  PRIMARY KEY (" + PicColId + ")," +
-			"  KEY " + PicColCreatedTime + " (" + PicColCreatedTime + ")," +
-			"  KEY " + PicColHidden + " (" + PicColHidden + ")" +
+			"  KEY " + PicColCreatedTime + " (" + PicColCreatedTime + ")" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;",
 
 		"CREATE TABLE " + TagTableName + " (" +

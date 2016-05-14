@@ -16,15 +16,13 @@ const (
 	PicColId          string = "`id`"
 	PicColData        string = "`data`"
 	PicColCreatedTime string = "`index_order`"
-	PicColHidden      string = "`is_hidden`"
 )
 
 var (
 	picColNames = []string{
 		PicColId,
 		PicColData,
-		PicColCreatedTime,
-		PicColHidden}
+		PicColCreatedTime}
 	picColFmt = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
 
@@ -125,12 +123,7 @@ func (p *Pic) Insert(prep preparer) error {
 		return err
 	}
 
-	_, err = stmt.Exec(
-		p.PicId,
-		data,
-		p.IndexOrder(),
-		p.isHidden())
-	if err != nil {
+	if _, err = stmt.Exec(p.PicId, data, p.IndexOrder()); err != nil {
 		return err
 	}
 	return nil
@@ -151,12 +144,7 @@ func (p *Pic) Update(prep preparer) error {
 		return err
 	}
 
-	if _, err := stmt.Exec(
-		p.PicId,
-		data,
-		p.IndexOrder(),
-		p.isHidden(),
-		p.PicId); err != nil {
+	if _, err := stmt.Exec(p.PicId, data, p.IndexOrder(), p.PicId); err != nil {
 		return err
 	}
 	return nil

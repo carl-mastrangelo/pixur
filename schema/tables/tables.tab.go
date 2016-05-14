@@ -26,8 +26,6 @@ var SqlTables = []string{
 
 		"`index_order` bigint(20) NOT NULL, " +
 
-		"`is_hidden` bool NOT NULL, " +
-
 		"`data` blob NOT NULL, " +
 
 		"PRIMARY KEY(`id`)" +
@@ -35,8 +33,6 @@ var SqlTables = []string{
 		");",
 
 	"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
-
-	"CREATE INDEX `PicsHidden` ON `Pics` (`is_hidden`);",
 
 	"CREATE TABLE `Tags` (" +
 
@@ -225,34 +221,7 @@ func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 	return
 }
 
-type PicsHidden struct {
-	IsHidden *bool
-}
-
-var _ db.Idx = PicsHidden{}
-
-var colsPicsHidden = []string{"is_hidden"}
-
-func (idx PicsHidden) Cols() []string {
-	return colsPicsHidden
-}
-
-func (idx PicsHidden) Vals() (vals []interface{}) {
-	var done bool
-
-	if idx.IsHidden != nil {
-		if done {
-			panic("Extra value IsHidden")
-		}
-		vals = append(vals, *idx.IsHidden)
-	} else {
-		done = true
-	}
-
-	return
-}
-
-var colsPics = []string{"id", "index_order", "is_hidden", "data"}
+var colsPics = []string{"id", "index_order", "data"}
 
 func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
 	return db.Scan(j.tx, "Pics", opts, func(data []byte) error {
@@ -273,7 +242,7 @@ func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
 }
 
 func (j Job) InsertPics(row PicRow) error {
-	vals := []interface{}{row.Id, row.IndexOrder, row.IsHidden, row.Data}
+	vals := []interface{}{row.Id, row.IndexOrder, row.Data}
 	return db.Insert(j.tx, "Pics", colsPics, vals)
 }
 
