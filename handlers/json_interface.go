@@ -4,16 +4,15 @@ import (
 	"pixur.org/pixur/schema"
 )
 
-func apiPics(srcs []schema.Pic) ApiPics {
-	dsts := ApiPics{}
+func apiPics(dst []*ApiPic, srcs ...schema.Pic) []*ApiPic {
 	for _, src := range srcs {
-		dsts.Pic = append(dsts.Pic, apiPic(src))
+		dst = append(dst, apiPic(src))
 	}
-	return dsts
+	return dst
 }
 
 func apiPic(src schema.Pic) *ApiPic {
-	dst := ApiPic{
+	return &ApiPic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
 		Height:               int32(src.Height),
@@ -23,12 +22,8 @@ func apiPic(src schema.Pic) *ApiPic {
 		ThumbnailRelativeUrl: src.ThumbnailRelativeURL(),
 		PendingDeletion:      src.SoftDeleted(),
 		ViewCount:            src.ViewCount,
+		Duration:             src.GetAnimationInfo().GetDuration(),
 	}
-	if src.GetAnimationInfo().GetDuration() != nil {
-		d := src.GetAnimationInfo().GetDuration()
-		dst.Duration = float64(d.Seconds) + float64(d.Nanos)/1e9
-	}
-	return &dst
 }
 
 func apiPicTags(dst []*ApiPicTag, srcs ...schema.PicTag) []*ApiPicTag {

@@ -78,9 +78,11 @@ func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *
 		return
 	}
 
-	aps := apiPics(task.Pics)
+	resp := IndexResponse{
+		Pic: apiPics(nil, task.Pics...),
+	}
 
-	returnProtoJSON(w, r, &aps)
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {
