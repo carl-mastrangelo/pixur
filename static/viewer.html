@@ -1,7 +1,7 @@
 <div class="viewer">
   <div ng-if="ctrl.isImage">
-    <a ng-href="{{ctrl.pic.relative_url}}" target="_self"><img 
-      ng-src="{{ctrl.pic.relative_url}}" 
+    <a ng-href="{{ctrl.pic.relativeUrl}}" target="_self"><img 
+      ng-src="{{ctrl.pic.relativeUrl}}" 
       style="width: auto; height: auto; max-width: 100%"
       
       /></a>
@@ -10,7 +10,7 @@
   <div ng-if="ctrl.isVideo">
     <video 
         style="width: auto; height: auto; max-width: 100%" 
-        ng-src="{{ctrl.pic.relative_url}}" 
+        ng-src="{{ctrl.pic.relativeUrl}}" 
         loop
         muted
         autoplay
@@ -18,7 +18,7 @@
       Your browser does not support the video tag.
     </video> 
   </div>
-  <div ng-show="ctrl.pic.pending_deletion">This pic is pending deletion</div>
+  <div ng-show="ctrl.pic.pendingDeletion">This pic is pending deletion</div>
   <ul>
     <li ng-repeat="picTag in ctrl.picTags">{{picTag.name}}<br></li>
   </ul>

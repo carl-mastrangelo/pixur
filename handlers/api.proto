@@ -4,6 +4,8 @@ package pixur.api;
 
 option go_package = "handlers";
 
+import "google/protobuf/timestamp.proto";
+
 message ApiPics {
   repeated ApiPic pic = 1;
 }
@@ -19,4 +21,18 @@ message ApiPic {
   double duration = 8;
   bool pending_deletion = 9;
   int64 view_count = 10;
+}
+
+message ApiPicTag {
+  int64 pic_id = 1;
+  int64 tag_id = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_time = 4;
+  google.protobuf.Timestamp modified_time = 5;
+  sfixed64 version = 6;
+}
+
+message LookupPicDetailsResponse {
+  ApiPic pic = 1;
+  repeated ApiPicTag pic_tag = 2;
 }

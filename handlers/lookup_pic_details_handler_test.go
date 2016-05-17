@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -9,6 +8,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
@@ -19,10 +21,10 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	successRunner := func(task tasks.Task) error {
 		lookupPicTask = task.(*tasks.LookupPicTask)
 		// set the results
-		lookupPicTask.Pic = &schema.Pic{
+		lookupPicTask.Pic = schema.Pic{
 			PicId: 1,
 		}
-		lookupPicTask.PicTags = []*schema.PicTag{{
+		lookupPicTask.PicTags = []schema.PicTag{{
 			PicId: 1,
 			TagId: 2,
 		}}
@@ -51,23 +53,23 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		t.Fatal("Bad Content type", res.Header.Get("Content-Type"))
 	}
 
-	var results lookupPicResults
-	if err := json.NewDecoder(res.Body).Decode(&results); err != nil {
+	var results LookupPicDetailsResponse
+	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Fatal(err)
 	}
 
-	jp := interfacePic(*lookupPicTask.Pic)
-	if results.Pic != jp {
+	jp := apiPic(lookupPicTask.Pic)
+	if !proto.Equal(results.Pic, jp) {
 		t.Fatal("Not equal", results.Pic, jp)
 	}
 
-	jpts := interfacePicTags(lookupPicTask.PicTags)
-	if len(jpts) != len(results.PicTags) {
-		t.Fatal("Wrong number of tags", len(jpts), len(results.PicTags))
+	jpts := apiPicTags(nil, lookupPicTask.PicTags...)
+	if len(jpts) != len(results.PicTag) {
+		t.Fatal("Wrong number of tags", len(jpts), len(results.PicTag))
 	}
 	for i := 0; i < len(jpts); i++ {
-		if *jpts[i] != *results.PicTags[i] {
-			t.Fatal("Not equal", *jpts[i], *results.PicTags[i])
+		if !proto.Equal(jpts[i], results.PicTag[i]) {
+			t.Fatal("Not equal", jpts[i], results.PicTag[i])
 		}
 	}
 }
@@ -77,7 +79,7 @@ func TestLookupPicParsePicId(t *testing.T) {
 	successRunner := func(task tasks.Task) error {
 		lookupPicTask = task.(*tasks.LookupPicTask)
 		// set the result, even though we don't need it.
-		lookupPicTask.Pic = &schema.Pic{
+		lookupPicTask.Pic = schema.Pic{
 			PicId: 1,
 		}
 		return nil

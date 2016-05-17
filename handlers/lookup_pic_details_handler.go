@@ -8,11 +8,6 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-type lookupPicResults struct {
-	Pic     JsonPic       `json:"pic"`
-	PicTags []*JsonPicTag `json:"pic_tags,omitempty"`
-}
-
 type LookupPicDetailsHandler struct {
 	// embeds
 	http.Handler
@@ -49,11 +44,12 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	returnJSON(w, r, lookupPicResults{
-		// TODO: just pass the struct around
-		Pic:     interfacePic(*task.Pic),
-		PicTags: interfacePicTags(task.PicTags),
-	})
+	resp := LookupPicDetailsResponse{
+		Pic:    apiPic(task.Pic),
+		PicTag: apiPicTags(nil, task.PicTags...),
+	}
+
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {

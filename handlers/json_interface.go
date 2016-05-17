@@ -1,21 +1,18 @@
 package handlers
 
 import (
-	"time"
-
 	"pixur.org/pixur/schema"
 )
 
 func apiPics(srcs []schema.Pic) ApiPics {
 	dsts := ApiPics{}
 	for _, src := range srcs {
-		dst := apiPic(src)
-		dsts.Pic = append(dsts.Pic, &dst)
+		dsts.Pic = append(dsts.Pic, apiPic(src))
 	}
 	return dsts
 }
 
-func apiPic(src schema.Pic) ApiPic {
+func apiPic(src schema.Pic) *ApiPic {
 	dst := ApiPic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
@@ -31,7 +28,25 @@ func apiPic(src schema.Pic) ApiPic {
 		d := src.GetAnimationInfo().GetDuration()
 		dst.Duration = float64(d.Seconds) + float64(d.Nanos)/1e9
 	}
+	return &dst
+}
+
+func apiPicTags(dst []*ApiPicTag, srcs ...schema.PicTag) []*ApiPicTag {
+	for _, src := range srcs {
+		dst = append(dst, apiPicTag(src))
+	}
 	return dst
+}
+
+func apiPicTag(src schema.PicTag) *ApiPicTag {
+	return &ApiPicTag{
+		PicId:        src.PicId,
+		TagId:        src.TagId,
+		Name:         src.Name,
+		CreatedTime:  src.CreatedTs,
+		ModifiedTime: src.ModifiedTs,
+		Version:      src.GetModifiedTime().UnixNano(),
+	}
 }
 
 type JsonPic struct {
@@ -76,39 +91,5 @@ func (jp *JsonPic) Fill(p schema.Pic) {
 	if p.GetAnimationInfo().GetDuration() != nil {
 		d := p.GetAnimationInfo().GetDuration()
 		jp.Duration = float64(d.Seconds) + float64(d.Nanos)/1e9
-	}
-}
-
-type JsonPicTag struct {
-	PicId        int64     `json:"pic_id"`
-	TagId        int64     `json:"tag_id"`
-	Name         string    `json:"name"`
-	CreatedTime  time.Time `json:"created_time"`
-	ModifiedTime time.Time `json:"modified_time"`
-	Version      int64     `json:"version"`
-}
-
-func interfacePicTag(pt *schema.PicTag) *JsonPicTag {
-	jpt := &JsonPicTag{}
-	jpt.Fill(pt)
-	return jpt
-}
-
-func interfacePicTags(pts []*schema.PicTag) []*JsonPicTag {
-	jpts := make([]*JsonPicTag, 0, len(pts))
-	for _, pt := range pts {
-		jpts = append(jpts, interfacePicTag(pt))
-	}
-	return jpts
-}
-
-func (jpt *JsonPicTag) Fill(pt *schema.PicTag) {
-	*jpt = JsonPicTag{
-		PicId:        int64(pt.PicId),
-		TagId:        int64(pt.TagId),
-		Name:         pt.Name,
-		CreatedTime:  pt.GetCreatedTime(),
-		ModifiedTime: pt.GetModifiedTime(),
-		Version:      pt.GetModifiedTime().UnixNano(),
 	}
 }
