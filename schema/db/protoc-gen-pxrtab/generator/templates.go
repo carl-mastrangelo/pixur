@@ -60,6 +60,7 @@ var SqlInitTables = []string{
   {{template "scanfunc" .}}
   {{template "findfunc" .}}
   {{template "insertfunc" .}}
+  {{template "updatefunc" .}}
   {{template "deletefunc" .}}
 {{end}}
 `))
@@ -70,10 +71,10 @@ type {{.Name}} struct {
   {{end}}
 }
 
-{{if eq .KeyType "PRIMARY KEY" }}
+{{if eq .KeyType "PRIMARY KEY"}}
 func (_ {{.Name}}) Unique() {}
 var _ db.UniqueIdx = {{.Name}}{}
-{{else if eq .KeyType "UNIQUE" }}
+{{else if eq .KeyType "UNIQUE"}}
 func (_ {{.Name}}) Unique() {}
 var _ db.UniqueIdx = {{.Name}}{}
 {{else}}
@@ -195,13 +196,53 @@ func (j Job) Find{{.Name}}(opts db.Opts) (rows []{{.GoDataType}}, err error) {
 `))
 	_ = template.Must(tpl.New("insertfunc").Parse(`
 func (j Job) Insert{{.Name}}(row {{.GoType}}) error {
-	vals := []interface{}{ {{- range .Columns}} row.{{.GoName}}, {{end -}} }
+  var vals []interface{}
+  {{range .Columns}}
+    {{if .IsProto}}
+      if val, err := proto.Marshal(row.{{.GoName}}); err != nil {
+        return err
+      } else {
+        vals = append(vals, val)
+      }
+    {{else}}
+      vals = append(vals, row.{{.GoName}})
+    {{end}}
+  {{end}}
+
 	return db.Insert(j.tx, {{goesc .Name}}, cols{{.Name}}, vals)
 }
 `))
 	_ = template.Must(tpl.New("deletefunc").Parse(`
 func (j Job) Delete{{.Name}}(key {{.Name}}Primary) error {
 	return db.Delete(j.tx, {{goesc .Name}}, key)
+}
+`))
+	_ = template.Must(tpl.New("updatefunc").Parse(`
+func (j Job) Update{{.Name}}(row {{.GoType}}) error {
+  {{range .Indexes}}
+    {{if eq .KeyType "PRIMARY KEY"}}
+      key := {{.Name}}{
+        {{range .Columns}}
+          {{.GoName}}: &row.{{.GoName}},
+        {{end}}
+      }
+    {{end}}
+  {{end}}
+
+  var vals []interface{}
+  {{range .Columns}}
+    {{if .IsProto}}
+      if val, err := proto.Marshal(row.{{.GoName}}); err != nil {
+        return err
+      } else {
+        vals = append(vals, val)
+      }
+    {{else}}
+      vals = append(vals, row.{{.GoName}})
+    {{end}}
+  {{end}}
+
+	return db.Update(j.tx, {{goesc .Name}}, cols{{.Name}}, vals, key)
 }
 `))
 

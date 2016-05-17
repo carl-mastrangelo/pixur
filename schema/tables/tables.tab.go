@@ -242,8 +242,41 @@ func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
 }
 
 func (j Job) InsertPics(row PicRow) error {
-	vals := []interface{}{row.Id, row.IndexOrder, row.Data}
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.IndexOrder)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
 	return db.Insert(j.tx, "Pics", colsPics, vals)
+}
+
+func (j Job) UpdatePics(row PicRow) error {
+
+	key := PicsPrimary{
+
+		Id: &row.Id,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.IndexOrder)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "Pics", colsPics, vals, key)
 }
 
 func (j Job) DeletePics(key PicsPrimary) error {
@@ -329,8 +362,41 @@ func (j Job) FindTags(opts db.Opts) (rows []schema.Tag, err error) {
 }
 
 func (j Job) InsertTags(row TagRow) error {
-	vals := []interface{}{row.Id, row.Name, row.Data}
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.Name)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
 	return db.Insert(j.tx, "Tags", colsTags, vals)
+}
+
+func (j Job) UpdateTags(row TagRow) error {
+
+	key := TagsPrimary{
+
+		Id: &row.Id,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.Name)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "Tags", colsTags, vals, key)
 }
 
 func (j Job) DeleteTags(key TagsPrimary) error {
@@ -398,8 +464,43 @@ func (j Job) FindPicTags(opts db.Opts) (rows []schema.PicTag, err error) {
 }
 
 func (j Job) InsertPicTags(row PicTagRow) error {
-	vals := []interface{}{row.PicId, row.TagId, row.Data}
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.TagId)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
 	return db.Insert(j.tx, "PicTags", colsPicTags, vals)
+}
+
+func (j Job) UpdatePicTags(row PicTagRow) error {
+
+	key := PicTagsPrimary{
+
+		PicId: &row.PicId,
+
+		TagId: &row.TagId,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.TagId)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "PicTags", colsPicTags, vals, key)
 }
 
 func (j Job) DeletePicTags(key PicTagsPrimary) error {
@@ -516,8 +617,49 @@ func (j Job) FindPicIdents(opts db.Opts) (rows []schema.PicIdent, err error) {
 }
 
 func (j Job) InsertPicIdents(row PicIdentRow) error {
-	vals := []interface{}{row.PicId, row.Type, row.Value, row.Data}
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.Type)
+
+	vals = append(vals, row.Value)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
 	return db.Insert(j.tx, "PicIdents", colsPicIdents, vals)
+}
+
+func (j Job) UpdatePicIdents(row PicIdentRow) error {
+
+	key := PicIdentsPrimary{
+
+		PicId: &row.PicId,
+
+		Type: &row.Type,
+
+		Value: &row.Value,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.Type)
+
+	vals = append(vals, row.Value)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "PicIdents", colsPicIdents, vals, key)
 }
 
 func (j Job) DeletePicIdents(key PicIdentsPrimary) error {
@@ -603,8 +745,41 @@ func (j Job) FindUsers(opts db.Opts) (rows []schema.User, err error) {
 }
 
 func (j Job) InsertUsers(row UserRow) error {
-	vals := []interface{}{row.Id, row.Ident, row.Data}
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.Ident)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
 	return db.Insert(j.tx, "Users", colsUsers, vals)
+}
+
+func (j Job) UpdateUsers(row UserRow) error {
+
+	key := UsersPrimary{
+
+		Id: &row.Id,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.Id)
+
+	vals = append(vals, row.Ident)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "Users", colsUsers, vals, key)
 }
 
 func (j Job) DeleteUsers(key UsersPrimary) error {

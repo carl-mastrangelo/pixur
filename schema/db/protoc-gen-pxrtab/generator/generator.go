@@ -217,6 +217,7 @@ type tplTable struct {
 
 type tplColumn struct {
 	GoName, SqlName, GoType, SqlType string
+	IsProto                          bool
 }
 
 func (t tplColumn) IsBlobIdxCol() bool {
@@ -283,6 +284,7 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 		case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 			col.GoType = g.typeNameToGoName(*f.TypeName)
 			col.SqlType = db.GetAdapter().BlobType
+			col.IsProto = true
 		case descriptor.FieldDescriptorProto_TYPE_BYTES:
 			col.GoType = "[]byte"
 			col.SqlType = db.GetAdapter().BlobType
