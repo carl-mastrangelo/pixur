@@ -5,6 +5,9 @@ import (
 	"encoding/binary"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/status"
 )
 
 // TODO: add tests
@@ -20,49 +23,54 @@ type FindSimilarPicsTask struct {
 	SimilarPicIDs []int64
 }
 
-func (t *FindSimilarPicsTask) Run() error {
+func (t *FindSimilarPicsTask) Run() (errCap error) {
 	t.SimilarPicIDs = make([]int64, 0) // set default, to make json encoding easier
-	picStmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;", t.DB, schema.PicColId)
+	j, err := tab.NewJob(t.DB)
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't create new job")
 	}
-	defer picStmt.Close()
-
-	p, err := schema.LookupPic(picStmt, t.PicID)
-	if err != nil {
-		return err
-	}
-
-	identStmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;", t.DB,
-		schema.PicIdentColPicId, schema.PicIdentColType)
-	if err != nil {
-		return err
-	}
-	defer identStmt.Close()
-
-	picIdent, err := schema.LookupPicIdent(identStmt, p.PicId, schema.PicIdent_DCT_0)
-	if err != nil {
-		return err
-	}
-	match := binary.BigEndian.Uint64(picIdent.Value)
-
-	allIdentStmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;", t.DB, schema.PicIdentColType)
-	if err != nil {
-		return err
-	}
-	defer allIdentStmt.Close()
-
-	idents, err := schema.FindPicIdents(allIdentStmt, schema.PicIdent_DCT_0)
-	if err != nil {
-		return err
-	}
-
-	// Linear time, sigh
-	for _, ident := range idents {
-		if ident.PicId == p.PicId {
-			continue
+	defer func() {
+		if err := j.Rollback(); errCap == nil {
+			errCap = err
 		}
-		guess := binary.BigEndian.Uint64(ident.Value)
+		// TODO: log the error
+	}()
+
+	pics, err := j.FindPics(db.Opts{
+		Start: tab.PicsPrimary{&t.PicID},
+		Limit: 1,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't lookup pic")
+	}
+	if len(pics) != 1 {
+		return status.InvalidArgument(err, "can't lookup pic", len(pics))
+	}
+	pic := pics[0]
+
+	dctIdentType := schema.PicIdent_DCT_0
+
+	picIdents, err := j.FindPicIdents(db.Opts{
+		Start: tab.PicIdentsPrimary{PicId: &t.PicID, Type: &dctIdentType},
+		Limit: 1,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't lookup pic ident")
+	}
+	if len(picIdents) != 1 {
+		return status.InvalidArgument(err, "can't lookup pic ident", len(picIdents))
+	}
+	targetIdent := picIdents[0]
+	match := binary.BigEndian.Uint64(targetIdent.Value)
+
+	scanOpts := db.Opts{
+		Start: tab.PicIdentsIdent{Type: &dctIdentType},
+	}
+	err = j.ScanPicIdents(scanOpts, func(pi schema.PicIdent) error {
+		if pi.PicId == pic.PicId {
+			return nil
+		}
+		guess := binary.BigEndian.Uint64(pi.Value)
 		bits := guess ^ match
 		bitCount := 0
 		// replace this with something that isn't hideously slow.  Hamming distance would be
@@ -74,8 +82,14 @@ func (t *FindSimilarPicsTask) Run() error {
 			}
 		}
 		if bitCount <= 10 {
-			t.SimilarPicIDs = append(t.SimilarPicIDs, ident.PicId)
+			t.SimilarPicIDs = append(t.SimilarPicIDs, pi.PicId)
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		return status.InternalError(err, "can't scan pic idents")
 	}
 
 	return nil
