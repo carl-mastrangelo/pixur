@@ -21,14 +21,13 @@ var (
 			}
 			return "`" + ident + "`(255)"
 		},
-		LockStmt: func(lock Lock, query string) string {
+		LockStmt: func(buf *bytes.Buffer, lock Lock) {
 			switch lock {
 			case LockNone:
-				return query
 			case LockRead:
-				return query + " LOCK IN SHARE MODE"
+				buf.WriteString(" LOCK IN SHARE MODE")
 			case LockWrite:
-				return query + " FOR UPDATE"
+				buf.WriteString(" FOR UPDATE")
 			default:
 				panic(fmt.Errorf("Unknown lock %v", lock))
 			}
@@ -52,14 +51,13 @@ var (
 			}
 			return `"` + ident + `"`
 		},
-		LockStmt: func(lock Lock, query string) string {
+		LockStmt: func(buf *bytes.Buffer, lock Lock) {
 			switch lock {
 			case LockNone:
-				return query
 			case LockRead:
-				return query + " FOR SHARE"
+				buf.WriteString(" FOR SHARE")
 			case LockWrite:
-				return query + " FOR UPDATE"
+				buf.WriteString(" FOR UPDATE")
 			default:
 				panic(fmt.Errorf("Unknown lock %v", lock))
 			}
@@ -76,7 +74,7 @@ var dbAdapter DbAdapter = mysqlAdapter
 
 type DbAdapter struct {
 	Quote, QuoteCreateBlobIdxCol            func(string) string
-	LockStmt                                func(Lock, string) string
+	LockStmt                                func(*bytes.Buffer, Lock)
 	BoolType, IntType, BigIntType, BlobType string
 }
 
@@ -89,6 +87,7 @@ var (
 )
 
 type Opts struct {
+	Prefix      Idx
 	Start, Stop Idx
 	Lock        Lock
 	Reverse     bool
@@ -130,8 +129,22 @@ type Rows interface {
 	Scan(dest ...interface{}) error
 }
 
+type scanStmt struct {
+	opts Opts
+	name string
+	buf  *bytes.Buffer
+	args []interface{}
+}
+
+// Scan scans a table for matching rows.
 func Scan(q Querier, name string, opts Opts, cb func(data []byte) error) (errCap error) {
-	query, queryArgs := buildScan(name, opts)
+	s := scanStmt{
+		opts: opts,
+		name: name,
+		buf:  new(bytes.Buffer),
+	}
+
+	query, queryArgs := s.buildScan()
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
 		return err
@@ -158,45 +171,78 @@ func Scan(q Querier, name string, opts Opts, cb func(data []byte) error) (errCap
 	return nil
 }
 
-func buildScan(name string, opts Opts) (string, []interface{}) {
-	var buf bytes.Buffer
-	var args []interface{}
-	fmt.Fprintf(&buf, `SELECT %s FROM %s`, quoteIdentifier("data"), quoteIdentifier(name))
+func (s *scanStmt) buildScan() (string, []interface{}) {
+	fmt.Fprintf(s.buf, "SELECT %s FROM %s", quoteIdentifier("data"), quoteIdentifier(s.name))
+
+	if s.opts.Prefix != nil && (s.opts.Start != nil || s.opts.Stop != nil) {
+		panic("only Prefix or Start|Stop may be specified")
+	}
+	if s.opts.Prefix != nil {
+		//s.appendPrefix()
+	} else if s.opts.Start != nil || s.opts.Stop != nil {
+		s.appendRange()
+	}
+
+	if s.opts.Limit > 0 {
+		fmt.Fprintf(s.buf, " LIMIT %d", s.opts.Limit)
+	}
+	s.appendLock()
+	s.buf.WriteRune(';')
+	return s.buf.String(), s.args
+}
+
+func (s *scanStmt) appendRange() {
 	var (
 		startCols, stopCols []string
 		startVals, stopVals []interface{}
 	)
-	if opts.Start != nil {
-		startCols, startVals = opts.Start.Cols(), opts.Start.Vals()
+	if s.opts.Start != nil {
+		startCols, startVals = s.opts.Start.Cols(), s.opts.Start.Vals()
 	}
-	if opts.Stop != nil {
-		stopCols, stopVals = opts.Stop.Cols(), opts.Stop.Vals()
+	if s.opts.Stop != nil {
+		stopCols, stopVals = s.opts.Stop.Cols(), s.opts.Stop.Vals()
 	}
-	if len(startVals) != 0 || len(stopVals) != 0 {
-		buf.WriteString(" WHERE ")
-	}
+	s.buf.WriteString(" WHERE ")
 	if len(startVals) != 0 {
 		startStmt, startArgs := buildStart(startCols, startVals)
-		args = append(args, startArgs...)
-		buf.WriteString(startStmt)
+		s.args = append(s.args, startArgs...)
+		s.buf.WriteString(startStmt)
 	}
 	if len(startVals) != 0 && len(stopVals) != 0 {
-		buf.WriteString(" AND ")
+		s.buf.WriteString(" AND ")
 	}
 	if len(stopVals) != 0 {
 		stopStmt, stopArgs := buildStop(stopCols, stopVals)
-		args = append(args, stopArgs...)
-		buf.WriteString(stopStmt)
+		s.args = append(s.args, stopArgs...)
+		s.buf.WriteString(stopStmt)
 	}
-	if len(startVals) != 0 || len(stopVals) != 0 {
-		buf.WriteString(" ORDER BY ")
-		buf.WriteString(buildOrderStmt(startCols, stopCols, opts.Reverse))
+	if len(startVals) != 0 {
+		s.appendOrder(startCols)
+	} else {
+		s.appendOrder(stopCols)
 	}
-	if opts.Limit > 0 {
-		fmt.Fprintf(&buf, " LIMIT %d", opts.Limit)
-	}
+}
 
-	return appendLock(opts.Lock, buf.String()) + ";", args
+func (s *scanStmt) appendOrder(cols []string) {
+	s.buf.WriteString(" ORDER BY ")
+
+	var order string
+	if !s.opts.Reverse {
+		order = " ASC"
+	} else {
+		order = " DESC"
+	}
+	for i, col := range cols {
+		if i != 0 {
+			s.buf.WriteString(", ")
+		}
+		s.buf.WriteString(quoteIdentifier(col))
+		s.buf.WriteString(order)
+	}
+}
+
+func (s *scanStmt) appendLock() {
+	dbAdapter.LockStmt(s.buf, s.opts.Lock)
 }
 
 type Columns []string
@@ -207,29 +253,6 @@ func (cols Columns) String() string {
 		parts = append(parts, quoteIdentifier(col))
 	}
 	return strings.Join(parts, ", ")
-}
-
-func buildOrderStmt(startCols, stopCols []string, reverse bool) string {
-	var order string
-	if !reverse {
-		order = " ASC"
-	} else {
-		order = " DESC"
-	}
-
-	var colParts []string
-	var cols []string
-	if len(startCols) > 0 {
-		cols = startCols
-	} else if len(stopCols) > 0 {
-		cols = stopCols
-	} else {
-		panic("No order on scan.")
-	}
-	for _, col := range cols {
-		colParts = append(colParts, quoteIdentifier(col)+order)
-	}
-	return strings.Join(colParts, ", ")
 }
 
 func buildStart(cols []string, vals []interface{}) (string, []interface{}) {
@@ -283,10 +306,6 @@ func buildStop(cols []string, vals []interface{}) (string, []interface{}) {
 		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
 	}
 	return "(" + strings.Join(ors, " OR ") + ")", args
-}
-
-func appendLock(lock Lock, query string) string {
-	return dbAdapter.LockStmt(lock, query)
 }
 
 var (

@@ -258,7 +258,12 @@ func TestScanStopEarly(t *testing.T) {
 }
 
 func TestBuildScan(t *testing.T) {
-	query, args := buildScan("foo", Opts{})
+	s := scanStmt{
+		name: "foo",
+		buf:  new(bytes.Buffer),
+	}
+
+	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
@@ -270,12 +275,17 @@ func TestBuildScan(t *testing.T) {
 }
 
 func TestBuildScanStart(t *testing.T) {
-	query, args := buildScan("foo", Opts{
-		Start: &testIdx{
-			cols: []string{"bar"},
-			vals: []interface{}{1},
+	s := scanStmt{
+		name: "foo",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Start: &testIdx{
+				cols: []string{"bar"},
+				vals: []interface{}{1},
+			},
 		},
-	})
+	}
+	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
@@ -287,12 +297,18 @@ func TestBuildScanStart(t *testing.T) {
 }
 
 func TestBuildScanStop(t *testing.T) {
-	query, args := buildScan("foo", Opts{
-		Stop: &testIdx{
-			cols: []string{"bar"},
-			vals: []interface{}{1},
+	s := scanStmt{
+		name: "foo",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Stop: &testIdx{
+				cols: []string{"bar"},
+				vals: []interface{}{1},
+			},
 		},
-	})
+	}
+
+	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" < ?)) ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
@@ -304,17 +320,23 @@ func TestBuildScanStop(t *testing.T) {
 }
 
 func TestBuildScanStartStop(t *testing.T) {
-	query, args := buildScan("foo", Opts{
-		Start: &testIdx{
-			cols: []string{"bar"},
-			vals: []interface{}{1},
+	s := scanStmt{
+		name: "foo",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Start: &testIdx{
+				cols: []string{"bar"},
+				vals: []interface{}{1},
+			},
+			Stop: &testIdx{
+				cols: []string{"baz"},
+				vals: []interface{}{2},
+			},
 		},
-		Stop: &testIdx{
-			cols: []string{"baz"},
-			vals: []interface{}{2},
-		},
-	})
-	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?)) ORDER BY "bar" ASC FOR SHARE;` {
+	}
+	query, args := s.buildScan()
+	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?))`+
+		` ORDER BY "bar" ASC FOR SHARE;` {
 		t.Log("Bad Query", query)
 		t.Fail()
 	}
@@ -325,15 +347,20 @@ func TestBuildScanStartStop(t *testing.T) {
 }
 
 func TestBuildScanLimitReverseLock(t *testing.T) {
-	query, args := buildScan("foo", Opts{
-		Start: &testIdx{
-			cols: []string{"bar"},
-			vals: []interface{}{1},
+	s := scanStmt{
+		name: "foo",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Start: &testIdx{
+				cols: []string{"bar"},
+				vals: []interface{}{1},
+			},
+			Limit:   1,
+			Reverse: true,
+			Lock:    LockNone,
 		},
-		Limit:   1,
-		Reverse: true,
-		Lock:    LockNone,
-	})
+	}
+	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" DESC LIMIT 1;` {
 		t.Log("Bad Query", query)
 		t.Fail()
@@ -344,22 +371,27 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 	}
 }
 
-func TestBuildOrderStmtStart(t *testing.T) {
-	stmt := buildOrderStmt([]string{"bar", "baz"}, nil, false)
-	if stmt != `"bar" ASC, "baz" ASC` {
-		t.Log("Statement didn't match")
+func TestAppendOrder(t *testing.T) {
+	s := scanStmt{
+		buf: new(bytes.Buffer),
 	}
-}
-
-func TestBuildOrderStmtStop(t *testing.T) {
-	stmt := buildOrderStmt(nil, []string{"bar", "baz"}, false)
+	s.appendOrder([]string{"bar", "baz"})
+	stmt := s.buf.String()
 	if stmt != `"bar" ASC, "baz" ASC` {
 		t.Log("Statement didn't match")
 	}
 }
 
 func TestBuildOrderStmtReverse(t *testing.T) {
-	stmt := buildOrderStmt([]string{"foo"}, nil, true)
+	s := scanStmt{
+		buf: new(bytes.Buffer),
+		opts: Opts{
+			Reverse: true,
+		},
+	}
+	s.appendOrder([]string{"foo"})
+
+	stmt := s.buf.String()
 	if stmt != `"foo" ASC` {
 		t.Log("Statement didn't match")
 	}
@@ -703,12 +735,20 @@ func TestQuoteIdentifierPanicsOnNull(t *testing.T) {
 }
 
 func TestAppendLock(t *testing.T) {
+
 	expected := []struct {
 		query string
 		lock  Lock
-	}{{"foo", LockNone}, {"foo FOR SHARE", LockRead}, {"foo FOR UPDATE", LockWrite}}
+	}{{"", LockNone}, {" FOR SHARE", LockRead}, {" FOR UPDATE", LockWrite}}
 	for _, tuple := range expected {
-		newQuery := appendLock(tuple.lock, "foo")
+		s := scanStmt{
+			buf: new(bytes.Buffer),
+			opts: Opts{
+				Lock: tuple.lock,
+			},
+		}
+		s.appendLock()
+		newQuery := s.buf.String()
 		if newQuery != tuple.query {
 			t.Logf("Mismatched query %s != %s", newQuery, tuple.query)
 			t.Fail()
@@ -723,7 +763,14 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 			t.Fatal("expected a panic")
 		}
 	}()
-	appendLock(3, "foo")
+	s := scanStmt{
+		buf:  new(bytes.Buffer),
+		name: "foo",
+		opts: Opts{
+			Lock: 3,
+		},
+	}
+	s.appendLock()
 
 	t.Fatal("should never reach here")
 }

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 )
@@ -45,12 +46,14 @@ func (alloc *IDAlloc) refill(exec QuerierExecutorBeginner, grab int64) (errCap e
 		}
 	}()
 
-	selectStmt := fmt.Sprintf("SELECT %s FROM %s",
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "SELECT %s FROM %s",
 		dbAdapter.Quote(SequenceColName), dbAdapter.Quote(SequenceTableName))
-	selectStmt = dbAdapter.LockStmt(LockWrite, selectStmt) + ";"
+	dbAdapter.LockStmt(&buf, LockWrite)
+	buf.WriteRune(';')
 
 	var num int64
-	rows, err := tx.Query(selectStmt)
+	rows, err := tx.Query(buf.String())
 	if err != nil {
 		return err
 	}
