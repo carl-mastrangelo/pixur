@@ -346,6 +346,29 @@ func TestBuildScanStartStop(t *testing.T) {
 	}
 }
 
+func TestBuildScanPrefix(t *testing.T) {
+	s := scanStmt{
+		name: "tab",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Prefix: &testIdx{
+				cols: []string{"foo", "bar", "baz", "qux"},
+				vals: []interface{}{true, 2},
+			},
+		},
+	}
+	query, args := s.buildScan()
+	if query != `SELECT "data" FROM "tab" WHERE "foo" = ? AND "bar" = ?`+
+		` ORDER BY "baz" ASC, "qux" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 2 || args[0] != true || args[1] != 2 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
 func TestBuildScanLimitReverseLock(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
@@ -371,14 +394,61 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 	}
 }
 
+func TestAppendPrefix(t *testing.T) {
+	s := scanStmt{
+		buf: new(bytes.Buffer),
+		opts: Opts{
+			Prefix: &testIdx{
+				cols: []string{"foo", "bar"},
+				vals: []interface{}{1},
+			},
+		},
+	}
+
+	s.appendPrefix()
+	stmt := s.buf.String()
+	if stmt != ` WHERE "foo" = ? ORDER BY "bar" ASC` {
+		t.Log("Bad Stmt", stmt)
+		t.Fail()
+	}
+	if len(s.args) != 1 || s.args[0] != 1 {
+		t.Log("Args didn't match", s.args)
+		t.Fail()
+	}
+}
+
+func TestAppendPrefixAll(t *testing.T) {
+	s := scanStmt{
+		buf: new(bytes.Buffer),
+		opts: Opts{
+			Prefix: &testIdx{
+				cols: []string{"foo", "bar"},
+				vals: []interface{}{1, 2},
+			},
+		},
+	}
+
+	s.appendPrefix()
+	stmt := s.buf.String()
+	if stmt != ` WHERE "foo" = ? AND "bar" = ?` {
+		t.Log("Bad Stmt", stmt)
+		t.Fail()
+	}
+	if len(s.args) != 2 || s.args[0] != 1 || s.args[1] != 2 {
+		t.Log("Args didn't match", s.args)
+		t.Fail()
+	}
+}
+
 func TestAppendOrder(t *testing.T) {
 	s := scanStmt{
 		buf: new(bytes.Buffer),
 	}
 	s.appendOrder([]string{"bar", "baz"})
 	stmt := s.buf.String()
-	if stmt != `"bar" ASC, "baz" ASC` {
-		t.Log("Statement didn't match")
+	if stmt != ` ORDER BY "bar" ASC, "baz" ASC` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
 	}
 }
 
@@ -392,8 +462,9 @@ func TestBuildOrderStmtReverse(t *testing.T) {
 	s.appendOrder([]string{"foo"})
 
 	stmt := s.buf.String()
-	if stmt != `"foo" ASC` {
-		t.Log("Statement didn't match")
+	if stmt != ` ORDER BY "foo" DESC` {
+		t.Log("Statement didn't match", stmt)
+		t.Fail()
 	}
 }
 

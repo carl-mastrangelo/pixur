@@ -178,7 +178,7 @@ func (s *scanStmt) buildScan() (string, []interface{}) {
 		panic("only Prefix or Start|Stop may be specified")
 	}
 	if s.opts.Prefix != nil {
-		//s.appendPrefix()
+		s.appendPrefix()
 	} else if s.opts.Start != nil || s.opts.Stop != nil {
 		s.appendRange()
 	}
@@ -189,6 +189,24 @@ func (s *scanStmt) buildScan() (string, []interface{}) {
 	s.appendLock()
 	s.buf.WriteRune(';')
 	return s.buf.String(), s.args
+}
+
+func (s *scanStmt) appendPrefix() {
+	cols, vals := s.opts.Prefix.Cols(), s.opts.Prefix.Vals()
+	if len(vals) != 0 {
+		s.buf.WriteString(" WHERE ")
+		for i := 0; i < len(vals); i++ {
+			if i != 0 {
+				s.buf.WriteString(" AND ")
+			}
+			fmt.Fprintf(s.buf, "%s = ?", quoteIdentifier(cols[i]))
+			s.args = append(s.args, vals[i])
+		}
+	}
+	if sortCols := cols[len(vals):]; len(sortCols) != 0 {
+		s.appendOrder(sortCols)
+	}
+
 }
 
 func (s *scanStmt) appendRange() {
