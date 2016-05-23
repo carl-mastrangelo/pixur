@@ -1,13 +1,11 @@
 package tasks
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/binary"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/schema"
 	s "pixur.org/pixur/status"
@@ -29,14 +27,13 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, 1)
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte("secret"))
+	if err := bcrypt.CompareHashAndPassword(task.CreatedUser.Secret, []byte("secret")); err != nil {
+		t.Fatal(err)
+	}
 
 	expected := &schema.User{
 		UserId:     1,
-		Secret:     mac.Sum(nil),
+		Secret:     task.CreatedUser.Secret,
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 		Ident: []*schema.UserIdent{{
