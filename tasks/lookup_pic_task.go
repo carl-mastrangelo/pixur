@@ -36,11 +36,11 @@ func (t *LookupPicTask) Run() (errCap error) {
 	}()
 
 	pics, err := j.FindPics(db.Opts{
-		Start: tab.PicsPrimary{&t.PicID},
-		Limit: 1,
+		Prefix: tab.PicsPrimary{&t.PicID},
+		Limit:  1,
 	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
