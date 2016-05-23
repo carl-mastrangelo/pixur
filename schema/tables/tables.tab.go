@@ -241,7 +241,25 @@ func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
 	return
 }
 
-func (j Job) InsertPics(row PicRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.Pic)(nil)
+
+var _ interface {
+	IndexOrderCol() int64
+} = (*schema.Pic)(nil)
+
+func (j Job) InsertPic(pb *schema.Pic) error {
+	return j.InsertPicRow(&PicRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		IndexOrder: pb.IndexOrderCol(),
+	})
+}
+
+func (j Job) InsertPicRow(row *PicRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -257,7 +275,25 @@ func (j Job) InsertPics(row PicRow) error {
 	return db.Insert(j.tx, "Pics", colsPics, vals)
 }
 
-func (j Job) UpdatePics(row PicRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.Pic)(nil)
+
+var _ interface {
+	IndexOrderCol() int64
+} = (*schema.Pic)(nil)
+
+func (j Job) UpdatePic(pb *schema.Pic) error {
+	return j.UpdatePicRow(&PicRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		IndexOrder: pb.IndexOrderCol(),
+	})
+}
+
+func (j Job) UpdatePicRow(row *PicRow) error {
 
 	key := PicsPrimary{
 
@@ -361,7 +397,25 @@ func (j Job) FindTags(opts db.Opts) (rows []schema.Tag, err error) {
 	return
 }
 
-func (j Job) InsertTags(row TagRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.Tag)(nil)
+
+var _ interface {
+	NameCol() string
+} = (*schema.Tag)(nil)
+
+func (j Job) InsertTag(pb *schema.Tag) error {
+	return j.InsertTagRow(&TagRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		Name: pb.NameCol(),
+	})
+}
+
+func (j Job) InsertTagRow(row *TagRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -377,7 +431,25 @@ func (j Job) InsertTags(row TagRow) error {
 	return db.Insert(j.tx, "Tags", colsTags, vals)
 }
 
-func (j Job) UpdateTags(row TagRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.Tag)(nil)
+
+var _ interface {
+	NameCol() string
+} = (*schema.Tag)(nil)
+
+func (j Job) UpdateTag(pb *schema.Tag) error {
+	return j.UpdateTagRow(&TagRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		Name: pb.NameCol(),
+	})
+}
+
+func (j Job) UpdateTagRow(row *TagRow) error {
 
 	key := TagsPrimary{
 
@@ -463,7 +535,25 @@ func (j Job) FindPicTags(opts db.Opts) (rows []schema.PicTag, err error) {
 	return
 }
 
-func (j Job) InsertPicTags(row PicTagRow) error {
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicTag)(nil)
+
+var _ interface {
+	TagIdCol() int64
+} = (*schema.PicTag)(nil)
+
+func (j Job) InsertPicTag(pb *schema.PicTag) error {
+	return j.InsertPicTagRow(&PicTagRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		TagId: pb.TagIdCol(),
+	})
+}
+
+func (j Job) InsertPicTagRow(row *PicTagRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.PicId)
@@ -479,7 +569,25 @@ func (j Job) InsertPicTags(row PicTagRow) error {
 	return db.Insert(j.tx, "PicTags", colsPicTags, vals)
 }
 
-func (j Job) UpdatePicTags(row PicTagRow) error {
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicTag)(nil)
+
+var _ interface {
+	TagIdCol() int64
+} = (*schema.PicTag)(nil)
+
+func (j Job) UpdatePicTag(pb *schema.PicTag) error {
+	return j.UpdatePicTagRow(&PicTagRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		TagId: pb.TagIdCol(),
+	})
+}
+
+func (j Job) UpdatePicTagRow(row *PicTagRow) error {
 
 	key := PicTagsPrimary{
 
@@ -616,7 +724,31 @@ func (j Job) FindPicIdents(opts db.Opts) (rows []schema.PicIdent, err error) {
 	return
 }
 
-func (j Job) InsertPicIdents(row PicIdentRow) error {
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicIdent)(nil)
+
+var _ interface {
+	TypeCol() schema.PicIdent_Type
+} = (*schema.PicIdent)(nil)
+
+var _ interface {
+	ValueCol() []byte
+} = (*schema.PicIdent)(nil)
+
+func (j Job) InsertPicIdent(pb *schema.PicIdent) error {
+	return j.InsertPicIdentRow(&PicIdentRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		Type: pb.TypeCol(),
+
+		Value: pb.ValueCol(),
+	})
+}
+
+func (j Job) InsertPicIdentRow(row *PicIdentRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.PicId)
@@ -634,7 +766,31 @@ func (j Job) InsertPicIdents(row PicIdentRow) error {
 	return db.Insert(j.tx, "PicIdents", colsPicIdents, vals)
 }
 
-func (j Job) UpdatePicIdents(row PicIdentRow) error {
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicIdent)(nil)
+
+var _ interface {
+	TypeCol() schema.PicIdent_Type
+} = (*schema.PicIdent)(nil)
+
+var _ interface {
+	ValueCol() []byte
+} = (*schema.PicIdent)(nil)
+
+func (j Job) UpdatePicIdent(pb *schema.PicIdent) error {
+	return j.UpdatePicIdentRow(&PicIdentRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		Type: pb.TypeCol(),
+
+		Value: pb.ValueCol(),
+	})
+}
+
+func (j Job) UpdatePicIdentRow(row *PicIdentRow) error {
 
 	key := PicIdentsPrimary{
 
@@ -744,7 +900,25 @@ func (j Job) FindUsers(opts db.Opts) (rows []schema.User, err error) {
 	return
 }
 
-func (j Job) InsertUsers(row UserRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.User)(nil)
+
+var _ interface {
+	IdentCol() string
+} = (*schema.User)(nil)
+
+func (j Job) InsertUser(pb *schema.User) error {
+	return j.InsertUserRow(&UserRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		Ident: pb.IdentCol(),
+	})
+}
+
+func (j Job) InsertUserRow(row *UserRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -760,7 +934,25 @@ func (j Job) InsertUsers(row UserRow) error {
 	return db.Insert(j.tx, "Users", colsUsers, vals)
 }
 
-func (j Job) UpdateUsers(row UserRow) error {
+var _ interface {
+	IdCol() int64
+} = (*schema.User)(nil)
+
+var _ interface {
+	IdentCol() string
+} = (*schema.User)(nil)
+
+func (j Job) UpdateUser(pb *schema.User) error {
+	return j.UpdateUserRow(&UserRow{
+		Data: pb,
+
+		Id: pb.IdCol(),
+
+		Ident: pb.IdentCol(),
+	})
+}
+
+func (j Job) UpdateUserRow(row *UserRow) error {
 
 	key := UsersPrimary{
 

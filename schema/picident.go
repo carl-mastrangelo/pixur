@@ -26,6 +26,18 @@ var (
 	picIdentColFmt = strings.Repeat("?,", len(picIdentColNames)-1) + "?"
 )
 
+func (pi *PicIdent) PicIdCol() int64 {
+	return pi.PicId
+}
+
+func (pi *PicIdent) TypeCol() PicIdent_Type {
+	return pi.Type
+}
+
+func (pi *PicIdent) ValueCol() []byte {
+	return pi.Value
+}
+
 func (pi *PicIdent) fillFromRow(s scanTo) error {
 	var data []byte
 	if err := s.Scan(&data); err != nil {

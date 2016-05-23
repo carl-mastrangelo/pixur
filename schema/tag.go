@@ -22,6 +22,14 @@ var (
 	tagColFmt   = strings.Repeat("?,", len(tagColNames)-1) + "?"
 )
 
+func (t *Tag) IdCol() int64 {
+	return t.TagId
+}
+
+func (t *Tag) NameCol() string {
+	return t.Name
+}
+
 func (t *Tag) SetCreatedTime(now time.Time) {
 	t.CreatedTs = ToTs(now)
 }

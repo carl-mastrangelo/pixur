@@ -60,7 +60,9 @@ var SqlInitTables = []string{
   {{template "scanfunc" .}}
   {{template "findfunc" .}}
   {{template "insertfunc" .}}
+  {{template "insertrowfunc" .}}
   {{template "updatefunc" .}}
+  {{template "updaterowfunc" .}}
   {{template "deletefunc" .}}
 {{end}}
 `))
@@ -195,7 +197,28 @@ func (j Job) Find{{.Name}}(opts db.Opts) (rows []{{.GoDataType}}, err error) {
 }
 `))
 	_ = template.Must(tpl.New("insertfunc").Parse(`
-func (j Job) Insert{{.Name}}(row {{.GoType}}) error {
+{{if .HasColFns}}
+  {{$goDataType := .GoDataType}}
+  {{range .Columns}}
+    {{if .IsProto}}{{else}}
+      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (* {{$goDataType}})(nil)
+    {{end}}
+  {{end}}
+
+  func (j Job) Insert{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
+    return j.Insert{{.GoType}}(&{{.GoType}} {
+      Data: pb,
+      {{range .Columns}}
+        {{if .IsProto}}{{else}}
+          {{.GoName}}: pb.{{- .ColFn}}(),
+        {{end}}
+      {{end}}
+    })
+  }
+{{end}}
+`))
+	_ = template.Must(tpl.New("insertrowfunc").Parse(`
+func (j Job) Insert{{.GoType}}(row *{{.GoType}}) error {
   var vals []interface{}
   {{range .Columns}}
     {{if .IsProto}}
@@ -218,7 +241,28 @@ func (j Job) Delete{{.Name}}(key {{.Name}}Primary) error {
 }
 `))
 	_ = template.Must(tpl.New("updatefunc").Parse(`
-func (j Job) Update{{.Name}}(row {{.GoType}}) error {
+{{if .HasColFns}}
+  {{$goDataType := .GoDataType}}
+  {{range .Columns}}
+    {{if .IsProto}}{{else}}
+      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (* {{$goDataType}})(nil)
+    {{end}}
+  {{end}}
+
+  func (j Job) Update{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
+    return j.Update{{.GoType}}(&{{.GoType}} {
+      Data: pb,
+      {{range .Columns}}
+        {{if .IsProto}}{{else}}
+          {{.GoName}}: pb.{{- .ColFn}}(),
+        {{end}}
+      {{end}}
+    })
+  }
+{{end}}
+`))
+	_ = template.Must(tpl.New("updaterowfunc").Parse(`
+func (j Job) Update{{.GoType}}(row *{{.GoType}}) error {
   {{range .Indexes}}
     {{if eq .KeyType "PRIMARY KEY"}}
       key := {{.Name}}{

@@ -46,6 +46,14 @@ func (p *Pic) NonHiddenIndexOrder() int64 {
 	return p.GetCreatedTime().UnixNano()
 }
 
+func (p *Pic) IdCol() int64 {
+	return p.PicId
+}
+
+func (p *Pic) IndexOrderCol() int64 {
+	return p.IndexOrder()
+}
+
 func (p *Pic) IndexOrder() int64 {
 	if p.isHidden() {
 		return -1

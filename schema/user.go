@@ -24,6 +24,14 @@ var (
 	userColFmt = strings.Repeat("?,", len(userColNames)-1) + "?"
 )
 
+func (u *User) IdCol() int64 {
+	return u.UserId
+}
+
+func (u *User) IdentCol() string {
+	panic("fix me")
+}
+
 func (u *User) fillFromRow(s scanTo) error {
 	var data []byte
 	if err := s.Scan(&data); err != nil {

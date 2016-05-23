@@ -210,14 +210,16 @@ type tplImport struct {
 }
 
 type tplTable struct {
-	Name, GoType, GoDataType string
-	Columns                  []tplColumn
-	Indexes                  []tplIndex
+	Name, GoType, GoDataType, GoDataTypeShort string
+	Columns                                   []tplColumn
+	Indexes                                   []tplIndex
+	HasColFns                                 bool
 }
 
 type tplColumn struct {
 	GoName, SqlName, GoType, SqlType string
 	IsProto                          bool
+	ColFn                            string
 }
 
 func (t tplColumn) IsBlobIdxCol() bool {
@@ -253,6 +255,20 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 			SqlName: *f.Name,
 			GoName:  colNameToGoName(*f.Name),
 		}
+
+		if f.Options != nil && proto.HasExtension(f.Options, model.E_FieldOpts) {
+			fopts, err := proto.GetExtension(f.Options, model.E_FieldOpts)
+			if err != nil {
+				return err
+			}
+			t.HasColFns = true
+
+			col.ColFn = (fopts.(*model.FieldOptions)).ColFn
+		}
+		if t.HasColFns && col.ColFn == "" && *f.Name != "data" {
+			return fmt.Errorf("Missing col fn for %v", *f.Name)
+		}
+
 		switch *f.Type {
 		case descriptor.FieldDescriptorProto_TYPE_FIXED32:
 			fallthrough
@@ -295,6 +311,8 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 		t.Columns = append(t.Columns, col)
 		if *f.Name == "data" {
 			t.GoDataType = g.typeNameToGoName(*f.TypeName)
+			dataTypeParts := strings.Split(t.GoDataType, ".")
+			t.GoDataTypeShort = dataTypeParts[len(dataTypeParts)-1]
 		}
 	}
 	if _, present := colNames["data"]; !present {

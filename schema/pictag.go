@@ -27,6 +27,14 @@ type PicTagKey struct {
 	TagId int64
 }
 
+func (pt *PicTag) PicIdCol() int64 {
+	return pt.PicId
+}
+
+func (pt *PicTag) TagIdCol() int64 {
+	return pt.TagId
+}
+
 func (pt *PicTag) SetCreatedTime(now time.Time) {
 	pt.CreatedTs = ToTs(now)
 }

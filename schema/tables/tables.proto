@@ -21,9 +21,9 @@ message PicRow {
     }
   };
 
-  int64 id = 1;
+  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
 
-  int64 index_order = 2;
+  int64 index_order = 2 [(pixur.db.model.field_opts) = {col_fn: "IndexOrderCol"}];
 
   reserved 3;
   reserved "is_hidden";
@@ -45,9 +45,9 @@ message TagRow {
     }
   };
 
-  int64 id = 1;
+  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
 
-  string name = 2;
+  string name = 2 [(pixur.db.model.field_opts) = {col_fn: "NameCol"}];;
 
   pixur.Tag data = 3;
 }
@@ -62,8 +62,8 @@ message PicTagRow {
     }
   };
 
-  int64 pic_id = 1;
-  int64 tag_id = 2;
+  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 tag_id = 2 [(pixur.db.model.field_opts) = {col_fn: "TagIdCol"}];
 
   pixur.PicTag data = 3;
 }
@@ -85,11 +85,11 @@ message PicIdentRow {
     }
   };
 
-  int64 pic_id = 1;
+  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
 
-  pixur.PicIdent.Type type = 2;
+  pixur.PicIdent.Type type = 2 [(pixur.db.model.field_opts) = {col_fn: "TypeCol"}];
 
-  bytes value = 3;
+  bytes value = 3 [(pixur.db.model.field_opts) = {col_fn: "ValueCol"}];
 
   pixur.PicIdent data = 4;
 }
@@ -108,9 +108,9 @@ message UserRow {
     }
   };
 
-  int64 id = 1;
+  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
   
-  string ident = 2;
+  string ident = 2 [(pixur.db.model.field_opts) = {col_fn: "IdentCol"}];
   
   pixur.User data = 3;
 }

@@ -10,6 +10,10 @@ extend google.protobuf.MessageOptions {
   TableOptions tab_opts = 65537;
 }
 
+extend google.protobuf.FieldOptions {
+  FieldOptions field_opts = 65537;
+}
+
 enum KeyType {
   NONE = 0;
   PRIMARY = 1;
@@ -27,4 +31,8 @@ message TableOptions {
   }
 
   repeated Key key = 2;
+}
+
+message FieldOptions {
+  string col_fn = 1;
 }
