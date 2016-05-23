@@ -90,8 +90,8 @@ func isThumbnail(name string) bool {
 
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
-		mux.Handle("/api/dav/", &webdav.Handler{
-			Prefix: "/api/dav",
+		mux.Handle("/x/dav/", &webdav.Handler{
+			Prefix: "/x/dav",
 			FileSystem: &PixFS{
 				FileSystem: webdav.Dir(c.PixPath),
 				DB:         c.DB,
