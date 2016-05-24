@@ -44,3 +44,7 @@ message IndexResponse {
 message AddPicTagsResponse{
   // nothing here for now.
 }
+
+message CreatePicResponse {
+  ApiPic pic = 1;
+}

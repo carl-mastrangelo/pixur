@@ -54,8 +54,11 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: just pass the struct around
-	returnJSON(w, r, interfacePic(*task.CreatedPic))
+	resp := CreatePicResponse{
+		Pic: apiPic(task.CreatedPic),
+	}
+
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {
