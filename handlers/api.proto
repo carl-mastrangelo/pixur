@@ -52,3 +52,15 @@ message CreatePicResponse {
 message FindSimilarPicsResponse {
   repeated string id = 1; 
 }
+
+message IncrementViewCountResponse {
+  // nothing for now.
+}
+
+message PurgePicResponse {
+  // nothing for now
+}
+
+message SoftDeletePicResponse {
+  // nothing for now
+}

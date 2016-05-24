@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -11,6 +10,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/golang/protobuf/jsonpb"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
@@ -58,12 +59,9 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 		t.Fatal("Wrong deletion time", softDeletePicTask.PendingDeletionTime)
 	}
 
-	var results bool
-	if err := json.NewDecoder(res.Body).Decode(&results); err != nil {
+	var results SoftDeletePicResponse
+	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Fatal(err)
-	}
-	if !results {
-		t.Fatal("Wrong response", results)
 	}
 }
 
@@ -192,12 +190,9 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 		t.Fatal("Wrong deletion time", softDeletePicTask.PendingDeletionTime)
 	}
 
-	var results bool
-	if err := json.NewDecoder(res.Body).Decode(&results); err != nil {
+	var results SoftDeletePicResponse
+	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Fatal(err)
-	}
-	if !results {
-		t.Fatal("Wrong response", results)
 	}
 }
 

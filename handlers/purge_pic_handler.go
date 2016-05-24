@@ -47,7 +47,9 @@ func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	returnJSON(w, r, true)
+	resp := PurgePicResponse{}
+
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {
