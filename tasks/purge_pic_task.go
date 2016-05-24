@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
 )
 
@@ -18,54 +20,113 @@ type PurgePicTask struct {
 	DB      *sql.DB
 
 	// input
-	PicId int64
+	PicID int64
 }
 
-func (task *PurgePicTask) Run() error {
-	tx, err := task.DB.Begin()
+func (task *PurgePicTask) Run() (errCap error) {
+	j, err := tab.NewJob(task.DB)
 	if err != nil {
-		return status.InternalError(err, "Unable to Begin TX")
+		return status.InternalError(err, "can't create job")
 	}
-	defer tx.Rollback()
+	defer func() {
+		if errCap != nil {
+			if err := j.Rollback(); err != nil {
+				_ = err // TODO: log this
+			}
+		}
+	}()
 
-	p, err := lookupPicForUpdate(task.PicId, tx)
+	pics, err := j.FindPics(db.Opts{
+		Prefix: tab.PicsPrimary{&task.PicID},
+		Limit:  1,
+		Lock:   db.LockWrite,
+	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pics")
 	}
+	if len(pics) != 1 {
+		return status.NotFound(nil, "can't lookup pic")
+	}
+	p := pics[0]
 
-	pis, err := findPicIdentsToDelete(task.PicId, tx)
+	pis, err := j.FindPicIdents(db.Opts{
+		Prefix: tab.PicIdentsPrimary{PicId: &task.PicID},
+		Lock:   db.LockWrite,
+	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pic idents")
 	}
 
-	if err := deletePicIdents(pis, tx); err != nil {
-		return err
+	for _, pi := range pis {
+		err := j.DeletePicIdents(tab.PicIdentsPrimary{
+			PicId: &pi.PicId,
+			Type:  &pi.Type,
+			Value: &pi.Value,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't delete pic ident")
+		}
 	}
 
-	pts, err := findPicTagsToDelete(task.PicId, tx)
+	pts, err := j.FindPicTags(db.Opts{
+		Prefix: tab.PicTagsPrimary{PicId: &task.PicID},
+		Lock:   db.LockWrite,
+	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pic tags")
 	}
 
-	ts, err := findTagsToDelete(pts, tx)
-	if err != nil {
-		return err
+	for _, pt := range pts {
+		err := j.DeletePicTags(tab.PicTagsPrimary{
+			PicId: &pt.PicId,
+			TagId: &pt.TagId,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't delete pic ident")
+		}
 	}
 
-	if err := deletePicTags(pts, tx); err != nil {
-		return err
+	var ts []*schema.Tag
+	for _, pt := range pts {
+		tags, err := j.FindTags(db.Opts{
+			Prefix: tab.TagsPrimary{&pt.TagId},
+			Lock:   db.LockWrite,
+			Limit:  1,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't find tag")
+		}
+		if len(tags) != 1 {
+			return status.InternalError(err, "can't lookup tag")
+		}
+		ts = append(ts, &tags[0])
 	}
 
 	now := time.Now()
-	if err := upleteTags(ts, now, tx); err != nil {
-		return err
+	for _, t := range ts {
+		if t.UsageCount > 1 {
+			t.UsageCount--
+			t.SetModifiedTime(now)
+			if err := j.UpdateTag(t); err != nil {
+				return status.InternalError(err, "can't update tag")
+			}
+		} else {
+			err := j.DeleteTags(tab.TagsPrimary{
+				Id: &t.TagId,
+			})
+			if err != nil {
+				return status.InternalError(err, "can't delete tag")
+			}
+		}
 	}
 
-	if err := p.Delete(tx); err != nil {
-		return status.InternalError(err, "Unable to Purge Pic")
+	err = j.DeletePics(tab.PicsPrimary{
+		Id: &task.PicID,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't delete pic")
 	}
-
-	if err := tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		return status.InternalError(err, "Unable to Commit")
 	}
 
@@ -128,15 +189,6 @@ func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) error {
 	for _, pt := range pts {
 		if err := pt.Delete(tx); err != nil {
 			return status.InternalError(err, "Unable to Delete PicTag")
-		}
-	}
-	return nil
-}
-
-func deletePicIdents(pis []*schema.PicIdent, tx *sql.Tx) error {
-	for _, pi := range pis {
-		if err := pi.Delete(tx); err != nil {
-			return status.InternalError(err, "Unable to Delete PicIdent")
 		}
 	}
 	return nil

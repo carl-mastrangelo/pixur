@@ -30,7 +30,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	task := &PurgePicTask{
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
-		PicId:   p.Pic.PicId,
+		PicID:   p.Pic.PicId,
 	}
 
 	runner := new(TaskRunner)
@@ -51,7 +51,7 @@ func TestPurgeWorkflow(t *testing.T) {
 		t.Fatal("Expected PicTag to be deleted", pt)
 	}
 
-	afterIdents, err := schema.FindPicIdents(stmt, task.PicId)
+	afterIdents, err := schema.FindPicIdents(stmt, task.PicID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 	task := &PurgePicTask{
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
-		PicId:   p.Pic.PicId,
+		PicID:   p.Pic.PicId,
 	}
 
 	runner := new(TaskRunner)
