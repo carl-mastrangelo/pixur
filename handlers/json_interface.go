@@ -35,8 +35,8 @@ func apiPicTags(dst []*ApiPicTag, srcs ...*schema.PicTag) []*ApiPicTag {
 
 func apiPicTag(src *schema.PicTag) *ApiPicTag {
 	return &ApiPicTag{
-		PicId:        src.PicId,
-		TagId:        src.TagId,
+		PicId:        schema.Varint(src.PicId).Encode(),
+		TagId:        schema.Varint(src.TagId).Encode(),
 		Name:         src.Name,
 		CreatedTime:  src.CreatedTs,
 		ModifiedTime: src.ModifiedTs,

@@ -24,8 +24,8 @@ message ApiPic {
 }
 
 message ApiPicTag {
-  int64 pic_id = 1;
-  int64 tag_id = 2;
+  string pic_id = 1;
+  string tag_id = 2;
   string name = 3;
   google.protobuf.Timestamp created_time = 4;
   google.protobuf.Timestamp modified_time = 5;
@@ -47,4 +47,8 @@ message AddPicTagsResponse{
 
 message CreatePicResponse {
   ApiPic pic = 1;
+}
+
+message FindSimilarPicsResponse {
+  repeated string id = 1; 
 }
