@@ -39,7 +39,7 @@ func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var task = &tasks.PurgePicTask{
 		DB:      h.DB,
 		PixPath: h.PixPath,
-		PicId:   requestedPicId,
+		PicID:   requestedPicId,
 	}
 	runner := new(tasks.TaskRunner)
 	if err := runner.Run(task); err != nil {

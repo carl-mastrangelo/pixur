@@ -141,59 +141,6 @@ func (task *PurgePicTask) Run() (errCap error) {
 	return nil
 }
 
-func findPicIdentsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicIdent, error) {
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicIdentColPicId)
-	if err != nil {
-		return nil, status.InternalError(err, "Unable to Prepare Lookup")
-	}
-	defer stmt.Close()
-	pis, err := schema.FindPicIdents(stmt, picId)
-	if err != nil {
-		return nil, status.InternalError(err, "Error Looking up Pic Idents")
-	}
-	return pis, nil
-}
-
-func findPicTagsToDelete(picId int64, tx *sql.Tx) ([]*schema.PicTag, error) {
-	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicTagColPicId)
-	if err != nil {
-		return nil, status.InternalError(err, "Unable to Prepare Lookup")
-	}
-	defer stmt.Close()
-	pts, err := schema.FindPicTags(stmt, picId)
-	if err != nil {
-		return nil, status.InternalError(err, "Error Looking up Pic Tags")
-	}
-	return pts, nil
-}
-
-func findTagsToDelete(pts []*schema.PicTag, tx *sql.Tx) ([]*schema.Tag, error) {
-	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColId)
-	if err != nil {
-		return nil, status.InternalError(err, "Unable to Prepare Lookup")
-	}
-	defer stmt.Close()
-
-	ts := make([]*schema.Tag, 0, len(pts))
-	for _, pt := range pts {
-		t, err := schema.LookupTag(stmt, pt.TagId)
-		if err != nil {
-			return nil, status.InternalErrorf(err, "Error Looking up Tag", pt.TagId)
-		}
-		ts = append(ts, t)
-	}
-	return ts, nil
-}
-
-func deletePicTags(pts []*schema.PicTag, tx *sql.Tx) error {
-	for _, pt := range pts {
-		if err := pt.Delete(tx); err != nil {
-			return status.InternalError(err, "Unable to Delete PicTag")
-		}
-	}
-	return nil
-}
-
 func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, error) {
 	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
 	if err != nil {
@@ -208,22 +155,4 @@ func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, error) {
 		return nil, status.InternalError(err, "Error Looking up Pic")
 	}
 	return p, nil
-}
-
-// if Update|Insert = Upsert, then Update|Delete = uplete?
-func upleteTags(ts []*schema.Tag, now time.Time, tx *sql.Tx) error {
-	for _, t := range ts {
-		if t.UsageCount > 1 {
-			t.UsageCount--
-			t.SetModifiedTime(now)
-			if err := t.Update(tx); err != nil {
-				return status.InternalError(err, "Unable to Update Tag")
-			}
-		} else {
-			if err := t.Delete(tx); err != nil {
-				return status.InternalError(err, "Unable to Delete Tag")
-			}
-		}
-	}
-	return nil
 }
