@@ -89,6 +89,6 @@ IndexCtrl.prototype.fileChange = function(elem) {
 IndexCtrl.prototype.createPic = function() {
   this.picsService_.create(this.upload.file, this.upload.url)
       .then(function(data) {
-        this.pics.unshift(data.data);
+        this.pics.unshift(data.pic);
       }.bind(this));
 };

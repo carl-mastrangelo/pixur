@@ -64,3 +64,7 @@ message PurgePicResponse {
 message SoftDeletePicResponse {
   // nothing for now
 }
+
+message UpsertPicResponse {
+  ApiPic pic = 1;
+}

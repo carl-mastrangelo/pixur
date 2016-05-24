@@ -149,7 +149,7 @@ PicsService.prototype.create = function(file, url) {
   };
   this.http_.post("/api/upsertPic", data, postConfig).then(
     function(data, status, headers, config) {
-      deferred.resolve(data);
+      deferred.resolve(data.data);
     },
     function(data, status, headers, config) {
       console.log(data);
