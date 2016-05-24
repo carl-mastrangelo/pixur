@@ -47,7 +47,8 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	returnJSON(w, r, true)
+	resp := AddPicTagsResponse{}
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {

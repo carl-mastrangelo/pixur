@@ -40,3 +40,7 @@ message LookupPicDetailsResponse {
 message IndexResponse {
   repeated ApiPic pic = 1;
 }
+
+message AddPicTagsResponse{
+  // nothing here for now.
+}
