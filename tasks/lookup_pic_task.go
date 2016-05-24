@@ -19,8 +19,8 @@ type LookupPicTask struct {
 	PicID int64
 
 	// Results
-	Pic     schema.Pic
-	PicTags []schema.PicTag
+	Pic     *schema.Pic
+	PicTags []*schema.PicTag
 }
 
 func (t *LookupPicTask) Run() (errCap error) {

@@ -102,7 +102,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p.Pic, &task.Pics[0]) {
+	if len(task.Pics) != 1 || !proto.Equal(p.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p, task.Pics)
 	}
 }
@@ -129,7 +129,7 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, &task.Pics[0]) {
+	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p1, task.Pics)
 	}
 }

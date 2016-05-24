@@ -223,18 +223,18 @@ func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 
 var colsPics = []string{"id", "index_order", "data"}
 
-func (j Job) ScanPics(opts db.Opts, cb func(schema.Pic) error) error {
+func (j Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
 	return db.Scan(j.tx, "Pics", opts, func(data []byte) error {
 		var pb schema.Pic
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 
-func (j Job) FindPics(opts db.Opts) (rows []schema.Pic, err error) {
-	err = j.ScanPics(opts, func(data schema.Pic) error {
+func (j Job) FindPics(opts db.Opts) (rows []*schema.Pic, err error) {
+	err = j.ScanPics(opts, func(data *schema.Pic) error {
 		rows = append(rows, data)
 		return nil
 	})
@@ -379,18 +379,18 @@ func (idx TagsName) Vals() (vals []interface{}) {
 
 var colsTags = []string{"id", "name", "data"}
 
-func (j Job) ScanTags(opts db.Opts, cb func(schema.Tag) error) error {
+func (j Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
 	return db.Scan(j.tx, "Tags", opts, func(data []byte) error {
 		var pb schema.Tag
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 
-func (j Job) FindTags(opts db.Opts) (rows []schema.Tag, err error) {
-	err = j.ScanTags(opts, func(data schema.Tag) error {
+func (j Job) FindTags(opts db.Opts) (rows []*schema.Tag, err error) {
+	err = j.ScanTags(opts, func(data *schema.Tag) error {
 		rows = append(rows, data)
 		return nil
 	})
@@ -517,18 +517,18 @@ func (idx PicTagsPrimary) Vals() (vals []interface{}) {
 
 var colsPicTags = []string{"pic_id", "tag_id", "data"}
 
-func (j Job) ScanPicTags(opts db.Opts, cb func(schema.PicTag) error) error {
+func (j Job) ScanPicTags(opts db.Opts, cb func(*schema.PicTag) error) error {
 	return db.Scan(j.tx, "PicTags", opts, func(data []byte) error {
 		var pb schema.PicTag
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 
-func (j Job) FindPicTags(opts db.Opts) (rows []schema.PicTag, err error) {
-	err = j.ScanPicTags(opts, func(data schema.PicTag) error {
+func (j Job) FindPicTags(opts db.Opts) (rows []*schema.PicTag, err error) {
+	err = j.ScanPicTags(opts, func(data *schema.PicTag) error {
 		rows = append(rows, data)
 		return nil
 	})
@@ -706,18 +706,18 @@ func (idx PicIdentsIdent) Vals() (vals []interface{}) {
 
 var colsPicIdents = []string{"pic_id", "type", "value", "data"}
 
-func (j Job) ScanPicIdents(opts db.Opts, cb func(schema.PicIdent) error) error {
+func (j Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error {
 	return db.Scan(j.tx, "PicIdents", opts, func(data []byte) error {
 		var pb schema.PicIdent
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 
-func (j Job) FindPicIdents(opts db.Opts) (rows []schema.PicIdent, err error) {
-	err = j.ScanPicIdents(opts, func(data schema.PicIdent) error {
+func (j Job) FindPicIdents(opts db.Opts) (rows []*schema.PicIdent, err error) {
+	err = j.ScanPicIdents(opts, func(data *schema.PicIdent) error {
 		rows = append(rows, data)
 		return nil
 	})
@@ -882,18 +882,18 @@ func (idx UsersIdent) Vals() (vals []interface{}) {
 
 var colsUsers = []string{"id", "ident", "data"}
 
-func (j Job) ScanUsers(opts db.Opts, cb func(schema.User) error) error {
+func (j Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
 	return db.Scan(j.tx, "Users", opts, func(data []byte) error {
 		var pb schema.User
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 
-func (j Job) FindUsers(opts db.Opts) (rows []schema.User, err error) {
-	err = j.ScanUsers(opts, func(data schema.User) error {
+func (j Job) FindUsers(opts db.Opts) (rows []*schema.User, err error) {
+	err = j.ScanUsers(opts, func(data *schema.User) error {
 		rows = append(rows, data)
 		return nil
 	})

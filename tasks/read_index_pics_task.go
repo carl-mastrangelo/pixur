@@ -32,7 +32,7 @@ type ReadIndexPicsTask struct {
 	// State
 
 	// Results
-	Pics []schema.Pic
+	Pics []*schema.Pic
 }
 
 func (t *ReadIndexPicsTask) ResetForRetry() {
@@ -67,7 +67,7 @@ func lookupStartPic(j tab.Job, id int64, asc bool) (*schema.Pic, error) {
 		// TODO: log info that there were no pics
 		return nil, nil
 	}
-	return &startPics[0], nil
+	return startPics[0], nil
 }
 
 func (t *ReadIndexPicsTask) Run() (errCap error) {

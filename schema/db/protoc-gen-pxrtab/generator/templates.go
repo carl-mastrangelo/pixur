@@ -174,13 +174,13 @@ func (j Job) AllocID() (int64, error) {
 }
 `))
 	_ = template.Must(tpl.New("scanfunc").Parse(`
-func (j Job) Scan{{.Name}}(opts db.Opts, cb func({{.GoDataType}}) error) error {
+func (j Job) Scan{{.Name}}(opts db.Opts, cb func(*{{.GoDataType}}) error) error {
 	return db.Scan(j.tx, {{goesc .Name}}, opts, func(data []byte) error {
 		var pb {{.GoDataType}}
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
-		return cb(pb)
+		return cb(&pb)
 	})
 }
 `))
@@ -188,8 +188,8 @@ func (j Job) Scan{{.Name}}(opts db.Opts, cb func({{.GoDataType}}) error) error {
 var cols{{.Name}} = []string{ {{- range .Columns}} {{goesc .SqlName}}, {{end -}} }
 `))
 	_ = template.Must(tpl.New("findfunc").Parse(`
-func (j Job) Find{{.Name}}(opts db.Opts) (rows []{{.GoDataType}}, err error) {
-	err = j.Scan{{.Name}}(opts, func(data {{.GoDataType}}) error {
+func (j Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
+	err = j.Scan{{.Name}}(opts, func(data *{{.GoDataType}}) error {
 		rows = append(rows, data)
 		return nil
 	})
@@ -201,7 +201,7 @@ func (j Job) Find{{.Name}}(opts db.Opts) (rows []{{.GoDataType}}, err error) {
   {{$goDataType := .GoDataType}}
   {{range .Columns}}
     {{if .IsProto}}{{else}}
-      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (* {{$goDataType}})(nil)
+      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (*{{$goDataType}})(nil)
     {{end}}
   {{end}}
 
@@ -245,7 +245,7 @@ func (j Job) Delete{{.Name}}(key {{.Name}}Primary) error {
   {{$goDataType := .GoDataType}}
   {{range .Columns}}
     {{if .IsProto}}{{else}}
-      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (* {{$goDataType}})(nil)
+      var _ interface{ {{- .ColFn}}() {{.GoType -}} } = (*{{$goDataType}})(nil)
     {{end}}
   {{end}}
 

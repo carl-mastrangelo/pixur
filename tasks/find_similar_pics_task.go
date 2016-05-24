@@ -66,7 +66,7 @@ func (t *FindSimilarPicsTask) Run() (errCap error) {
 	scanOpts := db.Opts{
 		Start: tab.PicIdentsIdent{Type: &dctIdentType},
 	}
-	err = j.ScanPicIdents(scanOpts, func(pi schema.PicIdent) error {
+	err = j.ScanPicIdents(scanOpts, func(pi *schema.PicIdent) error {
 		if pi.PicId == pic.PicId {
 			return nil
 		}

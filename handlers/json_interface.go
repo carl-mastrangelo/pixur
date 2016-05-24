@@ -4,14 +4,14 @@ import (
 	"pixur.org/pixur/schema"
 )
 
-func apiPics(dst []*ApiPic, srcs ...schema.Pic) []*ApiPic {
+func apiPics(dst []*ApiPic, srcs ...*schema.Pic) []*ApiPic {
 	for _, src := range srcs {
 		dst = append(dst, apiPic(src))
 	}
 	return dst
 }
 
-func apiPic(src schema.Pic) *ApiPic {
+func apiPic(src *schema.Pic) *ApiPic {
 	return &ApiPic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
@@ -26,14 +26,14 @@ func apiPic(src schema.Pic) *ApiPic {
 	}
 }
 
-func apiPicTags(dst []*ApiPicTag, srcs ...schema.PicTag) []*ApiPicTag {
+func apiPicTags(dst []*ApiPicTag, srcs ...*schema.PicTag) []*ApiPicTag {
 	for _, src := range srcs {
 		dst = append(dst, apiPicTag(src))
 	}
 	return dst
 }
 
-func apiPicTag(src schema.PicTag) *ApiPicTag {
+func apiPicTag(src *schema.PicTag) *ApiPicTag {
 	return &ApiPicTag{
 		PicId:        src.PicId,
 		TagId:        src.TagId,

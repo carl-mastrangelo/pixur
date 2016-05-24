@@ -99,7 +99,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 		if len(tags) != 1 {
 			return status.InternalError(err, "can't lookup tag")
 		}
-		ts = append(ts, &tags[0])
+		ts = append(ts, tags[0])
 	}
 
 	now := time.Now()

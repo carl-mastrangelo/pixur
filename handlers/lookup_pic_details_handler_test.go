@@ -21,10 +21,10 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	successRunner := func(task tasks.Task) error {
 		lookupPicTask = task.(*tasks.LookupPicTask)
 		// set the results
-		lookupPicTask.Pic = schema.Pic{
+		lookupPicTask.Pic = &schema.Pic{
 			PicId: 1,
 		}
-		lookupPicTask.PicTags = []schema.PicTag{{
+		lookupPicTask.PicTags = []*schema.PicTag{{
 			PicId: 1,
 			TagId: 2,
 		}}
@@ -79,7 +79,7 @@ func TestLookupPicParsePicId(t *testing.T) {
 	successRunner := func(task tasks.Task) error {
 		lookupPicTask = task.(*tasks.LookupPicTask)
 		// set the result, even though we don't need it.
-		lookupPicTask.Pic = schema.Pic{
+		lookupPicTask.Pic = &schema.Pic{
 			PicId: 1,
 		}
 		return nil
