@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
@@ -34,6 +35,7 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	var task = &tasks.IncrementViewCountTask{
 		DB:    h.DB,
+		Now:   time.Now,
 		PicID: requestedPicID,
 	}
 	runner := new(tasks.TaskRunner)

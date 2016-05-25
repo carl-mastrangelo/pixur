@@ -17,6 +17,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 
 	task := IncrementViewCountTask{
 		DB:    c.DB(),
+		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
 	if err := task.Run(); err != nil {
@@ -49,6 +50,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 
 	task := IncrementViewCountTask{
 		DB:    c.DB(),
+		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
 	if err := task.Run(); err == nil {
