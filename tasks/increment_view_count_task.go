@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"database/sql"
-	"log"
 	"time"
 
 	"pixur.org/pixur/schema/db"
@@ -17,14 +16,6 @@ type IncrementViewCountTask struct {
 
 	// Inputs
 	PicID int64
-}
-
-func cleanUp(j tab.Job, errCap error) {
-	if errCap != nil {
-		if err := j.Rollback(); err != nil {
-			log.Println("Additional error during rollback", err)
-		}
-	}
 }
 
 func (t *IncrementViewCountTask) Run() (errCap error) {

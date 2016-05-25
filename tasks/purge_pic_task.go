@@ -28,13 +28,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer func() {
-		if errCap != nil {
-			if err := j.Rollback(); err != nil {
-				_ = err // TODO: log this
-			}
-		}
-	}()
+	defer cleanUp(j, errCap)
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&task.PicID},

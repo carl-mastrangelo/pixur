@@ -1,5 +1,11 @@
 package tasks
 
+import (
+	"log"
+
+	tab "pixur.org/pixur/schema/tables"
+)
+
 type Task interface {
 	Run() error
 }
@@ -16,4 +22,12 @@ type Resettable interface {
 // always called exactly once, at the end of the task, regardless of success.
 type Messy interface {
 	CleanUp()
+}
+
+func cleanUp(j tab.Job, errCap error) {
+	if errCap != nil {
+		if err := j.Rollback(); err != nil {
+			log.Println("Additional error during rollback", err)
+		}
+	}
 }

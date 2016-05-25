@@ -26,14 +26,9 @@ type LookupPicTask struct {
 func (t *LookupPicTask) Run() (errCap error) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create new job")
+		return status.InternalError(err, "can't create job")
 	}
-	defer func() {
-		if err := j.Rollback(); errCap == nil {
-			errCap = err
-		}
-		// TODO: log error
-	}()
+	defer cleanUp(j, errCap)
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},

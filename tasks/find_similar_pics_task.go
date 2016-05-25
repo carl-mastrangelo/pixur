@@ -29,12 +29,7 @@ func (t *FindSimilarPicsTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "can't create new job")
 	}
-	defer func() {
-		if err := j.Rollback(); errCap == nil {
-			errCap = err
-		}
-		// TODO: log the error
-	}()
+	defer cleanUp(j, errCap)
 
 	pics, err := j.FindPics(db.Opts{
 		Start: tab.PicsPrimary{&t.PicID},

@@ -75,13 +75,7 @@ func (t *ReadIndexPicsTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
-
-	defer func() {
-		if err := j.Rollback(); errCap == nil {
-			errCap = err
-		}
-		// TODO: log rollback error
-	}()
+	defer cleanUp(j, errCap)
 
 	var indexID int64
 	if t.StartID != 0 {
