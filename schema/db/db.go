@@ -220,7 +220,9 @@ func (s *scanStmt) appendRange() {
 	if s.opts.Stop != nil {
 		stopCols, stopVals = s.opts.Stop.Cols(), s.opts.Stop.Vals()
 	}
-	s.buf.WriteString(" WHERE ")
+	if len(startVals) != 0 || len(stopVals) != 0 {
+		s.buf.WriteString(" WHERE ")
+	}
 	if len(startVals) != 0 {
 		startStmt, startArgs := buildStart(startCols, startVals)
 		s.args = append(s.args, startArgs...)
@@ -234,7 +236,7 @@ func (s *scanStmt) appendRange() {
 		s.args = append(s.args, stopArgs...)
 		s.buf.WriteString(stopStmt)
 	}
-	if len(startVals) != 0 {
+	if len(startCols) != 0 {
 		s.appendOrder(startCols)
 	} else {
 		s.appendOrder(stopCols)

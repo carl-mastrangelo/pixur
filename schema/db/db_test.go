@@ -369,6 +369,28 @@ func TestBuildScanPrefix(t *testing.T) {
 	}
 }
 
+func TestBuildScanPrefixNoVals(t *testing.T) {
+	s := scanStmt{
+		name: "tab",
+		buf:  new(bytes.Buffer),
+		opts: Opts{
+			Prefix: &testIdx{
+				cols: []string{"foo", "bar"},
+				vals: []interface{}{},
+			},
+		},
+	}
+	query, args := s.buildScan()
+	if query != `SELECT "data" FROM "tab" ORDER BY "foo" ASC, "bar" ASC FOR SHARE;` {
+		t.Log("Bad Query", query)
+		t.Fail()
+	}
+	if len(args) != 0 {
+		t.Log("Wrong args", args)
+		t.Fail()
+	}
+}
+
 func TestBuildScanLimitReverseLock(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
