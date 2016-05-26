@@ -22,13 +22,9 @@ import (
 
 	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
-
-	"github.com/go-sql-driver/mysql"
-)
-
-const (
-	duplicateEntryErrorNumber = 1062
 )
 
 var (
@@ -45,9 +41,8 @@ type readAtSeeker interface {
 
 type CreatePicTask struct {
 	// Deps
-	PixPath     string
-	DB          *sql.DB
-	IDAllocator *schema.IDAllocator
+	PixPath string
+	DB      *sql.DB
 
 	// Inputs
 	Filename string
@@ -60,7 +55,6 @@ type CreatePicTask struct {
 	// State
 	// The file that was created to hold the upload.
 	tempFilename string
-	tx           *sql.Tx
 	now          time.Time
 
 	// Results
@@ -81,14 +75,9 @@ func (t *CreatePicTask) reset() {
 			log.Println("ERROR Unable to remove image in CreatePicTask", t.tempFilename, err)
 		}
 	}
-	if t.tx != nil {
-		if err := t.tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Println("ERROR Unable to rollback in CreatePicTask", err)
-		}
-	}
 }
 
-func (t *CreatePicTask) Run() error {
+func (t *CreatePicTask) Run() (errCap error) {
 	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.PixPath, "__")
 	if err != nil {
@@ -128,45 +117,45 @@ func (t *CreatePicTask) Run() error {
 		return err
 	}
 	thumbnail := imaging.MakeThumbnail(img)
-	if err := t.beginTransaction(); err != nil {
-		return err
+
+	j, err := tab.NewJob(t.DB)
+	if err != nil {
+		return status.InternalError(err, "can't create job")
 	}
+	defer cleanUp(j, errCap)
 
 	identities, err := generatePicIdentities(wf)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Move this into its own function
-	// TODO: See if this can be a LOCK IN SHARE MODE
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
-		t.tx, schema.PicIdentColType, schema.PicIdentColValue)
+	sha256Type := schema.PicIdent_SHA256
+	sha256Value := identities[sha256Type]
+	pis, err := j.FindPicIdents(db.Opts{
+		Prefix: tab.PicIdentsIdent{
+			Type:  &sha256Type,
+			Value: &sha256Value,
+		},
+		Lock:  db.LockWrite,
+		Limit: 1,
+	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pic idents")
+	}
+	if len(pis) != 0 {
+		return status.AlreadyExists(nil, "pic already exists")
 	}
 
-	sha256Idents, err := schema.FindPicIdents(
-		stmt, schema.PicIdent_SHA256, identities[schema.PicIdent_SHA256])
+	picID, err := j.AllocID()
 	if err != nil {
-		return err
-	}
-	if len(sha256Idents) > 0 {
-		return status.AlreadyExists(nil, "Picture already uploaded")
-	}
-	picID, err := t.IDAllocator.Next(t.DB)
-	if err != nil {
-		return status.InternalError(err, "Couldn't allocate ID")
+		status.InternalError(err, "can't allocate id")
 	}
 	p.PicId = picID
 
-	if err := p.Insert(t.tx); err != nil {
-		if err, ok := err.(*mysql.MySQLError); ok {
-			if err.Number == duplicateEntryErrorNumber {
-				return status.AlreadyExists(nil, "Picture already uploaded")
-			}
-		}
-		return status.InternalError(err, "Unable to Insert Picture")
+	if err := j.InsertPic(p); err != nil {
+		return status.InternalError(err, "can't insert pic")
 	}
+
 	if err := t.renameTempFile(p); err != nil {
 		return err
 	}
@@ -176,12 +165,12 @@ func (t *CreatePicTask) Run() error {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
 
-	tags, err := t.insertOrFindTags()
+	tags, err := t.insertOrFindTags(j)
 	if err != nil {
 		return err
 	}
 	// must happen after pic is created, because it depends on pic id
-	if err := t.addTagsForPic(p, tags); err != nil {
+	if err := t.addTagsForPic(p, tags, j); err != nil {
 		return err
 	}
 
@@ -192,17 +181,17 @@ func (t *CreatePicTask) Run() error {
 			Type:  typ,
 			Value: val,
 		}
-		if err := ident.Insert(t.tx); err != nil {
-			return err
+		if err := j.InsertPicIdent(ident); err != nil {
+			return status.InternalError(err, "can't create pic ident")
 		}
 	}
 
 	pIdent := getPerceptualHash(p, img)
-	if err := pIdent.Insert(t.tx); err != nil {
-		return err
+	if err := j.InsertPicIdent(pIdent); err != nil {
+		return status.InternalError(err, "can't create pic ident")
 	}
 
-	if err := t.tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		return err
 	}
 
@@ -259,15 +248,6 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
 	return nil
 }
 
-func (t *CreatePicTask) beginTransaction() error {
-	if tx, err := t.DB.Begin(); err != nil {
-		return status.InternalError(err, "Unable to Begin TX")
-	} else {
-		t.tx = tx
-	}
-	return nil
-}
-
 func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 	if err := os.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
 		return status.InternalError(err, "Unable to prepare pic dir")
@@ -284,10 +264,7 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
-func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
-	idalloc := func() (int64, error) {
-		return t.IDAllocator.Next(t.DB)
-	}
+func (t *CreatePicTask) insertOrFindTags(j tab.Job) ([]*schema.Tag, error) {
 	cleanedTags, err := cleanTagNames(t.TagNames)
 	if err != nil {
 		return nil, err
@@ -295,7 +272,7 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 	sort.Strings(cleanedTags)
 	var allTags []*schema.Tag
 	for _, tagName := range cleanedTags {
-		tag, err := findAndUpsertTag(tagName, t.now, t.tx, idalloc)
+		tag, err := findAndUpsertTag(tagName, t.now, j)
 		if err != nil {
 			return nil, err
 		}
@@ -307,31 +284,27 @@ func (t *CreatePicTask) insertOrFindTags() ([]*schema.Tag, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now time.Time, tx *sql.Tx, idalloc func() (int64, error)) (
-	*schema.Tag, error) {
-	tag, err := findTagByName(tagName, tx)
-	if err == ErrTagNotFound {
-		tag, err = createTag(tagName, now, tx, idalloc)
-	} else if err != nil {
-		return nil, err
-	} else {
-		tag.SetModifiedTime(now)
-		tag.UsageCount += 1
-		err = tag.Update(tx)
-	}
-
+func findAndUpsertTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, error) {
+	tag, err := findTagByName(tagName, j)
 	if err != nil {
 		return nil, err
 	}
+	if tag == nil {
+		return createTag(tagName, now, j)
+	}
 
+	tag.SetModifiedTime(now)
+	tag.UsageCount += 1
+	if err := j.UpdateTag(tag); err != nil {
+		return nil, status.InternalError(err, "can't update tag")
+	}
 	return tag, nil
 }
 
-func createTag(tagName string, now time.Time, tx *sql.Tx, idalloc func() (int64, error)) (
-	*schema.Tag, error) {
-	id, err := idalloc()
+func createTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, error) {
+	id, err := j.AllocID()
 	if err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "can't allocate id")
 	}
 	tag := &schema.Tag{
 		TagId:      id,
@@ -340,29 +313,29 @@ func createTag(tagName string, now time.Time, tx *sql.Tx, idalloc func() (int64,
 	}
 	tag.SetCreatedTime(now)
 	tag.SetModifiedTime(now)
-
-	if err := tag.Insert(tx); err != nil {
-		return nil, err
+	if err := j.InsertTag(tag); err != nil {
+		return nil, status.InternalError(err, "can't create tag")
 	}
+
 	return tag, nil
 }
 
-func findTagByName(tagName string, tx *sql.Tx) (*schema.Tag, error) {
-	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColName)
+func findTagByName(tagName string, j tab.Job) (*schema.Tag, error) {
+	tags, err := j.FindTags(db.Opts{
+		Prefix: tab.TagsName{&tagName},
+		Lock:   db.LockWrite,
+		Limit:  1,
+	})
 	if err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "can't find tags")
 	}
-
-	tag, err := schema.LookupTag(stmt, tagName)
-	if err == sql.ErrNoRows {
-		return nil, ErrTagNotFound
-	} else if err != nil {
-		return nil, err
+	if len(tags) != 1 {
+		return nil, nil
 	}
-	return tag, nil
+	return tags[0], nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
+func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j tab.Job) error {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
 			PicId: p.PicId,
@@ -371,8 +344,8 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag) error {
 		}
 		picTag.SetCreatedTime(p.GetCreatedTime())
 		picTag.SetModifiedTime(p.GetModifiedTime())
-		if _, err := picTag.Insert(t.tx); err != nil {
-			return err
+		if err := j.InsertPicTag(picTag); err != nil {
+			return status.InternalError(err, "can't create pic tag")
 		}
 	}
 	return nil

@@ -10,19 +10,24 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"testing"
 	"unicode"
+
+	"pixur.org/pixur/schema"
+	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/status"
 
 	"github.com/golang/protobuf/proto"
 )
 
 // TODO: Remove this
 func mustFindTagByName(name string, c *TestContainer) *TestTag {
-	tx := c.Tx()
-	defer tx.Rollback()
-	tag, err := findTagByName(name, tx)
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	defer j.Rollback()
+	tag, err := findTagByName(name, j)
 	if err != nil {
 		c.T.Fatal(err)
 	}
@@ -248,9 +253,12 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tx := c.Tx()
-	defer tx.Rollback()
-	fooTag, err := findTagByName("foo", tx)
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	defer j.Rollback()
+	fooTag, err := findTagByName("foo", j)
 	if err != nil {
 		t.Fatal(err)
 	}
