@@ -192,7 +192,7 @@ func (t *CreatePicTask) Run() (errCap error) {
 	}
 
 	if err := j.Commit(); err != nil {
-		return err
+		return status.InternalError(err, "can't commit job")
 	}
 
 	// The upload succeeded

@@ -36,10 +36,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Secret:     task.CreatedUser.Secret,
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
-		Ident: []*schema.UserIdent{{
-			Ident: &schema.UserIdent_Email{
-				Email: "email",
-			}}},
+		Email:      "email",
 	}
 	if !proto.Equal(expected, task.CreatedUser) {
 		t.Fatal("not equal", expected, task.CreatedUser)
@@ -59,7 +56,7 @@ func TestCreateUserEmptyEmail(t *testing.T) {
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Missing email or secret",
+		Message: "missing email or secret",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -77,7 +74,7 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Missing email or secret",
+		Message: "missing email or secret",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -96,7 +93,7 @@ func TestCreateUserCantBegin(t *testing.T) {
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't begin tx",
+		Message: "can't create job",
 	}
 	compareStatus(t, *status, expected)
 }
