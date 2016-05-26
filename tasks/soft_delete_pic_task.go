@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
 )
 
@@ -27,27 +29,35 @@ type SoftDeletePicTask struct {
 	Temporary bool
 }
 
-func (task *SoftDeletePicTask) Run() error {
+func (task *SoftDeletePicTask) Run() (errCap error) {
 	if task.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.InternalError(nil, "Invalid deletion reason", task.Reason)
 	}
 
-	tx, err := task.DB.Begin()
+	j, err := tab.NewJob(task.DB)
 	if err != nil {
-		return status.InternalError(err, "Unable to Begin TX")
+		return status.InternalError(err, "can't create job")
 	}
-	defer tx.Rollback()
+	defer cleanUp(j, errCap)
 
-	p, err := lookupPicForUpdate(task.PicID, tx)
+	pics, err := j.FindPics(db.Opts{
+		Prefix: tab.PicsPrimary{&task.PicID},
+		Lock:   db.LockWrite,
+		Limit:  1,
+	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pics")
 	}
+	if len(pics) != 1 {
+		return status.NotFound(nil, "can't lookup pic")
+	}
+	p := pics[0]
 
 	now := time.Now()
 
 	if p.DeletionStatus != nil {
 		if p.HardDeleted() {
-			return status.InvalidArgument(nil, "Pic is already Hard Deleted")
+			return status.InvalidArgument(nil, "pic already hard deleted")
 		}
 	} else {
 		p.DeletionStatus = &schema.Pic_DeletionStatus{}
@@ -66,12 +76,12 @@ func (task *SoftDeletePicTask) Run() error {
 		p.DeletionStatus.MarkedDeletedTs = schema.ToTs(now)
 	}
 	p.SetModifiedTime(now)
-	if err := p.Update(tx); err != nil {
-		return status.InternalError(err, "Unable to update")
+	if err := j.UpdatePic(p); err != nil {
+		return status.InternalError(err, "can't update pic")
 	}
 
-	if err := tx.Commit(); err != nil {
-		return status.InternalError(err, "Unable to Commit")
+	if err := j.Commit(); err != nil {
+		return status.InternalError(err, "can't commit job")
 	}
 
 	return nil
