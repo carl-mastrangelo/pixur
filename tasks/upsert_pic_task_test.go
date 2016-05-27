@@ -17,6 +17,8 @@ import (
 
 	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 	s "pixur.org/pixur/status"
 )
 
@@ -33,7 +35,7 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't begin TX",
+		Message: "can't create job",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -480,15 +482,18 @@ func TestMerge(t *testing.T) {
 	fu := "http://url"
 	tagNames := []string{"a", "b"}
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Rollback()
 
-	err := mergePic(tx, p.Pic, now, fh, fu, tagNames, c.IDAlloc())
+	err = mergePic(j, p.Pic, now, fh, fu, tagNames)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -512,15 +517,15 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	}
 	p.Update()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	err := mergePic(tx, p.Pic, time.Now(), FileHeader{}, "", nil, c.IDAlloc())
+	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -538,15 +543,15 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{}
 	p.Update()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	err := mergePic(tx, p.Pic, time.Now(), FileHeader{}, "", nil, c.IDAlloc())
+	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -565,19 +570,17 @@ func TestUpsertTags(t *testing.T) {
 	pic := c.CreatePic()
 	c.CreatePicTag(pic, attachedTag)
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
 	now := time.Now()
-
 	tagNames := []string{attachedTag.Tag.Name, unattachedTag.Tag.Name, "missing"}
-
-	err := upsertTags(tx, tagNames, pic.Pic.PicId, now, c.IDAlloc())
+	err := upsertTags(j, tagNames, pic.Pic.PicId, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	allTags, allPicTags, err := findAttachedPicTags(tx, pic.Pic.PicId)
+	allTags, allPicTags, err := findAttachedPicTags(j, pic.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,10 +597,10 @@ func TestCreatePicTags(t *testing.T) {
 	pic := c.CreatePic()
 	now := time.Now()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	picTags, err := createPicTags(tx, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
+	picTags, err := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -623,14 +626,14 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	pic := c.CreatePic()
 	now := time.Now()
 
-	tx := c.Tx()
-	tx.Rollback()
+	j := c.Job()
+	j.Rollback()
 
-	_, err := createPicTags(tx, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
+	_, err := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert pictag",
+		Message: "can't create pic tag",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -639,12 +642,12 @@ func TestCreateNewTags(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
 	now := time.Now()
 
-	newTags, err := createNewTags(tx, []string{"a"}, now, c.IDAlloc())
+	newTags, err := createNewTags(j, []string{"a"}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -669,16 +672,16 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	tx.Rollback()
+	j := c.Job()
+	j.Rollback()
 
 	now := time.Now()
 
-	_, err := createNewTags(tx, []string{"a"}, now, c.IDAlloc())
+	_, err := createNewTags(j, []string{"a"}, now)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert tag",
+		Message: "can't create tag",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -688,16 +691,16 @@ func TestUpdateExistingTags(t *testing.T) {
 	defer c.Close()
 
 	tag := c.CreateTag()
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
 	now := tag.Tag.GetModifiedTime().Add(time.Nanosecond)
 	usage := tag.Tag.UsageCount
 
-	if err := updateExistingTags(tx, []*schema.Tag{tag.Tag}, now); err != nil {
+	if err := updateExistingTags(j, []*schema.Tag{tag.Tag}, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := tx.Commit(); err != nil {
+	if err := j.Commit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -715,14 +718,14 @@ func TestUpdateExistingTags_CantPrepare(t *testing.T) {
 	defer c.Close()
 
 	tag := c.CreateTag()
-	tx := c.Tx()
-	tx.Rollback()
+	j := c.Job()
+	j.Rollback()
 
-	err := updateExistingTags(tx, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
+	err := updateExistingTags(j, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't update tag",
+		Message: "can't update tag",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -736,10 +739,10 @@ func TestFindExistingTagsByName_AllFound(t *testing.T) {
 	// create another random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(tx, []string{tag2.Tag.Name, tag1.Tag.Name})
+	tags, unknown, err := findExistingTagsByName(j, []string{tag2.Tag.Name, tag1.Tag.Name})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -761,15 +764,15 @@ func TestFindExistingTagsByName_SomeFound(t *testing.T) {
 	// create another random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", tag1.Tag.Name})
+	tags, unknown, err := findExistingTagsByName(j, []string{"missing", tag1.Tag.Name})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(tags) != 1 || tags[0].TagId != tag1.Tag.TagId {
-		t.Fatal("Tags mismatch", tags, tag1)
+		t.Fatal("Tags mismatch", tags, *tag1.Tag)
 	}
 	if len(unknown) != 1 || unknown[0] != "missing" {
 		t.Fatal("Unknown tag should have been found", unknown)
@@ -783,10 +786,10 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 	// create a random tag, but we won't use it.
 	c.CreateTag()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(tx, []string{"missing", "othertag"})
+	tags, unknown, err := findExistingTagsByName(j, []string{"missing", "othertag"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,25 +800,6 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 	if len(unknown) != 2 || unknown[0] != "missing" || unknown[1] != "othertag" {
 		t.Fatal("Unknown tag should have been found", unknown)
 	}
-}
-
-func TestFindExistingTagsByName_CantPrepare(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
-
-	// create a random tag, but we won't use it.
-	c.CreateTag()
-
-	tx := c.Tx()
-	tx.Rollback()
-
-	_, _, err := findExistingTagsByName(tx, nil)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't prepare stmt",
-	}
-	compareStatus(t, *status, expected)
 }
 
 func TestFindUnattachedTagNames_AllNew(t *testing.T) {
@@ -855,14 +839,14 @@ func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	tx.Rollback()
+	j := c.Job()
+	j.Rollback()
 
-	_, _, err := findAttachedPicTags(tx, 0)
+	_, _, err := findAttachedPicTags(j, 0)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't prepare picTagStmt",
+		Message: "cant't find pic tags",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -873,10 +857,10 @@ func TestFindAttachedPicTags_NoTags(t *testing.T) {
 
 	p := c.CreatePic()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	tags, picTags, err := findAttachedPicTags(tx, p.Pic.PicId)
+	tags, picTags, err := findAttachedPicTags(j, p.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -893,10 +877,10 @@ func TestFindAttachedPicTags(t *testing.T) {
 	tag := c.CreateTag()
 	picTag := c.CreatePicTag(p, tag)
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	tags, picTags, err := findAttachedPicTags(tx, p.Pic.PicId)
+	tags, picTags, err := findAttachedPicTags(j, p.Pic.PicId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -906,31 +890,6 @@ func TestFindAttachedPicTags(t *testing.T) {
 	if !proto.Equal(tags[0], tag.Tag) || !proto.Equal(picTags[0], picTag.PicTag) {
 		t.Fatal("Tags mismatch", tags, picTags)
 	}
-}
-
-func TestFindAttachedPicTags_CorruptTag(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
-
-	p := c.CreatePic()
-	tag := c.CreateTag()
-	c.CreatePicTag(p, tag)
-
-	tx := c.Tx()
-	defer tx.Rollback()
-
-	// This should never be true.  Pic tags must always have a tag
-	if err := tag.Tag.Delete(tx); err != nil {
-		t.Fatal(err)
-	}
-
-	_, _, err := findAttachedPicTags(tx, p.Pic.PicId)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't lookup tag",
-	}
-	compareStatus(t, *status, expected)
 }
 
 func TestPrepareFile_CreateTempFileFails(t *testing.T) {
@@ -1061,10 +1020,10 @@ func TestFindExistingPic_None(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	p, err := findExistingPic(tx, schema.PicIdent_MD5, []byte("missing"))
+	p, err := findExistingPic(j, schema.PicIdent_MD5, []byte("missing"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1080,10 +1039,10 @@ func TestFindExistingPic_Exists(t *testing.T) {
 
 	existingPic := c.CreatePic()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
-	p, err := findExistingPic(tx, schema.PicIdent_MD5, existingPic.Md5())
+	p, err := findExistingPic(j, schema.PicIdent_MD5, existingPic.Md5())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1093,48 +1052,19 @@ func TestFindExistingPic_Exists(t *testing.T) {
 	}
 }
 
-func TestFindExistingPic_DuplicateHashes(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
-	tx := c.Tx()
-	defer tx.Rollback()
-
-	sha256Ident := &schema.PicIdent{
-		PicId: 1234,
-		Type:  schema.PicIdent_SHA256,
-		Value: []byte("sha256"),
-	}
-	if err := sha256Ident.Insert(tx); err != nil {
-		t.Fatal(err)
-	}
-	sha256Ident.PicId = 9999
-	// This should never happen normally, but we break the rules for the test
-	if err := sha256Ident.Insert(tx); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := findExistingPic(tx, schema.PicIdent_SHA256, sha256Ident.Value)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Found duplicate idents",
-	}
-	compareStatus(t, *status, expected)
-}
-
 func TestFindExistingPic_Failure(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	// force tx failure
-	tx.Rollback()
+	j := c.Job()
+	// force job failure
+	j.Rollback()
 
-	_, err := findExistingPic(tx, schema.PicIdent_SHA256, []byte("sha256"))
+	_, err := findExistingPic(j, schema.PicIdent_SHA256, []byte("sha256"))
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't prepare identStmt",
+		Message: "can't find pic idents",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -1143,24 +1073,24 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	md5Ident := &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
-	if err := md5Ident.Insert(tx); err != nil {
+	if err := j.InsertPicIdent(md5Ident); err != nil {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
 
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert md5",
+		Message: "can't create md5",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -1169,24 +1099,24 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	sha1Ident := &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
-	if err := sha1Ident.Insert(tx); err != nil {
+	if err := j.InsertPicIdent(sha1Ident); err != nil {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
 
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert sha1",
+		Message: "can't create sha1",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -1195,24 +1125,24 @@ func TestInsertPicHashes_SHA256Exists(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 	sha256Ident := &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_SHA256,
 		Value: sha256Hash,
 	}
-	if err := sha256Ident.Insert(tx); err != nil {
+	if err := j.InsertPicIdent(sha256Ident); err != nil {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
 
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert sha256",
+		Message: "can't create sha256",
 	}
 	compareStatus(t, *status, expected)
 }
@@ -1221,21 +1151,19 @@ func TestInsertPicHashes(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 
-	err := insertPicHashes(tx, 1234, md5Hash, sha1Hash, sha256Hash)
+	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ ORDER BY %s;", tx, schema.PicIdentColValue)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stmt.Close()
-	idents, err := schema.FindPicIdents(stmt)
+	idents, err := j.FindPicIdents(db.Opts{
+		Start:   tab.PicIdentsPrimary{},
+		Reverse: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1273,8 +1201,8 @@ func TestInsertPerceptualHash(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	tx := c.Tx()
-	defer tx.Rollback()
+	j := c.Job()
+	defer j.Rollback()
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
@@ -1286,20 +1214,15 @@ func TestInsertPerceptualHash(t *testing.T) {
 		Dct0Values: inputs,
 	}
 
-	if err := insertPerceptualHash(tx, 1234, img); err != nil {
+	if err := insertPerceptualHash(j, 1234, img); err != nil {
 		t.Fatal(err)
 	}
 
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_;", tx)
+	idents, err := j.FindPicIdents(db.Opts{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer stmt.Close()
-	ident, err := schema.LookupPicIdent(stmt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !proto.Equal(ident, dct0Ident) {
+	if !proto.Equal(idents[0], dct0Ident) {
 		t.Fatal("perceptual hash mismatch")
 	}
 }
@@ -1308,28 +1231,25 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	db := c.DB()
-	defer db.Close()
-	tx := c.Tx()
-	// Forces tx to fail
-	tx.Rollback()
+	testdb := c.DB()
+	defer testdb.Close()
+	j := c.Job()
+	// Forces job to fail
+	j.Rollback()
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
-	err := insertPerceptualHash(tx, 1234, img)
+	err := insertPerceptualHash(j, 1234, img)
 	status := err.(*s.Status)
 	expected := s.Status{
 		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't insert dct0",
+		Message: "can't create dct0",
 	}
 	compareStatus(t, *status, expected)
 
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_;", db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stmt.Close()
-	idents, err := schema.FindPicIdents(stmt)
+	j = c.Job()
+	defer j.Rollback()
+	idents, err := j.FindPicIdents(db.Opts{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,15 +18,16 @@ import (
 
 	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 	s "pixur.org/pixur/status"
 )
 
 type UpsertPicTask struct {
 	// Deps
-	PixPath     string
-	DB          *sql.DB
-	HTTPClient  *http.Client
-	IDAllocator *schema.IDAllocator
+	PixPath    string
+	DB         *sql.DB
+	HTTPClient *http.Client
 	// os functions
 	TempFile func(dir, prefix string) (*os.File, error)
 	Rename   func(oldpath, newpath string) error
@@ -53,36 +54,34 @@ type FileHeader struct {
 	Size int64
 }
 
-func (t *UpsertPicTask) Run() error {
-	tx, err := t.DB.Begin()
+func (t *UpsertPicTask) Run() (errCap error) {
+	j, err := tab.NewJob(t.DB)
 	if err != nil {
-		return s.InternalError(err, "Can't begin TX")
+		return s.InternalError(err, "can't create job")
 	}
-	defer tx.Rollback()
+	defer cleanUp(j, errCap)
 
-	if err := t.runInternal(tx); err != nil {
+	if err := t.runInternal(j); err != nil {
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
+	// TODO: Check if this delete the original pic on a failed merge.
+	if err := j.Commit(); err != nil {
 		os.Remove(t.CreatedPic.Path(t.PixPath))
 		os.Remove(t.CreatedPic.ThumbnailPath(t.PixPath))
 		t.CreatedPic = nil
-		return s.InternalError(err, "Can't commit")
+		return s.InternalError(err, "can't commit job")
 	}
 	return nil
 }
 
-func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
+func (t *UpsertPicTask) runInternal(j tab.Job) error {
 	if t.File == nil && t.FileURL == "" {
 		return s.InvalidArgument(nil, "No pic specified")
 	}
-	idalloc := func() (int64, error) {
-		return t.IDAllocator.Next(t.DB)
-	}
 	now := t.Now()
 	if len(t.Md5Hash) != 0 {
-		p, err := findExistingPic(tx, schema.PicIdent_MD5, t.Md5Hash)
+		p, err := findExistingPic(j, schema.PicIdent_MD5, t.Md5Hash)
 		if err != nil {
 			return err
 		}
@@ -94,7 +93,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(tx, p, now, t.Header, t.FileURL, t.TagNames, idalloc)
+				return mergePic(j, p, now, t.Header, t.FileURL, t.TagNames)
 			}
 		}
 	}
@@ -118,7 +117,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 
 	// Still double check that the sha1 hash is not in use, even if the md5 one was
 	// checked up at the beginning of the function.
-	p, err := findExistingPic(tx, schema.PicIdent_SHA1, sha1Hash)
+	p, err := findExistingPic(j, schema.PicIdent_SHA1, sha1Hash)
 	if err != nil {
 		return err
 	}
@@ -130,12 +129,12 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(tx, p, now, *fh, t.FileURL, t.TagNames, idalloc)
+			return mergePic(j, p, now, *fh, t.FileURL, t.TagNames)
 		}
 	} else {
-		picID, err := idalloc()
+		picID, err := j.AllocID()
 		if err != nil {
-			return s.InternalError(err, "no next id")
+			return s.InternalError(err, "can't allocate id")
 		}
 		p = &schema.Pic{
 			PicId:         picID,
@@ -148,13 +147,13 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 			// ModifiedTime is set in mergePic
 		}
 
-		if err := p.Insert(tx); err != nil {
+		if err := j.InsertPic(p); err != nil {
 			return s.InternalError(err, "Can't insert")
 		}
-		if err := insertPicHashes(tx, p.PicId, md5Hash, sha1Hash, sha256Hash); err != nil {
+		if err := insertPicHashes(j, p.PicId, md5Hash, sha1Hash, sha256Hash); err != nil {
 			return err
 		}
-		if err := insertPerceptualHash(tx, p.PicId, im); err != nil {
+		if err := insertPerceptualHash(j, p.PicId, im); err != nil {
 			return err
 		}
 	}
@@ -169,7 +168,7 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 		return s.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := mergePic(tx, p, now, *fh, t.FileURL, t.TagNames, idalloc); err != nil {
+	if err := mergePic(j, p, now, *fh, t.FileURL, t.TagNames); err != nil {
 		return err
 	}
 
@@ -195,8 +194,8 @@ func (t *UpsertPicTask) runInternal(tx *sql.Tx) error {
 	return nil
 }
 
-func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
-	fileURL string, tagNames []string, idalloc func() (int64, error)) error {
+func mergePic(j tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL string,
+	tagNames []string) error {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
 		if ds.Temporary {
@@ -205,7 +204,7 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 		}
 	}
 
-	if err := upsertTags(tx, tagNames, p.PicId, now, idalloc); err != nil {
+	if err := upsertTags(j, tagNames, p.PicId, now); err != nil {
 		return err
 	}
 
@@ -224,76 +223,72 @@ func mergePic(tx *sql.Tx, p *schema.Pic, now time.Time, fh FileHeader,
 		p.FileName = append(p.FileName, fh.Name)
 	}
 
-	if err := p.Update(tx); err != nil {
-		return s.InternalError(err, "Can't update pic")
+	if err := j.UpdatePic(p); err != nil {
+		return s.InternalError(err, "can't update pic")
 	}
 
 	return nil
 }
 
-func upsertTags(tx *sql.Tx, rawTags []string, picID int64, now time.Time, idalloc func() (int64, error)) error {
+func upsertTags(j tab.Job, rawTags []string, picID int64, now time.Time) error {
 	newTagNames, err := cleanTagNames(rawTags)
 	if err != nil {
 		return err
 	}
 
-	attachedTags, _, err := findAttachedPicTags(tx, picID)
+	attachedTags, _, err := findAttachedPicTags(j, picID)
 	if err != nil {
 		return err
 	}
 
 	unattachedTagNames := findUnattachedTagNames(attachedTags, newTagNames)
-	existingTags, unknownNames, err := findExistingTagsByName(tx, unattachedTagNames)
+	existingTags, unknownNames, err := findExistingTagsByName(j, unattachedTagNames)
 	if err != nil {
 		return err
 	}
 
-	if err := updateExistingTags(tx, existingTags, now); err != nil {
+	if err := updateExistingTags(j, existingTags, now); err != nil {
 		return err
 	}
-	newTags, err := createNewTags(tx, unknownNames, now, idalloc)
+	newTags, err := createNewTags(j, unknownNames, now)
 	if err != nil {
 		return err
 	}
 
 	existingTags = append(existingTags, newTags...)
-	if _, err := createPicTags(tx, existingTags, picID, now); err != nil {
+	if _, err := createPicTags(j, existingTags, picID, now); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func findAttachedPicTags(tx *sql.Tx, picID int64) ([]*schema.Tag, []*schema.PicTag, error) {
-	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;",
-		tx, schema.PicTagColPicId)
+func findAttachedPicTags(j tab.Job, picID int64) ([]*schema.Tag, []*schema.PicTag, error) {
+	pts, err := j.FindPicTags(db.Opts{
+		Prefix: tab.PicTagsPrimary{PicId: &picID},
+		Lock:   db.LockWrite,
+	})
 	if err != nil {
-		return nil, nil, s.InternalError(err, "Can't prepare picTagStmt")
+		return nil, nil, s.InternalError(err, "cant't find pic tags")
 	}
-	defer picTagStmt.Close()
-
-	picTags, err := schema.FindPicTags(picTagStmt, picID)
-	if err != nil {
-		return nil, nil, s.InternalError(err, "Can't find pictags")
-	}
-
-	tagStmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? LOCK IN SHARE MODE;",
-		tx, schema.TagColId)
-	if err != nil {
-		return nil, nil, s.InternalError(err, "Can't prepare tagStmt")
-	}
-	defer tagStmt.Close()
 
 	var tags []*schema.Tag
 	// TODO: maybe do something with lock ordering?
-	for _, picTag := range picTags {
-		tag, err := schema.LookupTag(tagStmt, picTag.TagId)
+	for _, pt := range pts {
+		ts, err := j.FindTags(db.Opts{
+			Prefix: tab.TagsPrimary{&pt.TagId},
+			Limit:  1,
+			Lock:   db.LockWrite,
+		})
 		if err != nil {
-			return nil, nil, s.InternalError(err, "Can't lookup tag")
+			return nil, nil, s.InternalError(err, "can't find tags")
 		}
-		tags = append(tags, tag)
+		if len(ts) != 1 {
+			return nil, nil, s.InternalError(err, "can't lookup tag")
+		}
+		tags = append(tags, ts[0])
 	}
-	return tags, picTags, nil
+	return tags, pts, nil
 }
 
 // findUnattachedTagNames finds tag names that are not part of a pic's tags.
@@ -314,44 +309,44 @@ func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []
 	return unattachedTagNames
 }
 
-func findExistingTagsByName(tx *sql.Tx, names []string) (tags []*schema.Tag, unknownNames []string, err error) {
-	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.TagColName)
-	if err != nil {
-		return nil, nil, s.InternalError(err, "Can't prepare stmt")
-	}
-	defer stmt.Close()
-
+func findExistingTagsByName(j tab.Job, names []string) (
+	tags []*schema.Tag, unknownNames []string, err error) {
 	for _, name := range names {
-		tag, err := schema.LookupTag(stmt, name)
-		if err == sql.ErrNoRows {
-			unknownNames = append(unknownNames, name)
-		} else if err != nil {
-			return nil, nil, s.InternalError(err, "Can't lookup tag")
+		ts, err := j.FindTags(db.Opts{
+			Prefix: tab.TagsName{&name},
+			Limit:  1,
+			Lock:   db.LockWrite,
+		})
+		if err != nil {
+			return nil, nil, s.InternalError(err, "can't find tags")
+		}
+		if len(ts) == 1 {
+			tags = append(tags, ts[0])
 		} else {
-			tags = append(tags, tag)
+			unknownNames = append(unknownNames, name)
 		}
 	}
 
 	return
 }
 
-func updateExistingTags(tx *sql.Tx, tags []*schema.Tag, now time.Time) error {
+func updateExistingTags(j tab.Job, tags []*schema.Tag, now time.Time) error {
 	for _, tag := range tags {
 		tag.SetModifiedTime(now)
 		tag.UsageCount++
-		if err := tag.Update(tx); err != nil {
-			return s.InternalError(err, "Can't update tag")
+		if err := j.UpdateTag(tag); err != nil {
+			return s.InternalError(err, "can't update tag")
 		}
 	}
 	return nil
 }
 
-func createNewTags(tx *sql.Tx, tagNames []string, now time.Time, idalloc func() (int64, error)) ([]*schema.Tag, error) {
+func createNewTags(j tab.Job, tagNames []string, now time.Time) ([]*schema.Tag, error) {
 	var tags []*schema.Tag
 	for _, name := range tagNames {
-		tagID, err := idalloc()
+		tagID, err := j.AllocID()
 		if err != nil {
-			return nil, s.InternalError(err, "Can't allocate tag id")
+			return nil, s.InternalError(err, "can't allocate id")
 		}
 		tag := &schema.Tag{
 			TagId:      tagID,
@@ -360,15 +355,15 @@ func createNewTags(tx *sql.Tx, tagNames []string, now time.Time, idalloc func() 
 			ModifiedTs: schema.ToTs(now),
 			CreatedTs:  schema.ToTs(now),
 		}
-		if err := tag.Insert(tx); err != nil {
-			return nil, s.InternalError(err, "Can't insert tag")
+		if err := j.InsertTag(tag); err != nil {
+			return nil, s.InternalError(err, "can't create tag")
 		}
 		tags = append(tags, tag)
 	}
 	return tags, nil
 }
 
-func createPicTags(tx *sql.Tx, tags []*schema.Tag, picID int64, now time.Time) ([]*schema.PicTag, error) {
+func createPicTags(j tab.Job, tags []*schema.Tag, picID int64, now time.Time) ([]*schema.PicTag, error) {
 	var picTags []*schema.PicTag
 	for _, tag := range tags {
 		pt := &schema.PicTag{
@@ -378,65 +373,73 @@ func createPicTags(tx *sql.Tx, tags []*schema.Tag, picID int64, now time.Time) (
 			ModifiedTs: schema.ToTs(now),
 			CreatedTs:  schema.ToTs(now),
 		}
-		if _, err := pt.Insert(tx); err != nil {
-			return nil, s.InternalError(err, "Can't insert pictag")
+		if err := j.InsertPicTag(pt); err != nil {
+			return nil, s.InternalError(err, "can't create pic tag")
 		}
 		picTags = append(picTags, pt)
 	}
 	return picTags, nil
 }
 
-func findExistingPic(tx *sql.Tx, typ schema.PicIdent_Type, hash []byte) (*schema.Pic, error) {
-	identStmt, err := schema.PicIdentPrepare(
-		"SELECT * FROM_ WHERE %s = ? AND %s = ? FOR UPDATE;",
-		tx, schema.PicIdentColType, schema.PicIdentColValue)
+func findExistingPic(j tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema.Pic, error) {
+	pis, err := j.FindPicIdents(db.Opts{
+		Prefix: tab.PicIdentsIdent{
+			Type:  &typ,
+			Value: &hash,
+		},
+		Lock:  db.LockWrite,
+		Limit: 1,
+	})
 	if err != nil {
-		return nil, s.InternalError(err, "Can't prepare identStmt")
+		return nil, s.InternalError(err, "can't find pic idents")
 	}
-	defer identStmt.Close()
-	idents, err := schema.FindPicIdents(identStmt, typ, hash)
-	if err != nil {
-		return nil, s.InternalError(err, "Can't find idents")
-	}
-	switch len(idents) {
-	case 0:
+	if len(pis) == 0 {
 		return nil, nil
-	case 1:
-		return lookupPicForUpdate(idents[0].PicId, tx)
-	default:
-		return nil, s.InternalErrorf(nil, "Found duplicate idents %+v", idents)
 	}
+	pics, err := j.FindPics(db.Opts{
+		Prefix: tab.PicsPrimary{&pis[0].PicId},
+		Lock:   db.LockWrite,
+		Limit:  1,
+	})
+	if err != nil {
+		return nil, s.InternalError(err, "can't find pics")
+	}
+	if len(pics) != 1 {
+		return nil, s.InternalError(err, "can't lookup pic")
+	}
+
+	return pics[0], nil
 }
 
-func insertPicHashes(tx *sql.Tx, picID int64, md5Hash, sha1Hash, sha256Hash []byte) error {
+func insertPicHashes(j tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []byte) error {
 	md5Ident := &schema.PicIdent{
 		PicId: picID,
 		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
-	if err := md5Ident.Insert(tx); err != nil {
-		return s.InternalError(err, "Can't insert md5")
+	if err := j.InsertPicIdent(md5Ident); err != nil {
+		return s.InternalError(err, "can't create md5")
 	}
 	sha1Ident := &schema.PicIdent{
 		PicId: picID,
 		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
-	if err := sha1Ident.Insert(tx); err != nil {
-		return s.InternalError(err, "Can't insert sha1")
+	if err := j.InsertPicIdent(sha1Ident); err != nil {
+		return s.InternalError(err, "can't create sha1")
 	}
 	sha256Ident := &schema.PicIdent{
 		PicId: picID,
 		Type:  schema.PicIdent_SHA256,
 		Value: sha256Hash,
 	}
-	if err := sha256Ident.Insert(tx); err != nil {
-		return s.InternalError(err, "Can't insert sha256")
+	if err := j.InsertPicIdent(sha256Ident); err != nil {
+		return s.InternalError(err, "can't create sha256")
 	}
 	return nil
 }
 
-func insertPerceptualHash(tx *sql.Tx, picID int64, im image.Image) error {
+func insertPerceptualHash(j tab.Job, picID int64, im image.Image) error {
 	hash, inputs := imaging.PerceptualHash0(im)
 	dct0Ident := &schema.PicIdent{
 		PicId:      picID,
@@ -444,8 +447,8 @@ func insertPerceptualHash(tx *sql.Tx, picID int64, im image.Image) error {
 		Value:      hash,
 		Dct0Values: inputs,
 	}
-	if err := dct0Ident.Insert(tx); err != nil {
-		return s.InternalError(err, "Can't insert dct0")
+	if err := j.InsertPicIdent(dct0Ident); err != nil {
+		return s.InternalError(err, "can't create dct0")
 	}
 	return nil
 }

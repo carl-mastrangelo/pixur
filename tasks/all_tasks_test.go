@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/tables"
+	tab "pixur.org/pixur/schema/tables"
 	ptest "pixur.org/pixur/testing"
 )
 
@@ -40,12 +40,12 @@ func (c *TestContainer) DB() *sql.DB {
 		if err != nil {
 			c.T.Fatal(err)
 		}
-		for _, t := range tables.SqlTables {
+		for _, t := range tab.SqlTables {
 			if _, err := db.Exec(t); err != nil {
 				c.T.Fatal(err)
 			}
 		}
-		for _, t := range tables.SqlInitTables {
+		for _, t := range tab.SqlInitTables {
 			if _, err := db.Exec(t); err != nil {
 				c.T.Fatal(err)
 			}
@@ -76,6 +76,14 @@ func (c *TestContainer) Tx() *sql.Tx {
 		c.T.Fatal(err)
 	}
 	return tx
+}
+
+func (c *TestContainer) Job() tab.Job {
+	j, err := tab.NewJob(c.DB())
+	if err != nil {
+		c.T.Fatal(err)
+	}
+	return j
 }
 
 func (c *TestContainer) TempDir() string {

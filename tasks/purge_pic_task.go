@@ -134,19 +134,3 @@ func (task *PurgePicTask) Run() (errCap error) {
 
 	return nil
 }
-
-func lookupPicForUpdate(picId int64, tx *sql.Tx) (*schema.Pic, error) {
-	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ? FOR UPDATE;", tx, schema.PicColId)
-	if err != nil {
-		return nil, status.InternalError(err, "Unable to Prepare Lookup")
-	}
-	defer stmt.Close()
-
-	p, err := schema.LookupPic(stmt, picId)
-	if err == sql.ErrNoRows {
-		return nil, status.NotFound(nil, "Could not find pic", picId)
-	} else if err != nil {
-		return nil, status.InternalError(err, "Error Looking up Pic")
-	}
-	return p, nil
-}
