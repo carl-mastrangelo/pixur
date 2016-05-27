@@ -52,7 +52,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 	}
 
 	for _, pi := range pis {
-		err := j.DeletePicIdents(tab.PicIdentsPrimary{
+		err := j.DeletePicIdent(tab.PicIdentsPrimary{
 			PicId: &pi.PicId,
 			Type:  &pi.Type,
 			Value: &pi.Value,
@@ -71,7 +71,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 	}
 
 	for _, pt := range pts {
-		err := j.DeletePicTags(tab.PicTagsPrimary{
+		err := j.DeletePicTag(tab.PicTagsPrimary{
 			PicId: &pt.PicId,
 			TagId: &pt.TagId,
 		})
@@ -105,7 +105,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 				return status.InternalError(err, "can't update tag")
 			}
 		} else {
-			err := j.DeleteTags(tab.TagsPrimary{
+			err := j.DeleteTag(tab.TagsPrimary{
 				Id: &t.TagId,
 			})
 			if err != nil {
@@ -114,7 +114,7 @@ func (task *PurgePicTask) Run() (errCap error) {
 		}
 	}
 
-	err = j.DeletePics(tab.PicsPrimary{
+	err = j.DeletePic(tab.PicsPrimary{
 		Id: &task.PicID,
 	})
 	if err != nil {

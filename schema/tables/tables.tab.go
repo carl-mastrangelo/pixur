@@ -315,7 +315,7 @@ func (j Job) UpdatePicRow(row *PicRow) error {
 	return db.Update(j.tx, "Pics", colsPics, vals, key)
 }
 
-func (j Job) DeletePics(key PicsPrimary) error {
+func (j Job) DeletePic(key PicsPrimary) error {
 	return db.Delete(j.tx, "Pics", key)
 }
 
@@ -471,7 +471,7 @@ func (j Job) UpdateTagRow(row *TagRow) error {
 	return db.Update(j.tx, "Tags", colsTags, vals, key)
 }
 
-func (j Job) DeleteTags(key TagsPrimary) error {
+func (j Job) DeleteTag(key TagsPrimary) error {
 	return db.Delete(j.tx, "Tags", key)
 }
 
@@ -611,7 +611,7 @@ func (j Job) UpdatePicTagRow(row *PicTagRow) error {
 	return db.Update(j.tx, "PicTags", colsPicTags, vals, key)
 }
 
-func (j Job) DeletePicTags(key PicTagsPrimary) error {
+func (j Job) DeletePicTag(key PicTagsPrimary) error {
 	return db.Delete(j.tx, "PicTags", key)
 }
 
@@ -818,7 +818,7 @@ func (j Job) UpdatePicIdentRow(row *PicIdentRow) error {
 	return db.Update(j.tx, "PicIdents", colsPicIdents, vals, key)
 }
 
-func (j Job) DeletePicIdents(key PicIdentsPrimary) error {
+func (j Job) DeletePicIdent(key PicIdentsPrimary) error {
 	return db.Delete(j.tx, "PicIdents", key)
 }
 
@@ -974,6 +974,6 @@ func (j Job) UpdateUserRow(row *UserRow) error {
 	return db.Update(j.tx, "Users", colsUsers, vals, key)
 }
 
-func (j Job) DeleteUsers(key UsersPrimary) error {
+func (j Job) DeleteUser(key UsersPrimary) error {
 	return db.Delete(j.tx, "Users", key)
 }

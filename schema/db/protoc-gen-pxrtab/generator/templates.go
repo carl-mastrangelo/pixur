@@ -236,7 +236,7 @@ func (j Job) Insert{{.GoType}}(row *{{.GoType}}) error {
 }
 `))
 	_ = template.Must(tpl.New("deletefunc").Parse(`
-func (j Job) Delete{{.Name}}(key {{.Name}}Primary) error {
+func (j Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
 	return db.Delete(j.tx, {{goesc .Name}}, key)
 }
 `))
