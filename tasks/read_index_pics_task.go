@@ -75,7 +75,7 @@ func (t *ReadIndexPicsTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	var indexID int64
 	if t.StartID != 0 {

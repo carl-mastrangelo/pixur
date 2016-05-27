@@ -122,7 +122,7 @@ func (t *CreatePicTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	identities, err := generatePicIdentities(wf)
 	if err != nil {

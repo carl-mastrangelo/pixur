@@ -29,7 +29,7 @@ func (t *CreateUserTask) Run() (errCap error) {
 	if err != nil {
 		return s.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	if t.Email == "" || t.Secret == "" {
 		return s.InvalidArgument(nil, "missing email or secret")

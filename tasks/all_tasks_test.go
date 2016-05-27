@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
 	ptest "pixur.org/pixur/testing"
 )
@@ -70,14 +71,6 @@ func (c *TestContainer) Close() {
 	}
 }
 
-func (c *TestContainer) Tx() *sql.Tx {
-	tx, err := c.DB().Begin()
-	if err != nil {
-		c.T.Fatal(err)
-	}
-	return tx
-}
-
 func (c *TestContainer) Job() tab.Job {
 	j, err := tab.NewJob(c.DB())
 	if err != nil {
@@ -112,6 +105,21 @@ func (c *TestContainer) WrapPic(p *schema.Pic) *TestPic {
 	}
 }
 
+func (c *TestContainer) AutoJob(cb func(j tab.Job) error) {
+	j := c.Job()
+	if err := cb(j); err != nil {
+		c.T.Log("Failure: ", err)
+		if err := j.Rollback(); err != nil {
+			c.T.Log("Also Failure: ", err)
+		}
+		c.T.FailNow()
+	}
+	if err := j.Commit(); err != nil {
+		c.T.Log("Failure: ", err)
+		c.T.FailNow()
+	}
+}
+
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
@@ -121,17 +129,17 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Mime:       schema.Pic_GIF,
 	}
 
-	if err := p.Insert(c.DB()); err != nil {
-		c.T.Fatal(err)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertPic(p)
+	})
 
 	img := makeImage(p.PicId)
 	buf := makeImageData(img, c)
 	p.Width = int64(img.Bounds().Dx())
 	p.Height = int64(img.Bounds().Dx())
-	if err := p.Update(c.DB()); err != nil {
-		c.T.Fatal(err)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.UpdatePic(p)
+	})
 
 	h1 := sha256.New()
 	h2 := sha1.New()
@@ -162,27 +170,27 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Type:  schema.PicIdent_SHA256,
 		Value: h1.Sum(nil),
 	}
-	if err := pi1.Insert(c.DB()); err != nil {
-		c.T.Fatal(err, p)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertPicIdent(pi1)
+	})
 
 	pi2 := &schema.PicIdent{
 		PicId: p.PicId,
 		Type:  schema.PicIdent_SHA1,
 		Value: h2.Sum(nil),
 	}
-	if err := pi2.Insert(c.DB()); err != nil {
-		c.T.Fatal(err, p)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertPicIdent(pi2)
+	})
 
 	pi3 := &schema.PicIdent{
 		PicId: p.PicId,
 		Type:  schema.PicIdent_MD5,
 		Value: h3.Sum(nil),
 	}
-	if err := pi3.Insert(c.DB()); err != nil {
-		c.T.Fatal(err, p)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertPicIdent(pi3)
+	})
 
 	return c.WrapPic(p)
 }
@@ -206,26 +214,29 @@ func makeImage(picID int64) image.Image {
 }
 
 func (p *TestPic) Update() {
-	if err := p.Pic.Update(p.c.DB()); err != nil {
-		p.c.T.Fatal(err)
-	}
+	p.c.AutoJob(func(j tab.Job) error {
+		return j.UpdatePic(p.Pic)
+	})
 }
 
 func (p *TestPic) Refresh() (exists bool) {
-	stmt, err := schema.PicPrepare("SELECT * FROM_ WHERE %s = ?;", p.c.DB(), schema.PicColId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	if updated, err := schema.LookupPic(stmt, p.Pic.PicId); err == sql.ErrNoRows {
-		p.Pic = nil
-		return false
-	} else if err != nil {
-		p.c.T.Fatal(err)
-		return
-	} else {
-		p.Pic = updated
-		return true
-	}
+	p.c.AutoJob(func(j tab.Job) error {
+		pics, err := j.FindPics(db.Opts{
+			Prefix: tab.PicsPrimary{&p.Pic.PicId},
+		})
+		if err != nil {
+			return err
+		}
+		if len(pics) == 1 {
+			p.Pic = pics[0]
+			exists = true
+		} else {
+			p.Pic = nil
+			exists = false
+		}
+		return nil
+	})
+	return
 }
 
 type TestPic struct {
@@ -252,24 +263,22 @@ type TestPicIdent struct {
 }
 
 func (p *TestPic) Idents() (picIdents []*TestPicIdent) {
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
-		p.c.DB(), schema.PicIdentColPicId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	defer stmt.Close()
-
-	pis, err := schema.FindPicIdents(stmt, p.Pic.PicId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	for _, pi := range pis {
-		picIdents = append(picIdents, &TestPicIdent{
-			TestPic:  p,
-			PicIdent: pi,
-			c:        p.c,
+	p.c.AutoJob(func(j tab.Job) error {
+		pis, err := j.FindPicIdents(db.Opts{
+			Prefix: tab.PicIdentsPrimary{PicId: &p.Pic.PicId},
 		})
-	}
+		if err != nil {
+			return err
+		}
+		for _, pi := range pis {
+			picIdents = append(picIdents, &TestPicIdent{
+				TestPic:  p,
+				PicIdent: pi,
+				c:        p.c,
+			})
+		}
+		return nil
+	})
 	return
 }
 
@@ -284,39 +293,34 @@ func (p *TestPic) Md5() []byte {
 }
 
 func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
-	picTagStmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ?;",
-		p.c.DB(), schema.PicTagColPicId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	defer picTagStmt.Close()
-	pts, err := schema.FindPicTags(picTagStmt, p.Pic.PicId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	tagStmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", p.c.DB(), schema.TagColId)
-	if err != nil {
-		p.c.T.Fatal(err)
-	}
-	defer tagStmt.Close()
-	for _, pt := range pts {
-		tag, err := schema.LookupTag(tagStmt, pt.TagId)
-		if err != nil {
-			p.c.T.Fatal(err)
-		}
-		tt := &TestTag{
-			Tag: tag,
-			c:   p.c,
-		}
-		tags = append(tags, tt)
-		picTags = append(picTags, &TestPicTag{
-			TestPic: p,
-			TestTag: tt,
-			PicTag:  pt,
-			c:       p.c,
+	p.c.AutoJob(func(j tab.Job) error {
+		pts, err := j.FindPicTags(db.Opts{
+			Prefix: tab.PicTagsPrimary{PicId: &p.Pic.PicId},
 		})
-	}
-
+		if err != nil {
+			return err
+		}
+		for _, pt := range pts {
+			ts, err := j.FindTags(db.Opts{
+				Prefix: tab.TagsPrimary{&pt.TagId},
+			})
+			if err != nil {
+				return err
+			}
+			tt := &TestTag{
+				Tag: ts[0],
+				c:   p.c,
+			}
+			tags = append(tags, tt)
+			picTags = append(picTags, &TestPicTag{
+				TestPic: p,
+				TestTag: tt,
+				PicTag:  pt,
+				c:       p.c,
+			})
+		}
+		return nil
+	})
 	return
 }
 
@@ -330,9 +334,9 @@ func (c *TestContainer) CreateTag() *TestTag {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
-	if err := t.Insert(c.DB()); err != nil {
-		c.T.Fatal(err, t)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertTag(t)
+	})
 	return &TestTag{
 		Tag: t,
 		c:   c,
@@ -340,26 +344,29 @@ func (c *TestContainer) CreateTag() *TestTag {
 }
 
 func (t *TestTag) Update() {
-	if err := t.Tag.Update(t.c.DB()); err != nil {
-		t.c.T.Fatal(err)
-	}
+	t.c.AutoJob(func(j tab.Job) error {
+		return j.UpdateTag(t.Tag)
+	})
 }
 
 func (t *TestTag) Refresh() (exists bool) {
-	stmt, err := schema.TagPrepare("SELECT * FROM_ WHERE %s = ?;", t.c.DB(), schema.TagColId)
-	if err != nil {
-		t.c.T.Fatal(err)
-	}
-	if updated, err := schema.LookupTag(stmt, t.Tag.TagId); err == sql.ErrNoRows {
-		t.Tag = nil
-		return false
-	} else if err != nil {
-		t.c.T.Fatal(err)
-		return
-	} else {
-		t.Tag = updated
-		return true
-	}
+	t.c.AutoJob(func(j tab.Job) error {
+		tags, err := j.FindTags(db.Opts{
+			Prefix: tab.TagsPrimary{&t.Tag.TagId},
+		})
+		if err != nil {
+			return err
+		}
+		if len(tags) == 1 {
+			t.Tag = tags[0]
+			exists = true
+		} else {
+			t.Tag = nil
+			exists = false
+		}
+		return nil
+	})
+	return
 }
 
 func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
@@ -371,9 +378,9 @@ func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
-	if _, err := pt.Insert(c.DB()); err != nil {
-		c.T.Fatal(err, pt)
-	}
+	c.AutoJob(func(j tab.Job) error {
+		return j.InsertPicTag(pt)
+	})
 	t.Tag.UsageCount++
 	t.Tag.ModifiedTs = schema.ToTs(now)
 	t.Update()
@@ -386,36 +393,36 @@ func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
 }
 
 func (pt *TestPicTag) Refresh() (exists bool) {
-	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ? AND %s = ?;", pt.c.DB(),
-		schema.PicTagColPicId, schema.PicTagColTagId)
-	if err != nil {
-		pt.c.T.Fatal(err)
-	}
-	if updated, err := schema.LookupPicTag(stmt, pt.PicTag.PicId, pt.PicTag.TagId); err == sql.ErrNoRows {
-		pt.PicTag = nil
-		return false
-	} else if err != nil {
-		pt.c.T.Fatal(err)
-		return
-	} else {
-		pt.PicTag = updated
-		return true
-	}
+	pt.c.AutoJob(func(j tab.Job) error {
+		pts, err := j.FindPicTags(db.Opts{
+			Prefix: tab.PicTagsPrimary{&pt.PicTag.PicId, &pt.PicTag.TagId},
+		})
+		if err != nil {
+			return nil
+		}
+		if len(pts) == 1 {
+			pt.PicTag = pts[0]
+			exists = true
+		} else {
+			pt.PicTag = nil
+			exists = false
+		}
+		return nil
+	})
+	return
 }
 
 func (c *TestContainer) ID() int64 {
-	id, err := c.IDAlloc()()
-	if err != nil {
-		c.T.Fatal(err)
-	}
-	return id
-}
-
-func (c *TestContainer) IDAlloc() func() (int64, error) {
-	return func() (int64, error) {
-		var alloc *schema.IDAllocator
-		return alloc.Next(c.DB())
-	}
+	var idCap int64
+	c.AutoJob(func(j tab.Job) error {
+		id, err := j.AllocID()
+		if err != nil {
+			return err
+		}
+		idCap = id
+		return nil
+	})
+	return idCap
 }
 
 func runTests(m *testing.M) int {

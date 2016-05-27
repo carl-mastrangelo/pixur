@@ -3,22 +3,11 @@
 package schema
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
-
-type scanTo interface {
-	Scan(dest ...interface{}) error
-}
-
-type preparer interface {
-	Prepare(query string) (*sql.Stmt, error)
-}
-
-type tableName string
 
 func FromTs(ft *timestamp.Timestamp) time.Time {
 	if ft == nil {

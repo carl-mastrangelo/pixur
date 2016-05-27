@@ -24,8 +24,8 @@ type Messy interface {
 	CleanUp()
 }
 
-func cleanUp(j tab.Job, errCap error) {
-	if errCap != nil {
+func cleanUp(j tab.Job, errCap *error) {
+	if *errCap != nil {
 		if err := j.Rollback(); err != nil {
 			log.Println("Additional error during rollback", err)
 		}

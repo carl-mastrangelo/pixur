@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
 )
 
 func TestPurgeWorkflow(t *testing.T) {
@@ -17,11 +19,6 @@ func TestPurgeWorkflow(t *testing.T) {
 	tag := c.CreateTag()
 	pt := c.CreatePicTag(p, tag)
 
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
-		c.DB(), schema.PicIdentColPicId)
-	if err != nil {
-		t.Fatal(err)
-	}
 	idents := p.Idents()
 	if len(idents) != 3 {
 		t.Fatalf("Wrong number of identifiers: %s", len(idents))
@@ -51,10 +48,18 @@ func TestPurgeWorkflow(t *testing.T) {
 		t.Fatal("Expected PicTag to be deleted", pt)
 	}
 
-	afterIdents, err := schema.FindPicIdents(stmt, task.PicID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	var afterIdents []*schema.PicIdent
+	c.AutoJob(func(j tab.Job) error {
+		pis, err := j.FindPicIdents(db.Opts{
+			Prefix: tab.PicIdentsPrimary{PicId: &task.PicID},
+		})
+		if err != nil {
+			return err
+		}
+		afterIdents = pis
+		return nil
+	})
+
 	if len(afterIdents) != 0 {
 		t.Fatalf("Wrong number of identifiers: %s", afterIdents)
 	}

@@ -59,7 +59,7 @@ func (t *UpsertPicTask) Run() (errCap error) {
 	if err != nil {
 		return s.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	if err := t.runInternal(j); err != nil {
 		return err

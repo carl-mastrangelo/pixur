@@ -23,7 +23,7 @@ func (t *IncrementViewCountTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{Id: &t.PicID},

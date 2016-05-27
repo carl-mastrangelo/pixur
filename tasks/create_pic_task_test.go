@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"database/sql"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -136,18 +135,9 @@ func TestAllIdentitiesAdded(t *testing.T) {
 		t.Fatalf("%s %t", err, err)
 	}
 
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ?;",
-		c.DB(), schema.PicIdentColPicId)
-	if err != nil {
-		t.Fatal(err)
-	}
+	p := c.WrapPic(task.CreatedPic)
 
-	idents, err := schema.FindPicIdents(stmt, task.CreatedPic.PicId)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	groupedIdents := groupIdentifierByType(idents)
+	groupedIdents := groupIdentifierByType(p.Idents())
 	if len(groupedIdents) != 4 {
 		t.Fatalf("Unexpected Idents: %s", groupedIdents)
 	}
@@ -163,10 +153,10 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	// TODO: check the phash
 }
 
-func groupIdentifierByType(idents []*schema.PicIdent) map[schema.PicIdent_Type][]byte {
+func groupIdentifierByType(idents []*TestPicIdent) map[schema.PicIdent_Type][]byte {
 	grouped := map[schema.PicIdent_Type][]byte{}
 	for _, id := range idents {
-		grouped[id.Type] = id.Value
+		grouped[id.PicIdent.Type] = id.PicIdent.Value
 	}
 	return grouped
 }
@@ -179,22 +169,6 @@ func mustHash(h hash.Hash, r io.ReadSeeker) []byte {
 		panic(err.Error())
 	}
 	return h.Sum(nil)
-}
-
-func findPicTagsByPicId(picId int64, db *sql.DB) ([]*schema.PicTag, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	stmt, err := schema.PicTagPrepare("SELECT * FROM_ WHERE %s = ?;", tx, schema.PicTagColPicId)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	return schema.FindPicTags(stmt, picId)
 }
 
 func TestWorkflowAlreadyExistingTags(t *testing.T) {
@@ -262,16 +236,18 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	picTags, err := findPicTagsByPicId(task.CreatedPic.PicId, c.DB())
-	if err != nil {
+	if err := j.Rollback(); err != nil {
 		t.Fatal(err)
 	}
+
+	p := c.WrapPic(task.CreatedPic)
+
+	_, picTags := p.Tags()
 	if len(picTags) != 1 {
 		t.Fatal("Wrong number of pic tags", picTags)
 	}
-	if picTags[0].TagId != fooTag.TagId {
-		t.Fatal("Tag ID does not match PicTag TagId", picTags[0].TagId, fooTag.TagId)
+	if picTags[0].PicTag.TagId != fooTag.TagId {
+		t.Fatal("Tag ID does not match PicTag TagId", picTags[0].PicTag.TagId, fooTag.TagId)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"time"
 
-	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
 	s "pixur.org/pixur/status"
@@ -12,9 +11,8 @@ import (
 
 type AddPicTagsTask struct {
 	// Deps
-	DB          *sql.DB
-	Now         func() time.Time
-	IDAllocator *schema.IDAllocator
+	DB  *sql.DB
+	Now func() time.Time
 
 	// Inputs
 	PicID    int64
@@ -27,7 +25,7 @@ func (t *AddPicTagsTask) Run() (errCap error) {
 	if err != nil {
 		return s.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, errCap)
+	defer cleanUp(j, &errCap)
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},

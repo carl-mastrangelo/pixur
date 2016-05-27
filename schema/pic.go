@@ -1,29 +1,9 @@
 package schema
 
 import (
-	"database/sql"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
-
-	"github.com/golang/protobuf/proto"
-)
-
-const (
-	PicTableName string = "`Pics`"
-
-	PicColId          string = "`id`"
-	PicColData        string = "`data`"
-	PicColCreatedTime string = "`index_order`"
-)
-
-var (
-	picColNames = []string{
-		PicColId,
-		PicColData,
-		PicColCreatedTime}
-	picColFmt = strings.Repeat("?,", len(picColNames)-1) + "?"
 )
 
 func (p *Pic) SetCreatedTime(now time.Time) {
@@ -107,57 +87,6 @@ func PicBaseDir(pixPath string, id int64) string {
 	return filepath.Join(path...)
 }
 
-func (p *Pic) fillFromRow(s scanTo) error {
-	var data []byte
-	if err := s.Scan(&data); err != nil {
-		return err
-	}
-	return proto.Unmarshal([]byte(data), p)
-}
-
-func (p *Pic) Insert(prep preparer) error {
-	if p.PicId <= 0 {
-		return fmt.Errorf("PicId unset")
-	}
-	rawstmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);",
-		PicTableName, strings.Join(picColNames, ","), picColFmt)
-	stmt, err := prep.Prepare(rawstmt)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	data, err := proto.Marshal(p)
-	if err != nil {
-		return err
-	}
-
-	if _, err = stmt.Exec(p.PicId, data, p.IndexOrder()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (p *Pic) Update(prep preparer) error {
-	rawstmt := fmt.Sprintf("UPDATE %s SET ", PicTableName)
-	rawstmt += strings.Join(picColNames, "=?,")
-	rawstmt += fmt.Sprintf("=? WHERE %s=?;", PicColId)
-
-	stmt, err := prep.Prepare(rawstmt)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	data, err := proto.Marshal(p)
-	if err != nil {
-		return err
-	}
-
-	if _, err := stmt.Exec(p.PicId, data, p.IndexOrder(), p.PicId); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (p *Pic) isHidden() bool {
 	return p.HardDeleted()
 }
@@ -168,58 +97,4 @@ func (p *Pic) SoftDeleted() bool {
 
 func (p *Pic) HardDeleted() bool {
 	return p.GetDeletionStatus().GetActualDeletedTs() != nil
-}
-
-func (p *Pic) Delete(prep preparer) error {
-	rawstmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?;", PicTableName, PicColId)
-	stmt, err := prep.Prepare(rawstmt)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	if _, err := stmt.Exec(p.PicId); err != nil {
-		return err
-	}
-	return nil
-}
-
-func FindPics(stmt *sql.Stmt, args ...interface{}) ([]*Pic, error) {
-	pics := make([]*Pic, 0)
-
-	rows, err := stmt.Query(args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		p := new(Pic)
-		if err := p.fillFromRow(rows); err != nil {
-			return nil, err
-		}
-		pics = append(pics, p)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return pics, nil
-}
-
-func LookupPic(stmt *sql.Stmt, args ...interface{}) (*Pic, error) {
-	p := new(Pic)
-	if err := p.fillFromRow(stmt.QueryRow(args...)); err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
-func PicPrepare(stmt string, prep preparer, columns ...string) (*sql.Stmt, error) {
-	stmt = strings.Replace(stmt, "*", PicColData, 1)
-	stmt = strings.Replace(stmt, "FROM_", "FROM "+PicTableName, 1)
-	args := make([]interface{}, 0, len(columns))
-	for _, col := range columns {
-		args = append(args, col)
-	}
-	stmt = fmt.Sprintf(stmt, args...)
-	return prep.Prepare(stmt)
 }
