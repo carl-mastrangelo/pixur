@@ -23,6 +23,8 @@ package {{.}}
 `))
 	_ = template.Must(tpl.New("imports").Parse(`
 import (
+  "runtime"
+  "log"
   {{range .}}
     {{if .ShortName}}
       {{.ShortName}} "{{.FullName}}"
@@ -114,6 +116,7 @@ func NewJob(DB *sql.DB) (*Job, error) {
     db: dbWrapper{DB},
     tx: txWrapper{tx},
   }
+  runtime.SetFinalizer(j, jobCloser)
   return j, nil
 }
   
@@ -123,11 +126,20 @@ type Job struct {
 }
 
 func (j *Job) Commit() error {
+  defer runtime.SetFinalizer(j, nil)
   return j.tx.Commit()
 }
 
 func (j *Job) Rollback() error {
+  defer runtime.SetFinalizer(j, nil)
   return j.tx.Rollback()
+}
+
+var jobCloser = func(j *Job) {
+  log.Println("warning: found orphaned job")
+  if err := j.Rollback(); err != nil {
+    log.Println("error rolling back orphaned job", err)
+  }
 }
 
 type dbWrapper struct {
