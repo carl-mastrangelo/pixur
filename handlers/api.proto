@@ -68,3 +68,8 @@ message SoftDeletePicResponse {
 message UpsertPicResponse {
   ApiPic pic = 1;
 }
+
+message GetSessionResponse {
+  string user_id = 1;
+}
+
