@@ -264,7 +264,7 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
-func (t *CreatePicTask) insertOrFindTags(j tab.Job) ([]*schema.Tag, error) {
+func (t *CreatePicTask) insertOrFindTags(j *tab.Job) ([]*schema.Tag, error) {
 	cleanedTags, err := cleanTagNames(t.TagNames)
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (t *CreatePicTask) insertOrFindTags(j tab.Job) ([]*schema.Tag, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, error) {
+func findAndUpsertTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, error) {
 	tag, err := findTagByName(tagName, j)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func findAndUpsertTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, er
 	return tag, nil
 }
 
-func createTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, error) {
+func createTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, error) {
 	id, err := j.AllocID()
 	if err != nil {
 		return nil, status.InternalError(err, "can't allocate id")
@@ -320,7 +320,7 @@ func createTag(tagName string, now time.Time, j tab.Job) (*schema.Tag, error) {
 	return tag, nil
 }
 
-func findTagByName(tagName string, j tab.Job) (*schema.Tag, error) {
+func findTagByName(tagName string, j *tab.Job) (*schema.Tag, error) {
 	tags, err := j.FindTags(db.Opts{
 		Prefix: tab.TagsName{&tagName},
 		Lock:   db.LockWrite,
@@ -335,7 +335,7 @@ func findTagByName(tagName string, j tab.Job) (*schema.Tag, error) {
 	return tags[0], nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j tab.Job) error {
+func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j *tab.Job) error {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
 			PicId: p.PicId,

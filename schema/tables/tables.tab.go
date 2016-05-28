@@ -97,22 +97,16 @@ var SqlInitTables = []string{
 	"INSERT INTO `_SequenceTable` (`the_sequence`) VALUES (1);",
 }
 
-func NewJob(DB *sql.DB) (Job, error) {
+func NewJob(DB *sql.DB) (*Job, error) {
 	tx, err := DB.Begin()
 	if err != nil {
-		return Job{}, err
+		return nil, err
 	}
-	return Job{
+	j := &Job{
 		db: dbWrapper{DB},
 		tx: txWrapper{tx},
-	}, nil
-}
-
-func TestJob(beginner db.QuerierExecutorBeginner, committer db.QuerierExecutorCommitter) Job {
-	return Job{
-		db: beginner,
-		tx: committer,
 	}
+	return j, nil
 }
 
 type Job struct {
@@ -120,11 +114,11 @@ type Job struct {
 	tx db.QuerierExecutorCommitter
 }
 
-func (j Job) Commit() error {
+func (j *Job) Commit() error {
 	return j.tx.Commit()
 }
 
-func (j Job) Rollback() error {
+func (j *Job) Rollback() error {
 	return j.tx.Rollback()
 }
 
@@ -161,7 +155,7 @@ func (w txWrapper) Rollback() error {
 
 var alloc db.IDAlloc
 
-func (j Job) AllocID() (int64, error) {
+func (j *Job) AllocID() (int64, error) {
 	return db.AllocID(j.db, &alloc)
 }
 
@@ -223,7 +217,7 @@ func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 
 var colsPics = []string{"id", "index_order", "data"}
 
-func (j Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
+func (j *Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
 	return db.Scan(j.tx, "Pics", opts, func(data []byte) error {
 		var pb schema.Pic
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -233,7 +227,7 @@ func (j Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
 	})
 }
 
-func (j Job) FindPics(opts db.Opts) (rows []*schema.Pic, err error) {
+func (j *Job) FindPics(opts db.Opts) (rows []*schema.Pic, err error) {
 	err = j.ScanPics(opts, func(data *schema.Pic) error {
 		rows = append(rows, data)
 		return nil
@@ -249,7 +243,7 @@ var _ interface {
 	IndexOrderCol() int64
 } = (*schema.Pic)(nil)
 
-func (j Job) InsertPic(pb *schema.Pic) error {
+func (j *Job) InsertPic(pb *schema.Pic) error {
 	return j.InsertPicRow(&PicRow{
 		Data: pb,
 
@@ -259,7 +253,7 @@ func (j Job) InsertPic(pb *schema.Pic) error {
 	})
 }
 
-func (j Job) InsertPicRow(row *PicRow) error {
+func (j *Job) InsertPicRow(row *PicRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -283,7 +277,7 @@ var _ interface {
 	IndexOrderCol() int64
 } = (*schema.Pic)(nil)
 
-func (j Job) UpdatePic(pb *schema.Pic) error {
+func (j *Job) UpdatePic(pb *schema.Pic) error {
 	return j.UpdatePicRow(&PicRow{
 		Data: pb,
 
@@ -293,7 +287,7 @@ func (j Job) UpdatePic(pb *schema.Pic) error {
 	})
 }
 
-func (j Job) UpdatePicRow(row *PicRow) error {
+func (j *Job) UpdatePicRow(row *PicRow) error {
 
 	key := PicsPrimary{
 
@@ -315,7 +309,7 @@ func (j Job) UpdatePicRow(row *PicRow) error {
 	return db.Update(j.tx, "Pics", colsPics, vals, key)
 }
 
-func (j Job) DeletePic(key PicsPrimary) error {
+func (j *Job) DeletePic(key PicsPrimary) error {
 	return db.Delete(j.tx, "Pics", key)
 }
 
@@ -379,7 +373,7 @@ func (idx TagsName) Vals() (vals []interface{}) {
 
 var colsTags = []string{"id", "name", "data"}
 
-func (j Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
+func (j *Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
 	return db.Scan(j.tx, "Tags", opts, func(data []byte) error {
 		var pb schema.Tag
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -389,7 +383,7 @@ func (j Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
 	})
 }
 
-func (j Job) FindTags(opts db.Opts) (rows []*schema.Tag, err error) {
+func (j *Job) FindTags(opts db.Opts) (rows []*schema.Tag, err error) {
 	err = j.ScanTags(opts, func(data *schema.Tag) error {
 		rows = append(rows, data)
 		return nil
@@ -405,7 +399,7 @@ var _ interface {
 	NameCol() string
 } = (*schema.Tag)(nil)
 
-func (j Job) InsertTag(pb *schema.Tag) error {
+func (j *Job) InsertTag(pb *schema.Tag) error {
 	return j.InsertTagRow(&TagRow{
 		Data: pb,
 
@@ -415,7 +409,7 @@ func (j Job) InsertTag(pb *schema.Tag) error {
 	})
 }
 
-func (j Job) InsertTagRow(row *TagRow) error {
+func (j *Job) InsertTagRow(row *TagRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -439,7 +433,7 @@ var _ interface {
 	NameCol() string
 } = (*schema.Tag)(nil)
 
-func (j Job) UpdateTag(pb *schema.Tag) error {
+func (j *Job) UpdateTag(pb *schema.Tag) error {
 	return j.UpdateTagRow(&TagRow{
 		Data: pb,
 
@@ -449,7 +443,7 @@ func (j Job) UpdateTag(pb *schema.Tag) error {
 	})
 }
 
-func (j Job) UpdateTagRow(row *TagRow) error {
+func (j *Job) UpdateTagRow(row *TagRow) error {
 
 	key := TagsPrimary{
 
@@ -471,7 +465,7 @@ func (j Job) UpdateTagRow(row *TagRow) error {
 	return db.Update(j.tx, "Tags", colsTags, vals, key)
 }
 
-func (j Job) DeleteTag(key TagsPrimary) error {
+func (j *Job) DeleteTag(key TagsPrimary) error {
 	return db.Delete(j.tx, "Tags", key)
 }
 
@@ -517,7 +511,7 @@ func (idx PicTagsPrimary) Vals() (vals []interface{}) {
 
 var colsPicTags = []string{"pic_id", "tag_id", "data"}
 
-func (j Job) ScanPicTags(opts db.Opts, cb func(*schema.PicTag) error) error {
+func (j *Job) ScanPicTags(opts db.Opts, cb func(*schema.PicTag) error) error {
 	return db.Scan(j.tx, "PicTags", opts, func(data []byte) error {
 		var pb schema.PicTag
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -527,7 +521,7 @@ func (j Job) ScanPicTags(opts db.Opts, cb func(*schema.PicTag) error) error {
 	})
 }
 
-func (j Job) FindPicTags(opts db.Opts) (rows []*schema.PicTag, err error) {
+func (j *Job) FindPicTags(opts db.Opts) (rows []*schema.PicTag, err error) {
 	err = j.ScanPicTags(opts, func(data *schema.PicTag) error {
 		rows = append(rows, data)
 		return nil
@@ -543,7 +537,7 @@ var _ interface {
 	TagIdCol() int64
 } = (*schema.PicTag)(nil)
 
-func (j Job) InsertPicTag(pb *schema.PicTag) error {
+func (j *Job) InsertPicTag(pb *schema.PicTag) error {
 	return j.InsertPicTagRow(&PicTagRow{
 		Data: pb,
 
@@ -553,7 +547,7 @@ func (j Job) InsertPicTag(pb *schema.PicTag) error {
 	})
 }
 
-func (j Job) InsertPicTagRow(row *PicTagRow) error {
+func (j *Job) InsertPicTagRow(row *PicTagRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.PicId)
@@ -577,7 +571,7 @@ var _ interface {
 	TagIdCol() int64
 } = (*schema.PicTag)(nil)
 
-func (j Job) UpdatePicTag(pb *schema.PicTag) error {
+func (j *Job) UpdatePicTag(pb *schema.PicTag) error {
 	return j.UpdatePicTagRow(&PicTagRow{
 		Data: pb,
 
@@ -587,7 +581,7 @@ func (j Job) UpdatePicTag(pb *schema.PicTag) error {
 	})
 }
 
-func (j Job) UpdatePicTagRow(row *PicTagRow) error {
+func (j *Job) UpdatePicTagRow(row *PicTagRow) error {
 
 	key := PicTagsPrimary{
 
@@ -611,7 +605,7 @@ func (j Job) UpdatePicTagRow(row *PicTagRow) error {
 	return db.Update(j.tx, "PicTags", colsPicTags, vals, key)
 }
 
-func (j Job) DeletePicTag(key PicTagsPrimary) error {
+func (j *Job) DeletePicTag(key PicTagsPrimary) error {
 	return db.Delete(j.tx, "PicTags", key)
 }
 
@@ -706,7 +700,7 @@ func (idx PicIdentsIdent) Vals() (vals []interface{}) {
 
 var colsPicIdents = []string{"pic_id", "type", "value", "data"}
 
-func (j Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error {
+func (j *Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error {
 	return db.Scan(j.tx, "PicIdents", opts, func(data []byte) error {
 		var pb schema.PicIdent
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -716,7 +710,7 @@ func (j Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error 
 	})
 }
 
-func (j Job) FindPicIdents(opts db.Opts) (rows []*schema.PicIdent, err error) {
+func (j *Job) FindPicIdents(opts db.Opts) (rows []*schema.PicIdent, err error) {
 	err = j.ScanPicIdents(opts, func(data *schema.PicIdent) error {
 		rows = append(rows, data)
 		return nil
@@ -736,7 +730,7 @@ var _ interface {
 	ValueCol() []byte
 } = (*schema.PicIdent)(nil)
 
-func (j Job) InsertPicIdent(pb *schema.PicIdent) error {
+func (j *Job) InsertPicIdent(pb *schema.PicIdent) error {
 	return j.InsertPicIdentRow(&PicIdentRow{
 		Data: pb,
 
@@ -748,7 +742,7 @@ func (j Job) InsertPicIdent(pb *schema.PicIdent) error {
 	})
 }
 
-func (j Job) InsertPicIdentRow(row *PicIdentRow) error {
+func (j *Job) InsertPicIdentRow(row *PicIdentRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.PicId)
@@ -778,7 +772,7 @@ var _ interface {
 	ValueCol() []byte
 } = (*schema.PicIdent)(nil)
 
-func (j Job) UpdatePicIdent(pb *schema.PicIdent) error {
+func (j *Job) UpdatePicIdent(pb *schema.PicIdent) error {
 	return j.UpdatePicIdentRow(&PicIdentRow{
 		Data: pb,
 
@@ -790,7 +784,7 @@ func (j Job) UpdatePicIdent(pb *schema.PicIdent) error {
 	})
 }
 
-func (j Job) UpdatePicIdentRow(row *PicIdentRow) error {
+func (j *Job) UpdatePicIdentRow(row *PicIdentRow) error {
 
 	key := PicIdentsPrimary{
 
@@ -818,7 +812,7 @@ func (j Job) UpdatePicIdentRow(row *PicIdentRow) error {
 	return db.Update(j.tx, "PicIdents", colsPicIdents, vals, key)
 }
 
-func (j Job) DeletePicIdent(key PicIdentsPrimary) error {
+func (j *Job) DeletePicIdent(key PicIdentsPrimary) error {
 	return db.Delete(j.tx, "PicIdents", key)
 }
 
@@ -882,7 +876,7 @@ func (idx UsersIdent) Vals() (vals []interface{}) {
 
 var colsUsers = []string{"id", "ident", "data"}
 
-func (j Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
+func (j *Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
 	return db.Scan(j.tx, "Users", opts, func(data []byte) error {
 		var pb schema.User
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -892,7 +886,7 @@ func (j Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
 	})
 }
 
-func (j Job) FindUsers(opts db.Opts) (rows []*schema.User, err error) {
+func (j *Job) FindUsers(opts db.Opts) (rows []*schema.User, err error) {
 	err = j.ScanUsers(opts, func(data *schema.User) error {
 		rows = append(rows, data)
 		return nil
@@ -908,7 +902,7 @@ var _ interface {
 	IdentCol() string
 } = (*schema.User)(nil)
 
-func (j Job) InsertUser(pb *schema.User) error {
+func (j *Job) InsertUser(pb *schema.User) error {
 	return j.InsertUserRow(&UserRow{
 		Data: pb,
 
@@ -918,7 +912,7 @@ func (j Job) InsertUser(pb *schema.User) error {
 	})
 }
 
-func (j Job) InsertUserRow(row *UserRow) error {
+func (j *Job) InsertUserRow(row *UserRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.Id)
@@ -942,7 +936,7 @@ var _ interface {
 	IdentCol() string
 } = (*schema.User)(nil)
 
-func (j Job) UpdateUser(pb *schema.User) error {
+func (j *Job) UpdateUser(pb *schema.User) error {
 	return j.UpdateUserRow(&UserRow{
 		Data: pb,
 
@@ -952,7 +946,7 @@ func (j Job) UpdateUser(pb *schema.User) error {
 	})
 }
 
-func (j Job) UpdateUserRow(row *UserRow) error {
+func (j *Job) UpdateUserRow(row *UserRow) error {
 
 	key := UsersPrimary{
 
@@ -974,6 +968,6 @@ func (j Job) UpdateUserRow(row *UserRow) error {
 	return db.Update(j.tx, "Users", colsUsers, vals, key)
 }
 
-func (j Job) DeleteUser(key UsersPrimary) error {
+func (j *Job) DeleteUser(key UsersPrimary) error {
 	return db.Delete(j.tx, "Users", key)
 }

@@ -49,7 +49,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	}
 
 	var afterIdents []*schema.PicIdent
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		pis, err := j.FindPicIdents(db.Opts{
 			Prefix: tab.PicIdentsPrimary{PicId: &task.PicID},
 		})

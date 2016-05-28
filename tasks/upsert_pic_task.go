@@ -75,7 +75,7 @@ func (t *UpsertPicTask) Run() (errCap error) {
 	return nil
 }
 
-func (t *UpsertPicTask) runInternal(j tab.Job) error {
+func (t *UpsertPicTask) runInternal(j *tab.Job) error {
 	if t.File == nil && t.FileURL == "" {
 		return s.InvalidArgument(nil, "No pic specified")
 	}
@@ -194,7 +194,7 @@ func (t *UpsertPicTask) runInternal(j tab.Job) error {
 	return nil
 }
 
-func mergePic(j tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL string,
+func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL string,
 	tagNames []string) error {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
@@ -230,7 +230,7 @@ func mergePic(j tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL st
 	return nil
 }
 
-func upsertTags(j tab.Job, rawTags []string, picID int64, now time.Time) error {
+func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time) error {
 	newTagNames, err := cleanTagNames(rawTags)
 	if err != nil {
 		return err
@@ -263,7 +263,7 @@ func upsertTags(j tab.Job, rawTags []string, picID int64, now time.Time) error {
 	return nil
 }
 
-func findAttachedPicTags(j tab.Job, picID int64) ([]*schema.Tag, []*schema.PicTag, error) {
+func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicTag, error) {
 	pts, err := j.FindPicTags(db.Opts{
 		Prefix: tab.PicTagsPrimary{PicId: &picID},
 		Lock:   db.LockWrite,
@@ -309,7 +309,7 @@ func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []
 	return unattachedTagNames
 }
 
-func findExistingTagsByName(j tab.Job, names []string) (
+func findExistingTagsByName(j *tab.Job, names []string) (
 	tags []*schema.Tag, unknownNames []string, err error) {
 	for _, name := range names {
 		ts, err := j.FindTags(db.Opts{
@@ -330,7 +330,7 @@ func findExistingTagsByName(j tab.Job, names []string) (
 	return
 }
 
-func updateExistingTags(j tab.Job, tags []*schema.Tag, now time.Time) error {
+func updateExistingTags(j *tab.Job, tags []*schema.Tag, now time.Time) error {
 	for _, tag := range tags {
 		tag.SetModifiedTime(now)
 		tag.UsageCount++
@@ -341,7 +341,7 @@ func updateExistingTags(j tab.Job, tags []*schema.Tag, now time.Time) error {
 	return nil
 }
 
-func createNewTags(j tab.Job, tagNames []string, now time.Time) ([]*schema.Tag, error) {
+func createNewTags(j *tab.Job, tagNames []string, now time.Time) ([]*schema.Tag, error) {
 	var tags []*schema.Tag
 	for _, name := range tagNames {
 		tagID, err := j.AllocID()
@@ -363,7 +363,7 @@ func createNewTags(j tab.Job, tagNames []string, now time.Time) ([]*schema.Tag, 
 	return tags, nil
 }
 
-func createPicTags(j tab.Job, tags []*schema.Tag, picID int64, now time.Time) ([]*schema.PicTag, error) {
+func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time) ([]*schema.PicTag, error) {
 	var picTags []*schema.PicTag
 	for _, tag := range tags {
 		pt := &schema.PicTag{
@@ -381,7 +381,7 @@ func createPicTags(j tab.Job, tags []*schema.Tag, picID int64, now time.Time) ([
 	return picTags, nil
 }
 
-func findExistingPic(j tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema.Pic, error) {
+func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema.Pic, error) {
 	pis, err := j.FindPicIdents(db.Opts{
 		Prefix: tab.PicIdentsIdent{
 			Type:  &typ,
@@ -411,7 +411,7 @@ func findExistingPic(j tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema.
 	return pics[0], nil
 }
 
-func insertPicHashes(j tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []byte) error {
+func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []byte) error {
 	md5Ident := &schema.PicIdent{
 		PicId: picID,
 		Type:  schema.PicIdent_MD5,
@@ -439,7 +439,7 @@ func insertPicHashes(j tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []byt
 	return nil
 }
 
-func insertPerceptualHash(j tab.Job, picID int64, im image.Image) error {
+func insertPerceptualHash(j *tab.Job, picID int64, im image.Image) error {
 	hash, inputs := imaging.PerceptualHash0(im)
 	dct0Ident := &schema.PicIdent{
 		PicId:      picID,

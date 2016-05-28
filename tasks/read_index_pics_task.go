@@ -43,7 +43,7 @@ func (t *ReadIndexPicsTask) CleanUp() {
 	// no op
 }
 
-func lookupStartPic(j tab.Job, id int64, asc bool) (*schema.Pic, error) {
+func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, error) {
 	opts := db.Opts{
 		Limit: 1,
 	}

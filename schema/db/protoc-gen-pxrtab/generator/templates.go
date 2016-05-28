@@ -105,22 +105,16 @@ func (idx {{.Name}}) Vals() (vals []interface{}) {
 `))
 
 	_ = template.Must(tpl.New("defaults").Parse(`
-func NewJob(DB *sql.DB) (Job, error) {
+func NewJob(DB *sql.DB) (*Job, error) {
   tx, err := DB.Begin()
   if err != nil {
-    return Job{}, err
+    return nil, err
   }
-  return Job{
+  j := &Job{
     db: dbWrapper{DB},
     tx: txWrapper{tx},
-  }, nil
-}
-
-func TestJob(beginner db.QuerierExecutorBeginner, committer db.QuerierExecutorCommitter) Job {
-  return Job{
-    db: beginner,
-    tx: committer,
   }
+  return j, nil
 }
   
 type Job struct {
@@ -128,11 +122,11 @@ type Job struct {
   tx db.QuerierExecutorCommitter
 }
 
-func (j Job) Commit() error {
+func (j *Job) Commit() error {
   return j.tx.Commit()
 }
 
-func (j Job) Rollback() error {
+func (j *Job) Rollback() error {
   return j.tx.Rollback()
 }
 
@@ -169,12 +163,12 @@ func (w txWrapper) Rollback() error {
 
 var alloc db.IDAlloc
 
-func (j Job) AllocID() (int64, error) {
+func (j *Job) AllocID() (int64, error) {
   return db.AllocID(j.db, &alloc)
 }
 `))
 	_ = template.Must(tpl.New("scanfunc").Parse(`
-func (j Job) Scan{{.Name}}(opts db.Opts, cb func(*{{.GoDataType}}) error) error {
+func (j *Job) Scan{{.Name}}(opts db.Opts, cb func(*{{.GoDataType}}) error) error {
 	return db.Scan(j.tx, {{goesc .Name}}, opts, func(data []byte) error {
 		var pb {{.GoDataType}}
 		if err := proto.Unmarshal(data, &pb); err != nil {
@@ -188,7 +182,7 @@ func (j Job) Scan{{.Name}}(opts db.Opts, cb func(*{{.GoDataType}}) error) error 
 var cols{{.Name}} = []string{ {{- range .Columns}} {{goesc .SqlName}}, {{end -}} }
 `))
 	_ = template.Must(tpl.New("findfunc").Parse(`
-func (j Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
+func (j *Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
 	err = j.Scan{{.Name}}(opts, func(data *{{.GoDataType}}) error {
 		rows = append(rows, data)
 		return nil
@@ -205,7 +199,7 @@ func (j Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
     {{end}}
   {{end}}
 
-  func (j Job) Insert{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
+  func (j *Job) Insert{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
     return j.Insert{{.GoType}}(&{{.GoType}} {
       Data: pb,
       {{range .Columns}}
@@ -218,7 +212,7 @@ func (j Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
 {{end}}
 `))
 	_ = template.Must(tpl.New("insertrowfunc").Parse(`
-func (j Job) Insert{{.GoType}}(row *{{.GoType}}) error {
+func (j *Job) Insert{{.GoType}}(row *{{.GoType}}) error {
   var vals []interface{}
   {{range .Columns}}
     {{if .IsProto}}
@@ -236,7 +230,7 @@ func (j Job) Insert{{.GoType}}(row *{{.GoType}}) error {
 }
 `))
 	_ = template.Must(tpl.New("deletefunc").Parse(`
-func (j Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
+func (j *Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
 	return db.Delete(j.tx, {{goesc .Name}}, key)
 }
 `))
@@ -249,7 +243,7 @@ func (j Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
     {{end}}
   {{end}}
 
-  func (j Job) Update{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
+  func (j *Job) Update{{.GoDataTypeShort}}(pb *{{$goDataType}}) error {
     return j.Update{{.GoType}}(&{{.GoType}} {
       Data: pb,
       {{range .Columns}}
@@ -262,7 +256,7 @@ func (j Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
 {{end}}
 `))
 	_ = template.Must(tpl.New("updaterowfunc").Parse(`
-func (j Job) Update{{.GoType}}(row *{{.GoType}}) error {
+func (j *Job) Update{{.GoType}}(row *{{.GoType}}) error {
   {{range .Indexes}}
     {{if eq .KeyType "PRIMARY KEY"}}
       key := {{.Name}}{

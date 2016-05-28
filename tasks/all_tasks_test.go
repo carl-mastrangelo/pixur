@@ -71,7 +71,7 @@ func (c *TestContainer) Close() {
 	}
 }
 
-func (c *TestContainer) Job() tab.Job {
+func (c *TestContainer) Job() *tab.Job {
 	j, err := tab.NewJob(c.DB())
 	if err != nil {
 		c.T.Fatal(err)
@@ -105,7 +105,7 @@ func (c *TestContainer) WrapPic(p *schema.Pic) *TestPic {
 	}
 }
 
-func (c *TestContainer) AutoJob(cb func(j tab.Job) error) {
+func (c *TestContainer) AutoJob(cb func(j *tab.Job) error) {
 	j := c.Job()
 	if err := cb(j); err != nil {
 		c.T.Log("Failure: ", err)
@@ -129,7 +129,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Mime:       schema.Pic_GIF,
 	}
 
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPic(p)
 	})
 
@@ -137,7 +137,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 	buf := makeImageData(img, c)
 	p.Width = int64(img.Bounds().Dx())
 	p.Height = int64(img.Bounds().Dx())
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.UpdatePic(p)
 	})
 
@@ -170,7 +170,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Type:  schema.PicIdent_SHA256,
 		Value: h1.Sum(nil),
 	}
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicIdent(pi1)
 	})
 
@@ -179,7 +179,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Type:  schema.PicIdent_SHA1,
 		Value: h2.Sum(nil),
 	}
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicIdent(pi2)
 	})
 
@@ -188,7 +188,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		Type:  schema.PicIdent_MD5,
 		Value: h3.Sum(nil),
 	}
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicIdent(pi3)
 	})
 
@@ -214,13 +214,13 @@ func makeImage(picID int64) image.Image {
 }
 
 func (p *TestPic) Update() {
-	p.c.AutoJob(func(j tab.Job) error {
+	p.c.AutoJob(func(j *tab.Job) error {
 		return j.UpdatePic(p.Pic)
 	})
 }
 
 func (p *TestPic) Refresh() (exists bool) {
-	p.c.AutoJob(func(j tab.Job) error {
+	p.c.AutoJob(func(j *tab.Job) error {
 		pics, err := j.FindPics(db.Opts{
 			Prefix: tab.PicsPrimary{&p.Pic.PicId},
 		})
@@ -263,7 +263,7 @@ type TestPicIdent struct {
 }
 
 func (p *TestPic) Idents() (picIdents []*TestPicIdent) {
-	p.c.AutoJob(func(j tab.Job) error {
+	p.c.AutoJob(func(j *tab.Job) error {
 		pis, err := j.FindPicIdents(db.Opts{
 			Prefix: tab.PicIdentsPrimary{PicId: &p.Pic.PicId},
 		})
@@ -293,7 +293,7 @@ func (p *TestPic) Md5() []byte {
 }
 
 func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
-	p.c.AutoJob(func(j tab.Job) error {
+	p.c.AutoJob(func(j *tab.Job) error {
 		pts, err := j.FindPicTags(db.Opts{
 			Prefix: tab.PicTagsPrimary{PicId: &p.Pic.PicId},
 		})
@@ -334,7 +334,7 @@ func (c *TestContainer) CreateTag() *TestTag {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertTag(t)
 	})
 	return &TestTag{
@@ -344,13 +344,13 @@ func (c *TestContainer) CreateTag() *TestTag {
 }
 
 func (t *TestTag) Update() {
-	t.c.AutoJob(func(j tab.Job) error {
+	t.c.AutoJob(func(j *tab.Job) error {
 		return j.UpdateTag(t.Tag)
 	})
 }
 
 func (t *TestTag) Refresh() (exists bool) {
-	t.c.AutoJob(func(j tab.Job) error {
+	t.c.AutoJob(func(j *tab.Job) error {
 		tags, err := j.FindTags(db.Opts{
 			Prefix: tab.TagsPrimary{&t.Tag.TagId},
 		})
@@ -378,7 +378,7 @@ func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicTag(pt)
 	})
 	t.Tag.UsageCount++
@@ -393,7 +393,7 @@ func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
 }
 
 func (pt *TestPicTag) Refresh() (exists bool) {
-	pt.c.AutoJob(func(j tab.Job) error {
+	pt.c.AutoJob(func(j *tab.Job) error {
 		pts, err := j.FindPicTags(db.Opts{
 			Prefix: tab.PicTagsPrimary{&pt.PicTag.PicId, &pt.PicTag.TagId},
 		})
@@ -414,7 +414,7 @@ func (pt *TestPicTag) Refresh() (exists bool) {
 
 func (c *TestContainer) ID() int64 {
 	var idCap int64
-	c.AutoJob(func(j tab.Job) error {
+	c.AutoJob(func(j *tab.Job) error {
 		id, err := j.AllocID()
 		if err != nil {
 			return err
