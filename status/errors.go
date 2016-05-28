@@ -154,6 +154,24 @@ func AlreadyExistsf(e error, format string, v ...interface{}) *Status {
 	}
 }
 
+func Unauthenticated(e error, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_UNAUTHENTICATED,
+		Message:    fmt.Sprint(v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
+func Unauthenticatedf(e error, format string, v ...interface{}) *Status {
+	return &Status{
+		Code:       Code_UNAUTHENTICATED,
+		Message:    fmt.Sprintf(format, v...),
+		Cause:      e,
+		StackTrace: getStackTrace(),
+	}
+}
+
 func getStackTrace() string {
 	s := make([]byte, 4096)
 	size := runtime.Stack(s, false)
