@@ -129,6 +129,10 @@ func (t *ReadIndexPicsTask) Run() (errCap error) {
 		return status.InternalError(err, "Unable to find pics")
 	}
 
+	if err := j.Rollback(); err != nil {
+		return status.InternalError(err, "can't rollback job")
+	}
+
 	t.Pics = pics
 
 	return nil

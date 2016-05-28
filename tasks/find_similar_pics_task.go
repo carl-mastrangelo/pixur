@@ -86,6 +86,9 @@ func (t *FindSimilarPicsTask) Run() (errCap error) {
 	if err != nil {
 		return status.InternalError(err, "can't scan pic idents")
 	}
+	if err := j.Rollback(); err != nil {
+		return status.InternalError(err, "can't rollback job")
+	}
 
 	return nil
 }

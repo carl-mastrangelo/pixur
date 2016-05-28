@@ -48,6 +48,9 @@ func (t *LookupPicTask) Run() (errCap error) {
 	if err != nil {
 		return err
 	}
+	if err := j.Rollback(); err != nil {
+		return status.InternalError(err, "can't rollback job")
+	}
 
 	t.PicTags = picTags
 
