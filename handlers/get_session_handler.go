@@ -44,9 +44,10 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Now:        time.Now,
 		Expiration: time.Hour * 24 * 365 * 10,
 	}
-	jwt, err := enc.Encode(&JwtPayload{
-		Subject: schema.Varint(task.User.UserId).Encode(),
-	})
+	payload := &JwtPayload{
+		Sub: schema.Varint(task.User.UserId).Encode(),
+	}
+	jwt, err := enc.Encode(payload)
 	if err != nil {
 		returnTaskError(w, err)
 		return
@@ -61,7 +62,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	resp := GetSessionResponse{
-		UserId: schema.Varint(task.User.UserId).Encode(),
+		JwtPayload: payload,
 	}
 
 	returnProtoJSON(w, r, &resp)

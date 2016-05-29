@@ -70,6 +70,15 @@ message UpsertPicResponse {
 }
 
 message GetSessionResponse {
-  string user_id = 1;
+  JwtPayload jwt_payload = 1;
+}
+
+message JwtPayload {
+  // User Id
+  string sub = 1;
+  // Expiration in epoch seconds.  Encodes as string in jsonpb, int in json.
+  int64 exp = 2;
+  // Not before in epoch seconds.  Encodes as string in jsonpb, int in json.
+  int64 nbf = 3;
 }
 
