@@ -8,7 +8,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"image"
-	"image/gif"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"os"
@@ -126,7 +126,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		PicId:      c.ID(),
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
-		Mime:       schema.Pic_GIF,
+		Mime:       schema.Pic_PNG,
 	}
 
 	c.AutoJob(func(j *tab.Job) error {
@@ -197,7 +197,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 
 func makeImageData(img image.Image, c *TestContainer) *bytes.Reader {
 	buf := bytes.NewBuffer(nil)
-	if err := gif.Encode(buf, img, &gif.Options{}); err != nil {
+	if err := png.Encode(buf, img); err != nil {
 		c.T.Fatal(err)
 	}
 	return bytes.NewReader(buf.Bytes())

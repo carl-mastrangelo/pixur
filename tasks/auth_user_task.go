@@ -39,7 +39,7 @@ func (t *AuthUserTask) Run() (errCap error) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can' find users")
+		return status.InternalError(err, "can't find users")
 	}
 	if len(users) != 1 {
 		return status.Unauthenticated(nil, "can't lookup user")

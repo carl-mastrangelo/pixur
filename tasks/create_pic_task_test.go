@@ -58,7 +58,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 
 	expected := schema.Pic{
 		FileSize: imgDataSize,
-		Mime:     schema.Pic_GIF,
+		Mime:     schema.Pic_PNG,
 		Width:    int64(img.Bounds().Dx()),
 		Height:   int64(img.Bounds().Dy()),
 	}
