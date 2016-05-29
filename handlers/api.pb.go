@@ -42,16 +42,28 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion1
 
 type ApiPic struct {
-	Id                   string                    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Width                int32                     `protobuf:"varint,2,opt,name=width" json:"width,omitempty"`
-	Height               int32                     `protobuf:"varint,3,opt,name=height" json:"height,omitempty"`
-	Version              int64                     `protobuf:"fixed64,4,opt,name=version" json:"version,omitempty"`
-	Type                 string                    `protobuf:"bytes,5,opt,name=type" json:"type,omitempty"`
-	RelativeUrl          string                    `protobuf:"bytes,6,opt,name=relative_url,json=relativeUrl" json:"relative_url,omitempty"`
-	ThumbnailRelativeUrl string                    `protobuf:"bytes,7,opt,name=thumbnail_relative_url,json=thumbnailRelativeUrl" json:"thumbnail_relative_url,omitempty"`
-	PendingDeletion      bool                      `protobuf:"varint,9,opt,name=pending_deletion,json=pendingDeletion" json:"pending_deletion,omitempty"`
-	ViewCount            int64                     `protobuf:"varint,10,opt,name=view_count,json=viewCount" json:"view_count,omitempty"`
-	Duration             *google_protobuf.Duration `protobuf:"bytes,11,opt,name=duration" json:"duration,omitempty"`
+	// id is the unique identifier for the pic, in varint form
+	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	// width is the width of pic
+	Width int32 `protobuf:"varint,2,opt,name=width" json:"width,omitempty"`
+	// height is the height of the pic
+	Height int32 `protobuf:"varint,3,opt,name=height" json:"height,omitempty"`
+	// version is the version of the pic.  It is used when updating the pic.
+	Version int64 `protobuf:"fixed64,4,opt,name=version" json:"version,omitempty"`
+	// type is the mime type of the pic. (JPEG, GIF, PNG, or WEBM)
+	Type string `protobuf:"bytes,5,opt,name=type" json:"type,omitempty"`
+	// relative_url is the location of the pic file relative to the root dir.
+	RelativeUrl string `protobuf:"bytes,6,opt,name=relative_url,json=relativeUrl" json:"relative_url,omitempty"`
+	// thumbnail_relative_url is the location of the the pic thumbnail
+	// relative to the root dir.
+	ThumbnailRelativeUrl string `protobuf:"bytes,7,opt,name=thumbnail_relative_url,json=thumbnailRelativeUrl" json:"thumbnail_relative_url,omitempty"`
+	// pending_deletion indicates if the pic may be deleted soon.
+	PendingDeletion bool `protobuf:"varint,9,opt,name=pending_deletion,json=pendingDeletion" json:"pending_deletion,omitempty"`
+	// view_count is the number of views this picture has received.
+	ViewCount int64 `protobuf:"varint,10,opt,name=view_count,json=viewCount" json:"view_count,omitempty"`
+	// duration is present if the image is animated (GIF or WEBM).  Note that
+	// GIFs duration is not well defined and is subject to reinterpretation.
+	Duration *google_protobuf.Duration `protobuf:"bytes,11,opt,name=duration" json:"duration,omitempty"`
 }
 
 func (m *ApiPic) Reset()                    { *m = ApiPic{} }
@@ -67,12 +79,18 @@ func (m *ApiPic) GetDuration() *google_protobuf.Duration {
 }
 
 type ApiPicTag struct {
-	PicId        string                      `protobuf:"bytes,1,opt,name=pic_id,json=picId" json:"pic_id,omitempty"`
-	TagId        string                      `protobuf:"bytes,2,opt,name=tag_id,json=tagId" json:"tag_id,omitempty"`
-	Name         string                      `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
-	CreatedTime  *google_protobuf1.Timestamp `protobuf:"bytes,4,opt,name=created_time,json=createdTime" json:"created_time,omitempty"`
+	// pic_id is the unique identifier for the pic, in varint form
+	PicId string `protobuf:"bytes,1,opt,name=pic_id,json=picId" json:"pic_id,omitempty"`
+	// tag_id is the unique identifier for the tag, in varint form
+	TagId string `protobuf:"bytes,2,opt,name=tag_id,json=tagId" json:"tag_id,omitempty"`
+	// name is the tag name in utf8 form
+	Name string `protobuf:"bytes,3,opt,name=name" json:"name,omitempty"`
+	// created_time is when the tag was created.
+	CreatedTime *google_protobuf1.Timestamp `protobuf:"bytes,4,opt,name=created_time,json=createdTime" json:"created_time,omitempty"`
+	// modified_time is when the tag was last modified.
 	ModifiedTime *google_protobuf1.Timestamp `protobuf:"bytes,5,opt,name=modified_time,json=modifiedTime" json:"modified_time,omitempty"`
-	Version      int64                       `protobuf:"fixed64,6,opt,name=version" json:"version,omitempty"`
+	// version is the version of the tag.  It is used when updating the tag.
+	Version int64 `protobuf:"fixed64,6,opt,name=version" json:"version,omitempty"`
 }
 
 func (m *ApiPicTag) Reset()                    { *m = ApiPicTag{} }
@@ -224,11 +242,13 @@ func (m *GetSessionResponse) GetJwtPayload() *JwtPayload {
 }
 
 type JwtPayload struct {
-	// User Id
+	// sub is the Subject claim of the payload.  It is the user id in varint form.
 	Sub string `protobuf:"bytes,1,opt,name=sub" json:"sub,omitempty"`
-	// Expiration in epoch seconds.  Encodes as string in jsonpb, int in json.
+	// exp is the Expiration claim in unix epoch seconds.  Encodes as string in
+	// jsonpb, int in the JWT.
 	Exp int64 `protobuf:"varint,2,opt,name=exp" json:"exp,omitempty"`
-	// Not before in epoch seconds.  Encodes as string in jsonpb, int in json.
+	// nbf is the Not Before claim time in unix epoch seconds.  Encodes as string
+	// in jsonpb, int in the JWT.
 	Nbf int64 `protobuf:"varint,3,opt,name=nbf" json:"nbf,omitempty"`
 }
 
