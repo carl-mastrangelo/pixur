@@ -18,6 +18,10 @@ type LookupPicDetailsHandler struct {
 }
 
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := checkXsrfToken(r); err != nil {
+		failXsrfCheck(w)
+		return
+	}
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.Varint

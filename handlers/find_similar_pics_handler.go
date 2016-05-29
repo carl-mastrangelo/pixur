@@ -19,6 +19,14 @@ type FindSimilarPicsHandler struct {
 
 // TODO: test this
 func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := checkXsrfToken(r); err != nil {
+		failXsrfCheck(w)
+		return
+	}
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.Varint

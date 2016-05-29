@@ -1,5 +1,5 @@
 
-var ViewerCtrl = function($scope, $routeParams, $window, picsService) {
+var ViewerCtrl = function($scope, $routeParams, $window, picsService, authService) {
   this.isImage = false;
   this.isVideo = false;
   
@@ -13,16 +13,16 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService) {
   // TODO: use the location api instead of this hack.
   this.window_ = $window;
 
-  picsService.getSingle(this.picId).then(
-    function(details) {
-      this.pic = details.pic;
-      this.picTags = details.pic_tags;
-      this.isVideo = this.pic.type == "WEBM";
-      this.isImage = this.pic.type != "WEBM";
+  authService.getXsrfToken().then(function() {
+    return picsService.getSingle(this.picId)
+  }.bind(this)).then(function(details) {
+    this.pic = details.pic;
+    this.picTags = details.pic_tags;
+    this.isVideo = this.pic.type == "WEBM";
+    this.isImage = this.pic.type != "WEBM";
 
-      picsService.incrementViewCount(this.picId);
-    }.bind(this)
-  );
+    picsService.incrementViewCount(this.picId);
+  }.bind(this));
 }
 
 ViewerCtrl.prototype.deletePic = function() {

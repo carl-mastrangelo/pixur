@@ -28,6 +28,11 @@ const (
 	xsrfTokenLifetime = time.Hour * 24 * 365 * 10
 )
 
+var (
+	b64XsrfEnc         = base64.RawURLEncoding
+	b64XsrfTokenLength = b64XsrfEnc.EncodedLen(xsrfTokenLength)
+)
+
 func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
@@ -41,9 +46,8 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	b64enc := base64.RawURLEncoding
-	b64XsrfToken := make([]byte, b64enc.EncodedLen(len(xsrfToken)))
-	b64enc.Encode(b64XsrfToken, xsrfToken)
+	b64XsrfToken := make([]byte, b64XsrfTokenLength)
+	b64XsrfEnc.Encode(b64XsrfToken, xsrfToken)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     xsrfCookieName,
@@ -70,6 +74,10 @@ func checkXsrfToken(r *http.Request) error {
 	}
 
 	return nil
+}
+
+func failXsrfCheck(w http.ResponseWriter) {
+	http.Error(w, "Missing Xsrf token", http.StatusBadRequest)
 }
 
 func init() {

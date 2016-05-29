@@ -24,6 +24,10 @@ func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 		return
 	}
+	if err := checkXsrfToken(r); err != nil {
+		failXsrfCheck(w)
+		return
+	}
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {

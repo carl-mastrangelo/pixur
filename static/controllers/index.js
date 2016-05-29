@@ -3,7 +3,8 @@ var IndexCtrl = function(
     $location, 
     $routeParams, 
     $window,
-    picsService) {
+    picsService,
+    authService) {
   this.picsService_ = picsService;
   this.location_ = $location;
   this.pics = [];
@@ -37,19 +38,18 @@ var IndexCtrl = function(
     startId = $routeParams.picId;
   }
 
-  // Initial Load
-  picsService.getNextIndexPics(startId).then(
-    function(pics) {
-      if (pics.length >= 1) {
-        this.pics = pics;
-      }
-      if (pics.length >= 2) {
-        this.nextPageID = pics[pics.length - 1].id;
-      } else {
-        this.nextPageID = null;
-      }
-    }.bind(this)
-  );
+  authService.getXsrfToken().then(function() {
+    return picsService.getNextIndexPics(startId);
+  }).then(function(pics) {
+    if (pics.length >= 1) {
+      this.pics = pics;
+    }
+    if (pics.length >= 2) {
+      this.nextPageID = pics[pics.length - 1].id;
+    } else {
+      this.nextPageID = null;
+    }
+  }.bind(this));
   // If start id is not specified, then loading the previous pics
   // searches backwards from 0, which makes the index wrap around.
   if (haveStartId) {

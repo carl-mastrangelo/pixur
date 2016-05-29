@@ -1,6 +1,6 @@
 
 angular.module('pixur', [
-      "ngRoute"
+      "ngRoute", "ngCookies"
     ])
     .config(function($locationProvider) {
       $locationProvider.html5Mode(true);
@@ -32,4 +32,5 @@ angular.module('pixur', [
     .controller("IndexCtrl", IndexCtrl)
     .controller("ViewerCtrl", ViewerCtrl)
     .controller("QuickViewerCtrl", QuickViewerCtrl)
-    .service("picsService", PicsService);
+    .service("picsService", PicsService)
+    .service("authService", AuthService);

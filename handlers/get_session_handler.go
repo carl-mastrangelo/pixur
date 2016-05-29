@@ -33,7 +33,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := checkXsrfToken(r); err != nil {
-		http.Error(w, "Missing Xsrf token", http.StatusBadRequest)
+		failXsrfCheck(w)
 		return
 	}
 

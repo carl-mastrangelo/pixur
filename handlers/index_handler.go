@@ -55,6 +55,11 @@ func (h *NextIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
 func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) {
+	if err := checkXsrfToken(r); err != nil {
+		failXsrfCheck(w)
+		return
+	}
+
 	var requestedStartPicID int64
 	if raw := r.FormValue("start_pic_id"); raw != "" {
 		var vid schema.Varint

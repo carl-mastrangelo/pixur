@@ -22,6 +22,11 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 		return
 	}
+	if err := checkXsrfToken(r); err != nil {
+		failXsrfCheck(w)
+		return
+	}
+
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.Varint
