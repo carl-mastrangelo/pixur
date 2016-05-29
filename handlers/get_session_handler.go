@@ -1,16 +1,18 @@
 package handlers
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
 	"database/sql"
-	"encoding/base64"
-	"io"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
+)
+
+const (
+	jwtCookieName = "JWT"
+	jwtLifetime   = time.Hour * 24 * 365 * 10
 )
 
 type GetSessionHandler struct {
@@ -23,12 +25,15 @@ type GetSessionHandler struct {
 	Runner     *tasks.TaskRunner
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
-	Rand       io.Reader
 }
 
 func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := checkXsrfToken(r); err != nil {
+		http.Error(w, "Missing Xsrf token", http.StatusBadRequest)
 		return
 	}
 
@@ -47,7 +52,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	enc := JwtEncoder{
 		PrivateKey: h.PrivateKey,
 		Now:        h.Now,
-		Expiration: time.Hour * 24 * 365 * 10,
+		Expiration: jwtLifetime,
 	}
 	payload := &JwtPayload{
 		Sub: schema.Varint(task.User.UserId).Encode(),
@@ -58,31 +63,12 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt",
+		Name:     jwtCookieName,
 		Value:    string(jwt),
 		Path:     "/api/",
 		Expires:  h.Now().Add(enc.Expiration),
 		Secure:   true,
 		HttpOnly: true,
-	})
-
-	xsrftoken := make([]byte, 128/8)
-	if _, err := io.ReadFull(h.Rand, xsrftoken); err != nil {
-		// TODO: log this
-		http.Error(w, "can't create xsrftoken", http.StatusInternalServerError)
-		return
-	}
-	b64enc := base64.RawURLEncoding
-	b64xsrftoken := make([]byte, b64enc.EncodedLen(len(xsrftoken)))
-	b64enc.Encode(b64xsrftoken, xsrftoken)
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "xsrftoken",
-		Value:    string(b64xsrftoken),
-		Path:     "/api/",
-		Expires:  h.Now().Add(enc.Expiration),
-		Secure:   true,
-		HttpOnly: false,
 	})
 
 	resp := GetSessionResponse{
@@ -99,7 +85,6 @@ func init() {
 			Now:        time.Now,
 			PrivateKey: c.PrivateKey,
 			PublicKey:  c.PublicKey,
-			Rand:       rand.Reader,
 		})
 	})
 }
