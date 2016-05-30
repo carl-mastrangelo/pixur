@@ -14,7 +14,8 @@ type IncrementViewCountHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB  *sql.DB
+	Now func() time.Time
 }
 
 func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -24,6 +25,10 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 	if err := checkXsrfToken(r); err != nil {
 		failXsrfCheck(w)
+		return
+	}
+	if _, err := checkJwt(r, h.Now()); err != nil {
+		failJwtCheck(w, err)
 		return
 	}
 
@@ -40,7 +45,7 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 	var task = &tasks.IncrementViewCountTask{
 		DB:    h.DB,
-		Now:   time.Now,
+		Now:   h.Now,
 		PicID: requestedPicID,
 	}
 	runner := new(tasks.TaskRunner)
@@ -57,7 +62,8 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/incrementPicViewCount", &IncrementViewCountHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 	})
 }

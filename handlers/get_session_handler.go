@@ -15,6 +15,11 @@ const (
 	jwtLifetime   = time.Hour * 24 * 365 * 10
 )
 
+var (
+	jwtEnc *jwtEncoder
+	jwtDec *jwtDecoder
+)
+
 type GetSessionHandler struct {
 	// embeds
 	http.Handler
@@ -49,15 +54,14 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enc := JwtEncoder{
-		PrivateKey: h.PrivateKey,
-		Now:        h.Now,
-		Expiration: jwtLifetime,
-	}
+	now := h.Now()
 	payload := &JwtPayload{
-		Subject: schema.Varint(task.User.UserId).Encode(),
+		Subject:    schema.Varint(task.User.UserId).Encode(),
+		Expiration: now.Add(jwtLifetime).Unix(),
+		NotBefore:  now.Add(-1 * time.Minute).Unix(),
 	}
-	jwt, err := enc.Encode(payload)
+
+	jwt, err := jwtEnc.Sign(payload)
 	if err != nil {
 		returnTaskError(w, err)
 		return
@@ -66,7 +70,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Name:     jwtCookieName,
 		Value:    string(jwt),
 		Path:     "/api/",
-		Expires:  h.Now().Add(enc.Expiration),
+		Expires:  now.Add(jwtLifetime),
 		Secure:   true,
 		HttpOnly: true,
 	})
@@ -78,6 +82,19 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	returnProtoJSON(w, r, &resp)
 }
 
+func checkJwt(r *http.Request, now time.Time) (*JwtPayload, error) {
+	c, err := r.Cookie(jwtCookieName)
+	if err != nil {
+		return nil, err
+	}
+
+	return jwtDec.Verify([]byte(c.Value), now)
+}
+
+func failJwtCheck(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusUnauthorized)
+}
+
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/getSession", &GetSessionHandler{
@@ -86,5 +103,11 @@ func init() {
 			PrivateKey: c.PrivateKey,
 			PublicKey:  c.PublicKey,
 		})
+		jwtDec = &jwtDecoder{
+			key: c.PublicKey,
+		}
+		jwtEnc = &jwtEncoder{
+			key: c.PrivateKey,
+		}
 	})
 }

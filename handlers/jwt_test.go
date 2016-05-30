@@ -12,24 +12,21 @@ func TestJwt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &JwtEncoder{
-		PrivateKey: key,
-		Now:        time.Now,
-		Expiration: time.Minute,
+	e := &jwtEncoder{
+		key: key,
 	}
-	sig, err := e.Encode(&JwtPayload{
+	sig, err := e.Sign(&JwtPayload{
 		Subject: "meeee!",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	d := &JwtDecoder{
-		PublicKey: &key.PublicKey,
-		Now:       time.Now,
+	d := &jwtDecoder{
+		key: &key.PublicKey,
 	}
 
-	payload, err := d.Decode(sig)
+	payload, err := d.Verify(sig, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

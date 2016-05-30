@@ -14,7 +14,8 @@ type AddPicTagsHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB  *sql.DB
+	Now func() time.Time
 }
 
 // TODO: add tests
@@ -25,6 +26,10 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := checkXsrfToken(r); err != nil {
 		failXsrfCheck(w)
+		return
+	}
+	if _, err := checkJwt(r, h.Now()); err != nil {
+		failJwtCheck(w, err)
 		return
 	}
 	var requestedPicID int64
@@ -40,7 +45,7 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var task = &tasks.AddPicTagsTask{
 		DB:  h.DB,
-		Now: time.Now,
+		Now: h.Now,
 
 		PicID:    requestedPicID,
 		TagNames: r.PostForm["tag"],
@@ -58,7 +63,8 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/addPicTags", &AddPicTagsHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 	})
 }
