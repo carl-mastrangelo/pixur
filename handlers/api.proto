@@ -3,6 +3,10 @@ syntax = "proto3";
 package pixur.api;
 
 option go_package = "handlers";
+option java_package = "org.pixur.api";
+option java_string_check_utf8 = true;
+option java_multiple_files = true;
+option optimize_for = CODE_SIZE;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
@@ -93,14 +97,15 @@ message GetSessionResponse {
 }
 
 message JwtPayload {
-  // sub is the Subject claim of the payload.  It is the user id in varint form.
-  string sub = 1;
-  // exp is the Expiration claim in unix epoch seconds.  Encodes as string in 
+  // subject is the Subject claim of the payload.  It is the user id in varint
+  // form.
+  string subject = 1 [json_name = "sub"];
+  // exp is the Expiration claim in unix epoch seconds.  Encodes as string in
   // jsonpb, int in the JWT.
-  int64 exp = 2;
-  // nbf is the Not Before claim time in unix epoch seconds.  Encodes as string 
-  // in jsonpb, int in the JWT.
-  int64 nbf = 3;
+  int64 expiration = 2 [json_name = "exp"];
+  // not_before is the Not Before claim time in unix epoch seconds.  Encodes as
+  // string in jsonpb, int in the JWT.
+  int64 not_before = 3 [json_name = "nbf"];
 }
 
 message GetXsrfTokenResponse {

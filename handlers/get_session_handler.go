@@ -55,7 +55,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Expiration: jwtLifetime,
 	}
 	payload := &JwtPayload{
-		Sub: schema.Varint(task.User.UserId).Encode(),
+		Subject: schema.Varint(task.User.UserId).Encode(),
 	}
 	jwt, err := enc.Encode(payload)
 	if err != nil {

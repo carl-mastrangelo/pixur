@@ -18,7 +18,7 @@ func TestJwt(t *testing.T) {
 		Expiration: time.Minute,
 	}
 	sig, err := e.Encode(&JwtPayload{
-		Sub: "meeee!",
+		Subject: "meeee!",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestJwt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if payload.Sub != "meeee!" {
+	if payload.Subject != "meeee!" {
 		t.Fatal("subjects did not match")
 	}
 }

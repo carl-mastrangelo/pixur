@@ -76,10 +76,10 @@ func (d *JwtDecoder) Decode(data []byte) (*JwtPayload, error) {
 	}
 
 	tim := d.Now()
-	if payload.Exp != 0 && time.Unix(payload.Exp, 0).Before(tim) {
+	if payload.Expiration != 0 && time.Unix(payload.Expiration, 0).Before(tim) {
 		return nil, fmt.Errorf("Jwt has already expired")
 	}
-	if payload.Nbf != 0 && time.Unix(payload.Nbf, 0).After(tim) {
+	if payload.NotBefore != 0 && time.Unix(payload.NotBefore, 0).After(tim) {
 		return nil, fmt.Errorf("Jwt has already expired")
 	}
 
@@ -106,8 +106,8 @@ func (e *JwtEncoder) Encode(payload *JwtPayload) ([]byte, error) {
 	enc.Encode(b64Header, rawHeader)
 
 	now := e.Now()
-	payload.Exp = now.Add(e.Expiration).Unix()
-	payload.Nbf = now.Add(-1 * time.Minute).Unix()
+	payload.Expiration = now.Add(e.Expiration).Unix()
+	payload.NotBefore = now.Add(-1 * time.Minute).Unix()
 
 	// Use regular json to encode int64s without quotes.
 	rawPayload, err := json.Marshal(payload)
