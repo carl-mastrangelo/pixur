@@ -11,7 +11,8 @@ import (
 
 var (
 	config                = flag.String("config", ".config.json", "The default configuration file")
-	mysqlConfig           = flag.String("mysql_config", "", "The default mysql config")
+	dbName                = flag.String("db_name", "", "The db name")
+	dbConfig              = flag.String("db_config", "", "The db config")
 	spec                  = flag.String("spec", ":8888", "Default HTTP port")
 	pixPath               = flag.String("pix_path", "pix", "Default picture storage directory")
 	sessionPrivateKeyPath = flag.String("priv_key", "", "Path to the session signing private key")
@@ -45,9 +46,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if *mysqlConfig != "" {
-		c.MysqlConfig = *mysqlConfig
+
+	if *dbName != "" {
+		c.DbName = *dbName
+	} else if c.DbName == "" {
+		c.DbName = "sqlite3"
 	}
+	if *dbConfig != "" {
+		c.DbConfig = *dbConfig
+	} else if c.DbConfig == "" {
+		c.DbConfig = ":memory:"
+	}
+
 	c.HttpSpec = *spec
 	c.PixPath = *pixPath
 	if *sessionPrivateKeyPath != "" {

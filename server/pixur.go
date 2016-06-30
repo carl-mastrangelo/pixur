@@ -13,10 +13,13 @@ import (
 	"pixur.org/pixur/handlers"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Config struct {
-	MysqlConfig           string `json:"mysql_config"`
+	DbName   string `json:"db_name"`
+	DbConfig string `json:"db_config"`
+
 	HttpSpec              string `json:"spec"`
 	PixPath               string `json:"pix_path"`
 	SessionPrivateKeyPath string `json:"priv_key"`
@@ -33,7 +36,7 @@ type Server struct {
 
 func (s *Server) setup(c *Config) error {
 	// setup the database
-	db, err := sql.Open("mysql", c.MysqlConfig)
+	db, err := sql.Open(c.DbName, c.DbConfig)
 	if err != nil {
 		return err
 	}
