@@ -27,10 +27,16 @@ angular.module('pixur', [
             controller: "QuickViewerCtrl",
             controllerAs: "ctrl"
           })
+          .when("/u/login", {
+            templateUrl: "static/login.html",
+            controller: "LoginCtrl",
+            controllerAs: "ctrl"
+          })
       ;
     })
     .controller("IndexCtrl", IndexCtrl)
     .controller("ViewerCtrl", ViewerCtrl)
     .controller("QuickViewerCtrl", QuickViewerCtrl)
+    .controller("LoginCtrl", LoginCtrl)
     .service("picsService", PicsService)
     .service("authService", AuthService);
