@@ -23,7 +23,23 @@ type CreateUserHandler struct {
 func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserRequest) (
 	*CreateUserResponse, error) {
 
-	return nil, nil
+	var task = &tasks.CreateUserTask{
+		DB:     h.DB,
+		Now:    h.Now,
+		Email:  req.Ident,
+		Secret: req.Secret,
+	}
+	var runner *tasks.TaskRunner
+	if h.Runner != nil {
+		runner = h.Runner
+	} else {
+		runner = new(tasks.TaskRunner)
+	}
+	if err := runner.Run(task); err != nil {
+		return nil, err
+	}
+
+	return &CreateUserResponse{}, nil
 }
 
 func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +53,7 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, s.Error(), s.Code.HttpStatus())
 		return
 	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
+	ctx := newXsrfContext(r.Context(), xsrfCookie, xsrfHeader)
 	if err := checkXsrfContext(ctx); err != nil {
 		s := status.FromError(err)
 		http.Error(w, s.Error(), s.Code.HttpStatus())
@@ -57,25 +73,16 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var task = &tasks.CreateUserTask{
-		DB:     h.DB,
-		Now:    h.Now,
-		Email:  ident,
+	resp, err := h.CreateUser(ctx, &CreateUserRequest{
+		Ident:  ident,
 		Secret: secret,
-	}
-	var runner *tasks.TaskRunner
-	if h.Runner != nil {
-		runner = h.Runner
-	} else {
-		runner = new(tasks.TaskRunner)
-	}
-	if err := runner.Run(task); err != nil {
+	})
+	if err != nil {
 		returnTaskError(w, err)
 		return
 	}
 
-	resp := CreateUserResponse{}
-	returnProtoJSON(w, r, &resp)
+	returnProtoJSON(w, r, resp)
 }
 
 func init() {
