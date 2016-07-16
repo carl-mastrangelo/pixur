@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -23,8 +25,16 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 		return
 	}
-	if err := checkXsrfToken(r); err != nil {
-		failXsrfCheck(w)
+	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
+	if err != nil {
+		s := status.FromError(err)
+		http.Error(w, s.Error(), s.Code.HttpStatus())
+		return
+	}
+	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
+	if err := checkXsrfContext(ctx); err != nil {
+		s := status.FromError(err)
+		http.Error(w, s.Error(), s.Code.HttpStatus())
 		return
 	}
 	if _, err := checkJwt(r, h.Now()); err != nil {

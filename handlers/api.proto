@@ -110,3 +110,13 @@ message JwtPayload {
 
 message GetXsrfTokenResponse {
 }
+
+message CreateUserRequest {
+	string ident = 1;
+	string secret = 2;
+}
+
+message CreateUserResponse {
+	// nothing for now.
+}
+

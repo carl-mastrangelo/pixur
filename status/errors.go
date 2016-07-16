@@ -59,6 +59,13 @@ var (
 	}
 )
 
+func FromError(err error) *Status {
+	if s, ok := err.(*Status); ok {
+		return s
+	}
+	return InternalError(err, "internal error")
+}
+
 func (c Code) String() string {
 	if mapping, present := _codeNameMapping[c]; present {
 		return mapping

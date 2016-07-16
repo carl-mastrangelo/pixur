@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
-	"log"
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -15,7 +16,14 @@ type CreateUserHandler struct {
 
 	// deps
 	DB     *sql.DB
+	Now    func() time.Time
 	Runner *tasks.TaskRunner
+}
+
+func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserRequest) (
+	*CreateUserResponse, error) {
+
+	return nil, nil
 }
 
 func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -23,14 +31,23 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 		return
 	}
-	if err := checkXsrfToken(r); err != nil {
-		failXsrfCheck(w)
+	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
+	if err != nil {
+		s := status.FromError(err)
+		http.Error(w, s.Error(), s.Code.HttpStatus())
 		return
 	}
+	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
+	if err := checkXsrfContext(ctx); err != nil {
+		s := status.FromError(err)
+		http.Error(w, s.Error(), s.Code.HttpStatus())
+		return
+	}
+	// TODO: check if the user is already logged in.
 
-	email := r.FormValue("email")
-	if email == "" {
-		http.Error(w, "missing email", http.StatusBadRequest)
+	ident := r.FormValue("ident")
+	if ident == "" {
+		http.Error(w, "missing ident", http.StatusBadRequest)
 		return
 	}
 
@@ -42,8 +59,8 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var task = &tasks.CreateUserTask{
 		DB:     h.DB,
-		Now:    time.Now,
-		Email:  email,
+		Now:    h.Now,
+		Email:  ident,
 		Secret: secret,
 	}
 	var runner *tasks.TaskRunner
@@ -57,13 +74,15 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(task.CreatedUser)
+	resp := CreateUserResponse{}
+	returnProtoJSON(w, r, &resp)
 }
 
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/createUser", &CreateUserHandler{
-			DB: c.DB,
+			Now: time.Now,
+			DB:  c.DB,
 		})
 	})
 }
