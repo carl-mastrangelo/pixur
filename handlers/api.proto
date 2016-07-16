@@ -55,41 +55,91 @@ message ApiPicTag {
   sfixed64 version = 6;
 }
 
+message LookupPicDetailsRequest {
+	string pic_id = 1;
+}
+
 message LookupPicDetailsResponse {
   ApiPic pic = 1;
   repeated ApiPicTag pic_tag = 2;
+}
+
+message IndexRequest {
+	string start_pic_id = 1;
 }
 
 message IndexResponse {
   repeated ApiPic pic = 1;
 }
 
-message AddPicTagsResponse{
+message AddPicTagsRequest {
+	string pic_id = 1;
+	repeated string tag = 2;
+}
+
+message AddPicTagsResponse {
   // nothing here for now.
+}
+
+message CreatePicRequest {
+	// file_data is the contents of the pic.  Either file_data or file_url must be present.
+	// If sent as part of a stream, this field will be the only one read after the first message.
+	bytes file_data = 1;
+	// optional, only used if file_data is present.
+	string file_name = 2;
+	
+	// URL to get the pic from.  Either file_data or file_url must be present.
+	string file_url = 3;
+	
+	repeated string tag = 4;
 }
 
 message CreatePicResponse {
   ApiPic pic = 1;
 }
 
+message FindSimilarPicsRequest {
+  // 
+}
+
 message FindSimilarPicsResponse {
   repeated string id = 1; 
 }
 
+message IncrementViewCountRequest {
+  // nothing for now
+}
+
 message IncrementViewCountResponse {
-  // nothing for now.
+  // nothing for now
+}
+
+message PurgePicRequest {
+  // nothing for now
 }
 
 message PurgePicResponse {
   // nothing for now
 }
 
+message SoftDeletePicRequest {
+	// nothing for now
+}
+
 message SoftDeletePicResponse {
   // nothing for now
 }
 
+message UpsertPicRequest {
+	// nothing for now
+}
+
 message UpsertPicResponse {
   ApiPic pic = 1;
+}
+
+message GetSessionRequest {
+	// nothing for now
 }
 
 message GetSessionResponse {
@@ -108,15 +158,36 @@ message JwtPayload {
   int64 not_before = 3 [json_name = "nbf"];
 }
 
+message GetXsrfTokenRequest {
+}
+
 message GetXsrfTokenResponse {
 }
 
 message CreateUserRequest {
+	// ident is the unique identity of the user being created, usually an email address
 	string ident = 1;
+	// secret is the secret string used to authenticate the user, usually a password
 	string secret = 2;
 }
 
 message CreateUserResponse {
 	// nothing for now.
+}
+
+service PixurService {
+  rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+  rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc UpsertPic(stream UpsertPicRequest) returns (UpsertPicResponse);
+  rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
+  rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
+  rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
+  rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
+  rpc CreatePic(stream CreatePicRequest) returns (CreatePicResponse);
+  rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
+  rpc FindNextIndexPics(IndexRequest) returns (IndexResponse);
+  rpc FindPrevIndexPics(IndexRequest) returns (IndexResponse);
+  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
 }
 
