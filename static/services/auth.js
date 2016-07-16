@@ -28,7 +28,7 @@ AuthService.prototype.getXsrfToken = function() {
 AuthService.prototype.createUser = function(ident, secret) {
   var deferred = this.q_.defer();
   var params = {
-    "email": ident,
+    "ident": ident,
     "secret": secret
   }
   var httpConfig = {

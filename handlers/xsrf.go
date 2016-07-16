@@ -74,8 +74,9 @@ func fromXsrfContext(ctx context.Context) (cookie string, header string, ok bool
 func fromXsrfRequest(r *http.Request) (cookie string, header string, err error) {
 	c, err := r.Cookie(xsrfCookieName)
 	if err == http.ErrNoCookie {
-		return "", "", status.Unauthenticated(nil, "missing xsrf cookie")
+		return "", "", status.Unauthenticated(err, "missing xsrf cookie")
 	} else if err != nil {
+		// this can't happen according to the http docs
 		return "", "", status.InternalError(err, "can't get xsrf token from cookie")
 	}
 	h := r.Header.Get(xsrfHeaderName)
