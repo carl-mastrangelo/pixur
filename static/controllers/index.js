@@ -24,7 +24,8 @@ var IndexCtrl = function(
       $window.scrollTo(ev.state.x, ev.state.y);
     }
   };
-
+  
+  this.auth = authService.getAuth();
   this.nextPageID = null;
   this.prevPageID = null;
   

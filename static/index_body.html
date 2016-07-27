@@ -21,4 +21,7 @@
   <input type="file" name="file" onchange="angular.element(this).controller().fileChange(this)" /><br />
   <input placeholder="File URL" name="url" ng-model="ctrl.upload.url"  /><br />
   <input type="button" value="submit" ng-click="ctrl.createPic()" />
+  <br />
+  <span ng-show="ctrl.auth">Logged in as {{ctrl.auth.ident}}</span>
+  <span ng-hide="ctrl.auth"><a ng-href="u/login">Login / Join</a></span>
 </div>

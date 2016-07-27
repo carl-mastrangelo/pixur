@@ -1,7 +1,8 @@
-var AuthService = function($http, $q, $cookies) {
+var AuthService = function($http, $q, $cookies, $window) {
   this.http_ = $http;
   this.q_ = $q;
   this.cookies_ = $cookies;
+  this.window_ = $window;
 };
 
 AuthService.prototype.getXsrfToken = function() {
@@ -40,6 +41,13 @@ AuthService.prototype.createUser = function(ident, secret) {
   return this.http_.post("/api/createUser", params, httpConfig);
 };
 
+AuthService.prototype.getAuth = function() {
+	var item = this.window_.localStorage.getItem("auth");
+	if (item) {
+		return this.window_.JSON.parse(item);
+	}
+	return null;
+};
 
 AuthService.prototype.loginUser = function(ident, secret) {
   var deferred = this.q_.defer();
@@ -53,7 +61,13 @@ AuthService.prototype.loginUser = function(ident, secret) {
     },
     "transformRequest": AuthService.postTransform
   };
-  return this.http_.post("/api/getSession", params, httpConfig);
+  return this.http_.post("/api/getSession", params, httpConfig).then(function(res) {
+  	var s = {
+  		"user_id": res.data.jwtPayload.sub,
+  		"ident": ident
+  	};
+  	this.window_.localStorage.setItem("auth", this.window_.JSON.stringify(s));
+  }.bind(this));
 };
 
 
