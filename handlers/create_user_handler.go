@@ -47,14 +47,14 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
 		return
 	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
+	xsrfCookie, xsrfHeader, err := xsrfTokensFromRequest(r)
 	if err != nil {
 		s := status.FromError(err)
 		http.Error(w, s.Error(), s.Code.HttpStatus())
 		return
 	}
 	ctx := newXsrfContext(r.Context(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
+	if err := checkXsrfTokens(xsrfCookie, xsrfHeader); err != nil {
 		s := status.FromError(err)
 		http.Error(w, s.Error(), s.Code.HttpStatus())
 		return

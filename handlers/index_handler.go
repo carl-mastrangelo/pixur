@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -37,11 +36,12 @@ type PreviousIndexPicsHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB  *sql.DB
+	Now func() time.Time
 }
 
 func (h *PreviousIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	findIndexPicsHandler(h.DB, true, w, r)
+	findIndexPicsHandler(h.DB, true, w, r, h.Now)
 }
 
 type NextIndexPicsHandler struct {
@@ -49,24 +49,21 @@ type NextIndexPicsHandler struct {
 	http.Handler
 
 	// deps
-	DB *sql.DB
+	DB  *sql.DB
+	Now func() time.Time
 }
 
 func (h *NextIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	findIndexPicsHandler(h.DB, false, w, r)
+	findIndexPicsHandler(h.DB, false, w, r, h.Now)
 }
 
-func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request) {
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
+func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *http.Request,
+	now func() time.Time) {
+	rc := &requestChecker{r: r, now: now}
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 
@@ -104,10 +101,12 @@ func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/", new(IndexHandler))
 		mux.Handle("/api/findNextIndexPics", &NextIndexPicsHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 		mux.Handle("/api/findPreviousIndexPics", &PreviousIndexPicsHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 	})
 }

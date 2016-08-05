@@ -20,30 +20,40 @@ type AddPicTagsHandler struct {
 	Now func() time.Time
 }
 
+func (h *CreateUserHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
+	*AddPicTagsResponse, error) {
+
+	var vid schema.Varint
+	if err := vid.DecodeAll(req.PicId); err != nil {
+		return nil, status.InvalidArgument(err, "Unable to decode pic id")
+	}
+
+	var task = &tasks.AddPicTagsTask{
+		DB:  h.DB,
+		Now: h.Now,
+
+		PicID:    int64(vid),
+		TagNames: req.Tag,
+	}
+	runner := new(tasks.TaskRunner)
+	if err := runner.Run(task); err != nil {
+		return nil, err
+	}
+
+	return &AddPicTagsResponse{}, nil
+}
+
 // TODO: add tests
 func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-
-	if _, err := checkJwt(r, h.Now()); err != nil {
-		failJwtCheck(w, err)
-		return
-	}
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.Varint

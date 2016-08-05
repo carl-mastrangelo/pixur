@@ -1,15 +1,32 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+func init() {
+	key, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		panic(err)
+	}
+	jwtDec = &jwtDecoder{
+		key: &key.PublicKey,
+	}
+	jwtEnc = &jwtEncoder{
+		key: key,
+	}
+}
 
 type testClient struct {
 	HTTPClient  *http.Client
 	DisableXSRF bool
+	JwtOverride *JwtPayload
 }
 
 func (c *testClient) Do(req *http.Request) (*http.Response, error) {
@@ -22,6 +39,26 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 		})
 		req.Header.Add(xsrfHeaderName, string(b64XsrfToken))
 	}
+	var payload *JwtPayload
+	if c.JwtOverride == nil {
+
+		payload = &JwtPayload{
+			Subject:    "0",
+			Expiration: time.Now().Add(jwtLifetime).Unix(),
+			NotBefore:  time.Now().Add(-1 * time.Minute).Unix(),
+		}
+	} else {
+		payload = c.JwtOverride
+	}
+
+	jwt, err := jwtEnc.Sign(payload)
+	if err != nil {
+		panic(err)
+	}
+	req.AddCookie(&http.Cookie{
+		Name:  jwtCookieName,
+		Value: string(jwt),
+	})
 
 	var httpClient *http.Client
 	if c.HTTPClient != nil {

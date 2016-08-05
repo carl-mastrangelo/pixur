@@ -18,6 +18,8 @@ type fileServer struct {
 }
 
 func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := ctxFromReq(r)
+	_ = ctx
 	dir, file := path.Split(r.URL.Path)
 	if dir != "" {
 		// Something is wrong, /pix/ should have been stripped.

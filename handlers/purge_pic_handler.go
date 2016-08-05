@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"net/http"
+	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -17,27 +16,20 @@ type PurgePicHandler struct {
 	// deps
 	PixPath string
 	DB      *sql.DB
+	Now     func() time.Time
 }
 
 // TODO: add tests
-// TODO: Add csrf protection
 func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
+
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
@@ -71,6 +63,7 @@ func init() {
 		mux.Handle("/api/purgePic", &PurgePicHandler{
 			DB:      c.DB,
 			PixPath: c.PixPath,
+			Now:     time.Now,
 		})
 	})
 }

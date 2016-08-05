@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rsa"
 	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -35,20 +33,11 @@ type GetSessionHandler struct {
 }
 
 func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
-		return
-	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 

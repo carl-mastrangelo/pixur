@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"time"
 
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -23,24 +21,17 @@ type UpsertPicHandler struct {
 	// deps
 	DB      *sql.DB
 	PixPath string
+	Now     func() time.Time
 }
 
 // TODO: add tests
 func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
-		return
-	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 
@@ -78,7 +69,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		TempFile:   ioutil.TempFile,
 		Rename:     os.Rename,
 		MkdirAll:   os.MkdirAll,
-		Now:        time.Now,
+		Now:        h.Now,
 
 		FileURL: fileURL,
 		File:    filedata,
@@ -107,6 +98,7 @@ func init() {
 		mux.Handle("/api/upsertPic", &UpsertPicHandler{
 			DB:      c.DB,
 			PixPath: c.PixPath,
+			Now:     time.Now,
 		})
 	})
 }

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -33,6 +34,7 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	}
 	s := httptest.NewServer(&LookupPicDetailsHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -89,6 +91,7 @@ func TestLookupPicParsePicId(t *testing.T) {
 	}
 	s := httptest.NewServer(&LookupPicDetailsHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -120,6 +123,7 @@ func TestLookupPicBadPicId(t *testing.T) {
 	}
 	s := httptest.NewServer(&LookupPicDetailsHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -144,6 +148,7 @@ func TestLookupPicTaskError(t *testing.T) {
 	}
 	s := httptest.NewServer(&LookupPicDetailsHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 

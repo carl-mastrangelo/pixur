@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"net/http"
 	"strings"
 	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -19,26 +17,19 @@ type SoftDeletePicHandler struct {
 	// deps
 	DB     *sql.DB
 	Runner *tasks.TaskRunner
+	Now    func() time.Time
 }
 
-// TODO: Add csrf protection
 func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
+
 	requestedRawPicID := r.FormValue("pic_id")
 	var requestedPicId int64
 	if requestedRawPicID != "" {
@@ -63,7 +54,7 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	pendingDeletionTime := time.Now().AddDate(0, 0, 7) // 7 days to live
+	pendingDeletionTime := h.Now().AddDate(0, 0, 7) // 7 days to live
 	if rawTime := r.FormValue("pending_deletion_time"); rawTime != "" {
 		if err := pendingDeletionTime.UnmarshalText([]byte(rawTime)); err != nil {
 			http.Error(w, "Could not parse "+rawTime, http.StatusBadRequest)
@@ -97,7 +88,8 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/softDeletePic", &SoftDeletePicHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 	})
 }

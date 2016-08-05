@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"time"
 
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -18,23 +17,16 @@ type CreatePicHandler struct {
 	// deps
 	DB      *sql.DB
 	PixPath string
+	Now     func() time.Time
 }
 
 func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
-		return
-	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 
@@ -80,6 +72,7 @@ func init() {
 		mux.Handle("/api/createPic", &CreatePicHandler{
 			DB:      c.DB,
 			PixPath: c.PixPath,
+			Now:     time.Now,
 		})
 	})
 }

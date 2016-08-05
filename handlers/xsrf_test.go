@@ -124,7 +124,7 @@ func TestFromXsrfContextMissingHeader(t *testing.T) {
 	}
 }
 
-func TestFromXsrfRequest(t *testing.T) {
+func TestXsrfTokensFromRequest(t *testing.T) {
 	r, err := http.NewRequest("POST", "/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func TestFromXsrfRequest(t *testing.T) {
 	cookie := newXsrfCookie("c", now)
 	r.AddCookie(cookie)
 	r.Header.Add(xsrfHeaderName, "h")
-	c, h, err := fromXsrfRequest(r)
+	c, h, err := xsrfTokensFromRequest(r)
 	if err != nil {
 		t.Error("have", err, "want", nil)
 	}
@@ -144,13 +144,13 @@ func TestFromXsrfRequest(t *testing.T) {
 	}
 }
 
-func TestFromXsrfRequestNoCookie(t *testing.T) {
+func TestXsrfTokensFromRequestNoCookie(t *testing.T) {
 	r, err := http.NewRequest("POST", "/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	r.Header.Add(xsrfHeaderName, "h")
-	c, h, err := fromXsrfRequest(r)
+	c, h, err := xsrfTokensFromRequest(r)
 	s, ok := err.(*status.Status)
 	if !ok || s.Code != status.Code_UNAUTHENTICATED || s.Message != "missing xsrf cookie" {
 		t.Error("have", err, "want", status.Code_UNAUTHENTICATED, "missing xsrf cookie")
@@ -161,7 +161,7 @@ func TestFromXsrfRequestNoCookie(t *testing.T) {
 }
 
 // The header getter returns "" if absent
-func TestFromXsrfRequestNoHeaderPasses(t *testing.T) {
+func TestXsrfTokensFromRequestNoHeaderPasses(t *testing.T) {
 	r, err := http.NewRequest("POST", "/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +171,7 @@ func TestFromXsrfRequestNoHeaderPasses(t *testing.T) {
 	}
 	cookie := newXsrfCookie("c", now)
 	r.AddCookie(cookie)
-	c, h, err := fromXsrfRequest(r)
+	c, h, err := xsrfTokensFromRequest(r)
 	if err != nil {
 		t.Error("have", err, "want", nil)
 	}
@@ -180,34 +180,31 @@ func TestFromXsrfRequestNoHeaderPasses(t *testing.T) {
 	}
 }
 
-func TestCheckXsrfContext(t *testing.T) {
-	ctx := newXsrfContext(context.Background(), "AAAAAAAAAAAAAAAAAAAAAA", "AAAAAAAAAAAAAAAAAAAAAA")
-	err := checkXsrfContext(ctx)
+func TestCheckXsrfTokens(t *testing.T) {
+	err := checkXsrfTokens("AAAAAAAAAAAAAAAAAAAAAA", "AAAAAAAAAAAAAAAAAAAAAA")
 	if err != nil {
 		t.Error("have", err, "want", nil)
 	}
 }
 
-func TestCheckXsrfContextMissing(t *testing.T) {
-	err := checkXsrfContext(context.Background())
-	s, ok := err.(*status.Status)
-	if !ok || s.Code != status.Code_UNAUTHENTICATED || s.Message != "missing xsrf token" {
-		t.Error("have", err, "want", status.Code_UNAUTHENTICATED, "missing xsrf token")
-	}
-}
-
-func TestCheckXsrfContextWrongSize(t *testing.T) {
-	ctx := newXsrfContext(context.Background(), "small", "AAAAAAAAAAAAAAAAAAAAAA")
-	err := checkXsrfContext(ctx)
+func TestCheckXsrfTokensMissing(t *testing.T) {
+	err := checkXsrfTokens("", "")
 	s, ok := err.(*status.Status)
 	if !ok || s.Code != status.Code_UNAUTHENTICATED || s.Message != "wrong length xsrf token" {
 		t.Error("have", err, "want", status.Code_UNAUTHENTICATED, "wrong length xsrf token")
 	}
 }
 
-func TestCheckXsrfContextMismatch(t *testing.T) {
-	ctx := newXsrfContext(context.Background(), "AAAAAAAAAAAAAAAAAAAAAA", "BBBBBBBBBBBBBBBBBBBBBB")
-	err := checkXsrfContext(ctx)
+func TestCheckXsrfTokensWrongSize(t *testing.T) {
+	err := checkXsrfTokens("small", "AAAAAAAAAAAAAAAAAAAAAA")
+	s, ok := err.(*status.Status)
+	if !ok || s.Code != status.Code_UNAUTHENTICATED || s.Message != "wrong length xsrf token" {
+		t.Error("have", err, "want", status.Code_UNAUTHENTICATED, "wrong length xsrf token")
+	}
+}
+
+func TestCheckXsrfTokensMismatch(t *testing.T) {
+	err := checkXsrfTokens("AAAAAAAAAAAAAAAAAAAAAA", "BBBBBBBBBBBBBBBBBBBBBB")
 	s, ok := err.(*status.Status)
 	if !ok || s.Code != status.Code_UNAUTHENTICATED || s.Message != "xsrf tokens don't match" {
 		t.Error("have", err, "want", status.Code_UNAUTHENTICATED, "xsrf tokens don't match")

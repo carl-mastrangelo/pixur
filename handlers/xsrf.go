@@ -70,8 +70,8 @@ func fromXsrfContext(ctx context.Context) (cookie string, header string, ok bool
 	return "", "", false
 }
 
-// fromXsrfRequest extracts the cookie and header xsrf tokens from r
-func fromXsrfRequest(r *http.Request) (cookie string, header string, err error) {
+// xsrfTokensFromRequest extracts the cookie and header xsrf tokens from r
+func xsrfTokensFromRequest(r *http.Request) (cookie string, header string, err error) {
 	c, err := r.Cookie(xsrfCookieName)
 	if err == http.ErrNoCookie {
 		return "", "", status.Unauthenticated(err, "missing xsrf cookie")
@@ -83,17 +83,13 @@ func fromXsrfRequest(r *http.Request) (cookie string, header string, err error) 
 	return c.Value, h, nil
 }
 
-// checkXsrfContext extracts the xsrf tokens and make sure they match
-func checkXsrfContext(ctx context.Context) error {
-	c, h, ok := fromXsrfContext(ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "missing xsrf token")
-	}
+// checkXsrfTokens extracts the xsrf tokens and make sure they match
+func checkXsrfTokens(cookie, header string) error {
 	// check the encoded length, not the binary length
-	if len(c) != b64XsrfTokenLength {
+	if len(cookie) != b64XsrfTokenLength {
 		return status.Unauthenticated(nil, "wrong length xsrf token")
 	}
-	if subtle.ConstantTimeCompare([]byte(h), []byte(c)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(header), []byte(cookie)) != 1 {
 		return status.Unauthenticated(nil, "xsrf tokens don't match")
 	}
 	return nil

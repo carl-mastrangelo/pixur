@@ -25,6 +25,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -56,7 +57,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 		t.Error("Wrong details", taskCap.Details)
 	}
 	if taskCap.Reason != schema.Pic_DeletionStatus_RULE_VIOLATION {
-		t.Error("Wrong reason", taskCap.Details)
+		t.Error("Wrong reason", taskCap.Reason)
 	}
 	if *taskCap.PendingDeletionTime != time.Date(2015, 10, 18, 23, 0, 0, 0, time.UTC) {
 		t.Error("Wrong deletion time", taskCap.PendingDeletionTime)
@@ -77,6 +78,7 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -106,6 +108,7 @@ func TestSoftDeletePicBadReason(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -136,6 +139,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -165,6 +169,7 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -213,6 +218,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 
@@ -248,6 +254,7 @@ func TestSoftDeleteGetNotAllowed(t *testing.T) {
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
 	})
 	defer s.Close()
 

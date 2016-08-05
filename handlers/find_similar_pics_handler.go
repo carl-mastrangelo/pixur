@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"net/http"
+	"time"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -17,26 +16,20 @@ type FindSimilarPicsHandler struct {
 	// deps
 	DB     *sql.DB
 	Runner *tasks.TaskRunner
+	Now    func() time.Time
 }
 
 // TODO: test this
 func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	rc.checkJwt()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
-	xsrfCookie, xsrfHeader, err := fromXsrfRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(context.TODO(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfContext(ctx); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
+
 	var requestedPicID int64
 	if raw := r.FormValue("pic_id"); raw != "" {
 		var vid schema.Varint
@@ -74,7 +67,8 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/findSimilarPics", &FindSimilarPicsHandler{
-			DB: c.DB,
+			DB:  c.DB,
+			Now: time.Now,
 		})
 	})
 }

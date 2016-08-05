@@ -31,7 +31,7 @@ message Pic {
   // for deletion, it is delisted from normal indexing operations.  When the
   // pic is actually "deleted" only the pic object is removed.
   DeletionStatus deletion_status = 12;
-  
+
   // Only present on animated images.
   AnimationInfo animation_info = 13;
 
@@ -41,18 +41,18 @@ message Pic {
     // Represents when this picture will be auto deleted.  Note that the Pic
     // may exist for a short period after this time.  (may be absent)
     google.protobuf.Timestamp pending_deleted_ts = 2;
-    // Determines when Pic was actually deleted.  (present after the Pic is 
+    // Determines when Pic was actually deleted.  (present after the Pic is
     // hard deleted, a.k.a purging)
     google.protobuf.Timestamp actual_deleted_ts = 3;
     // Gives an explanation for why this pic was removed.
     string details = 4;
-    
+
     enum Reason {
       // The reason is not know, due to limitations of proto
       UNKNOWN = 0;
       // No specific reason.  This is a catch-all reason.
       NONE = 1;
-      // The pic is in violation of the rules.  
+      // The pic is in violation of the rules.
       RULE_VIOLATION = 2;
     }
     // The reason the pic was removed.
@@ -66,15 +66,15 @@ message Pic {
   }
 
   int64 view_count = 14;
-  
+
   message FileSource {
     string url = 1;
     string referrer = 2;
     google.protobuf.Timestamp created_ts = 3;
   }
-  
+
   repeated FileSource source = 15;
-  
+
   repeated string file_name = 16;
 }
 
@@ -121,20 +121,21 @@ message PicTag {
 
 message User {
   int64 user_id = 1;
-  
+
   // Hashed secret token
   bytes secret = 2;
-  
+
   string email = 3;
 
   google.protobuf.Timestamp created_ts = 4;
   google.protobuf.Timestamp modified_ts = 5;
   google.protobuf.Timestamp last_seen_ts = 6;
-  
+
   enum Capability {
     UNKNOWN = 0;
     CREATE_PIC = 1;
+    VIEW_PIC = 2;
   }
-  
+
   repeated Capability capability = 7;
 }
