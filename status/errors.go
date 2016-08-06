@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
-	"strings"
 )
 
 type Code int
@@ -59,13 +58,6 @@ var (
 	}
 )
 
-func FromError(err error) *Status {
-	if s, ok := err.(*Status); ok {
-		return s
-	}
-	return InternalError(err, "internal error")
-}
-
 func (c Code) String() string {
 	if mapping, present := _codeNameMapping[c]; present {
 		return mapping
@@ -80,141 +72,179 @@ func (c Code) HttpStatus() int {
 	return http.StatusInternalServerError
 }
 
-var _ error = &Status{}
-
-type Status struct {
-	Code       Code
-	Message    string
-	Cause      error
-	StackTrace string
+type S interface {
+	error
+	Code() Code
+	Message() string
+	Cause() error
+	Stack() []uintptr
+	dontImplementMe()
 }
 
-func InvalidArgument(e error, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_INVALID_ARGUMENT,
-		Message:    fmt.Sprint(v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
+func From(err error) S {
+	if s, ok := err.(S); ok {
+		return s
+	}
+	return &status{
+		code:  Code_INTERNAL_ERROR,
+		cause: err,
 	}
 }
 
-func InvalidArgumentf(e error, format string, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_INVALID_ARGUMENT,
-		Message:    fmt.Sprintf(format, v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+var _ S = &status{}
+
+type status struct {
+	code  Code
+	msg   string
+	cause error
+	stack []uintptr
 }
 
-func InternalError(e error, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_INTERNAL_ERROR,
-		Message:    fmt.Sprint(v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+func (s *status) Code() Code {
+	return s.code
 }
 
-func InternalErrorf(e error, format string, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_INTERNAL_ERROR,
-		Message:    fmt.Sprintf(format, v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+func (s *status) Message() string {
+	return s.msg
 }
 
-func NotFound(e error, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_NOT_FOUND,
-		Message:    fmt.Sprint(v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+func (s *status) Cause() error {
+	return s.cause
 }
 
-func NotFoundf(e error, format string, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_NOT_FOUND,
-		Message:    fmt.Sprintf(format, v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+func (s *status) Stack() []uintptr {
+	return s.stack
 }
 
-func AlreadyExists(e error, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_ALREADY_EXISTS,
-		Message:    fmt.Sprint(v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
+func (s *status) Error() string {
+	return fmt.Sprintf("%s: %s", s.code, s.msg)
 }
 
-func AlreadyExistsf(e error, format string, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_ALREADY_EXISTS,
-		Message:    fmt.Sprintf(format, v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
-}
-
-func Unauthenticated(e error, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_UNAUTHENTICATED,
-		Message:    fmt.Sprint(v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
-}
-
-func Unauthenticatedf(e error, format string, v ...interface{}) *Status {
-	return &Status{
-		Code:       Code_UNAUTHENTICATED,
-		Message:    fmt.Sprintf(format, v...),
-		Cause:      e,
-		StackTrace: getStackTrace(),
-	}
-}
-
-func getStackTrace() string {
-	s := make([]byte, 4096)
-	size := runtime.Stack(s, false)
-	stack := string(s[:size])
-
-	// Always trim the constructor method
-	return strings.SplitN(stack, "\n", 6)[6-1]
-}
-
-func (s *Status) Error() string {
+func (s *status) String() string {
 	var b bytes.Buffer
-	var err error = s
-	var first bool = true
-	for err != nil {
-		if first {
-			first = false
-			b.WriteString("Status ")
-		} else {
-			b.WriteString("Caused by ")
-		}
-		switch e := err.(type) {
-		case *Status:
-			if e.Message != "" {
-				b.WriteString(e.Code.String() + ": " + e.Message)
-			} else {
-				b.WriteString(e.Code.String())
+	s.stringer(&b)
+	return b.String()
+}
+
+func (s *status) dontImplementMe() {
+}
+
+func (s *status) stringer(buf *bytes.Buffer) {
+	buf.WriteString(s.Error())
+	if len(s.stack) != 0 {
+		buf.WriteRune('\n')
+		frames := runtime.CallersFrames(s.stack)
+		for {
+			f, more := frames.Next()
+			fmt.Fprintf(buf, "\t%s (%s:%d)", f.Function, f.File, f.Line)
+			if !more {
+				break
 			}
-			if e.StackTrace != "" {
-				b.WriteString("\n\t")
-				b.WriteString(strings.Join(strings.Split(e.StackTrace, "\n"), "\n\t"))
-			}
-			err = e.Cause
-		default:
-			b.WriteString(err.Error())
-			err = nil
+			buf.WriteRune('\n')
 		}
 	}
-	return b.String()
+	if s.cause == nil {
+		return
+	}
+	buf.WriteString("\nCaused by: ")
+	if nexts, ok := s.cause.(*status); ok {
+		nexts.stringer(buf)
+	} else {
+		buf.WriteString(s.cause.Error())
+	}
+}
+
+func getStack() []uintptr {
+	pc := make([]uintptr, 32)
+	return pc[:runtime.Callers(2, pc)]
+}
+
+func InvalidArgument(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_INVALID_ARGUMENT,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func InvalidArgumentf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_INVALID_ARGUMENT,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func InternalError(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_INTERNAL_ERROR,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func InternalErrorf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_INTERNAL_ERROR,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func NotFound(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_NOT_FOUND,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func NotFoundf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_NOT_FOUND,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func AlreadyExists(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_ALREADY_EXISTS,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func AlreadyExistsf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_ALREADY_EXISTS,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func Unauthenticated(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_UNAUTHENTICATED,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func Unauthenticatedf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_UNAUTHENTICATED,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
 }
