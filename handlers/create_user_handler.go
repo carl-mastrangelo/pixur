@@ -21,7 +21,7 @@ type CreateUserHandler struct {
 }
 
 func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserRequest) (
-	*CreateUserResponse, error) {
+	*CreateUserResponse, status.S) {
 
 	var task = &tasks.CreateUserTask{
 		DB:     h.DB,
@@ -35,28 +35,22 @@ func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserReque
 	} else {
 		runner = new(tasks.TaskRunner)
 	}
-	if err := runner.Run(task); err != nil {
-		return nil, err
+	if sts := runner.Run(task); sts != nil {
+		return nil, sts
 	}
 
 	return &CreateUserResponse{}, nil
 }
 
 func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Unsupported Method", http.StatusMethodNotAllowed)
-		return
+	rc := &requestChecker{
+		r:   r,
+		now: h.Now,
 	}
-	xsrfCookie, xsrfHeader, err := xsrfTokensFromRequest(r)
-	if err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
-		return
-	}
-	ctx := newXsrfContext(r.Context(), xsrfCookie, xsrfHeader)
-	if err := checkXsrfTokens(xsrfCookie, xsrfHeader); err != nil {
-		s := status.FromError(err)
-		http.Error(w, s.Error(), s.Code.HttpStatus())
+	rc.checkPost()
+	rc.checkXsrf()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 	// TODO: check if the user is already logged in.
@@ -73,12 +67,12 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.CreateUser(ctx, &CreateUserRequest{
+	resp, sts := h.CreateUser(r.Context(), &CreateUserRequest{
 		Ident:  ident,
 		Secret: secret,
 	})
-	if err != nil {
-		returnTaskError(w, err)
+	if sts != nil {
+		returnTaskError(w, sts)
 		return
 	}
 

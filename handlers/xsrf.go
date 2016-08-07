@@ -71,7 +71,7 @@ func fromXsrfContext(ctx context.Context) (cookie string, header string, ok bool
 }
 
 // xsrfTokensFromRequest extracts the cookie and header xsrf tokens from r
-func xsrfTokensFromRequest(r *http.Request) (cookie string, header string, err error) {
+func xsrfTokensFromRequest(r *http.Request) (cookie string, header string, sts status.S) {
 	c, err := r.Cookie(xsrfCookieName)
 	if err == http.ErrNoCookie {
 		return "", "", status.Unauthenticated(err, "missing xsrf cookie")
@@ -84,7 +84,7 @@ func xsrfTokensFromRequest(r *http.Request) (cookie string, header string, err e
 }
 
 // checkXsrfTokens extracts the xsrf tokens and make sure they match
-func checkXsrfTokens(cookie, header string) error {
+func checkXsrfTokens(cookie, header string) status.S {
 	// check the encoded length, not the binary length
 	if len(cookie) != b64XsrfTokenLength {
 		return status.Unauthenticated(nil, "wrong length xsrf token")

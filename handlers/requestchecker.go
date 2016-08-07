@@ -3,8 +3,6 @@ package handlers
 import (
 	"net/http"
 	"time"
-
-	"pixur.org/pixur/status"
 )
 
 type requestChecker struct {
@@ -37,15 +35,13 @@ func (rc *requestChecker) checkXsrf() {
 	if rc.code != 0 {
 		return
 	}
-	xsrfCookie, xsrfHeader, err := xsrfTokensFromRequest(rc.r)
-	if err != nil {
-		s := status.FromError(err)
-		rc.message, rc.code = s.Error(), s.Code.HttpStatus()
+	xsrfCookie, xsrfHeader, sts := xsrfTokensFromRequest(rc.r)
+	if sts != nil {
+		rc.message, rc.code = sts.Error(), sts.Code().HttpStatus()
 		return
 	}
-	if err := checkXsrfTokens(xsrfCookie, xsrfHeader); err != nil {
-		s := status.FromError(err)
-		rc.message, rc.code = s.Error(), s.Code.HttpStatus()
+	if sts := checkXsrfTokens(xsrfCookie, xsrfHeader); sts != nil {
+		rc.message, rc.code = sts.Error(), sts.Code().HttpStatus()
 		return
 	}
 }

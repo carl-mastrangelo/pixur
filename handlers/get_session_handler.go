@@ -62,7 +62,7 @@ func (h *GetSessionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	jwt, err := jwtEnc.Sign(payload)
 	if err != nil {
-		returnTaskError(w, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{

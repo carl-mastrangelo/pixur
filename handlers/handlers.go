@@ -39,16 +39,11 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 	}
 }
 
-func returnTaskError(w http.ResponseWriter, err error) {
-	log.Println("Error in task: ", err)
+func returnTaskError(w http.ResponseWriter, sts status.S) {
+	log.Println("Error in task: ", sts)
 	w.Header().Set("Content-Type", "text/plain")
-	if s, ok := err.(*status.Status); ok {
-		code := s.Code
-		http.Error(w, code.String()+": "+s.Message, code.HttpStatus())
-		return
-	}
-
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	code := sts.Code()
+	http.Error(w, code.String()+": "+sts.Message(), code.HttpStatus())
 }
 
 var protoJSONMarshaller = &jsonpb.Marshaler{}
