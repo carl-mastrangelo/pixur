@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"database/sql"
-	"fmt"
 	"image"
 	"io"
 	"io/ioutil"
@@ -25,12 +24,6 @@ import (
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
-)
-
-var (
-	ErrTagNotFound   = fmt.Errorf("Unable to find Tag")
-	ErrDuplicateTags = fmt.Errorf("Data Corruption: Duplicate tags found")
-	ErrInvalidFormat = fmt.Errorf("Unknown image format")
 )
 
 type readAtSeeker interface {
@@ -77,7 +70,9 @@ func (t *CreatePicTask) reset() {
 	}
 }
 
-func (t *CreatePicTask) Run() (errCap error) {
+func (t *CreatePicTask) Run() (sCap status.S) {
+	var err error
+	var sts status.S
 	t.now = time.Now()
 	wf, err := ioutil.TempFile(t.PixPath, "__")
 	if err != nil {
@@ -114,19 +109,20 @@ func (t *CreatePicTask) Run() (errCap error) {
 		if err, ok := err.(*imaging.BadWebmFormatErr); ok {
 			return status.InvalidArgument(err, "Bad Web Fmt")
 		}
-		return err
+		return status.InvalidArgument(err, "Bad Image")
 	}
+
 	thumbnail := imaging.MakeThumbnail(img)
 
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer cleanUp(j, &sCap)
 
-	identities, err := generatePicIdentities(wf)
-	if err != nil {
-		return err
+	identities, sts := generatePicIdentities(wf)
+	if sts != nil {
+		return sts
 	}
 
 	sha256Type := schema.PicIdent_SHA256
@@ -165,13 +161,13 @@ func (t *CreatePicTask) Run() (errCap error) {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
 
-	tags, err := t.insertOrFindTags(j)
-	if err != nil {
-		return err
+	tags, sts := t.insertOrFindTags(j)
+	if sts != nil {
+		return sts
 	}
 	// must happen after pic is created, because it depends on pic id
-	if err := t.addTagsForPic(p, tags, j); err != nil {
-		return err
+	if sts := t.addTagsForPic(p, tags, j); sts != nil {
+		return sts
 	}
 
 	// This also must happen after the pic is inserted, to use PicId
@@ -203,7 +199,7 @@ func (t *CreatePicTask) Run() (errCap error) {
 
 // Moves the uploaded file and records the file size.  It might not be possible to just move the
 // file in the event that the uploaded location is on a different partition than persistent dir.
-func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) error {
+func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) status.S {
 	// If the task is reset, this will need to seek to the beginning
 	if _, err := t.FileData.Seek(0, os.SEEK_SET); err != nil {
 		return status.InternalError(err, "Can't Seek")
@@ -223,7 +219,7 @@ func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) erro
 	return nil
 }
 
-func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
+func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) status.S {
 	resp, err := http.Get(t.FileURL)
 	if err != nil {
 		return status.InvalidArgument(err, "Unable to download", t.FileURL)
@@ -248,7 +244,7 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) error {
 	return nil
 }
 
-func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
+func (t *CreatePicTask) renameTempFile(p *schema.Pic) status.S {
 	if err := os.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
 		return status.InternalError(err, "Unable to prepare pic dir")
 	}
@@ -264,17 +260,17 @@ func (t *CreatePicTask) renameTempFile(p *schema.Pic) error {
 
 // This function is not really transactional, because it hits multiple entity roots.
 // TODO: test this.
-func (t *CreatePicTask) insertOrFindTags(j *tab.Job) ([]*schema.Tag, error) {
-	cleanedTags, err := cleanTagNames(t.TagNames)
-	if err != nil {
-		return nil, err
+func (t *CreatePicTask) insertOrFindTags(j *tab.Job) ([]*schema.Tag, status.S) {
+	cleanedTags, sts := cleanTagNames(t.TagNames)
+	if sts != nil {
+		return nil, sts
 	}
 	sort.Strings(cleanedTags)
 	var allTags []*schema.Tag
 	for _, tagName := range cleanedTags {
-		tag, err := findAndUpsertTag(tagName, t.now, j)
-		if err != nil {
-			return nil, err
+		tag, sts := findAndUpsertTag(tagName, t.now, j)
+		if sts != nil {
+			return nil, sts
 		}
 		allTags = append(allTags, tag)
 	}
@@ -284,10 +280,10 @@ func (t *CreatePicTask) insertOrFindTags(j *tab.Job) ([]*schema.Tag, error) {
 
 // findAndUpsertTag looks for an existing tag by name.  If it finds it, it updates the modified
 // time and usage counter.  Otherwise, it creates a new tag with an initial count of 1.
-func findAndUpsertTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, error) {
-	tag, err := findTagByName(tagName, j)
-	if err != nil {
-		return nil, err
+func findAndUpsertTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, status.S) {
+	tag, sts := findTagByName(tagName, j)
+	if sts != nil {
+		return nil, sts
 	}
 	if tag == nil {
 		return createTag(tagName, now, j)
@@ -301,7 +297,7 @@ func findAndUpsertTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, e
 	return tag, nil
 }
 
-func createTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, error) {
+func createTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, status.S) {
 	id, err := j.AllocID()
 	if err != nil {
 		return nil, status.InternalError(err, "can't allocate id")
@@ -320,7 +316,7 @@ func createTag(tagName string, now time.Time, j *tab.Job) (*schema.Tag, error) {
 	return tag, nil
 }
 
-func findTagByName(tagName string, j *tab.Job) (*schema.Tag, error) {
+func findTagByName(tagName string, j *tab.Job) (*schema.Tag, status.S) {
 	tags, err := j.FindTags(db.Opts{
 		Prefix: tab.TagsName{&tagName},
 		Lock:   db.LockWrite,
@@ -335,7 +331,7 @@ func findTagByName(tagName string, j *tab.Job) (*schema.Tag, error) {
 	return tags[0], nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j *tab.Job) error {
+func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j *tab.Job) status.S {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
 			PicId: p.PicId,
@@ -351,7 +347,7 @@ func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j *tab.
 	return nil
 }
 
-func checkValidUnicode(tagNames []string) error {
+func checkValidUnicode(tagNames []string) status.S {
 	for _, tn := range tagNames {
 		if !utf8.ValidString(tn) {
 			return status.InvalidArgument(nil, "Invalid tag name", tn)
@@ -406,7 +402,7 @@ func removeEmptyTagNames(tagNames []string) []string {
 	return nonEmptyTagNames
 }
 
-func cleanTagNames(rawTagNames []string) ([]string, error) {
+func cleanTagNames(rawTagNames []string) ([]string, status.S) {
 	if err := checkValidUnicode(rawTagNames); err != nil {
 		return nil, err
 	}
@@ -429,7 +425,7 @@ func getPerceptualHash(p *schema.Pic, im image.Image) *schema.PicIdent {
 	}
 }
 
-func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdent_Type][]byte, error) {
+func generatePicIdentities(f io.ReadSeeker) (map[schema.PicIdent_Type][]byte, status.S) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, status.InternalError(err, "Can't Seek")
 	}

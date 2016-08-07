@@ -23,7 +23,7 @@ type PurgePicTask struct {
 	PicID int64
 }
 
-func (task *PurgePicTask) Run() (errCap error) {
+func (task *PurgePicTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(task.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")

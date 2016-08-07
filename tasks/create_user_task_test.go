@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/schema"
-	s "pixur.org/pixur/status"
+	"pixur.org/pixur/status"
 )
 
 func TestCreateUserWorkFlow(t *testing.T) {
@@ -52,13 +52,9 @@ func TestCreateUserEmptyEmail(t *testing.T) {
 		Secret: "secret",
 	}
 
-	err := task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "missing email or secret",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "missing email or secret")
+	compareStatus(t, sts, expected)
 }
 
 func TestCreateUserEmptySecret(t *testing.T) {
@@ -70,13 +66,9 @@ func TestCreateUserEmptySecret(t *testing.T) {
 		Email: "email",
 	}
 
-	err := task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "missing email or secret",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "missing email or secret")
+	compareStatus(t, sts, expected)
 }
 
 func TestCreateUserCantBegin(t *testing.T) {
@@ -89,11 +81,7 @@ func TestCreateUserCantBegin(t *testing.T) {
 		DB: db,
 	}
 
-	err := task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create job",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InternalError(nil, "can't create job")
+	compareStatus(t, sts, expected)
 }

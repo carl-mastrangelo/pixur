@@ -6,7 +6,7 @@ import (
 
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
-	s "pixur.org/pixur/status"
+	"pixur.org/pixur/status"
 )
 
 type AddPicTagsTask struct {
@@ -20,10 +20,10 @@ type AddPicTagsTask struct {
 }
 
 // TODO: add tests
-func (t *AddPicTagsTask) Run() (errCap error) {
+func (t *AddPicTagsTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
-		return s.InternalError(err, "can't create job")
+		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
@@ -33,10 +33,10 @@ func (t *AddPicTagsTask) Run() (errCap error) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return s.InternalError(err, "can't lookup pic")
+		return status.InternalError(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
-		return s.NotFound(err, "can't find pic")
+		return status.NotFound(err, "can't find pic")
 	}
 	p := pics[0]
 
@@ -45,7 +45,7 @@ func (t *AddPicTagsTask) Run() (errCap error) {
 	}
 
 	if err := j.Commit(); err != nil {
-		return s.InternalError(err, "can't commit job")
+		return status.InternalError(err, "can't commit job")
 	}
 	return nil
 }

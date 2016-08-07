@@ -23,7 +23,7 @@ type FindSimilarPicsTask struct {
 	SimilarPicIDs []int64
 }
 
-func (t *FindSimilarPicsTask) Run() (errCap error) {
+func (t *FindSimilarPicsTask) Run() (errCap status.S) {
 	t.SimilarPicIDs = make([]int64, 0) // set default, to make json encoding easier
 	j, err := tab.NewJob(t.DB)
 	if err != nil {

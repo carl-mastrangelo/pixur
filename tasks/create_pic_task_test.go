@@ -52,8 +52,8 @@ func TestWorkflowFileUpload(t *testing.T) {
 	}
 
 	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatalf("%s %t", err, err)
+	if sts := runner.Run(task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	expected := schema.Pic{
@@ -103,17 +103,13 @@ func TestDuplicateImageIgnored(t *testing.T) {
 	}
 
 	task.ResetForRetry()
-	err := runner.Run(task)
-	if err == nil {
+	sts := runner.Run(task)
+	if sts == nil {
 		t.Fatal("Task should have failed")
 	}
 
-	if st, ok := err.(*status.Status); !ok {
-		t.Fatalf("Expected a Status error: %t", err)
-	} else {
-		if st.Code != status.Code_ALREADY_EXISTS {
-			t.Fatalf("Expected Already exists: %s", st)
-		}
+	if sts.Code() != status.Code_ALREADY_EXISTS {
+		t.Fatalf("Expected Already exists: %s", sts)
 	}
 }
 

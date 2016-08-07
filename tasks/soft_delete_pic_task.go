@@ -29,7 +29,7 @@ type SoftDeletePicTask struct {
 	Temporary bool
 }
 
-func (task *SoftDeletePicTask) Run() (errCap error) {
+func (task *SoftDeletePicTask) Run() (errCap status.S) {
 	if task.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.InternalError(nil, "Invalid deletion reason", task.Reason)
 	}

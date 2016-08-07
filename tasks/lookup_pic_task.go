@@ -23,7 +23,7 @@ type LookupPicTask struct {
 	PicTags []*schema.PicTag
 }
 
-func (t *LookupPicTask) Run() (errCap error) {
+func (t *LookupPicTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
@@ -46,7 +46,7 @@ func (t *LookupPicTask) Run() (errCap error) {
 		Start: tab.PicTagsPrimary{PicId: &t.PicID},
 	})
 	if err != nil {
-		return err
+		return status.InternalError(err, "can't find pic tags")
 	}
 	if err := j.Rollback(); err != nil {
 		return status.InternalError(err, "can't rollback job")

@@ -1,8 +1,9 @@
 package tasks
 
 import (
-	"fmt"
 	"testing"
+
+	"pixur.org/pixur/status"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -11,12 +12,12 @@ type fakeTask struct {
 	runCount     int
 	resetCount   int
 	cleanUpCount int
-	run          func() error
+	run          func() status.S
 	reset        func()
 	cleanUp      func()
 }
 
-func (t *fakeTask) Run() error {
+func (t *fakeTask) Run() status.S {
 	t.runCount++
 	if t.run != nil {
 		return t.run()
@@ -62,8 +63,8 @@ func TestTaskIsNotReset_success(t *testing.T) {
 func TestTaskIsReset_failure(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
-	expectedError := fmt.Errorf("Expected")
-	task.run = func() error {
+	expectedError := status.InternalError(nil, "Expected")
+	task.run = func() status.S {
 		return expectedError
 	}
 	err := runner.Run(task)
@@ -88,8 +89,8 @@ func TestTaskRetriesOnDeadlock(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 
-	task.run = func() error {
-		return &mysql.MySQLError{Number: innoDbDeadlockErrorNumber}
+	task.run = func() status.S {
+		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber}, "")
 	}
 	err := runner.Run(task)
 
@@ -113,8 +114,8 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 
-	task.run = func() error {
-		return &mysql.MySQLError{Number: innoDbDeadlockErrorNumber + 1}
+	task.run = func() status.S {
+		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber + 1}, "")
 	}
 	err := runner.Run(task)
 

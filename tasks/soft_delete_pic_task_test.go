@@ -116,13 +116,11 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 	}
 
 	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		if st, ok := err.(*status.Status); !ok {
-			t.Fatal(err)
-		} else {
-			if st.Code != status.Code_INVALID_ARGUMENT {
-				t.Fatal(st)
-			}
-		}
+	sts := runner.Run(task)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+	if sts.Code() != status.Code_INVALID_ARGUMENT {
+		t.Fatal(sts)
 	}
 }

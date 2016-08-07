@@ -19,7 +19,7 @@ import (
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
-	s "pixur.org/pixur/status"
+	"pixur.org/pixur/status"
 )
 
 func TestUpsertPicTask_CantBegin(t *testing.T) {
@@ -31,13 +31,9 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 		DB: c.DB(),
 	}
 
-	err := task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create job",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InternalError(nil, "can't create job")
+	compareStatus(t, sts, expected)
 }
 
 func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
@@ -48,13 +44,9 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 		DB: c.DB(),
 	}
 
-	err := task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "No pic specified",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "No pic specified")
+	compareStatus(t, sts, expected)
 }
 
 func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
@@ -122,13 +114,9 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		TagNames: []string{"tag"},
 	}
 
-	err = task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't upload deleted pic.",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
+	compareStatus(t, sts, expected)
 
 	p.Refresh()
 	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
@@ -231,12 +219,9 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		TagNames: []string{"tag"},
 	}
 
-	status := task.Run().(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Md5 hash mismatch",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "Md5 hash mismatch")
+	compareStatus(t, sts, expected)
 
 	p.Refresh()
 	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
@@ -261,12 +246,9 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		TagNames: []string{"tag"},
 	}
 
-	status := task.Run().(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't decode image",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "Can't decode image")
+	compareStatus(t, sts, expected)
 }
 
 func TestUpsertPicTask_Duplicate(t *testing.T) {
@@ -338,13 +320,9 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 		TagNames: []string{"tag"},
 	}
 
-	err = task.Run()
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't upload deleted pic.",
-	}
-	compareStatus(t, *status, expected)
+	sts := task.Run()
+	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
+	compareStatus(t, sts, expected)
 
 	p.Refresh()
 	if p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
@@ -629,13 +607,9 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, err := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create pic tag",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
+	expected := status.InternalError(nil, "can't create pic tag")
+	compareStatus(t, sts, expected)
 }
 
 func TestCreateNewTags(t *testing.T) {
@@ -677,13 +651,9 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 
 	now := time.Now()
 
-	_, err := createNewTags(j, []string{"a"}, now)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create tag",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := createNewTags(j, []string{"a"}, now)
+	expected := status.InternalError(nil, "can't create tag")
+	compareStatus(t, sts, expected)
 }
 
 func TestUpdateExistingTags(t *testing.T) {
@@ -721,13 +691,9 @@ func TestUpdateExistingTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	err := updateExistingTags(j, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't update tag",
-	}
-	compareStatus(t, *status, expected)
+	sts := updateExistingTags(j, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
+	expected := status.InternalError(nil, "can't update tag")
+	compareStatus(t, sts, expected)
 }
 
 func TestFindExistingTagsByName_AllFound(t *testing.T) {
@@ -842,13 +808,9 @@ func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, _, err := findAttachedPicTags(j, 0)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "cant't find pic tags",
-	}
-	compareStatus(t, *status, expected)
+	_, _, sts := findAttachedPicTags(j, 0)
+	expected := status.InternalError(nil, "cant't find pic tags")
+	compareStatus(t, sts, expected)
 }
 
 func TestFindAttachedPicTags_NoTags(t *testing.T) {
@@ -905,13 +867,9 @@ func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 		TempFile: tempFileFn,
 	}
 
-	_, _, err := task.prepareFile(srcFile, FileHeader{}, "")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't create tempfile",
-	}
-	compareStatus(t, *status, expected)
+	_, _, sts := task.prepareFile(srcFile, FileHeader{}, "")
+	expected := status.InternalError(nil, "Can't create tempfile")
+	compareStatus(t, sts, expected)
 }
 
 func TestPrepareFile_CopyFileFails(t *testing.T) {
@@ -929,13 +887,9 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 
 	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
-	_, _, err := task.prepareFile(srcFile, FileHeader{}, "")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "Can't save file",
-	}
-	compareStatus(t, *status, expected)
+	_, _, sts := task.prepareFile(srcFile, FileHeader{}, "")
+	expected := status.InternalError(nil, "Can't save file")
+	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
 		if err != nil {
 			ff.Close()
@@ -962,9 +916,9 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	if _, err := srcFile.Seek(0, os.SEEK_SET); err != nil {
 		t.Fatal(err)
 	}
-	dstFile, fh, err := task.prepareFile(srcFile, FileHeader{Name: "name"}, "url")
-	if err != nil {
-		t.Fatal(err)
+	dstFile, fh, sts := task.prepareFile(srcFile, FileHeader{Name: "name"}, "url")
+	if sts != nil {
+		t.Fatal(sts)
 	}
 	if _, err := dstFile.Seek(0, os.SEEK_SET); err != nil {
 		t.Fatal(err)
@@ -1001,13 +955,9 @@ func TestPrepareFile_DownloadFileFails(t *testing.T) {
 	}
 
 	// Bogus url
-	_, _, err := task.prepareFile(nil, FileHeader{}, "::")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't parse",
-	}
-	compareStatus(t, *status, expected)
+	_, _, sts := task.prepareFile(nil, FileHeader{}, "::")
+	expected := status.InvalidArgument(nil, "Can't parse")
+	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
 		if err != nil {
 			ff.Close()
@@ -1060,13 +1010,9 @@ func TestFindExistingPic_Failure(t *testing.T) {
 	// force job failure
 	j.Rollback()
 
-	_, err := findExistingPic(j, schema.PicIdent_SHA256, []byte("sha256"))
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't find pic idents",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := findExistingPic(j, schema.PicIdent_SHA256, []byte("sha256"))
+	expected := status.InternalError(nil, "can't find pic idents")
+	compareStatus(t, sts, expected)
 }
 
 func TestInsertPicHashes_MD5Exists(t *testing.T) {
@@ -1085,14 +1031,9 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create md5",
-	}
-	compareStatus(t, *status, expected)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	expected := status.InternalError(nil, "can't create md5")
+	compareStatus(t, sts, expected)
 }
 
 func TestInsertPicHashes_SHA1Exists(t *testing.T) {
@@ -1111,14 +1052,9 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create sha1",
-	}
-	compareStatus(t, *status, expected)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	expected := status.InternalError(nil, "can't create sha1")
+	compareStatus(t, sts, expected)
 }
 
 func TestInsertPicHashes_SHA256Exists(t *testing.T) {
@@ -1137,14 +1073,9 @@ func TestInsertPicHashes_SHA256Exists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create sha256",
-	}
-	compareStatus(t, *status, expected)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	expected := status.InternalError(nil, "can't create sha256")
+	compareStatus(t, sts, expected)
 }
 
 func TestInsertPicHashes(t *testing.T) {
@@ -1155,9 +1086,9 @@ func TestInsertPicHashes(t *testing.T) {
 	defer j.Rollback()
 	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
 
-	err := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-	if err != nil {
-		t.Fatal(err)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
 	idents, err := j.FindPicIdents(db.Opts{
@@ -1239,13 +1170,9 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
-	err := insertPerceptualHash(j, 1234, img)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Message: "can't create dct0",
-	}
-	compareStatus(t, *status, expected)
+	sts := insertPerceptualHash(j, 1234, img)
+	expected := status.InternalError(nil, "can't create dct0")
+	compareStatus(t, sts, expected)
 
 	j = c.Job()
 	defer j.Rollback()
@@ -1272,13 +1199,9 @@ func TestDownloadFile_BadURL(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, err = task.downloadFile(f, "::")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't parse ::",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := task.downloadFile(f, "::")
+	expected := status.InvalidArgument(nil, "Can't parse ::")
+	compareStatus(t, sts, expected)
 }
 
 func TestDownloadFile_BadAddress(t *testing.T) {
@@ -1295,13 +1218,9 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, err = task.downloadFile(f, "http://")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't download http://",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := task.downloadFile(f, "http://")
+	expected := status.InvalidArgument(nil, "Can't download http://")
+	compareStatus(t, sts, expected)
 }
 
 func TestDownloadFile_BadStatus(t *testing.T) {
@@ -1325,13 +1244,11 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, err = task.downloadFile(f, serv.URL)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: fmt.Sprintf("Can't download %s [%d]", serv.URL, http.StatusBadRequest),
-	}
-	compareStatus(t, *status, expected)
+	_, sts := task.downloadFile(f, serv.URL)
+	expected := status.InvalidArgumentf(nil,
+		"Can't download %s [%d]", serv.URL, http.StatusBadRequest)
+
+	compareStatus(t, sts, expected)
 }
 
 func TestDownloadFile_BadTransfer(t *testing.T) {
@@ -1357,13 +1274,10 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, err = task.downloadFile(f, serv.URL)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't copy downloaded file",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := task.downloadFile(f, serv.URL)
+	expected := status.InvalidArgument(nil, "Can't copy downloaded file")
+
+	compareStatus(t, sts, expected)
 }
 
 func TestDownloadFile(t *testing.T) {
@@ -1486,55 +1400,34 @@ func TestGeneratePicHashesError(t *testing.T) {
 		val: []byte("abc123"),
 		err: fmt.Errorf("bad"),
 	}
-	_, _, _, err := generatePicHashes(r)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INTERNAL_ERROR,
-		Cause:   r.err,
-		Message: "Can't copy",
-	}
-	compareStatus(t, *status, expected)
+	_, _, _, sts := generatePicHashes(r)
+	expected := status.InternalError(nil, "Can't copy")
+	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_TooLong(t *testing.T) {
 	long := string(make([]byte, 1025))
-	_, err := validateURL(long)
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't use long URL",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := validateURL(long)
+	expected := status.InvalidArgument(nil, "Can't use long URL")
+	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_CantParse(t *testing.T) {
-	_, err := validateURL("::")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't parse",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := validateURL("::")
+	expected := status.InvalidArgument(nil, "Can't parse")
+	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_BadScheme(t *testing.T) {
-	_, err := validateURL("file:///etc/passwd")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't use non HTTP",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := validateURL("file:///etc/passwd")
+	expected := status.InvalidArgument(nil, "Can't use non HTTP")
+	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_UserInfo(t *testing.T) {
-	_, err := validateURL("http://me@google.com/")
-	status := err.(*s.Status)
-	expected := s.Status{
-		Code:    s.Code_INVALID_ARGUMENT,
-		Message: "Can't provide userinfo",
-	}
-	compareStatus(t, *status, expected)
+	_, sts := validateURL("http://me@google.com/")
+	expected := status.InvalidArgument(nil, "Can't provide userinfo")
+	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_RemoveFragment(t *testing.T) {
@@ -1547,14 +1440,14 @@ func TestValidateURL_RemoveFragment(t *testing.T) {
 	}
 }
 
-func compareStatus(t *testing.T, actual, expected s.Status) {
-	if actual.Code != expected.Code {
-		t.Fatal("Code mismatch", actual.Code, expected.Code)
+func compareStatus(t *testing.T, actual, expected status.S) {
+	if actual.Code() != expected.Code() {
+		t.Fatal("Code mismatch", actual.Code(), expected.Code())
 	}
-	if !strings.Contains(actual.Message, expected.Message) {
-		t.Fatal("Message mismatch", actual.Message, expected.Message)
+	if !strings.Contains(actual.Message(), expected.Message()) {
+		t.Fatal("Message mismatch", actual.Message(), expected.Message())
 	}
-	if expected.Cause != nil && actual.Cause != expected.Cause {
-		t.Fatal("Cause mismatch", actual.Cause, expected.Cause)
+	if expected.Cause() != nil && actual.Cause() != expected.Cause() {
+		t.Fatal("Cause mismatch", actual.Cause(), expected.Cause())
 	}
 }

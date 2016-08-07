@@ -43,7 +43,7 @@ func (t *ReadIndexPicsTask) CleanUp() {
 	// no op
 }
 
-func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, error) {
+func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	opts := db.Opts{
 		Limit: 1,
 	}
@@ -70,7 +70,7 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, error) {
 	return startPics[0], nil
 }
 
-func (t *ReadIndexPicsTask) Run() (errCap error) {
+func (t *ReadIndexPicsTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")

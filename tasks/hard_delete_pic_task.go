@@ -22,7 +22,7 @@ type HardDeletePicTask struct {
 	PicID int64
 }
 
-func (task *HardDeletePicTask) Run() (errCap error) {
+func (task *HardDeletePicTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(task.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")

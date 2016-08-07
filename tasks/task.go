@@ -4,10 +4,11 @@ import (
 	"log"
 
 	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/status"
 )
 
 type Task interface {
-	Run() error
+	Run() status.S
 }
 
 // Tasks implement the Resettable interface if they want to run any sort of reset logic.
@@ -24,8 +25,8 @@ type Messy interface {
 	CleanUp()
 }
 
-func cleanUp(j *tab.Job, errCap *error) {
-	if *errCap != nil {
+func cleanUp(j *tab.Job, stsCap *status.S) {
+	if *stsCap != nil {
 		if err := j.Rollback(); err != nil {
 			log.Println("Additional error during rollback", err)
 		}

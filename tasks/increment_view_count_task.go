@@ -18,7 +18,7 @@ type IncrementViewCountTask struct {
 	PicID int64
 }
 
-func (t *IncrementViewCountTask) Run() (errCap error) {
+func (t *IncrementViewCountTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")

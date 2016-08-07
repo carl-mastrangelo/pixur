@@ -8,7 +8,7 @@ import (
 
 	"pixur.org/pixur/schema"
 	tab "pixur.org/pixur/schema/tables"
-	s "pixur.org/pixur/status"
+	"pixur.org/pixur/status"
 )
 
 type CreateUserTask struct {
@@ -24,26 +24,27 @@ type CreateUserTask struct {
 	CreatedUser *schema.User
 }
 
-func (t *CreateUserTask) Run() (errCap error) {
+func (t *CreateUserTask) Run() (errCap status.S) {
+	var err error
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
-		return s.InternalError(err, "can't create job")
+		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
 	if t.Email == "" || t.Secret == "" {
-		return s.InvalidArgument(nil, "missing email or secret")
+		return status.InvalidArgument(nil, "missing email or secret")
 	}
 
 	userID, err := j.AllocID()
 	if err != nil {
-		return s.InternalError(err, "can't allocate id")
+		return status.InternalError(err, "can't allocate id")
 	}
 
 	// TODO: rate limit this.
 	hashed, err := bcrypt.GenerateFromPassword([]byte(t.Secret), bcrypt.DefaultCost)
 	if err != nil {
-		return s.InternalError(err, "can't generate password")
+		return status.InternalError(err, "can't generate password")
 	}
 
 	now := t.Now()
@@ -57,11 +58,11 @@ func (t *CreateUserTask) Run() (errCap error) {
 	}
 
 	if err := j.InsertUser(user); err != nil {
-		return s.InternalError(err, "can't create user")
+		return status.InternalError(err, "can't create user")
 	}
 
 	if err := j.Commit(); err != nil {
-		return s.InternalError(err, "can't commit job")
+		return status.InternalError(err, "can't commit job")
 	}
 
 	t.CreatedUser = user

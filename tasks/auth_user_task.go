@@ -26,12 +26,12 @@ type AuthUserTask struct {
 	User *schema.User
 }
 
-func (t *AuthUserTask) Run() (errCap error) {
+func (t *AuthUserTask) Run() (sCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer cleanUp(j, &sCap)
 
 	users, err := j.FindUsers(db.Opts{
 		Prefix: tab.UsersIdent{&t.Email},
