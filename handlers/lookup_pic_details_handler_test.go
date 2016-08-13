@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,12 +13,13 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
 func TestLookupPicWorkFlow(t *testing.T) {
 	var taskCap *tasks.LookupPicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
 		// set the results
 		taskCap.Pic = &schema.Pic{
@@ -81,7 +81,7 @@ func TestLookupPicWorkFlow(t *testing.T) {
 
 func TestLookupPicParsePicId(t *testing.T) {
 	var taskCap *tasks.LookupPicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
 		// set the result, even though we don't need it.
 		taskCap.Pic = &schema.Pic{
@@ -116,7 +116,7 @@ func TestLookupPicParsePicId(t *testing.T) {
 
 func TestLookupPicBadPicId(t *testing.T) {
 	var lookupPicTask *tasks.LookupPicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		lookupPicTask = task.(*tasks.LookupPicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -142,9 +142,9 @@ func TestLookupPicBadPicId(t *testing.T) {
 
 func TestLookupPicTaskError(t *testing.T) {
 	var taskCap *tasks.LookupPicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
-		return errors.New("bad")
+		return status.InternalError(nil, "bad")
 	}
 	s := httptest.NewServer(&LookupPicDetailsHandler{
 		Runner: tasks.TestTaskRunner(successRunner),

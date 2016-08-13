@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,12 +13,13 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
 func TestSoftDeletePicWorkFlow(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return nil
 	}
@@ -71,7 +71,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 
 func TestSoftDeletePicBadPicId(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -101,7 +101,7 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 
 func TestSoftDeletePicBadReason(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -132,7 +132,7 @@ func TestSoftDeletePicBadReason(t *testing.T) {
 
 func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -163,7 +163,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 
 func TestSoftDeletePicDefaultsSet(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return nil
 	}
@@ -212,9 +212,9 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 
 func TestSoftDeletePicTaskError(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
-		return errors.New("bad")
+		return status.InternalError(nil, "bad")
 	}
 	s := httptest.NewServer(&SoftDeletePicHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
@@ -248,7 +248,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 
 func TestSoftDeleteGetNotAllowed(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) error {
+	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return nil
 	}

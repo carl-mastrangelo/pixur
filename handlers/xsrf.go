@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -32,7 +31,7 @@ var (
 type xsrfCookieKey struct{}
 type xsrfHeaderKey struct{}
 
-func newXsrfToken(random io.Reader) (string, error) {
+func newXsrfToken(random io.Reader) (string, status.S) {
 	xsrfToken := make([]byte, xsrfTokenLength)
 	if _, err := io.ReadFull(random, xsrfToken); err != nil {
 		return "", status.InternalError(err, "can't create xsrf token")
@@ -52,22 +51,6 @@ func newXsrfCookie(token string, now func() time.Time) *http.Cookie {
 		Secure:   true,
 		HttpOnly: false,
 	}
-}
-
-// newXsrfContext adds the cookie and header xsrf tokens to ctx
-func newXsrfContext(ctx context.Context, cookie, header string) context.Context {
-	ctx = context.WithValue(ctx, xsrfCookieKey{}, cookie)
-	return context.WithValue(ctx, xsrfHeaderKey{}, header)
-}
-
-// fromXsrfContext extracts the cookie and header xsrf tokens from ctx
-func fromXsrfContext(ctx context.Context) (cookie string, header string, ok bool) {
-	c := ctx.Value(xsrfCookieKey{})
-	h := ctx.Value(xsrfHeaderKey{})
-	if c != nil && h != nil {
-		return c.(string), h.(string), true
-	}
-	return "", "", false
 }
 
 // xsrfTokensFromRequest extracts the cookie and header xsrf tokens from r
