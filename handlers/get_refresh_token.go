@@ -34,27 +34,34 @@ var (
 func (h *GetRefreshTokenHandler) GetRefreshToken(
 	ctx context.Context, req *GetRefreshTokenRequest) (*GetRefreshTokenResponse, status.S) {
 
-	// TODO: decide whether or not to regenerate the refresh token.
-	var subject string
-	var refreshTokenId int64
-	oldRefreshPayload, err := defaultPwtCoder.decode([]byte(req.RefreshToken))
-	if err != nil || oldRefreshPayload.TokenId == 0 {
-		var task = &tasks.AuthUserTask{
-			DB:     h.DB,
-			Now:    h.Now,
-			Email:  req.Ident,
-			Secret: req.Secret,
-		}
-		runner := new(tasks.TaskRunner)
-		if sts := runner.Run(task); sts != nil {
-			return nil, sts
-		}
-		subject = schema.Varint(task.User.UserId).Encode()
-		refreshTokenId = 1 // This should come from the task
-	} else {
-		subject = oldRefreshPayload.Subject
-		refreshTokenId = oldRefreshPayload.TokenId
+	var task = &tasks.AuthUserTask{
+		DB:     h.DB,
+		Now:    h.Now,
+		Email:  req.Ident,
+		Secret: req.Secret,
 	}
+
+	if req.RefreshToken != "" {
+		oldRefreshPayload, err := defaultPwtCoder.decode([]byte(req.RefreshToken))
+		if err != nil {
+			return nil, status.Unauthenticated(err, "can't decode token")
+		}
+
+		var vid schema.Varint
+		if err := vid.DecodeAll(oldRefreshPayload.Subject); err != nil {
+			return nil, status.Unauthenticated(err, "can't decode subject")
+		}
+		task.TokenID = oldRefreshPayload.TokenId
+		task.UserID = int64(vid)
+	}
+
+	runner := new(tasks.TaskRunner)
+	if sts := runner.Run(task); sts != nil {
+		return nil, sts
+	}
+
+	subject := schema.Varint(task.User.UserId).Encode()
+	refreshTokenId := task.NewTokenID
 
 	now := h.Now()
 	notBefore, err := ptypes.TimestampProto(time.Unix(now.Add(-1*time.Minute).Unix(), 0))
@@ -70,9 +77,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		Subject:   subject,
 		NotBefore: notBefore,
 		NotAfter:  refreshNotAfter,
-		// TODO: include issuer
-		// TODO: include token id.
-		TokenId: refreshTokenId,
+		TokenId:   refreshTokenId,
 	}
 	refreshToken, err := defaultPwtCoder.encode(refreshPayload)
 	if err != nil {
@@ -88,7 +93,6 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		Subject:   subject,
 		NotBefore: notBefore,
 		NotAfter:  authNotAfter,
-		// TODO: include issuer
 		// No token id.
 	}
 	authToken, err := defaultPwtCoder.encode(authPayload)

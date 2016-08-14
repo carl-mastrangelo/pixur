@@ -148,5 +148,7 @@ message User {
 // deleted.  
 message UserToken {
 	int64 token_id = 1;
+	google.protobuf.Timestamp created_ts = 2;
+	google.protobuf.Timestamp last_seen_ts = 3;
 }
 
