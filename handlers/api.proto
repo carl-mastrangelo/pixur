@@ -138,26 +138,6 @@ message UpsertPicResponse {
   ApiPic pic = 1;
 }
 
-message GetSessionRequest {
-	// nothing for now
-}
-
-message GetSessionResponse {
-  JwtPayload jwt_payload = 1;
-}
-
-message JwtPayload {
-  // subject is the Subject claim of the payload.  It is the user id in varint
-  // form.
-  string subject = 1 [json_name = "sub"];
-  // exp is the Expiration claim in unix epoch seconds.  Encodes as string in
-  // jsonpb, int in the JWT.
-  int64 expiration = 2 [json_name = "exp"];
-  // not_before is the Not Before claim time in unix epoch seconds.  Encodes as
-  // string in jsonpb, int in the JWT.
-  int64 not_before = 3 [json_name = "nbf"];
-}
-
 message GetXsrfTokenRequest {
 }
 
@@ -212,7 +192,6 @@ message PwtPayload {
 service PixurService {
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
-  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
   rpc UpsertPic(stream UpsertPicRequest) returns (UpsertPicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
