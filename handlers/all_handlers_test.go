@@ -38,7 +38,7 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 	var payload *PwtPayload
 	if c.AuthOverride == nil {
 
-		notafter, _ := ptypes.TimestampProto(time.Now().Add(jwtLifetime))
+		notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 		notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 		payload = &PwtPayload{
 			Subject:   "0",

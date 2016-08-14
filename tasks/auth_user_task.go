@@ -19,6 +19,7 @@ type AuthUserTask struct {
 	// Deps
 	DB  *sql.DB
 	Now func() time.Time
+	// TODO: GC tokens after a handler provided timeout
 
 	// Inputs
 	Email  string
@@ -128,7 +129,6 @@ func (t *AuthUserTask) Run() (sCap status.S) {
 	}
 	t.User = user
 	t.NewTokenID = newTokenID
-
 	return nil
 }
 

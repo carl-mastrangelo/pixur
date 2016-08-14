@@ -74,7 +74,7 @@ func (c *pwtCoder) decode(data []byte) (*PwtPayload, error) {
 	// The algorithm is one we support.  Decode the base64 signature to raw bytes.
 	signature := make([]byte, enc.DecodedLen(len(b64Signature)))
 	if size, err := enc.Decode(signature, b64Signature); err != nil {
-		return nil, errJwtInvalid
+		return nil, errPwtInvalid
 	} else {
 		signature = signature[:size]
 	}
