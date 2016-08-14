@@ -138,4 +138,15 @@ message User {
   }
 
   repeated Capability capability = 7;
+  
+  // Always increment-then-get
+  int64 next_token_id = 8;
+  repeated UserToken user_token = 9;
 }
+
+// Represent the valid auth tokens.  When a user logs out, these will be 
+// deleted.  
+message UserToken {
+	int64 token_id = 1;
+}
+
