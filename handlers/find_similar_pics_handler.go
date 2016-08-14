@@ -24,7 +24,7 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	rc.checkJwt()
+	rc.checkAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return

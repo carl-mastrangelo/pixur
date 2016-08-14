@@ -1,6 +1,7 @@
-var PicsService = function($http, $q, $cacheFactory) {
+var PicsService = function($http, $q, authService, $cacheFactory) {
   this.http_ = $http;
   this.q_ = $q;
+  this.authService_ = authService;
   
   this.indexCache = $cacheFactory.get("PicsService");
   if (!this.indexCache) {
@@ -24,7 +25,11 @@ PicsService.prototype.getSingle = function(picId) {
       pic_id: picId
     }
   };
-  this.http_.get("/api/lookupPicDetails", httpConfig).then(
+  this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.get("/api/lookupPicDetails", httpConfig);
+  }.bind(this)).then(
     function(res) {
       deferred.resolve(res.data);
     },
@@ -32,7 +37,7 @@ PicsService.prototype.getSingle = function(picId) {
       deferred.reject(error);
     }
   );
-  
+
   return deferred.promise;
 }
 
@@ -47,15 +52,18 @@ PicsService.prototype.incrementViewCount = function(picId) {
     },
     "transformRequest": PicsService.postTransform
   };
-  this.http_.post("/api/incrementPicViewCount", params, httpConfig).then(
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.post("/api/incrementPicViewCount", params, httpConfig);
+  }.bind(this)).then(
     function(res) {
       deferred.resolve(res.data);
     },
     function(error) {
       deferred.reject(error);
     }
-  );
-
+  )
   return deferred.promise;
 }
 
@@ -74,7 +82,11 @@ PicsService.prototype.deletePic = function(picId, details) {
     },
     "transformRequest": PicsService.postTransform
   };
-  this.http_.post("/api/softDeletePic", params, httpConfig).then(
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.post("/api/softDeletePic", params, httpConfig);
+  }.bind(this)).then(
     function(res) {
       this.indexCache.removeAll();
       this.picCache.removeAll();
@@ -97,7 +109,11 @@ PicsService.prototype.getNextIndexPics = function(startId) {
       };
       httpConfig["cache"] = this.indexCache;
   }
-  this.http_.get("/api/findNextIndexPics", httpConfig).then(
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.get("/api/findNextIndexPics", httpConfig);
+  }.bind(this)).then(
     function(res, status, headers, config) {
       res.data.pic.forEach(function(pic){
         picCache.put(pic.id, pic);
@@ -121,7 +137,11 @@ PicsService.prototype.getPreviousIndexPics = function(startId) {
       };
       httpConfig["cache"] = this.indexCache;
   }
-  this.http_.get("/api/findPreviousIndexPics", httpConfig).then(
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.get("/api/findPreviousIndexPics", httpConfig);
+  }.bind(this)).then(
     function(res, status, headers, config) {
       res.data.pic.forEach(function(pic){
         picCache.put(pic.id, pic);
@@ -147,7 +167,11 @@ PicsService.prototype.create = function(file, url) {
     transformRequest: angular.identity,
     headers: {'Content-Type': undefined},
   };
-  this.http_.post("/api/upsertPic", data, postConfig).then(
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.post("/api/upsertPic", data, postConfig);
+  }.bind(this)).then(
     function(data, status, headers, config) {
       deferred.resolve(data.data);
     },

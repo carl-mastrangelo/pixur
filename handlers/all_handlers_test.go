@@ -1,35 +1,30 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/golang/protobuf/ptypes"
 )
 
 func init() {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		panic(err)
-	}
-	jwtDec = &jwtDecoder{
-		key: &key.PublicKey,
-	}
-	jwtEnc = &jwtEncoder{
-		key: key,
+	defaultPwtCoder = &pwtCoder{
+		now:    time.Now,
+		secret: []byte("secret"),
 	}
 }
 
 type testClient struct {
-	HTTPClient  *http.Client
-	DisableXSRF bool
-	JwtOverride *JwtPayload
+	HTTPClient   *http.Client
+	DisableXSRF  bool
+	AuthOverride *PwtPayload
 }
 
 func (c *testClient) Do(req *http.Request) (*http.Response, error) {
+	// Add in XSRF
 	if !c.DisableXSRF {
 		b64XsrfToken := make([]byte, b64XsrfTokenLength)
 		b64XsrfEnc.Encode(b64XsrfToken, make([]byte, xsrfTokenLength))
@@ -39,25 +34,28 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 		})
 		req.Header.Add(xsrfHeaderName, string(b64XsrfToken))
 	}
-	var payload *JwtPayload
-	if c.JwtOverride == nil {
+	// Add in Auth
+	var payload *PwtPayload
+	if c.AuthOverride == nil {
 
-		payload = &JwtPayload{
-			Subject:    "0",
-			Expiration: time.Now().Add(jwtLifetime).Unix(),
-			NotBefore:  time.Now().Add(-1 * time.Minute).Unix(),
+		notafter, _ := ptypes.TimestampProto(time.Now().Add(jwtLifetime))
+		notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
+		payload = &PwtPayload{
+			Subject:   "0",
+			NotAfter:  notafter,
+			NotBefore: notbefore,
 		}
 	} else {
-		payload = c.JwtOverride
+		payload = c.AuthOverride
 	}
 
-	jwt, err := jwtEnc.Sign(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
 	req.AddCookie(&http.Cookie{
-		Name:  jwtCookieName,
-		Value: string(jwt),
+		Name:  authPwtCookieName,
+		Value: string(authToken),
 	})
 
 	var httpClient *http.Client

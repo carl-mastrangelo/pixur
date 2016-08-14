@@ -12,9 +12,7 @@ var LoginCtrl = function($scope, $http, $window, authService) {
 }
 
 LoginCtrl.prototype.createUser = function() {
-	this.authService_.getXsrfToken().then(function() {
-    return this.authService_.createUser(this.createIdent, this.createSecret);
-  }.bind(this)).then(function (res) {
+	this.authService_.createUser(this.createIdent, this.createSecret).then(function (res) {
   	return this.authService_.loginUser(this.createIdent, this.createSecret);
   }.bind(this)).then(function (res) {
   	this.window_.history.back();
@@ -25,9 +23,7 @@ LoginCtrl.prototype.createUser = function() {
 };
 
 LoginCtrl.prototype.loginUser = function() {
-	this.authService_.getXsrfToken().then(function (res) {
-  	return this.authService_.loginUser(this.loginIdent, this.loginSecret);
-  }.bind(this)).then(function (res) {
+	this.authService_.loginUser(this.loginIdent, this.loginSecret).then(function (res) {
   	this.window_.history.back();
   }.bind(this)).catch(function(e) {
   	this.errorText = e;

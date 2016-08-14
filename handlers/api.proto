@@ -175,6 +175,40 @@ message CreateUserResponse {
 	// nothing for now.
 }
 
+message GetRefreshTokenRequest {
+	// ident is the unique identity of the user being created, usually an email address
+	string ident = 1;
+	// secret is the secret string used to authenticate the user, usually a password
+	string secret = 2;
+	
+	string refresh_token = 3;
+}
+
+message GetRefreshTokenResponse {
+	bytes refresh_token = 1;
+	bytes auth_token = 2;
+	PwtPayload refresh_payload = 3;
+	PwtPayload auth_payload = 4;
+}
+
+message PwtHeader {
+	enum Algorithm {
+		UNKNOWN = 0;
+		HS256 = 1;
+		RS256 = 2;
+	}
+	Algorithm algorithm = 1;
+	int64 version = 2;
+}
+
+message PwtPayload {
+	string subject = 1;
+	google.protobuf.Timestamp not_before = 2;
+	google.protobuf.Timestamp not_after = 3;
+	string issuer = 4;
+	int64 token_id = 5;
+}
+
 service PixurService {
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
@@ -189,5 +223,6 @@ service PixurService {
   rpc FindNextIndexPics(IndexRequest) returns (IndexResponse);
   rpc FindPrevIndexPics(IndexRequest) returns (IndexResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
+  rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
 }
 

@@ -25,7 +25,7 @@ var IndexCtrl = function(
     }
   };
   
-  this.auth = authService.getAuth();
+  this.auth = authService.getIdent(); 
   this.nextPageID = null;
   this.prevPageID = null;
   
@@ -39,9 +39,7 @@ var IndexCtrl = function(
     startId = $routeParams.picId;
   }
 
-  authService.getXsrfToken().then(function() {
-    return picsService.getNextIndexPics(startId);
-  }).then(function(pics) {
+  picsService.getNextIndexPics(startId).then(function(pics) {
     if (pics.length >= 1) {
       this.pics = pics;
     }

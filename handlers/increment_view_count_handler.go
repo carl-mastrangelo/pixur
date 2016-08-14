@@ -22,7 +22,7 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	rc.checkJwt()
+	rc.checkAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return

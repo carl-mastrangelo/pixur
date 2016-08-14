@@ -22,16 +22,18 @@ type Config struct {
 
 	HttpSpec              string `json:"spec"`
 	PixPath               string `json:"pix_path"`
+	TokenSecret           string `json:token_secret`
 	SessionPrivateKeyPath string `json:"priv_key"`
 	SessionPublicKeyPath  string `json:"pub_key"`
 }
 
 type Server struct {
-	db         *sql.DB
-	s          *http.Server
-	pixPath    string
-	publicKey  *rsa.PublicKey
-	privateKey *rsa.PrivateKey
+	db          *sql.DB
+	s           *http.Server
+	pixPath     string
+	tokenSecret []byte
+	publicKey   *rsa.PublicKey
+	privateKey  *rsa.PrivateKey
 }
 
 func (s *Server) setup(c *Config) error {
@@ -113,6 +115,9 @@ func (s *Server) setup(c *Config) error {
 			return fmt.Errorf("Wrong public key type %T", key)
 		}
 	}
+	if c.TokenSecret != "" {
+		s.tokenSecret = []byte(c.TokenSecret)
+	}
 
 	s.s = new(http.Server)
 	s.s.Addr = c.HttpSpec
@@ -120,10 +125,11 @@ func (s *Server) setup(c *Config) error {
 	s.s.Handler = mux
 
 	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
-		DB:         db,
-		PixPath:    s.pixPath,
-		PrivateKey: s.privateKey,
-		PublicKey:  s.publicKey,
+		DB:          db,
+		PixPath:     s.pixPath,
+		TokenSecret: s.tokenSecret,
+		PrivateKey:  s.privateKey,
+		PublicKey:   s.publicKey,
 	})
 	return nil
 }

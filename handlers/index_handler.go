@@ -61,7 +61,7 @@ func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *
 	now func() time.Time) {
 	rc := &requestChecker{r: r, now: now}
 	rc.checkXsrf()
-	rc.checkJwt()
+	rc.checkAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return

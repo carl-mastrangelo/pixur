@@ -23,10 +23,11 @@ var (
 )
 
 type ServerConfig struct {
-	DB         *sql.DB
-	PixPath    string
-	PrivateKey *rsa.PrivateKey
-	PublicKey  *rsa.PublicKey
+	DB          *sql.DB
+	PixPath     string
+	TokenSecret []byte
+	PrivateKey  *rsa.PrivateKey
+	PublicKey   *rsa.PublicKey
 }
 
 func register(rf registerFunc) {
