@@ -22,7 +22,7 @@ type Config struct {
 
 	HttpSpec              string `json:"spec"`
 	PixPath               string `json:"pix_path"`
-	TokenSecret           string `json:token_secret`
+	TokenSecret           string `json:"token_secret"`
 	SessionPrivateKeyPath string `json:"priv_key"`
 	SessionPublicKeyPath  string `json:"pub_key"`
 }
