@@ -1,3 +1,4 @@
+//go:generate protoc config.proto --go_out=.
 package server
 
 import (
@@ -16,17 +17,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Config struct {
-	DbName   string `json:"db_name"`
-	DbConfig string `json:"db_config"`
-
-	HttpSpec              string `json:"spec"`
-	PixPath               string `json:"pix_path"`
-	TokenSecret           string `json:"token_secret"`
-	SessionPrivateKeyPath string `json:"priv_key"`
-	SessionPublicKeyPath  string `json:"pub_key"`
-}
-
 type Server struct {
 	db          *sql.DB
 	s           *http.Server
@@ -42,6 +32,7 @@ func (s *Server) setup(c *Config) error {
 	if err != nil {
 		return err
 	}
+	// TODO: shutdown db on this error?
 	if err := db.Ping(); err != nil {
 		return err
 	}

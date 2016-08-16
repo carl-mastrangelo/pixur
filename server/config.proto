@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package pixur;
+
+option go_package = "server";
+
+
+// Config describes server configuration.
+message Config {
+	// Name of the database, like "mysql"
+	string db_name = 1;
+	
+	string db_config = 2;
+	
+	// Address to bind to, like ":http"
+	string http_spec = 3;
+	// Path to look for pictures.
+	string pix_path = 4;
+	
+	// session stuff
+	string token_secret = 5;
+	string session_private_key_path = 6;
+	string session_public_key_path = 7;
+}
+
