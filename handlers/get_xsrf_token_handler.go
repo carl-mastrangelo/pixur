@@ -31,7 +31,9 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	http.SetCookie(w, newXsrfCookie(b64XsrfToken, h.Now))
 
-	resp := GetXsrfTokenResponse{}
+	resp := GetXsrfTokenResponse{
+		XsrfToken: b64XsrfToken,
+	}
 	returnProtoJSON(w, r, &resp)
 }
 

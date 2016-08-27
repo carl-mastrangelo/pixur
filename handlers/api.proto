@@ -142,6 +142,7 @@ message GetXsrfTokenRequest {
 }
 
 message GetXsrfTokenResponse {
+  string xsrf_token = 1;
 }
 
 message CreateUserRequest {
