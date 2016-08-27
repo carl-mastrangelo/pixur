@@ -5,6 +5,9 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"pixur.org/pixur/schema"
@@ -24,8 +27,27 @@ func (h *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var args struct {
+		Scripts []string
+	}
+	err = filepath.Walk("static/", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(path, ".js") && !strings.HasSuffix(path, "pixur.js") {
+			args.Scripts = append(args.Scripts, path)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	args.Scripts = append(args.Scripts, "static/pixur.js")
+
 	w.Header().Set("Content-Type", "text/html")
-	if err := tpl.Execute(w, nil); err != nil {
+	if err := tpl.Execute(w, args); err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

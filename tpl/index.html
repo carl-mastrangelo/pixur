@@ -6,17 +6,13 @@
 	<base href="/">
   <title>Pixur</title>
   <link rel="stylesheet" href="static/style.css">
-  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.js"></script>
-  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular-route.js"></script>
-  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular-cookies.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular-route.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular-cookies.js"></script>
   
-  <script src="static/controllers/index.js"></script>
-  <script src="static/controllers/viewer.js"></script>
-  <script src="static/controllers/quickviewer.js"></script>
-  <script src="static/controllers/login.js"></script>
-  <script src="static/services/auth.js"></script>
-  <script src="static/services/pics.js"></script>
-  <script src="static/pixur.js"></script>
+  {{ range .Scripts }}
+  	<script src="{{ . }}"></script>
+  {{ end }}
 </head>
 <body ng-view>
 </body>
