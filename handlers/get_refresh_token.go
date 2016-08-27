@@ -101,8 +101,8 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 	}
 
 	return &GetRefreshTokenResponse{
-		RefreshToken:   refreshToken,
-		AuthToken:      authToken,
+		RefreshToken:   string(refreshToken),
+		AuthToken:      string(authToken),
 		RefreshPayload: refreshPayload,
 		AuthPayload:    authPayload,
 	}, nil
@@ -138,13 +138,13 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     refreshPwtCookieName,
-		Value:    string(resp.RefreshToken),
+		Value:    resp.RefreshToken,
 		Path:     "/api/getRefreshToken",
 		Expires:  refreshNotAfter,
 		Secure:   true,
 		HttpOnly: true,
 	})
-	resp.RefreshToken = nil
+	resp.RefreshToken = ""
 
 	authNotAfter, err := ptypes.Timestamp(resp.AuthPayload.NotAfter)
 	if err != nil {
@@ -152,13 +152,13 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     authPwtCookieName,
-		Value:    string(resp.AuthToken),
+		Value:    resp.AuthToken,
 		Path:     "/api/",
 		Expires:  authNotAfter,
 		Secure:   true,
 		HttpOnly: true,
 	})
-	resp.AuthToken = nil
+	resp.AuthToken = ""
 
 	returnProtoJSON(w, r, resp)
 }

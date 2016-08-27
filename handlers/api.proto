@@ -165,8 +165,8 @@ message GetRefreshTokenRequest {
 }
 
 message GetRefreshTokenResponse {
-	bytes refresh_token = 1;
-	bytes auth_token = 2;
+	string refresh_token = 1;
+	string auth_token = 2;
 	PwtPayload refresh_payload = 3;
 	PwtPayload auth_payload = 4;
 }
