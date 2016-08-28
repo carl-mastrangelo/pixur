@@ -68,7 +68,35 @@ func returnProtoJSON(w http.ResponseWriter, r *http.Request, pb proto.Message) {
 			}
 		}
 	}
-
+	if accept := r.Header.Get("Accept"); accept != "" {
+		for _, acc := range strings.Split(accept, ",") {
+			switch strings.TrimSpace(acc) {
+			case "application/json":
+				w.Header().Set("Content-Type", "application/json")
+				if err := protoJSONMarshaller.Marshal(writer, pb); err != nil {
+					log.Println("Error writing JSON", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				return
+			case "application/proto":
+				w.Header().Set("Content-Type", "application/proto")
+				raw, err := proto.Marshal(pb)
+				if err != nil {
+					log.Println("Error building Proto", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				if _, err := writer.Write(raw); err != nil {
+					log.Println("Error writing Proto", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				return
+			}
+		}
+	}
+	// default
 	w.Header().Set("Content-Type", "application/json")
 	if err := protoJSONMarshaller.Marshal(writer, pb); err != nil {
 		log.Println("Error writing JSON", err)
