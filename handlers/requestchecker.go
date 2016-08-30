@@ -29,11 +29,35 @@ func (rc *requestChecker) checkAuth() *PwtPayload {
 		rc.message, rc.code = err.Error(), http.StatusUnauthorized
 		return nil
 	}
-	if authPayload.TokenId != 0 /* auth token id */ {
+	if authPayload.Type != PwtPayload_AUTH {
 		rc.message, rc.code = "invalid auth token", http.StatusUnauthorized
 		return nil
 	}
 	return authPayload
+}
+
+func (rc *requestChecker) checkPixAuth() *PwtPayload {
+	if rc.code != 0 {
+		return nil
+	}
+
+	c, err := rc.r.Cookie(pixPwtCookieName)
+	if err != nil {
+		rc.message, rc.code = "missing pix cookie", http.StatusUnauthorized
+		return nil
+	}
+	// TODO: either return a dummy payload, or nil if not present.
+
+	pixPayload, err := defaultPwtCoder.decode([]byte(c.Value))
+	if err != nil {
+		rc.message, rc.code = err.Error(), http.StatusUnauthorized
+		return nil
+	}
+	if pixPayload.Type != PwtPayload_PIX {
+		rc.message, rc.code = "invalid pix token", http.StatusUnauthorized
+		return nil
+	}
+	return pixPayload
 }
 
 func (rc *requestChecker) checkPost() {
@@ -41,6 +65,15 @@ func (rc *requestChecker) checkPost() {
 		return
 	}
 	if rc.r.Method != "POST" {
+		rc.message, rc.code = "Unsupported Method", http.StatusMethodNotAllowed
+	}
+}
+
+func (rc *requestChecker) checkGet() {
+	if rc.code != 0 {
+		return
+	}
+	if rc.r.Method != "GET" {
 		rc.message, rc.code = "Unsupported Method", http.StatusMethodNotAllowed
 	}
 }

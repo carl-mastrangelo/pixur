@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"time"
 
 	"pixur.org/pixur/schema"
 )
@@ -15,11 +16,22 @@ var (
 type fileServer struct {
 	http.Handler
 	pixPath string
+	now     func() time.Time
 }
 
 func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := ctxFromReq(r)
 	_ = ctx
+
+	rc := &requestChecker{r: r, now: fs.now}
+	rc.checkGet()
+	// TODO: check the soft not after time and do a db lookup.
+	rc.checkPixAuth()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
+		return
+	}
+
 	dir, file := path.Split(r.URL.Path)
 	if dir != "" {
 		// Something is wrong, /pix/ should have been stripped.

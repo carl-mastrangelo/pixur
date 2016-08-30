@@ -44,6 +44,7 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 			Subject:   "0",
 			NotAfter:  notafter,
 			NotBefore: notbefore,
+			Type:      PwtPayload_AUTH,
 		}
 	} else {
 		payload = c.AuthOverride

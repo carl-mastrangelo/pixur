@@ -168,8 +168,10 @@ message GetRefreshTokenRequest {
 message GetRefreshTokenResponse {
 	string refresh_token = 1;
 	string auth_token = 2;
+	string pix_token = 5;
 	PwtPayload refresh_payload = 3;
 	PwtPayload auth_payload = 4;
+	PwtPayload pix_payload = 6;
 }
 
 message PwtHeader {
@@ -186,8 +188,19 @@ message PwtPayload {
 	string subject = 1;
 	google.protobuf.Timestamp not_before = 2;
 	google.protobuf.Timestamp not_after = 3;
+	// represents when this token should be reverified.  Optional.
+	google.protobuf.Timestamp soft_not_after = 6;
 	string issuer = 4;
 	int64 token_id = 5;
+	int64 token_parent_id = 8;
+
+	enum Type {
+		UNKNOWN = 0;
+		REFRESH = 1;
+		AUTH = 2;
+		PIX = 3;
+	}
+	Type type = 7;
 }
 
 service PixurService {
