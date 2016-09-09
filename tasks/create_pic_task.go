@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -44,6 +45,8 @@ type CreatePicTask struct {
 
 	// Alternatively, a url can be uploaded
 	FileURL string
+
+	Ctx context.Context
 
 	// State
 	// The file that was created to hold the upload.

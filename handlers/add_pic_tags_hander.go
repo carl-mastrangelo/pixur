@@ -24,8 +24,10 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 	*AddPicTagsResponse, status.S) {
 
 	var vid schema.Varint
-	if err := vid.DecodeAll(req.PicId); err != nil {
-		return nil, status.InvalidArgument(err, "Unable to decode pic id")
+	if req.PicId != "" {
+		if err := vid.DecodeAll(req.PicId); err != nil {
+			return nil, status.InvalidArgument(err, "Unable to decode pic id")
+		}
 	}
 
 	var task = &tasks.AddPicTagsTask{
@@ -49,18 +51,21 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	pwt := rc.checkAuth()
+	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	var userID schema.Varint
-	if err := userID.DecodeAll(pwt.Subject); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	ctx := r.Context()
+	if pwt != nil {
+		var userID schema.Varint
+		if err := userID.DecodeAll(pwt.Subject); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		ctx = tasks.CtxFromUserID(ctx, int64(userID))
 	}
-	ctx := tasks.CtxFromUserID(r.Context(), int64(userID))
 
 	resp, sts := h.AddPicTags(ctx, &AddPicTagsRequest{
 		PicId: r.FormValue("pic_id"),

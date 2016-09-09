@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
 )
 
@@ -24,10 +25,19 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	rc.checkAuth()
+	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
+	}
+
+	ctx := r.Context()
+	if pwt != nil {
+		var userID schema.Varint
+		if err := userID.DecodeAll(pwt.Subject); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		ctx = tasks.CtxFromUserID(ctx, int64(userID))
 	}
 
 	var filename string
@@ -52,6 +62,7 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Filename: filename,
 		FileURL:  fileURL,
 		TagNames: r.PostForm["tag"],
+		Ctx:      ctx,
 	}
 
 	runner := new(tasks.TaskRunner)

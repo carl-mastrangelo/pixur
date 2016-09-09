@@ -12,17 +12,21 @@ type requestChecker struct {
 	now     func() time.Time
 }
 
-func (rc *requestChecker) checkAuth() *PwtPayload {
+// getAuth Returns the validated auth token
+// It may return nil if the request is already failed
+// If there is no auth token, it returns nil but doesn't fail the request.
+func (rc *requestChecker) getAuth() *PwtPayload {
 	if rc.code != 0 {
 		return nil
 	}
 
 	c, err := rc.r.Cookie(authPwtCookieName)
-	if err != nil {
+	if err == http.ErrNoCookie {
+		return nil
+	} else if err != nil {
 		rc.message, rc.code = "missing auth cookie", http.StatusUnauthorized
 		return nil
 	}
-	// TODO: either return a dummy payload, or nil if not present.
 
 	authPayload, err := defaultPwtCoder.decode([]byte(c.Value))
 	if err != nil {
