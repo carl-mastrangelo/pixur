@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -17,15 +18,22 @@ type AddPicTagsTask struct {
 	// Inputs
 	PicID    int64
 	TagNames []string
+	Ctx      context.Context
 }
 
 // TODO: add tests
 func (t *AddPicTagsTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
+
+	_ = userID // TODO: check auth
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},

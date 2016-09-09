@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -19,29 +21,20 @@ type LookupPicDetailsHandler struct {
 	Now    func() time.Time
 }
 
-func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rc := &requestChecker{r: r, now: h.Now}
-	rc.checkXsrf()
-	rc.checkAuth()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
-		return
-	}
+func (h *LookupPicDetailsHandler) LookupPicDetails(
+	ctx context.Context, req *LookupPicDetailsRequest) (*LookupPicDetailsResponse, status.S) {
 
-	var requestedPicID int64
-	if raw := r.FormValue("pic_id"); raw != "" {
-		var vid schema.Varint
-		if err := vid.DecodeAll(raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		} else {
-			requestedPicID = int64(vid)
+	var picID schema.Varint
+	if req.PicId != "" {
+		if err := picID.DecodeAll(req.PicId); err != nil {
+			return nil, status.InvalidArgument(err, "can't parse pic id", req.PicId)
 		}
 	}
 
 	var task = &tasks.LookupPicTask{
 		DB:    h.DB,
-		PicID: requestedPicID,
+		PicID: int64(picID),
+		Ctx:   ctx,
 	}
 	var runner *tasks.TaskRunner
 	if h.Runner != nil {
@@ -49,9 +42,8 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	} else {
 		runner = new(tasks.TaskRunner)
 	}
-	if err := runner.Run(task); err != nil {
-		returnTaskError(w, err)
-		return
+	if sts := runner.Run(task); sts != nil {
+		return nil, sts
 	}
 
 	resp := LookupPicDetailsResponse{
@@ -59,7 +51,37 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		PicTag: apiPicTags(nil, task.PicTags...),
 	}
 
-	returnProtoJSON(w, r, &resp)
+	return &resp, nil
+}
+
+func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkXsrf()
+	pwt := rc.checkAuth()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
+		return
+	}
+
+	ctx := r.Context()
+	if pwt != nil {
+		var userID schema.Varint
+		if err := userID.DecodeAll(pwt.Subject); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		ctx = tasks.CtxFromUserID(ctx, int64(userID))
+	}
+
+	resp, sts := h.LookupPicDetails(ctx, &LookupPicDetailsRequest{
+		PicId: r.FormValue("pic_id"),
+	})
+	if sts != nil {
+		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		return
+	}
+
+	returnProtoJSON(w, r, resp)
 }
 
 func init() {

@@ -44,7 +44,8 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		t.Error("bad status code", res.StatusCode)
+		body, _ := ioutil.ReadAll(res.Body)
+		t.Error("bad status code", res.StatusCode, string(body))
 	}
 	if taskCap == nil {
 		t.Fatal("Task didn't run")

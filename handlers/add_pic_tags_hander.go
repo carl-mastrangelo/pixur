@@ -20,8 +20,8 @@ type AddPicTagsHandler struct {
 	Now func() time.Time
 }
 
-func (h *CreateUserHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
-	*AddPicTagsResponse, error) {
+func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
+	*AddPicTagsResponse, status.S) {
 
 	var vid schema.Varint
 	if err := vid.DecodeAll(req.PicId); err != nil {
@@ -34,6 +34,7 @@ func (h *CreateUserHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 
 		PicID:    int64(vid),
 		TagNames: req.Tag,
+		Ctx:      ctx,
 	}
 	runner := new(tasks.TaskRunner)
 	if err := runner.Run(task); err != nil {
@@ -48,38 +49,30 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	rc.checkAuth()
+	pwt := rc.checkAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	var requestedPicID int64
-	if raw := r.FormValue("pic_id"); raw != "" {
-		var vid schema.Varint
-		if err := vid.DecodeAll(raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		} else {
-			requestedPicID = int64(vid)
-		}
+	var userID schema.Varint
+	if err := userID.DecodeAll(pwt.Subject); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+	ctx := tasks.CtxFromUserID(r.Context(), int64(userID))
 
-	var task = &tasks.AddPicTagsTask{
-		DB:  h.DB,
-		Now: h.Now,
+	resp, sts := h.AddPicTags(ctx, &AddPicTagsRequest{
+		PicId: r.FormValue("pic_id"),
+		Tag:   r.PostForm["tag"],
+	})
 
-		PicID:    requestedPicID,
-		TagNames: r.PostForm["tag"],
-	}
-	runner := new(tasks.TaskRunner)
-	if err := runner.Run(task); err != nil {
-		returnTaskError(w, err)
+	if sts != nil {
+		http.Error(w, sts.Message(), sts.Code().HttpStatus())
 		return
 	}
 
-	resp := AddPicTagsResponse{}
-	returnProtoJSON(w, r, &resp)
+	returnProtoJSON(w, r, resp)
 }
 
 func init() {

@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 
 	"pixur.org/pixur/schema"
@@ -17,6 +18,7 @@ type LookupPicTask struct {
 
 	// Inputs
 	PicID int64
+	Ctx   context.Context
 
 	// Results
 	Pic     *schema.Pic
@@ -24,11 +26,17 @@ type LookupPicTask struct {
 }
 
 func (t *LookupPicTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
+
+	_ = userID // TODO: use this
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},
