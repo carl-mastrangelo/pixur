@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/gif"
@@ -28,7 +29,8 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 	c.DB().Close()
 
 	task := &UpsertPicTask{
-		DB: c.DB(),
+		DB:  c.DB(),
+		Ctx: CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -41,7 +43,8 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 	defer c.Close()
 
 	task := &UpsertPicTask{
-		DB: c.DB(),
+		DB:  c.DB(),
+		Ctx: CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -68,6 +71,7 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {
@@ -112,6 +116,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -161,6 +166,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {
@@ -217,6 +223,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -244,6 +251,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		// empty
 		File:     c.TempFile(),
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -272,6 +280,7 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {
@@ -318,6 +327,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -364,6 +374,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {
@@ -413,6 +424,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {

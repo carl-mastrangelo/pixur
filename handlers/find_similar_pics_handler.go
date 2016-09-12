@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -19,32 +21,20 @@ type FindSimilarPicsHandler struct {
 	Now    func() time.Time
 }
 
-// TODO: test this
-func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rc := &requestChecker{r: r, now: h.Now}
-	rc.checkPost()
-	rc.checkXsrf()
-	// TODO: use this
-	_ = rc.getAuth()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
-		return
-	}
+func (h *FindSimilarPicsHandler) FindSimilarPics(
+	ctx context.Context, req *FindSimilarPicsRequest) (*FindSimilarPicsResponse, status.S) {
 
-	var requestedPicID int64
-	if raw := r.FormValue("pic_id"); raw != "" {
-		var vid schema.Varint
-		if err := vid.DecodeAll(raw); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		} else {
-			requestedPicID = int64(vid)
+	var requestedPicID schema.Varint
+	if req.PicId != "" {
+		if err := requestedPicID.DecodeAll(req.PicId); err != nil {
+			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
 
 	var task = &tasks.FindSimilarPicsTask{
 		DB:    h.DB,
-		PicID: requestedPicID,
+		PicID: int64(requestedPicID),
+		Ctx:   ctx,
 	}
 	var runner *tasks.TaskRunner
 	if h.Runner != nil {
@@ -52,17 +42,44 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	} else {
 		runner = new(tasks.TaskRunner)
 	}
-	if err := runner.Run(task); err != nil {
-		returnTaskError(w, err)
-		return
+	if sts := runner.Run(task); sts != nil {
+		return nil, sts
 	}
 
 	resp := FindSimilarPicsResponse{}
 	for _, id := range task.SimilarPicIDs {
-		resp.Id = append(resp.Id, schema.Varint(id).Encode())
+		resp.PicId = append(resp.PicId, schema.Varint(id).Encode())
 	}
 
-	returnProtoJSON(w, r, &resp)
+	return &resp, nil
+}
+
+// TODO: test this
+func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	pwt := rc.getAuth()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
+		return
+	}
+
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp, sts := h.FindSimilarPics(ctx, &FindSimilarPicsRequest{
+		PicId: r.FormValue("pic_id"),
+	})
+	if sts != nil {
+		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		return
+	}
+
+	returnProtoJSON(w, r, resp)
 }
 
 func init() {

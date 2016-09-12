@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -21,17 +22,23 @@ type PurgePicTask struct {
 
 	// input
 	PicID int64
+	Ctx   context.Context
 }
 
-func (task *PurgePicTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(task.DB)
+func (t *PurgePicTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
+	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&task.PicID},
+		Prefix: tab.PicsPrimary{&t.PicID},
 		Limit:  1,
 		Lock:   db.LockWrite,
 	})
@@ -44,7 +51,7 @@ func (task *PurgePicTask) Run() (errCap status.S) {
 	p := pics[0]
 
 	pis, err := j.FindPicIdents(db.Opts{
-		Prefix: tab.PicIdentsPrimary{PicId: &task.PicID},
+		Prefix: tab.PicIdentsPrimary{PicId: &t.PicID},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -63,7 +70,7 @@ func (task *PurgePicTask) Run() (errCap status.S) {
 	}
 
 	pts, err := j.FindPicTags(db.Opts{
-		Prefix: tab.PicTagsPrimary{PicId: &task.PicID},
+		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -115,7 +122,7 @@ func (task *PurgePicTask) Run() (errCap status.S) {
 	}
 
 	err = j.DeletePic(tab.PicsPrimary{
-		Id: &task.PicID,
+		Id: &t.PicID,
 	})
 	if err != nil {
 		return status.InternalError(err, "can't delete pic")
@@ -124,11 +131,11 @@ func (task *PurgePicTask) Run() (errCap status.S) {
 		return status.InternalError(err, "Unable to Commit")
 	}
 
-	if err := os.Remove(p.Path(task.PixPath)); err != nil {
+	if err := os.Remove(p.Path(t.PixPath)); err != nil {
 		log.Println("Warning, unable to delete pic data", p, err)
 	}
 
-	if err := os.Remove(p.ThumbnailPath(task.PixPath)); err != nil {
+	if err := os.Remove(p.ThumbnailPath(t.PixPath)); err != nil {
 		log.Println("Warning, unable to delete pic data", p, err)
 	}
 

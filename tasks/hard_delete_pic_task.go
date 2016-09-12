@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"time"
@@ -20,17 +21,23 @@ type HardDeletePicTask struct {
 
 	// input
 	PicID int64
+	Ctx   context.Context
 }
 
-func (task *HardDeletePicTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(task.DB)
+func (t *HardDeletePicTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
+	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&task.PicID},
+		Prefix: tab.PicsPrimary{&t.PicID},
 		Lock:   db.LockWrite,
 		Limit:  1,
 	})
@@ -69,11 +76,11 @@ func (task *HardDeletePicTask) Run() (errCap status.S) {
 
 	// At this point we actually release the file and thumbnail.  It would be better to remove
 	// these after the commit, since a cron job can clean up refs after the fact.
-	if err := os.Remove(p.Path(task.PixPath)); err != nil {
+	if err := os.Remove(p.Path(t.PixPath)); err != nil {
 		return status.InternalError(err, "Unable to Remove Pic")
 	}
 
-	if err := os.Remove(p.ThumbnailPath(task.PixPath)); err != nil {
+	if err := os.Remove(p.ThumbnailPath(t.PixPath)); err != nil {
 		return status.InternalError(err, "Unable to Remove Pic")
 	}
 

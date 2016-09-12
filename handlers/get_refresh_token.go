@@ -40,6 +40,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		Now:    h.Now,
 		Email:  req.Ident,
 		Secret: req.Secret,
+		Ctx:    ctx,
 	}
 
 	if req.RefreshToken != "" {
@@ -134,6 +135,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
+	// Don't check auth, it may be invalid
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return

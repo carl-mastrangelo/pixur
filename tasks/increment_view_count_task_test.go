@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 		DB:    c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
+		Ctx:   CtxFromUserID(context.Background(), -1),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
@@ -51,6 +53,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	task := IncrementViewCountTask{
 		DB:    c.DB(),
 		Now:   time.Now,
+		Ctx:   CtxFromUserID(context.Background(), -1),
 		PicID: p.Pic.PicId,
 	}
 	if sts := task.Run(); sts == nil {

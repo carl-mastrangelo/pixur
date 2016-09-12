@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"encoding/binary"
 
@@ -18,13 +19,18 @@ type FindSimilarPicsTask struct {
 
 	// Inputs
 	PicID int64
+	Ctx   context.Context
 
 	// Results
 	SimilarPicIDs []int64
 }
 
 func (t *FindSimilarPicsTask) Run() (errCap status.S) {
-	t.SimilarPicIDs = make([]int64, 0) // set default, to make json encoding easier
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create new job")

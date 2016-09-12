@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"pixur.org/pixur/schema"
 	"pixur.org/pixur/tasks"
 )
 
@@ -31,13 +30,10 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-	if pwt != nil {
-		var userID schema.Varint
-		if err := userID.DecodeAll(pwt.Subject); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		ctx = tasks.CtxFromUserID(ctx, int64(userID))
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	var filename string

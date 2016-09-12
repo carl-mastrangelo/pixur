@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"sort"
 	"time"
@@ -29,6 +30,8 @@ type AuthUserTask struct {
 	UserID  int64
 	TokenID int64
 
+	Ctx context.Context
+
 	// Results
 	User       *schema.User
 	NewTokenID int64
@@ -39,6 +42,10 @@ const (
 )
 
 func (t *AuthUserTask) Run() (sCap status.S) {
+	if t.Ctx == nil {
+		return status.InternalError(nil, "missing context")
+	}
+
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")

@@ -46,6 +46,15 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 	return &AddPicTagsResponse{}, nil
 }
 
+func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, error) {
+	var userID schema.Varint
+	if err := userID.DecodeAll(pwt.Subject); err != nil {
+		return nil, err
+	}
+	// TODO move auth here instead of the http handler
+	return tasks.CtxFromUserID(ctx, int64(userID)), nil
+}
+
 // TODO: add tests
 func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
@@ -57,14 +66,10 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-	if pwt != nil {
-		var userID schema.Varint
-		if err := userID.DecodeAll(pwt.Subject); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		ctx = tasks.CtxFromUserID(ctx, int64(userID))
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	resp, sts := h.AddPicTags(ctx, &AddPicTagsRequest{

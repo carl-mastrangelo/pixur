@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -28,6 +29,7 @@ func TestPurgeWorkflow(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
+		Ctx:     CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -82,6 +84,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
+		Ctx:     CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)

@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
+		Ctx:     CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -66,6 +68,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
+		Ctx:     CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)

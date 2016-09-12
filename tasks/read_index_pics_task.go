@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"math"
 
@@ -28,6 +29,7 @@ type ReadIndexPicsTask struct {
 	MaxPics int
 	// Ascending determines the order of pics returned.
 	Ascending bool
+	Ctx       context.Context
 
 	// State
 
@@ -71,6 +73,11 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 }
 
 func (t *ReadIndexPicsTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")

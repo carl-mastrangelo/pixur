@@ -83,8 +83,7 @@ func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *
 	now func() time.Time) {
 	rc := &requestChecker{r: r, now: now}
 	rc.checkXsrf()
-	// TODO: use this
-	_ = rc.getAuth()
+	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
@@ -101,10 +100,17 @@ func findIndexPicsHandler(db *sql.DB, ascending bool, w http.ResponseWriter, r *
 		}
 	}
 
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var task = &tasks.ReadIndexPicsTask{
 		DB:        db,
 		StartID:   requestedStartPicID,
 		Ascending: ascending,
+		Ctx:       ctx,
 	}
 
 	runner := new(tasks.TaskRunner)

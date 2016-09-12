@@ -42,11 +42,10 @@ type CreatePicTask struct {
 	Filename string
 	FileData readAtSeeker
 	TagNames []string
+	Ctx      context.Context
 
 	// Alternatively, a url can be uploaded
 	FileURL string
-
-	Ctx context.Context
 
 	// State
 	// The file that was created to hold the upload.
@@ -74,6 +73,12 @@ func (t *CreatePicTask) reset() {
 }
 
 func (t *CreatePicTask) Run() (sCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
+
 	var err error
 	var sts status.S
 	t.now = time.Now()

@@ -71,7 +71,8 @@ PicsService.prototype.deletePic = function(picId, details) {
   var deferred = this.q_.defer();
   // TODO: add pending deletion time
   var params = {
-    "pic_id": picId
+    "pic_id": picId,
+    "reason": "NONE"
   }
   if (details !== undefined) {
     params["details"] = details;

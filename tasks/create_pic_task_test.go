@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -49,6 +50,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -95,6 +97,7 @@ func TestDuplicateImageIgnored(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -124,6 +127,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -182,6 +186,7 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		PixPath:  c.TempDir(),
 		FileData: imgData,
 		TagNames: []string{tag1.Tag.Name, tag2.Tag.Name},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
@@ -217,6 +222,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		FileData: imgData,
 		// All of these are the same
 		TagNames: []string{"foo", "foo", "  foo", "foo  "},
+		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
@@ -351,6 +357,7 @@ func BenchmarkCreation(b *testing.B) {
 			PixPath:  c.TempDir(),
 			FileData: imgData,
 			TagNames: []string{"foo", "bar"},
+			Ctx:      CtxFromUserID(context.Background(), -1),
 		}
 		runner := new(TaskRunner)
 		if err := runner.Run(task); err != nil {
@@ -368,6 +375,7 @@ func TestMoveUploadedFile(t *testing.T) {
 	if err := func() error {
 		task := &CreatePicTask{
 			FileData: imgData,
+			Ctx:      context.Background(),
 		}
 
 		var destBuffer bytes.Buffer

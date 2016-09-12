@@ -33,7 +33,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 	data.Add("pic_id", "g0") // 16
 	data.Add("details", "details")
 	data.Add("reason", "rule_violation")
-	data.Add("pending_deletion_time", "2015-10-18T23:00:00Z")
+	data.Add("deletion_time", "2015-10-18T23:00:00Z")
 
 	res, err := (&testClient{}).PostForm(s.URL, data)
 	if err != nil {
@@ -99,37 +99,6 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 	}
 }
 
-func TestSoftDeletePicBadReason(t *testing.T) {
-	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) status.S {
-		taskCap = task.(*tasks.SoftDeletePicTask)
-		// Not run, but we still need a placeholder
-		return nil
-	}
-	s := httptest.NewServer(&SoftDeletePicHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	})
-	defer s.Close()
-
-	data := url.Values{}
-	data.Add("reason", "bad")
-
-	res, err := (&testClient{}).PostForm(s.URL, data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusBadRequest {
-		t.Error("wrong status code", res.StatusCode)
-	}
-
-	if taskCap != nil {
-		t.Error("task should not have run")
-	}
-}
-
 func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
 	successRunner := func(task tasks.Task) status.S {
@@ -144,7 +113,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	defer s.Close()
 
 	data := url.Values{}
-	data.Add("pending_deletion_time", "BAD-10-18T23:00:00Z")
+	data.Add("deletion_time", "BAD-10-18T23:00:00Z")
 
 	res, err := (&testClient{}).PostForm(s.URL, data)
 	if err != nil {
@@ -173,7 +142,7 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 	})
 	defer s.Close()
 
-	res, err := (&testClient{}).PostForm(s.URL, url.Values{})
+	res, err := (&testClient{}).PostForm(s.URL, url.Values{"reason": []string{"NONE"}})
 	if err != nil {
 		t.Fatal(err)
 	}

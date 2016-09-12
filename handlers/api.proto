@@ -99,15 +99,15 @@ message CreatePicResponse {
 }
 
 message FindSimilarPicsRequest {
-  // 
+  string pic_id = 1;
 }
 
 message FindSimilarPicsResponse {
-  repeated string id = 1; 
+  repeated string pic_id = 1;
 }
 
 message IncrementViewCountRequest {
-  // nothing for now
+  string pic_id = 1;
 }
 
 message IncrementViewCountResponse {
@@ -115,7 +115,7 @@ message IncrementViewCountResponse {
 }
 
 message PurgePicRequest {
-  // nothing for now
+  string pic_id = 1;
 }
 
 message PurgePicResponse {
@@ -123,15 +123,32 @@ message PurgePicResponse {
 }
 
 message SoftDeletePicRequest {
-	// nothing for now
+	string pic_id = 1;
+	string details = 2;
+  DeletionReason reason = 3;
+  google.protobuf.Timestamp deletion_time = 4;
 }
 
 message SoftDeletePicResponse {
   // nothing for now
 }
 
+// Copy of schema.proto
+enum DeletionReason {
+  // The reason is not know, due to limitations of proto
+  UNKNOWN = 0;
+  // No specific reason.  This is a catch-all reason.
+  NONE = 1;
+  // The pic is in violation of the rules.
+  RULE_VIOLATION = 2;
+}
+
 message UpsertPicRequest {
-	// nothing for now
+	string url = 1;
+	string name = 2;
+	bytes data = 3;
+	bytes md5_hash = 4;
+	repeated string tag = 5;
 }
 
 message UpsertPicResponse {

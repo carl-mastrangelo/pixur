@@ -63,14 +63,10 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx := r.Context()
-	if pwt != nil {
-		var userID schema.Varint
-		if err := userID.DecodeAll(pwt.Subject); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		ctx = tasks.CtxFromUserID(ctx, int64(userID))
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	resp, sts := h.LookupPicDetails(ctx, &LookupPicDetailsRequest{

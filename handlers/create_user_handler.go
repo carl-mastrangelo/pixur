@@ -28,6 +28,7 @@ func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserReque
 		Now:    h.Now,
 		Email:  req.Ident,
 		Secret: req.Secret,
+		Ctx:    ctx,
 	}
 	var runner *tasks.TaskRunner
 	if h.Runner != nil {
@@ -49,28 +50,23 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	rc.checkPost()
 	rc.checkXsrf()
+	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
-	// TODO: check if the user is already logged in.
 
-	ident := r.FormValue("ident")
-	if ident == "" {
-		http.Error(w, "missing ident", http.StatusBadRequest)
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	secret := r.FormValue("secret")
-	if secret == "" {
-		http.Error(w, "missing secret", http.StatusBadRequest)
-		return
-	}
-
-	resp, sts := h.CreateUser(r.Context(), &CreateUserRequest{
-		Ident:  ident,
-		Secret: secret,
+	resp, sts := h.CreateUser(ctx, &CreateUserRequest{
+		Ident:  r.FormValue("ident"),
+		Secret: r.FormValue("secret"),
 	})
+
 	if sts != nil {
 		returnTaskError(w, sts)
 		return

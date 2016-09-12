@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -19,12 +20,16 @@ type CreateUserTask struct {
 	// Inputs
 	Email  string
 	Secret string
+	Ctx    context.Context
 
 	// Results
 	CreatedUser *schema.User
 }
 
 func (t *CreateUserTask) Run() (errCap status.S) {
+	if t.Ctx == nil {
+		return status.InternalError(nil, "missing context")
+	}
 	var err error
 	j, err := tab.NewJob(t.DB)
 	if err != nil {

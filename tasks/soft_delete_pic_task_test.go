@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
 		Temporary: true,
+		Ctx:       CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -77,6 +79,7 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
+		Ctx:                 CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)
@@ -113,6 +116,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
+		Ctx:                 CtxFromUserID(context.Background(), -1),
 	}
 
 	runner := new(TaskRunner)

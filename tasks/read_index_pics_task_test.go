@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -96,7 +97,8 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	p := c.CreatePic()
 
 	task := ReadIndexPicsTask{
-		DB: c.DB(),
+		DB:  c.DB(),
+		Ctx: CtxFromUserID(context.Background(), -1),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
@@ -122,7 +124,8 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	p3.Update()
 
 	task := ReadIndexPicsTask{
-		DB: c.DB(),
+		DB:  c.DB(),
+		Ctx: CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {

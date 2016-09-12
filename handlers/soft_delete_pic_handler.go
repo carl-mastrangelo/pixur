@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/timestamp"
+
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
@@ -20,55 +25,35 @@ type SoftDeletePicHandler struct {
 	Now    func() time.Time
 }
 
-func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rc := &requestChecker{r: r, now: h.Now}
-	rc.checkPost()
-	rc.checkXsrf()
-	// TODO: use this
-	_ = rc.getAuth()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
-		return
-	}
+func (h *SoftDeletePicHandler) SoftDeletePic(
+	ctx context.Context, req *SoftDeletePicRequest) (*SoftDeletePicResponse, status.S) {
 
-	requestedRawPicID := r.FormValue("pic_id")
-	var requestedPicId int64
-	if requestedRawPicID != "" {
-		var vid schema.Varint
-		if err := vid.DecodeAll(requestedRawPicID); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		} else {
-			requestedPicId = int64(vid)
+	var picID schema.Varint
+	if req.PicId != "" {
+		if err := picID.DecodeAll(req.PicId); err != nil {
+			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
 
-	details := r.FormValue("details")
-	reason := schema.Pic_DeletionStatus_NONE
-	if rawReason := r.FormValue("reason"); rawReason != "" {
-		rawReason := strings.ToUpper(rawReason)
-		if newReason, ok := schema.Pic_DeletionStatus_Reason_value[rawReason]; ok {
-			reason = schema.Pic_DeletionStatus_Reason(newReason)
-		} else {
-			http.Error(w, "Could not parse reason "+rawReason, http.StatusBadRequest)
-			return
+	var deletionTime time.Time
+	if req.DeletionTime != nil {
+		var err error
+		if deletionTime, err = ptypes.Timestamp(req.DeletionTime); err != nil {
+			return nil, status.InvalidArgument(err, "bad deletion time")
 		}
+	} else {
+		deletionTime = h.Now().AddDate(0, 0, 7) // 7 days to live
 	}
 
-	pendingDeletionTime := h.Now().AddDate(0, 0, 7) // 7 days to live
-	if rawTime := r.FormValue("pending_deletion_time"); rawTime != "" {
-		if err := pendingDeletionTime.UnmarshalText([]byte(rawTime)); err != nil {
-			http.Error(w, "Could not parse "+rawTime, http.StatusBadRequest)
-			return
-		}
-	}
+	reason := schema.Pic_DeletionStatus_Reason_value[DeletionReason_name[int32(req.Reason)]]
 
 	var task = &tasks.SoftDeletePicTask{
 		DB:                  h.DB,
-		PicID:               requestedPicId,
-		Details:             details,
-		Reason:              reason,
-		PendingDeletionTime: &pendingDeletionTime,
+		PicID:               int64(picID),
+		Details:             req.Details,
+		Reason:              schema.Pic_DeletionStatus_Reason(reason),
+		PendingDeletionTime: &deletionTime,
+		Ctx:                 ctx,
 	}
 	var runner *tasks.TaskRunner
 	if h.Runner != nil {
@@ -76,14 +61,55 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	} else {
 		runner = new(tasks.TaskRunner)
 	}
-	if err := runner.Run(task); err != nil {
-		returnTaskError(w, err)
+	if sts := runner.Run(task); sts != nil {
+		return nil, sts
+	}
+
+	return &SoftDeletePicResponse{}, nil
+}
+
+func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPost()
+	rc.checkXsrf()
+	pwt := rc.getAuth()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	resp := SoftDeletePicResponse{}
+	ctx, err := addUserIDToCtx(r.Context(), pwt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	returnProtoJSON(w, r, &resp)
+	var deletionTs *timestamp.Timestamp
+	if rawTime := r.FormValue("deletion_time"); rawTime != "" {
+		var deletionTime time.Time
+		if err := deletionTime.UnmarshalText([]byte(rawTime)); err != nil {
+			http.Error(w, "can't parse deletion time", http.StatusBadRequest)
+			return
+		}
+		deletionTs, err = ptypes.TimestampProto(deletionTime)
+		if err != nil {
+			http.Error(w, "bad deletion time", http.StatusBadRequest)
+			return
+		}
+	}
+
+	resp, sts := h.SoftDeletePic(ctx, &SoftDeletePicRequest{
+		PicId:        r.FormValue("pic_id"),
+		Details:      r.FormValue("details"),
+		Reason:       DeletionReason(DeletionReason_value[strings.ToUpper(r.FormValue("reason"))]),
+		DeletionTime: deletionTs,
+	})
+	if sts != nil {
+		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		return
+	}
+
+	returnProtoJSON(w, r, resp)
 }
 
 func init() {

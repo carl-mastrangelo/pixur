@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -27,21 +28,28 @@ type SoftDeletePicTask struct {
 
 	// Can this picture ever be re uploaded?
 	Temporary bool
+
+	Ctx context.Context
 }
 
-func (task *SoftDeletePicTask) Run() (errCap status.S) {
-	if task.Reason == schema.Pic_DeletionStatus_UNKNOWN {
-		return status.InternalError(nil, "Invalid deletion reason", task.Reason)
+func (t *SoftDeletePicTask) Run() (errCap status.S) {
+	userID, ok := UserIDFromCtx(t.Ctx)
+	if !ok {
+		return status.Unauthenticated(nil, "no user provided")
+	}
+	_ = userID // TODO: use this
+	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
+		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
 	}
 
-	j, err := tab.NewJob(task.DB)
+	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&task.PicID},
+		Prefix: tab.PicsPrimary{&t.PicID},
 		Lock:   db.LockWrite,
 		Limit:  1,
 	})
@@ -63,11 +71,11 @@ func (task *SoftDeletePicTask) Run() (errCap status.S) {
 		p.DeletionStatus = &schema.Pic_DeletionStatus{}
 	}
 
-	p.DeletionStatus.Reason = task.Reason
-	p.DeletionStatus.Details = task.Details
-	p.DeletionStatus.Temporary = task.Temporary
-	if task.PendingDeletionTime != nil {
-		p.DeletionStatus.PendingDeletedTs = schema.ToTs(*task.PendingDeletionTime)
+	p.DeletionStatus.Reason = t.Reason
+	p.DeletionStatus.Details = t.Details
+	p.DeletionStatus.Temporary = t.Temporary
+	if t.PendingDeletionTime != nil {
+		p.DeletionStatus.PendingDeletedTs = schema.ToTs(*t.PendingDeletionTime)
 	} else {
 		p.DeletionStatus.PendingDeletedTs = nil
 	}

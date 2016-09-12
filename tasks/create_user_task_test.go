@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Now:    func() time.Time { return now },
 		Email:  "email",
 		Secret: "secret",
+		Ctx:    CtxFromUserID(context.Background(), -1),
 	}
 
 	if err := task.Run(); err != nil {
@@ -50,6 +52,7 @@ func TestCreateUserEmptyEmail(t *testing.T) {
 	task := &CreateUserTask{
 		DB:     c.DB(),
 		Secret: "secret",
+		Ctx:    CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -64,6 +67,7 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	task := &CreateUserTask{
 		DB:    c.DB(),
 		Email: "email",
+		Ctx:   CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
@@ -78,7 +82,8 @@ func TestCreateUserCantBegin(t *testing.T) {
 	db.Close()
 
 	task := &CreateUserTask{
-		DB: db,
+		DB:  db,
+		Ctx: CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
