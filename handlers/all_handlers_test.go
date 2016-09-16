@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,6 +22,7 @@ type testClient struct {
 	HTTPClient   *http.Client
 	DisableXSRF  bool
 	AuthOverride *PwtPayload
+	DisableAuth  bool
 }
 
 func (c *testClient) Do(req *http.Request) (*http.Response, error) {
@@ -34,30 +36,31 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 		})
 		req.Header.Add(xsrfHeaderName, string(b64XsrfToken))
 	}
-	// Add in Auth
-	var payload *PwtPayload
-	if c.AuthOverride == nil {
-
-		notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
-		notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-		payload = &PwtPayload{
-			Subject:   "0",
-			NotAfter:  notafter,
-			NotBefore: notbefore,
-			Type:      PwtPayload_AUTH,
+	if !c.DisableAuth {
+		// Add in Auth
+		var payload *PwtPayload
+		if c.AuthOverride == nil {
+			notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
+			notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
+			payload = &PwtPayload{
+				Subject:   "0",
+				NotAfter:  notafter,
+				NotBefore: notbefore,
+				Type:      PwtPayload_AUTH,
+			}
+		} else {
+			payload = c.AuthOverride
 		}
-	} else {
-		payload = c.AuthOverride
-	}
 
-	authToken, err := defaultPwtCoder.encode(payload)
-	if err != nil {
-		panic(err)
+		authToken, err := defaultPwtCoder.encode(payload)
+		if err != nil {
+			panic(err)
+		}
+		req.AddCookie(&http.Cookie{
+			Name:  authPwtCookieName,
+			Value: string(authToken),
+		})
 	}
-	req.AddCookie(&http.Cookie{
-		Name:  authPwtCookieName,
-		Value: string(authToken),
-	})
 
 	var httpClient *http.Client
 	if c.HTTPClient != nil {
@@ -87,4 +90,9 @@ func (c *testClient) Get(url string) (resp *http.Response, err error) {
 		return nil, err
 	}
 	return c.Do(req)
+}
+
+func bodyToText(body io.Reader) string {
+	text, _ := ioutil.ReadAll(body)
+	return string(text)
 }

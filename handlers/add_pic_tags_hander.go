@@ -16,10 +16,12 @@ type AddPicTagsHandler struct {
 	http.Handler
 
 	// deps
-	DB  *sql.DB
-	Now func() time.Time
+	DB     *sql.DB
+	Runner *tasks.TaskRunner
+	Now    func() time.Time
 }
 
+// TODO: check the auth here instead of in the HTTP handler
 func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
 	*AddPicTagsResponse, status.S) {
 
@@ -38,8 +40,7 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 		TagNames: req.Tag,
 		Ctx:      ctx,
 	}
-	runner := new(tasks.TaskRunner)
-	if err := runner.Run(task); err != nil {
+	if err := h.Runner.Run(task); err != nil {
 		return nil, err
 	}
 
@@ -47,6 +48,9 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 }
 
 func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, error) {
+	if pwt == nil {
+		return ctx, nil
+	}
 	var userID schema.Varint
 	if err := userID.DecodeAll(pwt.Subject); err != nil {
 		return nil, err

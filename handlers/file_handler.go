@@ -20,9 +20,6 @@ type fileServer struct {
 }
 
 func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := ctxFromReq(r)
-	_ = ctx
-
 	rc := &requestChecker{r: r, now: fs.now}
 	rc.checkGet()
 	// TODO: check the soft not after time and do a db lookup.
