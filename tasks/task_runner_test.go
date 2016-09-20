@@ -39,13 +39,21 @@ func (t *fakeTask) CleanUp() {
 	}
 }
 
+func TestTaskRunnerNil(t *testing.T) {
+	var tr *TaskRunner
+	sts := tr.Run(new(fakeTask))
+	if sts != nil {
+		t.Error("error running task", sts)
+	}
+}
+
 func TestTaskIsNotReset_success(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
-	err := runner.Run(task)
+	sts := runner.Run(task)
 
-	if err != nil {
-		t.Fatal(err)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
 	if task.runCount != 1 {
@@ -67,10 +75,10 @@ func TestTaskIsReset_failure(t *testing.T) {
 	task.run = func() status.S {
 		return expectedError
 	}
-	err := runner.Run(task)
+	sts := runner.Run(task)
 
-	if err != expectedError {
-		t.Fatal("Expected different error", err)
+	if sts != expectedError {
+		t.Fatal("Expected different error", sts)
 	}
 
 	if task.runCount != 1 {
@@ -92,9 +100,9 @@ func TestTaskRetriesOnDeadlock(t *testing.T) {
 	task.run = func() status.S {
 		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber}, "")
 	}
-	err := runner.Run(task)
+	sts := runner.Run(task)
 
-	if err == nil {
+	if sts == nil {
 		t.Fatal("Expected error, but was nil")
 	}
 
@@ -117,9 +125,9 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 	task.run = func() status.S {
 		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber + 1}, "")
 	}
-	err := runner.Run(task)
+	sts := runner.Run(task)
 
-	if err == nil {
+	if sts == nil {
 		t.Fatal("Expected error, but was nil")
 	}
 
