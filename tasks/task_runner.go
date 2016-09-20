@@ -22,7 +22,7 @@ func TestTaskRunner(run func(task Task) status.S) *TaskRunner {
 }
 
 func (r *TaskRunner) Run(task Task) status.S {
-	if r.run != nil {
+	if r != nil && r.run != nil {
 		return r.run(task)
 	}
 	return runTask(task)
