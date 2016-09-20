@@ -23,6 +23,11 @@ type IncrementViewCountHandler struct {
 func (h *IncrementViewCountHandler) IncrementViewCount(
 	ctx context.Context, req *IncrementViewCountRequest) (*IncrementViewCountResponse, status.S) {
 
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
@@ -48,16 +53,14 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	resp, sts := h.IncrementViewCount(ctx, &IncrementViewCountRequest{

@@ -24,6 +24,11 @@ type LookupPicDetailsHandler struct {
 func (h *LookupPicDetailsHandler) LookupPicDetails(
 	ctx context.Context, req *LookupPicDetailsRequest) (*LookupPicDetailsResponse, status.S) {
 
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
@@ -36,37 +41,27 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 		PicID: int64(picID),
 		Ctx:   ctx,
 	}
-	var runner *tasks.TaskRunner
-	if h.Runner != nil {
-		runner = h.Runner
-	} else {
-		runner = new(tasks.TaskRunner)
-	}
-	if sts := runner.Run(task); sts != nil {
+	if sts := h.Runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
-	resp := LookupPicDetailsResponse{
+	return &LookupPicDetailsResponse{
 		Pic:    apiPic(task.Pic),
 		PicTag: apiPicTags(nil, task.PicTags...),
-	}
-
-	return &resp, nil
+	}, nil
 }
 
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkXsrf()
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	resp, sts := h.LookupPicDetails(ctx, &LookupPicDetailsRequest{

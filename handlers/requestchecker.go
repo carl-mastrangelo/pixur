@@ -96,3 +96,13 @@ func (rc *requestChecker) checkXsrf() {
 		return
 	}
 }
+
+func authTokenFromReq(req *http.Request) (token string, present bool) {
+	c, err := req.Cookie(authPwtCookieName)
+	if err == http.ErrNoCookie {
+		return "", false
+	} else if err != nil {
+		panic(err) // docs say should never happen
+	}
+	return c.Value, true
+}

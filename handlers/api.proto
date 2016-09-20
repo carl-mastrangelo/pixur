@@ -64,11 +64,13 @@ message LookupPicDetailsResponse {
   repeated ApiPicTag pic_tag = 2;
 }
 
-message IndexRequest {
+message FindIndexPicsRequest {
 	string start_pic_id = 1;
+	
+	bool ascending = 2;
 }
 
-message IndexResponse {
+message FindIndexPicsResponse {
   repeated ApiPic pic = 1;
 }
 
@@ -230,8 +232,7 @@ service PixurService {
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
   rpc CreatePic(stream CreatePicRequest) returns (CreatePicResponse);
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
-  rpc FindNextIndexPics(IndexRequest) returns (IndexResponse);
-  rpc FindPrevIndexPics(IndexRequest) returns (IndexResponse);
+  rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
 }

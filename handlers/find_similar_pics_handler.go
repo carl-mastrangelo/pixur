@@ -24,6 +24,11 @@ type FindSimilarPicsHandler struct {
 func (h *FindSimilarPicsHandler) FindSimilarPics(
 	ctx context.Context, req *FindSimilarPicsRequest) (*FindSimilarPicsResponse, status.S) {
 
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+
 	var requestedPicID schema.Varint
 	if req.PicId != "" {
 		if err := requestedPicID.DecodeAll(req.PicId); err != nil {
@@ -36,13 +41,7 @@ func (h *FindSimilarPicsHandler) FindSimilarPics(
 		PicID: int64(requestedPicID),
 		Ctx:   ctx,
 	}
-	var runner *tasks.TaskRunner
-	if h.Runner != nil {
-		runner = h.Runner
-	} else {
-		runner = new(tasks.TaskRunner)
-	}
-	if sts := runner.Run(task); sts != nil {
+	if sts := h.Runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -59,16 +58,14 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	resp, sts := h.FindSimilarPics(ctx, &FindSimilarPicsRequest{

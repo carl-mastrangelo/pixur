@@ -18,6 +18,7 @@ var (
 	errPwtUnsupported = errors.New("unsupported pwt")
 	errPwtSignature   = errors.New("pwt signature mismatch")
 	errPwtExpired     = errors.New("expired pwt")
+	errNotAuth        = errors.New("invalid auth token")
 )
 
 var defaultPwtCoder *pwtCoder

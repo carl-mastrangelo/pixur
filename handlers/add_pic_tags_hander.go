@@ -21,9 +21,13 @@ type AddPicTagsHandler struct {
 	Now    func() time.Time
 }
 
-// TODO: check the auth here instead of in the HTTP handler
 func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
 	*AddPicTagsResponse, status.S) {
+
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
 
 	var vid schema.Varint
 	if req.PicId != "" {
@@ -47,33 +51,18 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 	return &AddPicTagsResponse{}, nil
 }
 
-func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, error) {
-	if pwt == nil {
-		return ctx, nil
-	}
-	var userID schema.Varint
-	if err := userID.DecodeAll(pwt.Subject); err != nil {
-		return nil, err
-	}
-	// TODO move auth here instead of the http handler
-	return tasks.CtxFromUserID(ctx, int64(userID)), nil
-}
-
-// TODO: add tests
 func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	resp, sts := h.AddPicTags(ctx, &AddPicTagsRequest{

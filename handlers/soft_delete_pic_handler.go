@@ -28,6 +28,11 @@ type SoftDeletePicHandler struct {
 func (h *SoftDeletePicHandler) SoftDeletePic(
 	ctx context.Context, req *SoftDeletePicRequest) (*SoftDeletePicResponse, status.S) {
 
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
@@ -55,13 +60,7 @@ func (h *SoftDeletePicHandler) SoftDeletePic(
 		PendingDeletionTime: &deletionTime,
 		Ctx:                 ctx,
 	}
-	var runner *tasks.TaskRunner
-	if h.Runner != nil {
-		runner = h.Runner
-	} else {
-		runner = new(tasks.TaskRunner)
-	}
-	if sts := runner.Run(task); sts != nil {
+	if sts := h.Runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -72,16 +71,14 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	var deletionTs *timestamp.Timestamp
@@ -91,6 +88,7 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			http.Error(w, "can't parse deletion time", http.StatusBadRequest)
 			return
 		}
+		var err error
 		deletionTs, err = ptypes.TimestampProto(deletionTime)
 		if err != nil {
 			http.Error(w, "bad deletion time", http.StatusBadRequest)

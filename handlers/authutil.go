@@ -1,0 +1,46 @@
+package handlers
+
+import (
+	"context"
+
+	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
+	"pixur.org/pixur/tasks"
+)
+
+func fillUserIDFromCtx(ctx context.Context) (context.Context, status.S) {
+	if auth, ok := tasks.AuthTokenFromCtx(ctx); ok {
+		payload, err := decodeAuthToken(auth)
+		if err != nil {
+			return nil, status.Unauthenticated(err, "can't decode auth token")
+		}
+		ctx, err = addUserIDToCtx(ctx, payload)
+		if err != nil {
+			return nil, status.Unauthenticated(err, "can't parse auth token")
+		}
+	}
+	return ctx, nil
+}
+
+func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, error) {
+	if pwt == nil {
+		return ctx, nil
+	}
+	var userID schema.Varint
+	if err := userID.DecodeAll(pwt.Subject); err != nil {
+		return nil, err
+	}
+	// TODO move auth here instead of the http handler
+	return tasks.CtxFromUserID(ctx, int64(userID)), nil
+}
+
+func decodeAuthToken(token string) (*PwtPayload, error) {
+	payload, err := defaultPwtCoder.decode([]byte(token))
+	if err != nil {
+		return nil, err
+	}
+	if payload.Type != PwtPayload_AUTH {
+		return nil, errNotAuth
+	}
+	return payload, nil
+}

@@ -38,6 +38,11 @@ func (f *memFile) Close() error {
 func (h *UpsertPicHandler) upsertPic(
 	ctx context.Context, req *UpsertPicRequest, file multipart.File) (*UpsertPicResponse, status.S) {
 
+	ctx, sts := fillUserIDFromCtx(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+
 	if file == nil {
 		file = &memFile{bytes.NewReader(req.Data)}
 	}
@@ -88,17 +93,14 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	// TODO: use this
-	pwt := rc.getAuth()
 	if rc.code != 0 {
 		http.Error(w, rc.message, rc.code)
 		return
 	}
 
-	ctx, err := addUserIDToCtx(r.Context(), pwt)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	ctx := r.Context()
+	if token, present := authTokenFromReq(r); present {
+		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
 	var filename string
