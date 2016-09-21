@@ -63,9 +63,8 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Ident:  r.FormValue("ident"),
 		Secret: r.FormValue("secret"),
 	})
-
 	if sts != nil {
-		returnTaskError(w, sts)
+		http.Error(w, sts.Message(), sts.Code().HttpStatus())
 		return
 	}
 
