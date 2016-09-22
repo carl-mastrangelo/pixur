@@ -17,8 +17,9 @@ type GetRefreshTokenHandler struct {
 	http.Handler
 
 	// deps
-	DB  *sql.DB
-	Now func() time.Time
+	DB     *sql.DB
+	Now    func() time.Time
+	Runner *tasks.TaskRunner
 }
 
 var (
@@ -60,8 +61,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		task.UserID = int64(vid)
 	}
 
-	runner := new(tasks.TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	if sts := h.Runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
