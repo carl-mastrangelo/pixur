@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/net/webdav"
 
@@ -88,15 +89,35 @@ func isThumbnail(name string) bool {
 	return len(base) > consumed
 }
 
+type davAuthHandler struct {
+	Handler http.Handler
+	Now     func() time.Time
+}
+
+func (h *davAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Currently blocks dav from working, mostly.
+	rc := &requestChecker{r: r, now: h.Now}
+	rc.checkPixAuth()
+	if rc.code != 0 {
+		http.Error(w, rc.message, rc.code)
+		return
+	}
+
+	h.Handler.ServeHTTP(w, r)
+}
+
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
-		mux.Handle("/x/dav/", &webdav.Handler{
-			Prefix: "/x/dav",
-			FileSystem: &PixFS{
-				FileSystem: webdav.Dir(c.PixPath),
-				DB:         c.DB,
+		mux.Handle("/x/dav/", &davAuthHandler{
+			Handler: &webdav.Handler{
+				Prefix: "/x/dav",
+				FileSystem: &PixFS{
+					FileSystem: webdav.Dir(c.PixPath),
+					DB:         c.DB,
+				},
+				LockSystem: webdav.NewMemLS(),
 			},
-			LockSystem: webdav.NewMemLS(),
+			Now: time.Now,
 		})
 	})
 }
