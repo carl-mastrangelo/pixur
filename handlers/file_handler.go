@@ -15,12 +15,11 @@ var (
 
 type fileServer struct {
 	http.Handler
-	pixPath string
-	now     func() time.Time
+	Now func() time.Time
 }
 
 func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rc := &requestChecker{r: r, now: fs.now}
+	rc := &requestChecker{r: r, now: fs.Now}
 	rc.checkGet()
 	// TODO: check the soft not after time and do a db lookup.
 	rc.checkPixAuth()
@@ -63,7 +62,7 @@ func init() {
 
 		mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
 			Handler: http.FileServer(http.Dir(c.PixPath)),
-			pixPath: c.PixPath,
+			Now:     time.Now,
 		}))
 	})
 }
