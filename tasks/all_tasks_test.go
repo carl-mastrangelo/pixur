@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -16,6 +17,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
@@ -405,6 +408,62 @@ func (pt *TestPicTag) Refresh() (exists bool) {
 			exists = true
 		} else {
 			pt.PicTag = nil
+			exists = false
+		}
+		return nil
+	})
+	return
+}
+
+type TestUser struct {
+	User *schema.User
+	c    *TestContainer
+}
+
+func (c *TestContainer) CreateUser() *TestUser {
+	now := time.Now()
+	id := c.ID()
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte("secret"), bcrypt.MinCost)
+	if err != nil {
+		c.T.Fatal(err)
+	}
+
+	u := &schema.User{
+		UserId:     id,
+		Secret:     hashed,
+		Email:      fmt.Sprintf("%d@example.com", id),
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+	}
+	c.AutoJob(func(j *tab.Job) error {
+		return j.InsertUser(u)
+	})
+	return &TestUser{
+		User: u,
+		c:    c,
+	}
+}
+
+func (u *TestUser) Update() {
+	u.c.AutoJob(func(j *tab.Job) error {
+		return j.UpdateUser(u.User)
+	})
+}
+
+func (u *TestUser) Refresh() (exists bool) {
+	u.c.AutoJob(func(j *tab.Job) error {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&u.User.UserId},
+		})
+		if err != nil {
+			return err
+		}
+		if len(users) == 1 {
+			u.User = users[0]
+			exists = true
+		} else {
+			u.User = nil
 			exists = false
 		}
 		return nil
