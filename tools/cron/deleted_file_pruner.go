@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"io/ioutil"
 	"log"
@@ -81,6 +82,7 @@ func perPic(p *schema.Pic, DB *sql.DB, pixPath string) error {
 		DB:      DB,
 		PixPath: pixPath,
 		PicID:   p.PicId,
+		Ctx:     tasks.CtxFromUserID(context.TODO(), -12345), // TODO: use real userid
 	}
 	runner := new(tasks.TaskRunner)
 	if err := runner.Run(task); err != nil {
