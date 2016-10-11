@@ -125,7 +125,8 @@ message User {
   // Hashed secret token
   bytes secret = 2;
 
-  string email = 3;
+  // Identity of the user, usually an email.
+  string ident = 3;
 
   google.protobuf.Timestamp created_ts = 4;
   google.protobuf.Timestamp modified_ts = 5;

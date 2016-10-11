@@ -154,7 +154,7 @@ func TestCreateUserHTTP(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.Email, "foo@bar.com"; have != want {
+	if have, want := taskCap.Ident, "foo@bar.com"; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Secret, "secret"; have != want {
@@ -186,7 +186,7 @@ func TestCreateUserRPC(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.Email, "foo@bar.com"; have != want {
+	if have, want := taskCap.Ident, "foo@bar.com"; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Secret, "secret"; have != want {

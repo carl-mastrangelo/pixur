@@ -432,7 +432,7 @@ func (c *TestContainer) CreateUser() *TestUser {
 	u := &schema.User{
 		UserId:     id,
 		Secret:     hashed,
-		Email:      fmt.Sprintf("%d@example.com", id),
+		Ident:      fmt.Sprintf("%d@example.com", id),
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}

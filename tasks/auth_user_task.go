@@ -15,7 +15,6 @@ import (
 	"pixur.org/pixur/status"
 )
 
-// TODO: add tests
 type AuthUserTask struct {
 	// Deps
 	DB  *sql.DB
@@ -23,7 +22,7 @@ type AuthUserTask struct {
 	// TODO: GC tokens after a handler provided timeout
 
 	// Inputs
-	Email  string
+	Ident  string
 	Secret string
 
 	// Alt inputs
@@ -82,9 +81,9 @@ func (t *AuthUserTask) Run() (sCap status.S) {
 			return status.Unauthenticated(nil, "can't find token")
 		}
 
-	} else if t.Email != "" {
+	} else if t.Ident != "" {
 		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersIdent{&t.Email},
+			Prefix: tab.UsersIdent{&t.Ident},
 			Lock:   db.LockWrite,
 			Limit:  1,
 		})

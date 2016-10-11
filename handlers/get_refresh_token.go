@@ -39,7 +39,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 	var task = &tasks.AuthUserTask{
 		DB:     h.DB,
 		Now:    h.Now,
-		Email:  req.Ident,
+		Ident:  req.Ident,
 		Secret: req.Secret,
 		Ctx:    ctx,
 	}

@@ -96,8 +96,8 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if taskCap.Email != "a" || taskCap.Secret != "b" {
-		t.Error("wrong task input", taskCap.Email, taskCap.Secret)
+	if taskCap.Ident != "a" || taskCap.Secret != "b" {
+		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
 	}
 
 	// Cookie verification
@@ -197,7 +197,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		t.Fatal("task didn't run")
 	}
 	if taskCap.TokenID != payload.TokenId || taskCap.UserID != 9 /* payload.Subject */ {
-		t.Error("wrong task input", taskCap.Email, taskCap.Secret)
+		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
 	}
 
 	// Cookie verification
@@ -379,7 +379,7 @@ func TestGetRefreshToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if have, want := taskCap.Email, "ident"; have != want {
+	if have, want := taskCap.Ident, "ident"; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Secret, "secret"; have != want {

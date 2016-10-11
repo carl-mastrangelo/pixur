@@ -18,7 +18,7 @@ type CreateUserTask struct {
 	Now func() time.Time
 
 	// Inputs
-	Email  string
+	Ident  string
 	Secret string
 	Ctx    context.Context
 
@@ -37,8 +37,8 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 	}
 	defer cleanUp(j, &errCap)
 
-	if t.Email == "" || t.Secret == "" {
-		return status.InvalidArgument(nil, "missing email or secret")
+	if t.Ident == "" || t.Secret == "" {
+		return status.InvalidArgument(nil, "missing ident or secret")
 	}
 
 	userID, err := j.AllocID()
@@ -59,7 +59,7 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 		// Don't set last seen.
-		Email: t.Email,
+		Ident: t.Ident,
 	}
 
 	if err := j.InsertUser(user); err != nil {

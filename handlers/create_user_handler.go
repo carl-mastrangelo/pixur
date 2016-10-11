@@ -31,7 +31,7 @@ func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserReque
 	var task = &tasks.CreateUserTask{
 		DB:     h.DB,
 		Now:    h.Now,
-		Email:  req.Ident,
+		Ident:  req.Ident,
 		Secret: req.Secret,
 		Ctx:    ctx,
 	}

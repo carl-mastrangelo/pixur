@@ -5,5 +5,5 @@ func (u *User) IdCol() int64 {
 }
 
 func (u *User) IdentCol() string {
-	return u.Email
+	return u.Ident
 }

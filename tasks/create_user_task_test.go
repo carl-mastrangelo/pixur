@@ -20,7 +20,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	task := &CreateUserTask{
 		DB:     c.DB(),
 		Now:    func() time.Time { return now },
-		Email:  "email",
+		Ident:  "email",
 		Secret: "secret",
 		Ctx:    CtxFromUserID(context.Background(), -1),
 	}
@@ -38,14 +38,14 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Secret:     task.CreatedUser.Secret,
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
-		Email:      "email",
+		Ident:      "email",
 	}
 	if !proto.Equal(expected, task.CreatedUser) {
 		t.Fatal("not equal", expected, task.CreatedUser)
 	}
 }
 
-func TestCreateUserEmptyEmail(t *testing.T) {
+func TestCreateUserEmptyIdent(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -56,7 +56,7 @@ func TestCreateUserEmptyEmail(t *testing.T) {
 	}
 
 	sts := task.Run()
-	expected := status.InvalidArgument(nil, "missing email or secret")
+	expected := status.InvalidArgument(nil, "missing ident or secret")
 	compareStatus(t, sts, expected)
 }
 
@@ -66,12 +66,12 @@ func TestCreateUserEmptySecret(t *testing.T) {
 
 	task := &CreateUserTask{
 		DB:    c.DB(),
-		Email: "email",
+		Ident: "email",
 		Ctx:   CtxFromUserID(context.Background(), -1),
 	}
 
 	sts := task.Run()
-	expected := status.InvalidArgument(nil, "missing email or secret")
+	expected := status.InvalidArgument(nil, "missing ident or secret")
 	compareStatus(t, sts, expected)
 }
 

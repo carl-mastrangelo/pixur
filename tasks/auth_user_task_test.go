@@ -176,7 +176,7 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 		Ctx:   context.Background(),
 		DB:    c.DB(),
 		Now:   time.Now,
-		Email: "foo@bar.com",
+		Ident: "foo@bar.com",
 	}
 
 	sts := task.Run()
@@ -201,7 +201,7 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
-		Email:  u.User.Email,
+		Ident:  u.User.Ident,
 		Secret: "bogus",
 	}
 
@@ -238,7 +238,7 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
-		Email:  u.User.Email,
+		Ident:  u.User.Ident,
 		Secret: "secret",
 	}
 
