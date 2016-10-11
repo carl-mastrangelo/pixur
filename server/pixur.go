@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"pixur.org/pixur/handlers"
+	sdb "pixur.org/pixur/schema/db"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
@@ -36,6 +37,7 @@ func (s *Server) setup(c *Config) error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
+	sdb.SetCurrentAdapter(c.DbName)
 	s.db = db
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)

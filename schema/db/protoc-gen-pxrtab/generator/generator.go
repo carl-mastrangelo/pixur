@@ -34,7 +34,9 @@ type Generator struct {
 
 func New() *Generator {
 	return &Generator{
-		args:            new(tplArgs),
+		args: &tplArgs{
+			Adapters: db.GetAllAdapters(),
+		},
 		protoPackageMap: make(map[string]*descriptor.FileDescriptorProto),
 		protoNameMap:    make(map[string]*descriptor.FileDescriptorProto),
 	}
@@ -132,7 +134,6 @@ func (g *Generator) addProtoImports(srcName string) {
 func (g *Generator) addSequenceTable() {
 	g.args.SequenceTableName = db.SequenceTableName
 	g.args.SequenceColName = db.SequenceColName
-	g.args.SequenceColSqlType = db.GetAdapter().BigIntType
 }
 
 func (g *Generator) generateFile(
@@ -176,11 +177,9 @@ func (g *Generator) renderTables() ([]byte, error) {
 		"goesc": func(input string) interface{} {
 			return strconv.Quote(input)
 		},
-		"sqlesc": func(input string) interface{} {
-			return db.GetAdapter().Quote(input)
-		},
-		"sqlblobidxesc": func(input string) interface{} {
-			return db.GetAdapter().QuoteCreateBlobIdxCol(input)
+		"gostresc": func(input string) interface{} {
+			q := strconv.Quote(input)
+			return q[1 : len(q)-1]
 		},
 	}
 
@@ -197,12 +196,12 @@ func (g *Generator) renderTables() ([]byte, error) {
 }
 
 type tplArgs struct {
-	Name               string
-	Imports            []tplImport
-	Tables             []tplTable
-	SequenceTableName  string
-	SequenceColName    string
-	SequenceColSqlType string
+	Name              string
+	Imports           []tplImport
+	Adapters          []db.DBAdapter
+	Tables            []tplTable
+	SequenceTableName string
+	SequenceColName   string
 }
 
 type tplImport struct {
@@ -216,14 +215,39 @@ type tplTable struct {
 	HasColFns                                 bool
 }
 
+type SqlTypeEnum int
+
+var (
+	SqlBoolType   SqlTypeEnum = 1
+	SqlIntType    SqlTypeEnum = 2
+	SqlBigIntType SqlTypeEnum = 3
+	SqlBlobType   SqlTypeEnum = 4
+)
+
 type tplColumn struct {
-	GoName, SqlName, GoType, SqlType string
-	IsProto                          bool
-	ColFn                            string
+	GoName, SqlName, GoType string
+	IsProto                 bool
+	ColFn                   string
+	SqlType                 SqlTypeEnum
 }
 
-func (t tplColumn) IsBlobIdxCol() bool {
-	return t.SqlType == db.GetAdapter().BlobType
+func (c tplColumn) SqlTypeString(a db.DBAdapter) string {
+	switch c.SqlType {
+	case SqlBoolType:
+		return a.BoolType()
+	case SqlIntType:
+		return a.IntType()
+	case SqlBigIntType:
+		return a.BigIntType()
+	case SqlBlobType:
+		return a.BlobType()
+	default:
+		panic("bad type")
+	}
+}
+
+func (c tplColumn) IsBlobIdxCol() bool {
+	return c.SqlType == SqlBlobType
 }
 
 type tplIndex struct {
@@ -278,10 +302,10 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_INT32:
 			col.GoType = "int32"
-			col.SqlType = db.GetAdapter().IntType
+			col.SqlType = SqlIntType
 		case descriptor.FieldDescriptorProto_TYPE_ENUM:
 			col.GoType = g.typeNameToGoName(*f.TypeName)
-			col.SqlType = db.GetAdapter().IntType
+			col.SqlType = SqlIntType
 		case descriptor.FieldDescriptorProto_TYPE_FIXED64:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
@@ -290,20 +314,20 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_INT64:
 			col.GoType = "int64"
-			col.SqlType = db.GetAdapter().BigIntType
+			col.SqlType = SqlBigIntType
 		case descriptor.FieldDescriptorProto_TYPE_BOOL:
 			col.GoType = "bool"
-			col.SqlType = db.GetAdapter().BoolType
+			col.SqlType = SqlBoolType
 		case descriptor.FieldDescriptorProto_TYPE_STRING:
 			col.GoType = "string"
-			col.SqlType = db.GetAdapter().BlobType
+			col.SqlType = SqlBlobType
 		case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 			col.GoType = g.typeNameToGoName(*f.TypeName)
-			col.SqlType = db.GetAdapter().BlobType
+			col.SqlType = SqlBlobType
 			col.IsProto = true
 		case descriptor.FieldDescriptorProto_TYPE_BYTES:
 			col.GoType = "[]byte"
-			col.SqlType = db.GetAdapter().BlobType
+			col.SqlType = SqlBlobType
 		default:
 			return fmt.Errorf("No type for %s", f.Type)
 		}

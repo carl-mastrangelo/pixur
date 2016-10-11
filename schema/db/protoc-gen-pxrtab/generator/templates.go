@@ -7,9 +7,8 @@ import (
 var (
 	noopFunc   = func(_ string) interface{} { return nil }
 	dummyFuncs = template.FuncMap{
-		"goesc":         noopFunc,
-		"sqlesc":        noopFunc,
-		"sqlblobidxesc": noopFunc}
+		"goesc":    noopFunc,
+		"gostresc": noopFunc}
 	tpl = template.Must(template.New("").Funcs(dummyFuncs).Parse(`
 {{template "package" .Name}}
 {{template "imports" .Imports}}
@@ -42,16 +41,86 @@ var (
 )
 `))
 	_ = template.Must(tpl.New("sql").Parse(`
-var SqlTables = []string{
-  {{range .Tables}}
-    {{template "sqltable" . }}
-  {{end}}
-  "CREATE TABLE {{sqlesc .SequenceTableName}} (" +
-  "  {{sqlesc .SequenceColName}}  {{.SequenceColSqlType}} NOT NULL);",
-}
-var SqlInitTables = []string{
-  "INSERT INTO {{sqlesc .SequenceTableName}} ({{sqlesc .SequenceColName}}) VALUES (1);",
-}
+	{{$seqTabName := .SequenceTableName}}
+	{{$seqColName := .SequenceColName}}
+	var SqlTables = map[string][]string {
+	{{$tabs := .Tables}}
+	{{range .Adapters}}
+	  {{$adapter := .}}
+		"{{.Name}}": {
+			{{range $tabs}}
+				{{/***********************************************************************/}}
+
+					{{$tableName := $adapter.Quote .Name}}
+					"CREATE TABLE {{gostresc $tableName}} (" +
+				{{range .Columns}}
+					{{$name := $adapter.Quote .SqlName}}
+					"{{gostresc $name}} {{.SqlTypeString $adapter}} NOT NULL, " +
+				{{end}}
+				{{range .Indexes}}
+					{{if eq .KeyType "UNIQUE"}}
+						"UNIQUE( {{- range $i, $_ := .Columns -}} 
+							{{if ne $i 0}},{{end -}}
+								{{- if .IsBlobIdxCol -}}
+									{{- $name := $adapter.BlobIdxQuote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- else -}}
+									{{- $name := $adapter.Quote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- end -}}
+							{{- end -}} ), " +
+					{{end}}
+				{{end}}
+				{{range .Indexes}}
+					{{if eq .KeyType "PRIMARY KEY"}}
+						"PRIMARY KEY( {{- range $i, $_ := .Columns -}} 
+							{{if ne $i 0}},{{end}}
+								{{- if .IsBlobIdxCol -}}
+									{{- $name := $adapter.BlobIdxQuote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- else -}}
+									{{- $name := $adapter.Quote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- end -}}
+							{{- end -}} )" +
+					{{end}}
+				{{end}}
+					");",
+				{{range .Indexes}}
+					{{if eq .KeyType "INDEX"}}
+						{{$indexName := $adapter.Quote .Name}}
+						"CREATE INDEX {{gostresc $indexName}} ON {{gostresc $tableName}} ( {{- range $i, $_ := .Columns -}} 
+							{{if ne $i 0}},{{end -}}
+								{{- if .IsBlobIdxCol -}}
+									{{- $name := $adapter.BlobIdxQuote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- else -}}
+									{{- $name := $adapter.Quote .SqlName -}}
+									{{- gostresc $name -}}
+								{{- end -}}
+							{{- end -}} );",
+					{{end}}
+				{{end}}
+				
+				{{/***********************************************************************/}}
+
+			{{end}}
+			{{$seqTabNameEsc := .Quote $seqTabName}}
+			{{$seqColNameEsc := .Quote $seqColName}}
+			"CREATE TABLE {{gostresc $seqTabNameEsc}} ({{gostresc $seqColNameEsc}} {{.BigIntType}} NOT NULL);",
+		},
+	{{end}}
+	}
+	
+	var SqlInitTables = map[string][]string {
+	{{range .Adapters}}
+		{{$seqTabNameEsc := .Quote $seqTabName}}
+		{{$seqColNameEsc := .Quote $seqColName}}
+		"{{.Name}}": {
+			"INSERT INTO {{gostresc $seqTabNameEsc}} ({{gostresc $seqColNameEsc}}) VALUES (1);",
+		},
+	{{end}}
+	}
 `))
 	_ = template.Must(tpl.New("tables").Parse(`
 {{range .}}
@@ -294,38 +363,5 @@ func (j *Job) Update{{.GoType}}(row *{{.GoType}}) error {
 
 	return db.Update(j.tx, {{goesc .Name}}, cols{{.Name}}, vals, key)
 }
-`))
-
-	_ = template.Must(tpl.New("sqltable").Parse(`
-  {{$tableName := .Name}}
-  "CREATE TABLE {{sqlesc .Name}} (" +
-{{range .Columns}}
-    "{{sqlesc .SqlName}} {{.SqlType}} NOT NULL, " +
-{{end}}
-{{range .Indexes}}
-  {{if eq .KeyType "UNIQUE"}}
-    "UNIQUE( {{- range $i, $_ := .Columns -}} 
-      {{if ne $i 0}},{{end -}}
-        {{- if .IsBlobIdxCol}}{{sqlblobidxesc .SqlName}}{{else}}{{sqlesc .SqlName}}{{end -}}
-      {{- end -}} ), " +
-  {{end}}
-{{end}}
-{{range .Indexes}}
-  {{if eq .KeyType "PRIMARY KEY"}}
-    "PRIMARY KEY( {{- range $i, $_ := .Columns -}} 
-      {{if ne $i 0}},{{end}}
-      {{- if .IsBlobIdxCol}}{{sqlblobidxesc .SqlName}}{{else}}{{sqlesc .SqlName}}{{end -}}
-      {{- end -}} )" +
-  {{end}}
-{{end}}
-  ");",
-{{range .Indexes}}
-  {{if eq .KeyType "INDEX"}}
-    "CREATE INDEX {{sqlesc .Name}} ON {{sqlesc $tableName}} ( {{- range $i, $_ := .Columns -}} 
-      {{if ne $i 0}},{{end -}}
-        {{- if .IsBlobIdxCol}}{{sqlblobidxesc .SqlName}}{{else}}{{sqlesc .SqlName}}{{end -}}
-      {{- end -}} );",
-  {{end}}
-{{end}}
 `))
 )

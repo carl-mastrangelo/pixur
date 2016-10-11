@@ -21,83 +21,168 @@ var (
 	_ = model.TableOptions{}
 )
 
-var SqlTables = []string{
+var SqlTables = map[string][]string{
 
-	"CREATE TABLE `Pics` (" +
+	"mysql": {
 
-		"`id` bigint(20) NOT NULL, " +
+		"CREATE TABLE `Pics` (" +
 
-		"`index_order` bigint(20) NOT NULL, " +
+			"`id` bigint(20) NOT NULL, " +
 
-		"`data` blob NOT NULL, " +
+			"`index_order` bigint(20) NOT NULL, " +
 
-		"PRIMARY KEY(`id`)" +
+			"`data` blob NOT NULL, " +
 
-		");",
+			"PRIMARY KEY(`id`)" +
 
-	"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
+			");",
 
-	"CREATE TABLE `Tags` (" +
+		"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
 
-		"`id` bigint(20) NOT NULL, " +
+		"CREATE TABLE `Tags` (" +
 
-		"`name` blob NOT NULL, " +
+			"`id` bigint(20) NOT NULL, " +
 
-		"`data` blob NOT NULL, " +
+			"`name` blob NOT NULL, " +
 
-		"UNIQUE(`name`(255)), " +
+			"`data` blob NOT NULL, " +
 
-		"PRIMARY KEY(`id`)" +
+			"UNIQUE(`name`(255)), " +
 
-		");",
+			"PRIMARY KEY(`id`)" +
 
-	"CREATE TABLE `PicTags` (" +
+			");",
 
-		"`pic_id` bigint(20) NOT NULL, " +
+		"CREATE TABLE `PicTags` (" +
 
-		"`tag_id` bigint(20) NOT NULL, " +
+			"`pic_id` bigint(20) NOT NULL, " +
 
-		"`data` blob NOT NULL, " +
+			"`tag_id` bigint(20) NOT NULL, " +
 
-		"PRIMARY KEY(`pic_id`,`tag_id`)" +
+			"`data` blob NOT NULL, " +
 
-		");",
+			"PRIMARY KEY(`pic_id`,`tag_id`)" +
 
-	"CREATE TABLE `PicIdents` (" +
+			");",
 
-		"`pic_id` bigint(20) NOT NULL, " +
+		"CREATE TABLE `PicIdents` (" +
 
-		"`type` int NOT NULL, " +
+			"`pic_id` bigint(20) NOT NULL, " +
 
-		"`value` blob NOT NULL, " +
+			"`type` int NOT NULL, " +
 
-		"`data` blob NOT NULL, " +
+			"`value` blob NOT NULL, " +
 
-		"PRIMARY KEY(`pic_id`,`type`,`value`(255))" +
+			"`data` blob NOT NULL, " +
 
-		");",
+			"PRIMARY KEY(`pic_id`,`type`,`value`(255))" +
 
-	"CREATE INDEX `PicIdentsIdent` ON `PicIdents` (`type`,`value`(255));",
+			");",
 
-	"CREATE TABLE `Users` (" +
+		"CREATE INDEX `PicIdentsIdent` ON `PicIdents` (`type`,`value`(255));",
 
-		"`id` bigint(20) NOT NULL, " +
+		"CREATE TABLE `Users` (" +
 
-		"`ident` blob NOT NULL, " +
+			"`id` bigint(20) NOT NULL, " +
 
-		"`data` blob NOT NULL, " +
+			"`ident` blob NOT NULL, " +
 
-		"UNIQUE(`ident`(255)), " +
+			"`data` blob NOT NULL, " +
 
-		"PRIMARY KEY(`id`)" +
+			"UNIQUE(`ident`(255)), " +
 
-		");",
+			"PRIMARY KEY(`id`)" +
 
-	"CREATE TABLE `_SequenceTable` (" +
-		"  `the_sequence`  bigint(20) NOT NULL);",
+			");",
+
+		"CREATE TABLE `_SequenceTable` (`the_sequence` bigint(20) NOT NULL);",
+	},
+
+	"postgresql": {
+
+		"CREATE TABLE \"Pics\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"index_order\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+
+		"CREATE TABLE \"Tags\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"name\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"name\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicTags\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"tag_id\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"tag_id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicIdents\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"type\" integer NOT NULL, " +
+
+			"\"value\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"type\",\"value\")" +
+
+			");",
+
+		"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\",\"value\");",
+
+		"CREATE TABLE \"Users\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"ident\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"ident\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
+	},
 }
-var SqlInitTables = []string{
-	"INSERT INTO `_SequenceTable` (`the_sequence`) VALUES (1);",
+
+var SqlInitTables = map[string][]string{
+
+	"mysql": {
+		"INSERT INTO `_SequenceTable` (`the_sequence`) VALUES (1);",
+	},
+
+	"postgresql": {
+		"INSERT INTO \"_SequenceTable\" (\"the_sequence\") VALUES (1);",
+	},
 }
 
 func NewJob(DB *sql.DB) (*Job, error) {

@@ -4,78 +4,48 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
 
-var (
-	mysqlAdapter = DbAdapter{
-		Quote: func(ident string) string {
-			if strings.ContainsAny(ident, "\"\x00`") {
-				panic(fmt.Sprintf("Invalid identifier %#v", ident))
-			}
-			return "`" + ident + "`"
-		},
-		QuoteCreateBlobIdxCol: func(ident string) string {
-			if strings.ContainsAny(ident, "\"\x00`") {
-				panic(fmt.Sprintf("Invalid identifier %#v", ident))
-			}
-			return "`" + ident + "`(255)"
-		},
-		LockStmt: func(buf *bytes.Buffer, lock Lock) {
-			switch lock {
-			case LockNone:
-			case LockRead:
-				buf.WriteString(" LOCK IN SHARE MODE")
-			case LockWrite:
-				buf.WriteString(" FOR UPDATE")
-			default:
-				panic(fmt.Errorf("Unknown lock %v", lock))
-			}
-		},
-		BoolType:   "bool",
-		IntType:    "int",
-		BigIntType: "bigint(20)",
-		BlobType:   "blob",
+var adapters = make(map[string]DBAdapter)
+
+func RegisterAdapter(a DBAdapter) {
+	name := a.Name()
+	if _, present := adapters[name]; present {
+		panic(name + "already present")
 	}
+	adapters[name] = a
+}
 
-	postgresqlAdapter = DbAdapter{
-		Quote: func(ident string) string {
-			if strings.ContainsAny(ident, "\"\x00") {
-				panic(fmt.Sprintf("Invalid identifier %#v", ident))
-			}
-			return `"` + ident + `"`
-		},
-		QuoteCreateBlobIdxCol: func(ident string) string {
-			if strings.ContainsAny(ident, "\"\x00") {
-				panic(fmt.Sprintf("Invalid identifier %#v", ident))
-			}
-			return `"` + ident + `"`
-		},
-		LockStmt: func(buf *bytes.Buffer, lock Lock) {
-			switch lock {
-			case LockNone:
-			case LockRead:
-				buf.WriteString(" FOR SHARE")
-			case LockWrite:
-				buf.WriteString(" FOR UPDATE")
-			default:
-				panic(fmt.Errorf("Unknown lock %v", lock))
-			}
-		},
-		BoolType:   "bool",
-		IntType:    "integer",
-		BigIntType: "bigint",
-		BlobType:   "bytea",
+var currentAdapter DBAdapter
+
+func SetCurrentAdapter(name string) {
+	currentAdapter = adapters[name]
+}
+
+func GetAllAdapters() []DBAdapter {
+	var all []DBAdapter
+	var names []string
+	for name, _ := range adapters {
+		names = append(names, name)
 	}
-)
+	sort.Strings(names)
+	for _, name := range names {
+		all = append(all, adapters[name])
+	}
+	return all
+}
 
-// default
-var dbAdapter DbAdapter = mysqlAdapter
-
-type DbAdapter struct {
-	Quote, QuoteCreateBlobIdxCol            func(string) string
-	LockStmt                                func(*bytes.Buffer, Lock)
-	BoolType, IntType, BigIntType, BlobType string
+type DBAdapter interface {
+	Name() string
+	Quote(string) string
+	BlobIdxQuote(string) string
+	LockStmt(*bytes.Buffer, Lock)
+	BoolType() string
+	IntType() string
+	BigIntType() string
+	BlobType() string
 }
 
 type Lock int
@@ -262,7 +232,7 @@ func (s *scanStmt) appendOrder(cols []string) {
 }
 
 func (s *scanStmt) appendLock() {
-	dbAdapter.LockStmt(s.buf, s.opts.Lock)
+	currentAdapter.LockStmt(s.buf, s.opts.Lock)
 }
 
 type Columns []string
@@ -412,14 +382,5 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 
 // quoteIdentifier quotes the ANSI way.  Panics on invalid identifiers.
 func quoteIdentifier(ident string) string {
-	return dbAdapter.Quote(ident)
-}
-
-// Don't use this.  Seriously.
-func GetAdapter() DbAdapter {
-	return dbAdapter
-}
-
-func setPostgreSQLForTest() {
-	dbAdapter = postgresqlAdapter
+	return currentAdapter.Quote(ident)
 }

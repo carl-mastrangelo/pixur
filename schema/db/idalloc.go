@@ -48,8 +48,8 @@ func (alloc *IDAlloc) refill(exec QuerierExecutorBeginner, grab int64) (errCap e
 
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "SELECT %s FROM %s",
-		dbAdapter.Quote(SequenceColName), dbAdapter.Quote(SequenceTableName))
-	dbAdapter.LockStmt(&buf, LockWrite)
+		quoteIdentifier(SequenceColName), quoteIdentifier(SequenceTableName))
+	currentAdapter.LockStmt(&buf, LockWrite)
 	buf.WriteRune(';')
 
 	var num int64
@@ -75,7 +75,7 @@ func (alloc *IDAlloc) refill(exec QuerierExecutorBeginner, grab int64) (errCap e
 	}
 
 	updateStmt := fmt.Sprintf("UPDATE %s SET %s = ?;",
-		dbAdapter.Quote(SequenceTableName), dbAdapter.Quote(SequenceColName))
+		quoteIdentifier(SequenceTableName), quoteIdentifier(SequenceColName))
 
 	if _, err := tx.Exec(updateStmt, num+defaultAllocatorGrab); err != nil {
 		return err

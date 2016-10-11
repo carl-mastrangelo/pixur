@@ -26,6 +26,8 @@ import (
 	ptest "pixur.org/pixur/testing"
 )
 
+var sqlAdapterName = "mysql"
+
 type TestContainer struct {
 	T       testing.TB
 	db      *sql.DB
@@ -44,12 +46,12 @@ func (c *TestContainer) DB() *sql.DB {
 		if err != nil {
 			c.T.Fatal(err)
 		}
-		for _, t := range tab.SqlTables {
+		for _, t := range tab.SqlTables[sqlAdapterName] {
 			if _, err := db.Exec(t); err != nil {
 				c.T.Fatal(err)
 			}
 		}
-		for _, t := range tab.SqlInitTables {
+		for _, t := range tab.SqlInitTables[sqlAdapterName] {
 			if _, err := db.Exec(t); err != nil {
 				c.T.Fatal(err)
 			}
@@ -491,5 +493,7 @@ func runTests(m *testing.M) int {
 }
 
 func TestMain(m *testing.M) {
+	// TODO: make this configurable.
+	db.SetCurrentAdapter(sqlAdapterName)
 	os.Exit(runTests(m))
 }
