@@ -199,7 +199,7 @@ func NewJob(DB *sql.DB) (*Job, error) {
 }
 
 type Job struct {
-	db db.QuerierExecutorBeginner
+	db db.Beginner
 	tx db.QuerierExecutorCommitter
 }
 

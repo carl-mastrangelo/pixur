@@ -17,7 +17,7 @@ type QuerierExecutorCommitter interface {
 	Executor
 }
 
-type QuerierExecutorBeginner interface {
+type Beginner interface {
 	Begin() (QuerierExecutorCommitter, error)
 }
 
@@ -34,7 +34,7 @@ const (
 
 var defaultAllocatorGrab = int64(1)
 
-func (alloc *IDAlloc) refill(exec QuerierExecutorBeginner, grab int64) (errCap error) {
+func (alloc *IDAlloc) refill(exec Beginner, grab int64) (errCap error) {
 	tx, err := exec.Begin()
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (alloc *IDAlloc) refill(exec QuerierExecutorBeginner, grab int64) (errCap e
 	return nil
 }
 
-func AllocID(exec QuerierExecutorBeginner, alloc *IDAlloc) (int64, error) {
+func AllocID(exec Beginner, alloc *IDAlloc) (int64, error) {
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	if alloc.available == 0 {
