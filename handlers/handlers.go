@@ -4,7 +4,6 @@ package handlers
 import (
 	"compress/gzip"
 	"crypto/rsa"
-	"database/sql"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 )
 
@@ -23,7 +23,7 @@ var (
 )
 
 type ServerConfig struct {
-	DB          *sql.DB
+	DB          db.DB
 	PixPath     string
 	TokenSecret []byte
 	PrivateKey  *rsa.PrivateKey

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"golang.org/x/net/webdav"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 )
 
 type PixFS struct {
@@ -18,7 +18,7 @@ type PixFS struct {
 	webdav.FileSystem
 
 	// deps
-	DB *sql.DB
+	DB db.DB
 }
 
 func (fs *PixFS) Mkdir(name string, perm os.FileMode) error {

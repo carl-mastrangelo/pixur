@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"sort"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 
 type AuthUserTask struct {
 	// Deps
-	DB  *sql.DB
+	DB  db.DB
 	Now func() time.Time
 	// TODO: GC tokens after a handler provided timeout
 

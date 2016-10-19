@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -20,7 +20,7 @@ type SoftDeletePicHandler struct {
 	http.Handler
 
 	// deps
-	DB     *sql.DB
+	DB     db.DB
 	Runner *tasks.TaskRunner
 	Now    func() time.Time
 }

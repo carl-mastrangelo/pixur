@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -17,7 +18,7 @@ type GetRefreshTokenHandler struct {
 	http.Handler
 
 	// deps
-	DB     *sql.DB
+	DB     db.DB
 	Now    func() time.Time
 	Runner *tasks.TaskRunner
 }

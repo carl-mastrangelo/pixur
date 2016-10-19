@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"pixur.org/pixur/schema"
@@ -15,7 +14,7 @@ var _ Task = &SoftDeletePicTask{}
 
 type SoftDeletePicTask struct {
 	// deps
-	DB *sql.DB
+	DB db.DB
 
 	// input
 	PicID int64

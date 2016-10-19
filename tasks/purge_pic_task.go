@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"os"
 	"time"
@@ -18,7 +17,7 @@ var _ Task = &PurgePicTask{}
 type PurgePicTask struct {
 	// deps
 	PixPath string
-	DB      *sql.DB
+	DB      db.DB
 
 	// input
 	PicID int64

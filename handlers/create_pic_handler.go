@@ -3,11 +3,11 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"mime/multipart"
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -17,7 +17,7 @@ type CreatePicHandler struct {
 	http.Handler
 
 	// deps
-	DB      *sql.DB
+	DB      db.DB
 	PixPath string
 	Now     func() time.Time
 }

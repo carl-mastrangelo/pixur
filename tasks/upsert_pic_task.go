@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"database/sql"
 	"image"
 	"io"
 	"mime/multipart"
@@ -27,7 +26,7 @@ import (
 type UpsertPicTask struct {
 	// Deps
 	PixPath    string
-	DB         *sql.DB
+	DB         db.DB
 	HTTPClient *http.Client
 	// os functions
 	TempFile func(dir, prefix string) (*os.File, error)

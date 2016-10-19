@@ -4,7 +4,6 @@ package server
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -14,12 +13,11 @@ import (
 	"pixur.org/pixur/handlers"
 	sdb "pixur.org/pixur/schema/db"
 
-	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Server struct {
-	db          *sql.DB
+	db          sdb.DB
 	s           *http.Server
 	pixPath     string
 	tokenSecret []byte
@@ -28,19 +26,12 @@ type Server struct {
 }
 
 func (s *Server) setup(c *Config) error {
-	// setup the database
-	db, err := sql.Open(c.DbName, c.DbConfig)
+	db, err := sdb.Open(c.DbName, c.DbConfig)
 	if err != nil {
-		return err
-	}
-	// TODO: shutdown db on this error?
-	if err := db.Ping(); err != nil {
 		return err
 	}
 	sdb.SetCurrentAdapter(c.DbName)
 	s.db = db
-	// TODO: make this configurable
-	db.SetMaxOpenConns(20)
 
 	// setup storage
 	fi, err := os.Stat(c.PixPath)

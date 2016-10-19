@@ -30,7 +30,7 @@ var sqlAdapterName = "mysql"
 
 type TestContainer struct {
 	T       testing.TB
-	db      *sql.DB
+	db      db.DB
 	tempdir string
 }
 
@@ -40,7 +40,7 @@ func Container(t testing.TB) *TestContainer {
 	}
 }
 
-func (c *TestContainer) DB() *sql.DB {
+func (c *TestContainer) DB() db.DB {
 	if c.db == nil {
 		db, err := ptest.GetDB()
 		if err != nil {
@@ -56,9 +56,50 @@ func (c *TestContainer) DB() *sql.DB {
 				c.T.Fatal(err)
 			}
 		}
-		c.db = db
+		c.db = dbWrapper{db}
 	}
 	return c.db
+}
+
+// TODO: remove this wrapper
+
+type dbWrapper struct {
+	db *sql.DB
+}
+
+func (w dbWrapper) Name() string {
+	return sqlAdapterName
+}
+
+func (w dbWrapper) Close() error {
+	return w.db.Close()
+}
+
+func (w dbWrapper) Begin() (db.QuerierExecutorCommitter, error) {
+	tx, err := w.db.Begin()
+	return txWrapper{tx}, err
+}
+
+type txWrapper struct {
+	tx *sql.Tx
+}
+
+func (w txWrapper) Exec(query string, args ...interface{}) (db.Result, error) {
+	res, err := w.tx.Exec(query, args...)
+	return db.Result(res), err
+}
+
+func (w txWrapper) Query(query string, args ...interface{}) (db.Rows, error) {
+	rows, err := w.tx.Query(query, args...)
+	return db.Rows(rows), err
+}
+
+func (w txWrapper) Commit() error {
+	return w.tx.Commit()
+}
+
+func (w txWrapper) Rollback() error {
+	return w.tx.Rollback()
 }
 
 func (c *TestContainer) Close() {

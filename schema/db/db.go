@@ -8,6 +8,35 @@ import (
 	"strings"
 )
 
+type Commiter interface {
+	Commit() error
+	Rollback() error
+}
+
+type QuerierExecutorCommitter interface {
+	Querier
+	Commiter
+	Executor
+}
+
+type Beginner interface {
+	Begin() (QuerierExecutorCommitter, error)
+}
+
+type DB interface {
+	Beginner
+	Name() string
+	Close() error
+}
+
+func Open(adapterName, dataSourceName string) (DB, error) {
+	adapter, present := adapters[adapterName]
+	if !present {
+		return nil, errors.New("no adapter " + adapterName)
+	}
+	return adapter.Open(dataSourceName)
+}
+
 var adapters = make(map[string]DBAdapter)
 
 func RegisterAdapter(a DBAdapter) {
@@ -46,6 +75,8 @@ type DBAdapter interface {
 	IntType() string
 	BigIntType() string
 	BlobType() string
+
+	Open(dataSourceName string) (DB, error)
 }
 
 type Lock int

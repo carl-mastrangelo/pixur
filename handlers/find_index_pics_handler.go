@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -15,7 +15,7 @@ type FindIndexPicsHandler struct {
 	// embeds
 	http.Handler
 
-	DB     *sql.DB
+	DB     db.DB
 	Now    func() time.Time
 	Runner tasks.TaskRunner
 }

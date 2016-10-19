@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
@@ -14,7 +13,7 @@ import (
 
 type LookupPicTask struct {
 	// Deps
-	DB *sql.DB
+	DB db.DB
 
 	// Inputs
 	PicID int64

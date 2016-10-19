@@ -103,9 +103,6 @@ func (g *Generator) run(req *plugin.CodeGeneratorRequest) *plugin.CodeGeneratorR
 
 func (g *Generator) addDefaultImports() {
 	g.args.Imports = append(g.args.Imports, tplImport{
-		FullName: "database/sql",
-	})
-	g.args.Imports = append(g.args.Imports, tplImport{
 		FullName: "github.com/golang/protobuf/proto",
 	})
 	g.args.Imports = append(g.args.Imports, tplImport{

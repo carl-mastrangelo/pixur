@@ -6,21 +6,6 @@ import (
 	"sync"
 )
 
-type Commiter interface {
-	Commit() error
-	Rollback() error
-}
-
-type QuerierExecutorCommitter interface {
-	Querier
-	Commiter
-	Executor
-}
-
-type Beginner interface {
-	Begin() (QuerierExecutorCommitter, error)
-}
-
 type IDAlloc struct {
 	available int64
 	next      int64

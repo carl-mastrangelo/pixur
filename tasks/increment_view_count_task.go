@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"pixur.org/pixur/schema/db"
@@ -12,7 +11,7 @@ import (
 
 type IncrementViewCountTask struct {
 	// Deps
-	DB  *sql.DB
+	DB  db.DB
 	Now func() time.Time
 
 	// Inputs

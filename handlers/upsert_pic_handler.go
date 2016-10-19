@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"database/sql"
 	"encoding/hex"
 	"io/ioutil"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -22,7 +22,7 @@ type UpsertPicHandler struct {
 	http.Handler
 
 	// deps
-	DB      *sql.DB
+	DB      db.DB
 	PixPath string
 	Now     func() time.Time
 }

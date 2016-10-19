@@ -2,13 +2,31 @@ package db
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var _ DBAdapter = &mysqlAdapter{}
 
 type mysqlAdapter struct{}
+
+func (a *mysqlAdapter) Open(dataSourceName string) (DB, error) {
+	db, err := sql.Open(a.Name(), dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		// TODO: log this
+		db.Close()
+		return nil, err
+	}
+	// TODO: make this configurable
+	db.SetMaxOpenConns(20)
+	return dbWrapper{db: db, name: a.Name()}, nil
+}
 
 func (_ *mysqlAdapter) Name() string {
 	return "mysql"

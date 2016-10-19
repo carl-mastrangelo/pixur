@@ -4,8 +4,6 @@ import (
 	"log"
 	"runtime"
 
-	"database/sql"
-
 	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/schema/db"
@@ -185,22 +183,22 @@ var SqlInitTables = map[string][]string{
 	},
 }
 
-func NewJob(DB *sql.DB) (*Job, error) {
+func NewJob(DB db.DB) (*Job, error) {
 	tx, err := DB.Begin()
 	if err != nil {
 		return nil, err
 	}
 	j := &Job{
-		db: dbWrapper{DB},
-		tx: txWrapper{tx},
+		beg: DB,
+		tx:  tx,
 	}
 	runtime.SetFinalizer(j, jobCloser)
 	return j, nil
 }
 
 type Job struct {
-	db db.Beginner
-	tx db.QuerierExecutorCommitter
+	beg db.Beginner
+	tx  db.QuerierExecutorCommitter
 }
 
 func (j *Job) Commit() error {
@@ -220,41 +218,10 @@ var jobCloser = func(j *Job) {
 	}
 }
 
-type dbWrapper struct {
-	db *sql.DB
-}
-
-func (w dbWrapper) Begin() (db.QuerierExecutorCommitter, error) {
-	tx, err := w.db.Begin()
-	return txWrapper{tx}, err
-}
-
-type txWrapper struct {
-	tx *sql.Tx
-}
-
-func (w txWrapper) Exec(query string, args ...interface{}) (db.Result, error) {
-	res, err := w.tx.Exec(query, args...)
-	return db.Result(res), err
-}
-
-func (w txWrapper) Query(query string, args ...interface{}) (db.Rows, error) {
-	rows, err := w.tx.Query(query, args...)
-	return db.Rows(rows), err
-}
-
-func (w txWrapper) Commit() error {
-	return w.tx.Commit()
-}
-
-func (w txWrapper) Rollback() error {
-	return w.tx.Rollback()
-}
-
 var alloc db.IDAlloc
 
 func (j *Job) AllocID() (int64, error) {
-	return db.AllocID(j.db, &alloc)
+	return db.AllocID(j.beg, &alloc)
 }
 
 type PicsPrimary struct {

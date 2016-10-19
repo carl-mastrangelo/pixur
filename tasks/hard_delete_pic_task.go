@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"time"
 
@@ -16,7 +15,7 @@ var _ Task = &HardDeletePicTask{}
 
 type HardDeletePicTask struct {
 	// deps
-	DB      *sql.DB
+	DB      db.DB
 	PixPath string
 
 	// input

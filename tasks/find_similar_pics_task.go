@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"encoding/binary"
 
 	"pixur.org/pixur/schema"
@@ -15,7 +14,7 @@ import (
 
 type FindSimilarPicsTask struct {
 	// Deps
-	DB *sql.DB
+	DB db.DB
 
 	// Inputs
 	PicID int64

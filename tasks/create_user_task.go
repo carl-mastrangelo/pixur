@@ -2,19 +2,19 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
 )
 
 type CreateUserTask struct {
 	// Deps
-	DB  *sql.DB
+	DB  db.DB
 	Now func() time.Time
 
 	// Inputs

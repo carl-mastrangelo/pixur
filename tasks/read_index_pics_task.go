@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"database/sql"
 	"math"
 
 	"pixur.org/pixur/schema"
@@ -19,7 +18,7 @@ const (
 
 type ReadIndexPicsTask struct {
 	// Deps
-	DB *sql.DB
+	DB db.DB
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.

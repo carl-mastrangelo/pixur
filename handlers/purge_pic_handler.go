@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -17,7 +17,7 @@ type PurgePicHandler struct {
 
 	// deps
 	PixPath string
-	DB      *sql.DB
+	DB      db.DB
 	Now     func() time.Time
 }
 

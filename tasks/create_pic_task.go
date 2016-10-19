@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"database/sql"
 	"image"
 	"io"
 	"io/ioutil"
@@ -36,7 +35,7 @@ type readAtSeeker interface {
 type CreatePicTask struct {
 	// Deps
 	PixPath string
-	DB      *sql.DB
+	DB      db.DB
 
 	// Inputs
 	Filename string

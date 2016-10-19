@@ -10,6 +10,10 @@ var _ DBAdapter = &postgresqlAdapter{}
 
 type postgresqlAdapter struct{}
 
+func (_ *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
+	panic("not implemented")
+}
+
 func (_ *postgresqlAdapter) Name() string {
 	return "postgresql"
 }
