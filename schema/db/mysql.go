@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -13,14 +15,19 @@ var _ DBAdapter = &mysqlAdapter{}
 
 type mysqlAdapter struct{}
 
-func (a *mysqlAdapter) Open(dataSourceName string) (DB, error) {
+func (a *mysqlAdapter) Open(dataSourceName string) (_ DB, errcap error) {
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if errcap != nil {
+			if err := db.Close(); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
 	if err := db.Ping(); err != nil {
-		// TODO: log this
-		db.Close()
 		return nil, err
 	}
 	// TODO: make this configurable
@@ -31,6 +38,81 @@ func (a *mysqlAdapter) Open(dataSourceName string) (DB, error) {
 func (_ *mysqlAdapter) Name() string {
 	return "mysql"
 }
+
+func (a *mysqlAdapter) OpenForTest() (_ DB, errcap error) {
+	mysqlTestServLock.Lock()
+	defer mysqlTestServLock.Unlock()
+	if mysqlTestServ == nil {
+		mysqlTestServ = new(mysqlTestServer)
+		if err := mysqlTestServ.setupEnv(); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if errcap != nil {
+				mysqlTestServ.tearDownEnv()
+			}
+		}()
+		if err := mysqlTestServ.start(); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if errcap != nil {
+				mysqlTestServ.stop()
+			}
+		}()
+	}
+
+	rawdb, err := sql.Open(a.Name(), "unix("+mysqlTestServ.socket+")/")
+	if err != nil {
+		return nil, err
+	}
+
+	mysqlTestServ.total++
+	dbName := fmt.Sprintf("testdb%d", mysqlTestServ.total)
+	if _, err := rawdb.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", dbName)); err != nil {
+		return nil, err
+	}
+
+	// Close our connection, so we can reopen with the correct db name.  Other threads
+	// will not use the correct database by default.
+	if err := rawdb.Close(); err != nil {
+		return nil, err
+	}
+
+	db, err := a.Open("unix(" + mysqlTestServ.socket + ")/" + dbName)
+	if err != nil {
+		return nil, err
+	}
+	mysqlTestServ.active++
+	return &mysqlTestDB{DB: db}, nil
+}
+
+type mysqlTestDB struct {
+	DB
+	closed bool
+}
+
+func (a *mysqlTestDB) Close() error {
+	err := a.DB.Close()
+	if !a.closed {
+		a.closed = true
+		mysqlTestServLock.Lock()
+		defer mysqlTestServLock.Unlock()
+		mysqlTestServ.active--
+		if mysqlTestServ.active == 0 {
+			mysqlTestServ.stop()
+			mysqlTestServ.tearDownEnv()
+			mysqlTestServ = nil
+		}
+	}
+
+	return err
+}
+
+var (
+	mysqlTestServ     *mysqlTestServer
+	mysqlTestServLock = new(sync.Mutex)
+)
 
 func (_ *mysqlAdapter) Quote(ident string) string {
 	if strings.ContainsAny(ident, "\"\x00`") {

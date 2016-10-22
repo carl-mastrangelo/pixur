@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/binary"
 	"fmt"
 	"image"
@@ -23,7 +22,6 @@ import (
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
-	ptest "pixur.org/pixur/testing"
 )
 
 var sqlAdapterName = "mysql"
@@ -40,66 +38,24 @@ func Container(t testing.TB) *TestContainer {
 	}
 }
 
+var allDbs []db.DB
+
 func (c *TestContainer) DB() db.DB {
 	if c.db == nil {
-		db, err := ptest.GetDB()
+		db, err := db.OpenForTest(sqlAdapterName)
 		if err != nil {
 			c.T.Fatal(err)
 		}
-		for _, t := range tab.SqlTables[sqlAdapterName] {
-			if _, err := db.Exec(t); err != nil {
-				c.T.Fatal(err)
-			}
+		allDbs = append(allDbs, db)
+		var stmts []string
+		stmts = append(stmts, tab.SqlTables[sqlAdapterName]...)
+		stmts = append(stmts, tab.SqlInitTables[sqlAdapterName]...)
+		if err := db.InitSchema(stmts); err != nil {
+			c.T.Fatal(err)
 		}
-		for _, t := range tab.SqlInitTables[sqlAdapterName] {
-			if _, err := db.Exec(t); err != nil {
-				c.T.Fatal(err)
-			}
-		}
-		c.db = dbWrapper{db}
+		c.db = db
 	}
 	return c.db
-}
-
-// TODO: remove this wrapper
-
-type dbWrapper struct {
-	db *sql.DB
-}
-
-func (w dbWrapper) Name() string {
-	return sqlAdapterName
-}
-
-func (w dbWrapper) Close() error {
-	return w.db.Close()
-}
-
-func (w dbWrapper) Begin() (db.QuerierExecutorCommitter, error) {
-	tx, err := w.db.Begin()
-	return txWrapper{tx}, err
-}
-
-type txWrapper struct {
-	tx *sql.Tx
-}
-
-func (w txWrapper) Exec(query string, args ...interface{}) (db.Result, error) {
-	res, err := w.tx.Exec(query, args...)
-	return db.Result(res), err
-}
-
-func (w txWrapper) Query(query string, args ...interface{}) (db.Rows, error) {
-	rows, err := w.tx.Query(query, args...)
-	return db.Rows(rows), err
-}
-
-func (w txWrapper) Commit() error {
-	return w.tx.Commit()
-}
-
-func (w txWrapper) Rollback() error {
-	return w.tx.Rollback()
 }
 
 func (c *TestContainer) Close() {
@@ -528,7 +484,18 @@ func (c *TestContainer) ID() int64 {
 }
 
 func runTests(m *testing.M) int {
-	defer ptest.CleanUp()
+	defer func() {
+		for _, db := range allDbs {
+			db.Close()
+		}
+	}()
+
+	// Open a dummy db to keep the server alive during tests
+	db, err := db.OpenForTest(sqlAdapterName)
+	if err != nil {
+		panic(err)
+	}
+	allDbs = append(allDbs, db)
 
 	return m.Run()
 }

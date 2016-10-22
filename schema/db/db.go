@@ -27,6 +27,7 @@ type DB interface {
 	Beginner
 	Name() string
 	Close() error
+	InitSchema([]string) error
 }
 
 func Open(adapterName, dataSourceName string) (DB, error) {
@@ -35,6 +36,14 @@ func Open(adapterName, dataSourceName string) (DB, error) {
 		return nil, errors.New("no adapter " + adapterName)
 	}
 	return adapter.Open(dataSourceName)
+}
+
+func OpenForTest(adapterName string) (DB, error) {
+	adapter, present := adapters[adapterName]
+	if !present {
+		return nil, errors.New("no adapter " + adapterName)
+	}
+	return adapter.OpenForTest()
 }
 
 var adapters = make(map[string]DBAdapter)
@@ -77,6 +86,7 @@ type DBAdapter interface {
 	BlobType() string
 
 	Open(dataSourceName string) (DB, error)
+	OpenForTest() (DB, error)
 }
 
 type Lock int

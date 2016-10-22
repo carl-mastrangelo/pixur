@@ -14,6 +14,10 @@ func (_ *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
 	panic("not implemented")
 }
 
+func (_ *postgresqlAdapter) OpenForTest() (DB, error) {
+	panic("not implemented")
+}
+
 func (_ *postgresqlAdapter) Name() string {
 	return "postgresql"
 }

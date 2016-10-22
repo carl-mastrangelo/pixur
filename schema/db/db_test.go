@@ -870,6 +870,6 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	setPostgreSQLForTest()
+	SetCurrentAdapter("postgresql")
 	os.Exit(m.Run())
 }

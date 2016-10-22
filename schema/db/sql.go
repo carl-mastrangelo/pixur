@@ -22,6 +22,17 @@ func (w dbWrapper) Close() error {
 	return w.db.Close()
 }
 
+func (w dbWrapper) InitSchema(tables []string) error {
+	// also includes initial data
+	for _, table := range tables {
+		if _, err := w.db.Exec(table); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type txWrapper struct {
 	tx *sql.Tx
 }
