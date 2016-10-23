@@ -42,9 +42,13 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	task := &UpsertPicTask{
 		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), -1),
+		Ctx: CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	sts := task.Run()
@@ -52,9 +56,63 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 	compareStatus(t, sts, expected)
 }
 
+func TestUpsertPicTask_CantFindUser(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      time.Now,
+		File:     f,
+		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), -1),
+	}
+
+	sts := task.Run()
+	expected := status.Unauthenticated(nil, "can't lookup user")
+	compareStatus(t, sts, expected)
+}
+
+func TestUpsertPicTask_MissingCap(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+
+	p := c.CreatePic()
+	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      time.Now,
+		File:     f,
+		TagNames: []string{"tag"},
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
+	}
+
+	sts := task.Run()
+	expected := status.PermissionDenied(nil, "missing permission")
+	compareStatus(t, sts, expected)
+}
+
 func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
 
 	p := c.CreatePic()
 	f, err := os.Open(p.Pic.Path(c.TempDir()))
@@ -71,7 +129,7 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
@@ -95,6 +153,10 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	p := c.CreatePic()
 	f, err := os.Open(p.Pic.Path(c.TempDir()))
 	if err != nil {
@@ -116,7 +178,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	sts := task.Run()
@@ -132,6 +194,10 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
 
 	p := c.CreatePic()
 	// pretend its deleted.
@@ -166,7 +232,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
@@ -196,6 +262,10 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	p := c.CreatePic()
 	f, err := os.Open(p.Pic.Path(c.TempDir()))
 	if err != nil {
@@ -223,7 +293,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	sts := task.Run()
@@ -240,6 +310,10 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	task := &UpsertPicTask{
 		DB:       c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
@@ -251,7 +325,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		// empty
 		File:     c.TempFile(),
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	sts := task.Run()
@@ -262,6 +336,10 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 func TestUpsertPicTask_Duplicate(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
 
 	p := c.CreatePic()
 	f, err := os.Open(p.Pic.Path(c.TempDir()))
@@ -280,7 +358,7 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
@@ -303,6 +381,10 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
 
 	p := c.CreatePic()
 	f, err := os.Open(p.Pic.Path(c.TempDir()))
@@ -327,7 +409,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	sts := task.Run()
@@ -343,6 +425,10 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
 
 	p := c.CreatePic()
 	// pretend its deleted.
@@ -374,7 +460,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
@@ -404,6 +490,10 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	f := c.TempFile()
 	defer f.Close()
 	img := image.NewGray(image.Rect(0, 0, 8, 10))
@@ -424,7 +514,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
@@ -478,7 +568,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, fh, fu, tagNames)
+	err = mergePic(j, p.Pic, now, fh, fu, tagNames, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -510,7 +600,7 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil)
+	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +626,7 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil)
+	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -565,7 +655,7 @@ func TestUpsertTags(t *testing.T) {
 
 	now := time.Now()
 	tagNames := []string{attachedTag.Tag.Name, unattachedTag.Tag.Name, "missing"}
-	err := upsertTags(j, tagNames, pic.Pic.PicId, now)
+	err := upsertTags(j, tagNames, pic.Pic.PicId, now, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -590,7 +680,7 @@ func TestCreatePicTags(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	picTags, err := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
+	picTags, err := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,6 +689,7 @@ func TestCreatePicTags(t *testing.T) {
 		PicId:      pic.Pic.PicId,
 		TagId:      tag.Tag.TagId,
 		Name:       tag.Tag.Name,
+		UserId:     -1,
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 	}
@@ -619,7 +710,7 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now)
+	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, AnonymousUserID)
 	expected := status.InternalError(nil, "can't create pic tag")
 	compareStatus(t, sts, expected)
 }

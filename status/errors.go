@@ -248,3 +248,21 @@ func Unauthenticatedf(e error, format string, v ...interface{}) S {
 		stack: getStack(),
 	}
 }
+
+func PermissionDenied(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_PERMISSION_DENIED,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func PermissionDeniedf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_PERMISSION_DENIED,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}

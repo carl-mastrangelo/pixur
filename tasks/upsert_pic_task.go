@@ -56,18 +56,13 @@ type FileHeader struct {
 }
 
 func (t *UpsertPicTask) Run() (stsCap status.S) {
-	userID, ok := UserIDFromCtx(t.Ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "no user provided")
-	}
-	_ = userID // TODO: use this
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &stsCap)
 
-	if sts := t.runInternal(j); sts != nil {
+	if sts := t.runInternal(t.Ctx, j); sts != nil {
 		return sts
 	}
 
@@ -81,7 +76,27 @@ func (t *UpsertPicTask) Run() (stsCap status.S) {
 	return nil
 }
 
-func (t *UpsertPicTask) runInternal(j *tab.Job) status.S {
+func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
+	var u *schema.User
+	if userID, ok := UserIDFromCtx(ctx); ok {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&userID},
+			Lock:   db.LockNone,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't lookup user")
+		}
+		if len(users) != 1 {
+			return status.Unauthenticated(nil, "can't lookup user")
+		}
+		u = users[0]
+	} else {
+		u = AnonymousUser
+	}
+	if !userHasPerm(u, schema.User_PIC_CREATE) {
+		return status.PermissionDenied(nil, "missing permission")
+	}
+
 	if t.File == nil && t.FileURL == "" {
 		return status.InvalidArgument(nil, "No pic specified")
 	}
@@ -99,7 +114,7 @@ func (t *UpsertPicTask) runInternal(j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, t.Header, t.FileURL, t.TagNames)
+				return mergePic(j, p, now, t.Header, t.FileURL, t.TagNames, u.UserId)
 			}
 		}
 	}
@@ -139,7 +154,7 @@ func (t *UpsertPicTask) runInternal(j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, *fh, t.FileURL, t.TagNames)
+			return mergePic(j, p, now, *fh, t.FileURL, t.TagNames, u.UserId)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -178,7 +193,7 @@ func (t *UpsertPicTask) runInternal(j *tab.Job) status.S {
 		return status.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := mergePic(j, p, now, *fh, t.FileURL, t.TagNames); err != nil {
+	if err := mergePic(j, p, now, *fh, t.FileURL, t.TagNames, u.UserId); err != nil {
 		return err
 	}
 
@@ -205,7 +220,7 @@ func (t *UpsertPicTask) runInternal(j *tab.Job) status.S {
 }
 
 func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL string,
-	tagNames []string) status.S {
+	tagNames []string, userID int64) status.S {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
 		if ds.Temporary {
@@ -214,7 +229,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL s
 		}
 	}
 
-	if err := upsertTags(j, tagNames, p.PicId, now); err != nil {
+	if err := upsertTags(j, tagNames, p.PicId, now, userID); err != nil {
 		return err
 	}
 
@@ -240,7 +255,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL s
 	return nil
 }
 
-func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time) status.S {
+func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time, userID int64) status.S {
 	newTagNames, err := cleanTagNames(rawTags)
 	if err != nil {
 		return err
@@ -266,7 +281,7 @@ func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time) status
 	}
 
 	existingTags = append(existingTags, newTags...)
-	if _, err := createPicTags(j, existingTags, picID, now); err != nil {
+	if _, err := createPicTags(j, existingTags, picID, now, userID); err != nil {
 		return err
 	}
 
@@ -373,7 +388,7 @@ func createNewTags(j *tab.Job, tagNames []string, now time.Time) ([]*schema.Tag,
 	return tags, nil
 }
 
-func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time) (
+func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, userID int64) (
 	[]*schema.PicTag, status.S) {
 	var picTags []*schema.PicTag
 	for _, tag := range tags {
@@ -381,6 +396,7 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time) (
 			PicId:      picID,
 			TagId:      tag.TagId,
 			Name:       tag.Name,
+			UserId:     userID,
 			ModifiedTs: schema.ToTs(now),
 			CreatedTs:  schema.ToTs(now),
 		}

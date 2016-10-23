@@ -115,6 +115,9 @@ message PicTag {
   int64 pic_id = 1;
   int64 tag_id = 2;
   string name = 3;
+  
+  // The user who originally created this tag.  optional.
+  int64 user_id = 8;
   google.protobuf.Timestamp created_ts = 6;
   google.protobuf.Timestamp modified_ts = 7;
 }
@@ -134,8 +137,24 @@ message User {
 
   enum Capability {
     UNKNOWN = 0;
-    CREATE_PIC = 1;
-    VIEW_PIC = 2;
+    // Can this user create and upload pictures
+    PIC_CREATE = 1;
+    // Can this user view the actual image data (grants pic token)
+    PIC_READ = 2;
+    // Can this user perform general pic index queries?
+    PIC_INDEX = 3;
+    // Can this user soft delete a pic?
+    PIC_SOFT_DELETE = 5;
+    // Can this user hard delete a pic?
+    PIC_HARD_DELETE = 6;
+    // Can this user purge a pic?
+    PIC_PURGE = 7;
+    // Can this user increment the pic view counter?
+    PIC_UPDATE_VIEW_COUNTER = 8;
+    // Can this user add tags and pic tags?
+    PIC_TAG_CREATE = 9;
+    // Can this user create other users?
+    USER_CREATE = 4;
   }
 
   repeated Capability capability = 7;
