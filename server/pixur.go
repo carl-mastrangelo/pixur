@@ -1,4 +1,3 @@
-//go:generate protoc config.proto --go_out=.
 package server
 
 import (
@@ -12,8 +11,7 @@ import (
 
 	"pixur.org/pixur/handlers"
 	sdb "pixur.org/pixur/schema/db"
-
-	_ "github.com/mattn/go-sqlite3"
+	"pixur.org/pixur/server/config"
 )
 
 type Server struct {
@@ -25,7 +23,7 @@ type Server struct {
 	privateKey  *rsa.PrivateKey
 }
 
-func (s *Server) setup(c *Config) error {
+func (s *Server) setup(c *config.Config) error {
 	db, err := sdb.Open(c.DbName, c.DbConfig)
 	if err != nil {
 		return err
@@ -118,7 +116,7 @@ func (s *Server) setup(c *Config) error {
 	return nil
 }
 
-func (s *Server) StartAndWait(c *Config) error {
+func (s *Server) StartAndWait(c *config.Config) error {
 	if err := s.setup(c); err != nil {
 		return err
 	}
