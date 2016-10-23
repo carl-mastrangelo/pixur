@@ -91,9 +91,9 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		}
 		u = users[0]
 	} else {
-		u = AnonymousUser
+		u = schema.AnonymousUser
 	}
-	if !userHasPerm(u, schema.User_PIC_CREATE) {
+	if !schema.UserHasPerm(u, schema.User_PIC_CREATE) {
 		return status.PermissionDenied(nil, "missing permission")
 	}
 

@@ -710,7 +710,7 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, AnonymousUserID)
+	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, schema.AnonymousUserID)
 	expected := status.InternalError(nil, "can't create pic tag")
 	compareStatus(t, sts, expected)
 }
