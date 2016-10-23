@@ -108,18 +108,23 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		return nil, status.InternalError(err, "can't build auth token")
 	}
 
-	pixPayload := &PwtPayload{
-		Subject:   subject,
-		NotBefore: notBefore,
-		// Pix has the lifetime of a refresh token, but the soft lifetime of an auth token
-		SoftNotAfter:  authNotAfter,
-		NotAfter:      refreshNotAfter,
-		TokenParentId: refreshTokenId,
-		Type:          PwtPayload_PIX,
-	}
-	pixToken, err := defaultPwtCoder.encode(pixPayload)
-	if err != nil {
-		return nil, status.InternalError(err, "can't build pix token")
+	var pixPayload *PwtPayload
+	var pixToken []byte
+	if schema.UserHasPerm(task.User, schema.User_PIC_READ) {
+		var err error
+		pixPayload = &PwtPayload{
+			Subject:   subject,
+			NotBefore: notBefore,
+			// Pix has the lifetime of a refresh token, but the soft lifetime of an auth token
+			SoftNotAfter:  authNotAfter,
+			NotAfter:      refreshNotAfter,
+			TokenParentId: refreshTokenId,
+			Type:          PwtPayload_PIX,
+		}
+		pixToken, err = defaultPwtCoder.encode(pixPayload)
+		if err != nil {
+			return nil, status.InternalError(err, "can't build pix token")
+		}
 	}
 
 	return &GetRefreshTokenResponse{
@@ -185,15 +190,17 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	})
 	resp.AuthToken = ""
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     pixPwtCookieName,
-		Value:    resp.PixToken,
-		Path:     "/pix/",
-		Expires:  refreshNotAfter,
-		Secure:   true,
-		HttpOnly: true,
-	})
-	resp.PixToken = ""
+	if resp.PixToken != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     pixPwtCookieName,
+			Value:    resp.PixToken,
+			Path:     "/pix/",
+			Expires:  refreshNotAfter,
+			Secure:   true,
+			HttpOnly: true,
+		})
+		resp.PixToken = ""
+	}
 
 	returnProtoJSON(w, r, resp)
 }

@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 	"time"
+
+	"pixur.org/pixur/schema"
 )
 
 type requestChecker struct {
@@ -47,7 +49,9 @@ func (rc *requestChecker) checkPixAuth() *PwtPayload {
 
 	c, err := rc.r.Cookie(pixPwtCookieName)
 	if err != nil {
-		rc.message, rc.code = "missing pix cookie", http.StatusUnauthorized
+		if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
+			rc.message, rc.code = "missing pix cookie", http.StatusUnauthorized
+		}
 		return nil
 	}
 	// TODO: either return a dummy payload, or nil if not present.

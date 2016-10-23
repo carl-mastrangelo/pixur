@@ -60,7 +60,8 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.NewTokenID = 3
 		taskCap.User = &schema.User{
-			UserId: 2,
+			UserId:     2,
+			Capability: []schema.User_Capability{schema.User_PIC_READ},
 		}
 		return nil
 	}
@@ -157,7 +158,8 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.NewTokenID = 3
 		taskCap.User = &schema.User{
-			UserId: 2,
+			UserId:     2,
+			Capability: []schema.User_Capability{schema.User_PIC_READ},
 		}
 		return nil
 	}
@@ -346,7 +348,8 @@ func TestGetRefreshToken(t *testing.T) {
 	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.User = &schema.User{
-			UserId: 2,
+			UserId:     2,
+			Capability: []schema.User_Capability{schema.User_PIC_READ},
 		}
 		taskCap.NewTokenID = 4
 		return nil
@@ -449,6 +452,52 @@ func TestGetRefreshToken(t *testing.T) {
 	}
 	if !proto.Equal(resp.PixPayload, expectedPix) {
 		t.Error("have", resp.PixPayload, "want", expectedPix)
+	}
+}
+
+func TestGetRefreshTokenNoPix(t *testing.T) {
+	var taskCap *tasks.AuthUserTask
+	successRunner := func(task tasks.Task) status.S {
+		taskCap = task.(*tasks.AuthUserTask)
+		taskCap.User = &schema.User{
+			UserId: 2,
+		}
+		taskCap.NewTokenID = 4
+		return nil
+	}
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
+	payload := &PwtPayload{
+		Subject:   "2",
+		NotAfter:  notafter,
+		NotBefore: notbefore,
+		Type:      PwtPayload_REFRESH,
+		TokenId:   3,
+	}
+	refreshToken, err := defaultPwtCoder.encode(payload)
+	if err != nil {
+		panic(err)
+	}
+
+	h := &GetRefreshTokenHandler{
+		Runner: tasks.TestTaskRunner(successRunner),
+		Now:    time.Now,
+	}
+
+	resp, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+		Ident:        "ident",
+		Secret:       "secret",
+		RefreshToken: string(refreshToken),
+	})
+	if sts != nil {
+		t.Fatal(err)
+	}
+
+	if len(resp.PixToken) != 0 {
+		t.Error("expected empty token", resp.PixToken)
+	}
+	if resp.PixPayload != nil {
+		t.Error("have", resp.PixPayload, "want", nil)
 	}
 }
 
