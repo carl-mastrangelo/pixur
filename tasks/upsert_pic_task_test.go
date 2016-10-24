@@ -755,8 +755,10 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 	now := time.Now()
 
 	_, sts := createNewTags(j, []string{"a"}, now)
-	expected := status.InternalError(nil, "can't create tag")
-	compareStatus(t, sts, expected)
+	// It could fail for the id allocator or tag creation, so just check the code.
+	if sts.Code() != status.Code_INTERNAL_ERROR {
+		t.Fatal(sts)
+	}
 }
 
 func TestUpdateExistingTags(t *testing.T) {

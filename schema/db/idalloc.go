@@ -21,15 +21,18 @@ const (
 // defaultAllocatorGrab determines how many IDs will be grabbed at a time. If the number is too high
 // program restarts will waste ID space.  Additionally, IDs will become less monotonic if there are
 // multiple servers.  If the number is too low, it will make a lot more queries than necessary.
-var defaultAllocatorGrab = int64(1)
+const DefaultAllocatorGrab = 1
+
+var AllocatorGrab int64 = DefaultAllocatorGrab
 
 type querierExecutor interface {
 	Querier
 	Executor
 }
 
-// Be careful when using this function.  If the transaction fails, alloc will think it has
-func (alloc *IDAlloc) refillJ(qe querierExecutor, grab int64, adap DBAdapter) (int64, error) {
+// Be careful when using this function.  If the transaction fails, alloc will think it has updated
+// the cached copy.
+func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (int64, error) {
 	tabname, colname := SequenceTableName, SequenceColName
 	var buf bytes.Buffer
 	buf.WriteString("SELECT " + adap.Quote(colname) + " FROM " + adap.Quote(tabname))
@@ -78,7 +81,7 @@ func (alloc *IDAlloc) refill(exec Beginner, grab int64, adap DBAdapter) (errcap 
 		}
 	}()
 
-	num, err := alloc.refillJ(j, grab, adap)
+	num, err := alloc.reserve(j, grab, adap)
 	if err != nil {
 		return err
 	}
@@ -95,7 +98,7 @@ func AllocID(exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	if alloc.available == 0 {
-		if err := alloc.refill(exec, defaultAllocatorGrab, adap); err != nil {
+		if err := alloc.refill(exec, AllocatorGrab, adap); err != nil {
 			return 0, err
 		}
 	}
@@ -103,4 +106,8 @@ func AllocID(exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
 	alloc.next++
 	alloc.available--
 	return num, nil
+}
+
+func AllocIDJob(qe querierExecutor, alloc *IDAlloc, adap DBAdapter) (int64, error) {
+	return alloc.reserve(qe, 1, adap)
 }
