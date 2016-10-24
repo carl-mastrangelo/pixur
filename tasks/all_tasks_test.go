@@ -48,8 +48,8 @@ func (c *TestContainer) DB() db.DB {
 		}
 		allDbs = append(allDbs, db)
 		var stmts []string
-		stmts = append(stmts, tab.SqlTables[sqlAdapterName]...)
-		stmts = append(stmts, tab.SqlInitTables[sqlAdapterName]...)
+		stmts = append(stmts, tab.SqlTables[db.Adapter().Name()]...)
+		stmts = append(stmts, tab.SqlInitTables[db.Adapter().Name()]...)
 		if err := db.InitSchema(stmts); err != nil {
 			c.T.Fatal(err)
 		}
@@ -501,7 +501,5 @@ func runTests(m *testing.M) int {
 }
 
 func TestMain(m *testing.M) {
-	// TODO: make this configurable.
-	db.SetCurrentAdapter(sqlAdapterName)
 	os.Exit(runTests(m))
 }

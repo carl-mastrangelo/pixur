@@ -5,12 +5,12 @@ import (
 )
 
 type dbWrapper struct {
-	name string
+	adap DBAdapter
 	db   *sql.DB
 }
 
-func (w dbWrapper) Name() string {
-	return w.name
+func (w dbWrapper) Adapter() DBAdapter {
+	return w.adap
 }
 
 func (w dbWrapper) Begin() (QuerierExecutorCommitter, error) {

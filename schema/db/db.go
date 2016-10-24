@@ -25,9 +25,9 @@ type Beginner interface {
 
 type DB interface {
 	Beginner
-	Name() string
 	Close() error
 	InitSchema([]string) error
+	Adapter() DBAdapter
 }
 
 func Open(adapterName, dataSourceName string) (DB, error) {
@@ -54,12 +54,6 @@ func RegisterAdapter(a DBAdapter) {
 		panic(name + "already present")
 	}
 	adapters[name] = a
-}
-
-var currentAdapter DBAdapter
-
-func SetCurrentAdapter(name string) {
-	currentAdapter = adapters[name]
 }
 
 func GetAllAdapters() []DBAdapter {
@@ -145,14 +139,18 @@ type scanStmt struct {
 	name string
 	buf  *bytes.Buffer
 	args []interface{}
+	adap DBAdapter
 }
 
 // Scan scans a table for matching rows.
-func Scan(q Querier, name string, opts Opts, cb func(data []byte) error) (errCap error) {
+func Scan(
+	q Querier, name string, opts Opts, cb func(data []byte) error, adap DBAdapter) (
+	errCap error) {
 	s := scanStmt{
 		opts: opts,
 		name: name,
 		buf:  new(bytes.Buffer),
+		adap: adap,
 	}
 
 	query, queryArgs := s.buildScan()
@@ -183,7 +181,7 @@ func Scan(q Querier, name string, opts Opts, cb func(data []byte) error) (errCap
 }
 
 func (s *scanStmt) buildScan() (string, []interface{}) {
-	fmt.Fprintf(s.buf, "SELECT %s FROM %s", quoteIdentifier("data"), quoteIdentifier(s.name))
+	fmt.Fprintf(s.buf, "SELECT %s FROM %s", s.adap.Quote("data"), s.adap.Quote(s.name))
 
 	if s.opts.Prefix != nil && (s.opts.Start != nil || s.opts.Stop != nil) {
 		panic("only Prefix or Start|Stop may be specified")
@@ -210,14 +208,13 @@ func (s *scanStmt) appendPrefix() {
 			if i != 0 {
 				s.buf.WriteString(" AND ")
 			}
-			fmt.Fprintf(s.buf, "%s = ?", quoteIdentifier(cols[i]))
+			fmt.Fprintf(s.buf, "%s = ?", s.adap.Quote(cols[i]))
 			s.args = append(s.args, vals[i])
 		}
 	}
 	if sortCols := cols[len(vals):]; len(sortCols) != 0 {
 		s.appendOrder(sortCols)
 	}
-
 }
 
 func (s *scanStmt) appendRange() {
@@ -235,7 +232,7 @@ func (s *scanStmt) appendRange() {
 		s.buf.WriteString(" WHERE ")
 	}
 	if len(startVals) != 0 {
-		startStmt, startArgs := buildStart(startCols, startVals)
+		startStmt, startArgs := buildStart(startCols, startVals, s.adap)
 		s.args = append(s.args, startArgs...)
 		s.buf.WriteString(startStmt)
 	}
@@ -243,7 +240,7 @@ func (s *scanStmt) appendRange() {
 		s.buf.WriteString(" AND ")
 	}
 	if len(stopVals) != 0 {
-		stopStmt, stopArgs := buildStop(stopCols, stopVals)
+		stopStmt, stopArgs := buildStop(stopCols, stopVals, s.adap)
 		s.args = append(s.args, stopArgs...)
 		s.buf.WriteString(stopStmt)
 	}
@@ -267,26 +264,27 @@ func (s *scanStmt) appendOrder(cols []string) {
 		if i != 0 {
 			s.buf.WriteString(", ")
 		}
-		s.buf.WriteString(quoteIdentifier(col))
+		s.buf.WriteString(s.adap.Quote(col))
 		s.buf.WriteString(order)
 	}
 }
 
 func (s *scanStmt) appendLock() {
-	currentAdapter.LockStmt(s.buf, s.opts.Lock)
+	s.adap.LockStmt(s.buf, s.opts.Lock)
 }
 
 type Columns []string
 
 func (cols Columns) String() string {
+	panic("fix quote function")
 	var parts []string
 	for _, col := range cols {
-		parts = append(parts, quoteIdentifier(col))
+		parts = append(parts /*quoteIdentifier(*/, col /*)*/)
 	}
 	return strings.Join(parts, ", ")
 }
 
-func buildStart(cols []string, vals []interface{}) (string, []interface{}) {
+func buildStart(cols []string, vals []interface{}, adap DBAdapter) (string, []interface{}) {
 	if len(vals) > len(cols) {
 		panic("More vals than cols")
 	}
@@ -301,13 +299,13 @@ func buildStart(cols []string, vals []interface{}) (string, []interface{}) {
 	for i := 0; i < len(vals); i++ {
 		var ands []string
 		for k := 0; k < i; k++ {
-			ands = append(ands, quoteIdentifier(cols[k])+" = ?")
+			ands = append(ands, adap.Quote(cols[k])+" = ?")
 			args = append(args, vals[k])
 		}
 		if i == len(vals)-1 {
-			ands = append(ands, quoteIdentifier(cols[i])+" >= ?")
+			ands = append(ands, adap.Quote(cols[i])+" >= ?")
 		} else {
-			ands = append(ands, quoteIdentifier(cols[i])+" > ?")
+			ands = append(ands, adap.Quote(cols[i])+" > ?")
 		}
 		args = append(args, vals[i])
 		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
@@ -315,7 +313,7 @@ func buildStart(cols []string, vals []interface{}) (string, []interface{}) {
 	return "(" + strings.Join(ors, " OR ") + ")", args
 }
 
-func buildStop(cols []string, vals []interface{}) (string, []interface{}) {
+func buildStop(cols []string, vals []interface{}, adap DBAdapter) (string, []interface{}) {
 	if len(vals) > len(cols) {
 		panic("More vals than cols")
 	}
@@ -329,10 +327,10 @@ func buildStop(cols []string, vals []interface{}) (string, []interface{}) {
 	for i := 0; i < len(vals); i++ {
 		var ands []string
 		for k := 0; k < i; k++ {
-			ands = append(ands, quoteIdentifier(cols[k])+" = ?")
+			ands = append(ands, adap.Quote(cols[k])+" = ?")
 			args = append(args, vals[k])
 		}
-		ands = append(ands, quoteIdentifier(cols[i])+" < ?")
+		ands = append(ands, adap.Quote(cols[i])+" < ?")
 		args = append(args, vals[i])
 		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
 	}
@@ -344,7 +342,7 @@ var (
 	ErrNoCols           = errors.New("db: no columns provided")
 )
 
-func Insert(exec Executor, name string, cols []string, vals []interface{}) error {
+func Insert(exec Executor, name string, cols []string, vals []interface{}, adap DBAdapter) error {
 	if len(cols) != len(vals) {
 		return ErrColsValsMismatch
 	}
@@ -355,15 +353,15 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}) error
 	valFmt := strings.Repeat("?, ", len(vals)-1) + "?"
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, quoteIdentifier(col))
+		colFmtParts = append(colFmtParts, adap.Quote(col))
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", quoteIdentifier(name), colFmt, valFmt)
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", adap.Quote(name), colFmt, valFmt)
 	_, err := exec.Exec(query, vals...)
 	return err
 }
 
-func Delete(exec Executor, name string, key UniqueIdx) error {
+func Delete(exec Executor, name string, key UniqueIdx, adap DBAdapter) error {
 	cols := key.Cols()
 	vals := key.Vals()
 	if len(cols) != len(vals) {
@@ -375,15 +373,16 @@ func Delete(exec Executor, name string, key UniqueIdx) error {
 
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, quoteIdentifier(col)+" = ?")
+		colFmtParts = append(colFmtParts, adap.Quote(col)+" = ?")
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
-	query := fmt.Sprintf("DELETE FROM %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s LIMIT 1;", adap.Quote(name), colFmt)
 	_, err := exec.Exec(query, vals...)
 	return err
 }
 
-func Update(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx) error {
+func Update(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx,
+	adap DBAdapter) error {
 	if len(cols) != len(vals) {
 		return ErrColsValsMismatch
 	}
@@ -402,13 +401,13 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 
 	colFmtParts := make([]string, 0, len(cols))
 	for _, col := range cols {
-		colFmtParts = append(colFmtParts, quoteIdentifier(col)+" = ?")
+		colFmtParts = append(colFmtParts, adap.Quote(col)+" = ?")
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
 
 	idxColFmtParts := make([]string, 0, len(idxCols))
 	for _, idxCol := range idxCols {
-		idxColFmtParts = append(idxColFmtParts, quoteIdentifier(idxCol)+" = ?")
+		idxColFmtParts = append(idxColFmtParts, adap.Quote(idxCol)+" = ?")
 	}
 	idxColFmt := strings.Join(idxColFmtParts, " AND ")
 
@@ -416,12 +415,7 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 	allVals = append(allVals, vals...)
 	allVals = append(allVals, idxVals...)
 
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", quoteIdentifier(name), colFmt, idxColFmt)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", adap.Quote(name), colFmt, idxColFmt)
 	_, err := exec.Exec(query, allVals...)
 	return err
-}
-
-// quoteIdentifier quotes the ANSI way.  Panics on invalid identifiers.
-func quoteIdentifier(ident string) string {
-	return currentAdapter.Quote(ident)
 }

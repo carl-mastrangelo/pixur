@@ -32,7 +32,7 @@ func (a *mysqlAdapter) Open(dataSourceName string) (_ DB, errcap error) {
 	}
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)
-	return dbWrapper{db: db, name: a.Name()}, nil
+	return dbWrapper{db: db, adap: a}, nil
 }
 
 func (_ *mysqlAdapter) Name() string {

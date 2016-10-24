@@ -93,7 +93,7 @@ func TestScanQueryFails(t *testing.T) {
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		return nil
-	})
+	}, testAdap)
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -101,13 +101,15 @@ func TestScanQueryFails(t *testing.T) {
 	}
 }
 
+var testAdap DBAdapter = &postgresqlAdapter{}
+
 func TestScanQueryEmpty(t *testing.T) {
 	exec := &execCap{
 		rows: &testRows{},
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		panic("don't call me")
-	})
+	}, testAdap)
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -124,7 +126,7 @@ func TestScanQueryCloseFails(t *testing.T) {
 	}
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		panic("don't call me")
-	})
+	}, testAdap)
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -142,7 +144,7 @@ func TestScanQueryOneRow(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	})
+	}, testAdap)
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -173,7 +175,7 @@ func TestScanQueryMultiRow(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	})
+	}, testAdap)
 
 	if err != nil {
 		t.Log("Unexpected error", err)
@@ -198,7 +200,7 @@ func TestScanScanFails(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	})
+	}, testAdap)
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -221,7 +223,7 @@ func TestScanCallbackFails(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return expected
-	})
+	}, testAdap)
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -245,7 +247,7 @@ func TestScanStopEarly(t *testing.T) {
 	err := Scan(exec, "foo", Opts{Lock: LockNone}, func(data []byte) error {
 		dataCap = append(dataCap, data)
 		return nil
-	})
+	}, testAdap)
 
 	if err != expected {
 		t.Log("Expected error", err)
@@ -261,6 +263,7 @@ func TestBuildScan(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
 		buf:  new(bytes.Buffer),
+		adap: testAdap,
 	}
 
 	query, args := s.buildScan()
@@ -284,6 +287,7 @@ func TestBuildScanStart(t *testing.T) {
 				vals: []interface{}{1},
 			},
 		},
+		adap: testAdap,
 	}
 	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" ASC FOR SHARE;` {
@@ -306,6 +310,7 @@ func TestBuildScanStop(t *testing.T) {
 				vals: []interface{}{1},
 			},
 		},
+		adap: testAdap,
 	}
 
 	query, args := s.buildScan()
@@ -333,6 +338,7 @@ func TestBuildScanStartStop(t *testing.T) {
 				vals: []interface{}{2},
 			},
 		},
+		adap: testAdap,
 	}
 	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?))`+
@@ -356,6 +362,7 @@ func TestBuildScanPrefix(t *testing.T) {
 				vals: []interface{}{true, 2},
 			},
 		},
+		adap: testAdap,
 	}
 	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "tab" WHERE "foo" = ? AND "bar" = ?`+
@@ -379,6 +386,7 @@ func TestBuildScanPrefixNoVals(t *testing.T) {
 				vals: []interface{}{},
 			},
 		},
+		adap: testAdap,
 	}
 	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "tab" ORDER BY "foo" ASC, "bar" ASC FOR SHARE;` {
@@ -404,6 +412,7 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 			Reverse: true,
 			Lock:    LockNone,
 		},
+		adap: testAdap,
 	}
 	query, args := s.buildScan()
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" DESC LIMIT 1;` {
@@ -425,6 +434,7 @@ func TestAppendPrefix(t *testing.T) {
 				vals: []interface{}{1},
 			},
 		},
+		adap: testAdap,
 	}
 
 	s.appendPrefix()
@@ -448,6 +458,7 @@ func TestAppendPrefixAll(t *testing.T) {
 				vals: []interface{}{1, 2},
 			},
 		},
+		adap: testAdap,
 	}
 
 	s.appendPrefix()
@@ -464,7 +475,8 @@ func TestAppendPrefixAll(t *testing.T) {
 
 func TestAppendOrder(t *testing.T) {
 	s := scanStmt{
-		buf: new(bytes.Buffer),
+		buf:  new(bytes.Buffer),
+		adap: testAdap,
 	}
 	s.appendOrder([]string{"bar", "baz"})
 	stmt := s.buf.String()
@@ -480,6 +492,7 @@ func TestBuildOrderStmtReverse(t *testing.T) {
 		opts: Opts{
 			Reverse: true,
 		},
+		adap: testAdap,
 	}
 	s.appendOrder([]string{"foo"})
 
@@ -491,7 +504,7 @@ func TestBuildOrderStmtReverse(t *testing.T) {
 }
 
 func TestBuildStopOneVal(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1})
+	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1}, testAdap)
 	if stmt != `(("A" < ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -503,7 +516,7 @@ func TestBuildStopOneVal(t *testing.T) {
 }
 
 func TestBuildStopTwoVals(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1, 2})
+	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1, 2}, testAdap)
 	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -515,7 +528,7 @@ func TestBuildStopTwoVals(t *testing.T) {
 }
 
 func TestBuildStopThreeVals(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B", "C"}, []interface{}{1, 2, 3})
+	stmt, args := buildStop([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, testAdap)
 	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?) OR ("A" = ? AND "B" = ? AND "C" < ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -528,7 +541,7 @@ func TestBuildStopThreeVals(t *testing.T) {
 }
 
 func TestBuildStartOneVal(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1})
+	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1}, testAdap)
 	if stmt != `(("A" >= ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -540,7 +553,7 @@ func TestBuildStartOneVal(t *testing.T) {
 }
 
 func TestBuildStartTwoVals(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1, 2})
+	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1, 2}, testAdap)
 	if stmt != `(("A" > ?) OR ("A" = ? AND "B" >= ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -552,7 +565,7 @@ func TestBuildStartTwoVals(t *testing.T) {
 }
 
 func TestBuildStartThreeVals(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B", "C"}, []interface{}{1, 2, 3})
+	stmt, args := buildStart([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, testAdap)
 	if stmt != `(("A" > ?) OR ("A" = ? AND "B" > ?) OR ("A" = ? AND "B" = ? AND "C" >= ?))` {
 		t.Log("Statement didn't match", stmt)
 		t.Fail()
@@ -565,7 +578,7 @@ func TestBuildStartThreeVals(t *testing.T) {
 }
 
 func TestInsertWrongColsCount(t *testing.T) {
-	err := Insert(nil, "Foo", []string{"one"}, []interface{}{1, 2})
+	err := Insert(nil, "Foo", []string{"one"}, []interface{}{1, 2}, testAdap)
 
 	if err != ErrColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
@@ -573,7 +586,7 @@ func TestInsertWrongColsCount(t *testing.T) {
 }
 
 func TestInsertNoCols(t *testing.T) {
-	err := Insert(nil, "Foo", []string{}, []interface{}{})
+	err := Insert(nil, "Foo", []string{}, []interface{}{}, testAdap)
 
 	if err != ErrNoCols {
 		t.Fatal("Expected error, but was", err)
@@ -583,7 +596,7 @@ func TestInsertNoCols(t *testing.T) {
 func TestInsertOneVal(t *testing.T) {
 	exec := &execCap{}
 
-	Insert(exec, "Foo", []string{"bar"}, []interface{}{1})
+	Insert(exec, "Foo", []string{"bar"}, []interface{}{1}, testAdap)
 
 	if exec.query != `INSERT INTO "Foo" ("bar") VALUES (?);` {
 		t.Log("Query didn't match", exec.query)
@@ -598,7 +611,7 @@ func TestInsertOneVal(t *testing.T) {
 func TestInsertMultiVal(t *testing.T) {
 	exec := &execCap{}
 
-	Insert(exec, "Foo", []string{"bar", "baz"}, []interface{}{1, true})
+	Insert(exec, "Foo", []string{"bar", "baz"}, []interface{}{1, true}, testAdap)
 
 	if exec.query != `INSERT INTO "Foo" ("bar", "baz") VALUES (?, ?);` {
 		t.Log("Query didn't match", exec.query)
@@ -615,7 +628,7 @@ func TestDeleteWrongColsCount(t *testing.T) {
 		cols: []string{"bar"},
 	}
 
-	err := Delete(nil, "Foo", idx)
+	err := Delete(nil, "Foo", idx, testAdap)
 	if err != ErrColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
@@ -624,7 +637,7 @@ func TestDeleteWrongColsCount(t *testing.T) {
 func TestDeleteNoCols(t *testing.T) {
 	idx := &testUniqueIdx{}
 
-	err := Delete(nil, "Foo", idx)
+	err := Delete(nil, "Foo", idx, testAdap)
 	if err != ErrNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
@@ -636,7 +649,7 @@ func TestDeleteOneCol(t *testing.T) {
 		vals: []interface{}{1},
 	}
 	exec := &execCap{}
-	if err := Delete(exec, "Foo", idx); err != nil {
+	if err := Delete(exec, "Foo", idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -656,7 +669,7 @@ func TestDeleteMultiCols(t *testing.T) {
 		vals: []interface{}{1, true},
 	}
 	exec := &execCap{}
-	if err := Delete(exec, "Foo", idx); err != nil {
+	if err := Delete(exec, "Foo", idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -671,14 +684,14 @@ func TestDeleteMultiCols(t *testing.T) {
 }
 
 func TestUpdateWrongColCount(t *testing.T) {
-	err := Update(nil, "Foo", []string{"bar"}, nil /*vals*/, nil)
+	err := Update(nil, "Foo", []string{"bar"}, nil /*vals*/, nil, testAdap)
 	if err != ErrColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
 
 func TestUpdateNoCols(t *testing.T) {
-	err := Update(nil, "Foo", nil /*cols*/, nil /*vals*/, nil)
+	err := Update(nil, "Foo", nil /*cols*/, nil /*vals*/, nil, testAdap)
 	if err != ErrNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
@@ -690,7 +703,7 @@ func TestUpdateWrongIdxColCount(t *testing.T) {
 	idx := &testUniqueIdx{
 		cols: []string{"bar"},
 	}
-	err := Update(nil, "Foo", cols, vals, idx)
+	err := Update(nil, "Foo", cols, vals, idx, testAdap)
 	if err != ErrColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
@@ -700,7 +713,7 @@ func TestUpdateNoIdxCols(t *testing.T) {
 	cols := []string{"foo"}
 	vals := []interface{}{1}
 	idx := &testUniqueIdx{}
-	err := Update(nil, "Foo", cols, vals, idx)
+	err := Update(nil, "Foo", cols, vals, idx, testAdap)
 	if err != ErrNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
@@ -714,7 +727,7 @@ func TestUpdateOneColOneIdxCol(t *testing.T) {
 		vals: []interface{}{2},
 	}
 	exec := &execCap{}
-	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -736,7 +749,7 @@ func TestUpdateOneColMultiIdxCol(t *testing.T) {
 		vals: []interface{}{2, false},
 	}
 	exec := &execCap{}
-	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -758,7 +771,7 @@ func TestUpdateMultiColOneIdxCol(t *testing.T) {
 		vals: []interface{}{2},
 	}
 	exec := &execCap{}
-	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -780,7 +793,7 @@ func TestUpdateMultiColMultiIdxCol(t *testing.T) {
 		vals: []interface{}{2, false},
 	}
 	exec := &execCap{}
-	if err := Update(exec, "Foo", cols, vals, idx); err != nil {
+	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -796,7 +809,7 @@ func TestUpdateMultiColMultiIdxCol(t *testing.T) {
 }
 
 func TestQuoteIdentifier(t *testing.T) {
-	quoted := quoteIdentifier("foo")
+	quoted := testAdap.Quote("foo")
 
 	if quoted != `"foo"` {
 		t.Fatal("not quoted", quoted)
@@ -810,7 +823,7 @@ func TestQuoteIdentifierPanicsOnQuote(t *testing.T) {
 			t.Fatal("expected a panic")
 		}
 	}()
-	quoteIdentifier("f\"oo")
+	testAdap.Quote("f\"oo")
 
 	t.Fatal("should never reach here")
 }
@@ -822,7 +835,7 @@ func TestQuoteIdentifierPanicsOnNull(t *testing.T) {
 			t.Fatal("expected a panic")
 		}
 	}()
-	quoteIdentifier("f\x00oo")
+	testAdap.Quote("f\x00oo")
 
 	t.Fatal("should never reach here")
 }
@@ -839,6 +852,7 @@ func TestAppendLock(t *testing.T) {
 			opts: Opts{
 				Lock: tuple.lock,
 			},
+			adap: testAdap,
 		}
 		s.appendLock()
 		newQuery := s.buf.String()
@@ -862,6 +876,7 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 		opts: Opts{
 			Lock: 3,
 		},
+		adap: testAdap,
 	}
 	s.appendLock()
 
@@ -870,6 +885,5 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	SetCurrentAdapter("postgresql")
 	os.Exit(m.Run())
 }

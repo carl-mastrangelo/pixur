@@ -28,7 +28,6 @@ func (s *Server) setup(c *config.Config) error {
 	if err != nil {
 		return err
 	}
-	sdb.SetCurrentAdapter(c.DbName)
 	s.db = db
 
 	// setup storage

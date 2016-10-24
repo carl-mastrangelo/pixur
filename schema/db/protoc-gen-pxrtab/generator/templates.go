@@ -184,6 +184,7 @@ func NewJob(DB db.DB) (*Job, error) {
   j := &Job{
     beg: DB,
     tx: tx,
+    adap: DB.Adapter(),
   }
   runtime.SetFinalizer(j, jobCloser)
   return j, nil
@@ -192,6 +193,7 @@ func NewJob(DB db.DB) (*Job, error) {
 type Job struct {
   beg db.Beginner
   tx db.QuerierExecutorCommitter
+  adap db.DBAdapter
 }
 
 func (j *Job) Commit() error {
@@ -214,7 +216,7 @@ var jobCloser = func(j *Job) {
 var alloc db.IDAlloc
 
 func (j *Job) AllocID() (int64, error) {
-  return db.AllocID(j.beg, &alloc)
+  return db.AllocID(j.beg, &alloc, j.adap)
 }
 `))
 	_ = template.Must(tpl.New("scanfunc").Parse(`
@@ -225,7 +227,7 @@ func (j *Job) Scan{{.Name}}(opts db.Opts, cb func(*{{.GoDataType}}) error) error
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 `))
 	_ = template.Must(tpl.New("cols").Parse(`
@@ -276,12 +278,12 @@ func (j *Job) Insert{{.GoType}}(row *{{.GoType}}) error {
     {{end}}
   {{end}}
 
-	return db.Insert(j.tx, {{goesc .Name}}, cols{{.Name}}, vals)
+	return db.Insert(j.tx, {{goesc .Name}}, cols{{.Name}}, vals, j.adap)
 }
 `))
 	_ = template.Must(tpl.New("deletefunc").Parse(`
 func (j *Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
-	return db.Delete(j.tx, {{goesc .Name}}, key)
+	return db.Delete(j.tx, {{goesc .Name}}, key, j.adap)
 }
 `))
 	_ = template.Must(tpl.New("updatefunc").Parse(`
@@ -330,7 +332,7 @@ func (j *Job) Update{{.GoType}}(row *{{.GoType}}) error {
     {{end}}
   {{end}}
 
-	return db.Update(j.tx, {{goesc .Name}}, cols{{.Name}}, vals, key)
+	return db.Update(j.tx, {{goesc .Name}}, cols{{.Name}}, vals, key, j.adap)
 }
 `))
 )

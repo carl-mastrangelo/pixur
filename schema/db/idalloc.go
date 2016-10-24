@@ -19,7 +19,7 @@ const (
 
 var defaultAllocatorGrab = int64(1)
 
-func (alloc *IDAlloc) refill(exec Beginner, grab int64) (errCap error) {
+func (alloc *IDAlloc) refill(exec Beginner, grab int64, adap DBAdapter) (errCap error) {
 	tx, err := exec.Begin()
 	if err != nil {
 		return err
@@ -33,8 +33,8 @@ func (alloc *IDAlloc) refill(exec Beginner, grab int64) (errCap error) {
 
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "SELECT %s FROM %s",
-		quoteIdentifier(SequenceColName), quoteIdentifier(SequenceTableName))
-	currentAdapter.LockStmt(&buf, LockWrite)
+		adap.Quote(SequenceColName), adap.Quote(SequenceTableName))
+	adap.LockStmt(&buf, LockWrite)
 	buf.WriteRune(';')
 
 	var num int64
@@ -60,7 +60,7 @@ func (alloc *IDAlloc) refill(exec Beginner, grab int64) (errCap error) {
 	}
 
 	updateStmt := fmt.Sprintf("UPDATE %s SET %s = ?;",
-		quoteIdentifier(SequenceTableName), quoteIdentifier(SequenceColName))
+		adap.Quote(SequenceTableName), adap.Quote(SequenceColName))
 
 	if _, err := tx.Exec(updateStmt, num+defaultAllocatorGrab); err != nil {
 		return err
@@ -73,11 +73,11 @@ func (alloc *IDAlloc) refill(exec Beginner, grab int64) (errCap error) {
 	return nil
 }
 
-func AllocID(exec Beginner, alloc *IDAlloc) (int64, error) {
+func AllocID(exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	if alloc.available == 0 {
-		if err := alloc.refill(exec, defaultAllocatorGrab); err != nil {
+		if err := alloc.refill(exec, defaultAllocatorGrab, adap); err != nil {
 			return 0, err
 		}
 	}

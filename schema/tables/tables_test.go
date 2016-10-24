@@ -1,51 +1,52 @@
 package tables
 
 import (
-	"database/sql"
-	"database/sql/driver"
 	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
 	"testing"
 	"time"
+
+	sdb "pixur.org/pixur/schema/db"
 )
 
-type testDriver chan struct{}
+type fakeDB chan struct{}
 
-func (d testDriver) Open(name string) (driver.Conn, error) {
-	return d, nil
+func (db fakeDB) Begin() (sdb.QuerierExecutorCommitter, error) {
+	return db, nil
 }
 
-func (d testDriver) Prepare(query string) (driver.Stmt, error) {
-	return nil, nil
+func (db fakeDB) Close() error {
+	panic("not implemented")
 }
 
-func (d testDriver) Close() error {
+func (db fakeDB) Query(query string, args ...interface{}) (sdb.Rows, error) {
+	panic("not implemented")
+}
+
+func (db fakeDB) Exec(query string, args ...interface{}) (sdb.Result, error) {
+	panic("not implemented")
+}
+
+func (db fakeDB) Commit() error {
+	panic("not implemented")
+}
+
+func (db fakeDB) Rollback() error {
+	close(db)
 	return nil
 }
 
-func (d testDriver) Begin() (driver.Tx, error) {
-	return d, nil
+func (db fakeDB) InitSchema([]string) error {
+	panic("not implemented")
 }
 
-func (d testDriver) Commit() error {
-	return nil
-}
-
-func (d testDriver) Rollback() error {
-	close(d)
+func (db fakeDB) Adapter() sdb.DBAdapter {
 	return nil
 }
 
 func TestUnclosedJobLogs(t *testing.T) {
-	// setup dummy sql driver
-	d := make(testDriver)
-	sql.Register("foo", d)
-	db, err := sql.Open("foo", "")
-	if err != nil {
-		t.Fatal(err)
-	}
 	done := make(chan struct{})
 	oldJobCloser := jobCloser
 	// override default finalizer
@@ -57,6 +58,7 @@ func TestUnclosedJobLogs(t *testing.T) {
 		close(done)
 	}
 
+	db := make(fakeDB)
 	j, err := NewJob(db)
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +72,7 @@ func TestUnclosedJobLogs(t *testing.T) {
 		t.Fatal("finalizer didn't run")
 	}
 	select {
-	case <-d:
+	case <-db:
 	default:
 		t.Fatal("finalizer didn't close job")
 	}

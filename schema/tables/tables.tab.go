@@ -189,16 +189,18 @@ func NewJob(DB db.DB) (*Job, error) {
 		return nil, err
 	}
 	j := &Job{
-		beg: DB,
-		tx:  tx,
+		beg:  DB,
+		tx:   tx,
+		adap: DB.Adapter(),
 	}
 	runtime.SetFinalizer(j, jobCloser)
 	return j, nil
 }
 
 type Job struct {
-	beg db.Beginner
-	tx  db.QuerierExecutorCommitter
+	beg  db.Beginner
+	tx   db.QuerierExecutorCommitter
+	adap db.DBAdapter
 }
 
 func (j *Job) Commit() error {
@@ -221,7 +223,7 @@ var jobCloser = func(j *Job) {
 var alloc db.IDAlloc
 
 func (j *Job) AllocID() (int64, error) {
-	return db.AllocID(j.beg, &alloc)
+	return db.AllocID(j.beg, &alloc, j.adap)
 }
 
 type PicsPrimary struct {
@@ -289,7 +291,7 @@ func (j *Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 
 func (j *Job) FindPics(opts db.Opts) (rows []*schema.Pic, err error) {
@@ -331,7 +333,7 @@ func (j *Job) InsertPicRow(row *PicRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "Pics", colsPics, vals)
+	return db.Insert(j.tx, "Pics", colsPics, vals, j.adap)
 }
 
 var _ interface {
@@ -371,11 +373,11 @@ func (j *Job) UpdatePicRow(row *PicRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "Pics", colsPics, vals, key)
+	return db.Update(j.tx, "Pics", colsPics, vals, key, j.adap)
 }
 
 func (j *Job) DeletePic(key PicsPrimary) error {
-	return db.Delete(j.tx, "Pics", key)
+	return db.Delete(j.tx, "Pics", key, j.adap)
 }
 
 type TagsPrimary struct {
@@ -445,7 +447,7 @@ func (j *Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 
 func (j *Job) FindTags(opts db.Opts) (rows []*schema.Tag, err error) {
@@ -487,7 +489,7 @@ func (j *Job) InsertTagRow(row *TagRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "Tags", colsTags, vals)
+	return db.Insert(j.tx, "Tags", colsTags, vals, j.adap)
 }
 
 var _ interface {
@@ -527,11 +529,11 @@ func (j *Job) UpdateTagRow(row *TagRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "Tags", colsTags, vals, key)
+	return db.Update(j.tx, "Tags", colsTags, vals, key, j.adap)
 }
 
 func (j *Job) DeleteTag(key TagsPrimary) error {
-	return db.Delete(j.tx, "Tags", key)
+	return db.Delete(j.tx, "Tags", key, j.adap)
 }
 
 type PicTagsPrimary struct {
@@ -583,7 +585,7 @@ func (j *Job) ScanPicTags(opts db.Opts, cb func(*schema.PicTag) error) error {
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 
 func (j *Job) FindPicTags(opts db.Opts) (rows []*schema.PicTag, err error) {
@@ -625,7 +627,7 @@ func (j *Job) InsertPicTagRow(row *PicTagRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "PicTags", colsPicTags, vals)
+	return db.Insert(j.tx, "PicTags", colsPicTags, vals, j.adap)
 }
 
 var _ interface {
@@ -667,11 +669,11 @@ func (j *Job) UpdatePicTagRow(row *PicTagRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "PicTags", colsPicTags, vals, key)
+	return db.Update(j.tx, "PicTags", colsPicTags, vals, key, j.adap)
 }
 
 func (j *Job) DeletePicTag(key PicTagsPrimary) error {
-	return db.Delete(j.tx, "PicTags", key)
+	return db.Delete(j.tx, "PicTags", key, j.adap)
 }
 
 type PicIdentsPrimary struct {
@@ -772,7 +774,7 @@ func (j *Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 
 func (j *Job) FindPicIdents(opts db.Opts) (rows []*schema.PicIdent, err error) {
@@ -822,7 +824,7 @@ func (j *Job) InsertPicIdentRow(row *PicIdentRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "PicIdents", colsPicIdents, vals)
+	return db.Insert(j.tx, "PicIdents", colsPicIdents, vals, j.adap)
 }
 
 var _ interface {
@@ -874,11 +876,11 @@ func (j *Job) UpdatePicIdentRow(row *PicIdentRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "PicIdents", colsPicIdents, vals, key)
+	return db.Update(j.tx, "PicIdents", colsPicIdents, vals, key, j.adap)
 }
 
 func (j *Job) DeletePicIdent(key PicIdentsPrimary) error {
-	return db.Delete(j.tx, "PicIdents", key)
+	return db.Delete(j.tx, "PicIdents", key, j.adap)
 }
 
 type UsersPrimary struct {
@@ -948,7 +950,7 @@ func (j *Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
 			return err
 		}
 		return cb(&pb)
-	})
+	}, j.adap)
 }
 
 func (j *Job) FindUsers(opts db.Opts) (rows []*schema.User, err error) {
@@ -990,7 +992,7 @@ func (j *Job) InsertUserRow(row *UserRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "Users", colsUsers, vals)
+	return db.Insert(j.tx, "Users", colsUsers, vals, j.adap)
 }
 
 var _ interface {
@@ -1030,9 +1032,9 @@ func (j *Job) UpdateUserRow(row *UserRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "Users", colsUsers, vals, key)
+	return db.Update(j.tx, "Users", colsUsers, vals, key, j.adap)
 }
 
 func (j *Job) DeleteUser(key UsersPrimary) error {
-	return db.Delete(j.tx, "Users", key)
+	return db.Delete(j.tx, "Users", key, j.adap)
 }
