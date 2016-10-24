@@ -653,7 +653,7 @@ func TestDeleteOneCol(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? LIMIT 1;` {
+	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}
@@ -673,7 +673,7 @@ func TestDeleteMultiCols(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? AND "baz" = ? LIMIT 1;` {
+	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? AND "baz" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}
@@ -731,7 +731,7 @@ func TestUpdateOneColOneIdxCol(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? LIMIT 1;` {
+	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}
@@ -753,7 +753,7 @@ func TestUpdateOneColMultiIdxCol(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? AND "baz" = ? LIMIT 1;` {
+	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? AND "baz" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}
@@ -775,7 +775,7 @@ func TestUpdateMultiColOneIdxCol(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? LIMIT 1;` {
+	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}
@@ -797,7 +797,7 @@ func TestUpdateMultiColMultiIdxCol(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? AND "qux" = ? LIMIT 1;` {
+	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? AND "qux" = ?;` {
 		t.Log("Query didn't match", exec.query)
 		t.Fail()
 	}

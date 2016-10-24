@@ -41,6 +41,10 @@ func (_ *sqlite3Adapter) Name() string {
 	return "sqlite3"
 }
 
+func (_ *sqlite3Adapter) SingleTx() bool {
+	return true
+}
+
 func (a *sqlite3Adapter) OpenForTest() (_ DB, errcap error) {
 	// Can't use :memory: since they have a habit of sharing the same memory
 	testdir, err := ioutil.TempDir("", "sqlitepixurtest")
