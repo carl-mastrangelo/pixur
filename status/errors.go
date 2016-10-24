@@ -78,6 +78,7 @@ type S interface {
 	Message() string
 	Cause() error
 	Stack() []uintptr
+	String() string
 	dontImplementMe()
 }
 
