@@ -121,7 +121,8 @@ func (t *CreatePicTask) Run() (sCap status.S) {
 	}
 	defer cleanUp(j, &sCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE); sts != nil {
+	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE)
+	if sts != nil {
 		return sts
 	}
 
@@ -171,7 +172,7 @@ func (t *CreatePicTask) Run() (sCap status.S) {
 		return sts
 	}
 	// must happen after pic is created, because it depends on pic id
-	if sts := t.addTagsForPic(p, tags, j); sts != nil {
+	if sts := t.addTagsForPic(p, tags, u.UserId, j); sts != nil {
 		return sts
 	}
 
@@ -336,12 +337,14 @@ func findTagByName(tagName string, j *tab.Job) (*schema.Tag, status.S) {
 	return tags[0], nil
 }
 
-func (t *CreatePicTask) addTagsForPic(p *schema.Pic, tags []*schema.Tag, j *tab.Job) status.S {
+func (t *CreatePicTask) addTagsForPic(
+	p *schema.Pic, tags []*schema.Tag, userID int64, j *tab.Job) status.S {
 	for _, tag := range tags {
 		picTag := &schema.PicTag{
-			PicId: p.PicId,
-			TagId: tag.TagId,
-			Name:  tag.Name,
+			PicId:  p.PicId,
+			TagId:  tag.TagId,
+			Name:   tag.Name,
+			UserId: userID,
 		}
 		picTag.SetCreatedTime(p.GetCreatedTime())
 		picTag.SetModifiedTime(p.GetModifiedTime())
