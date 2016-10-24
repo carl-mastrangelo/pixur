@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"os"
 	"io/ioutil"
-	"path/filepath"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -58,7 +58,7 @@ func (a *sqlite3Adapter) OpenForTest() (_ DB, errcap error) {
 	db, err := a.Open(loc)
 
 	return &sqlite3TestDB{
-		DB: db,
+		DB:      db,
 		testdir: testdir,
 	}, err
 }
@@ -70,11 +70,11 @@ type sqlite3TestDB struct {
 
 func (stdb *sqlite3TestDB) Close() error {
 	err := stdb.DB.Close()
-	
+
 	if err := os.RemoveAll(stdb.testdir); err != nil {
 		log.Println(err)
 	}
-	
+
 	return err
 }
 
@@ -84,8 +84,6 @@ func (_ *sqlite3Adapter) Quote(ident string) string {
 	}
 	return `"` + ident + `"`
 }
-
-
 
 func (a *sqlite3Adapter) BlobIdxQuote(ident string) string {
 	return a.Quote(ident)
