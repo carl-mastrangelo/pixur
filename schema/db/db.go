@@ -78,6 +78,8 @@ type DBAdapter interface {
 	IntType() string
 	BigIntType() string
 	BlobType() string
+	// Is this database inherently serial?
+	SingleTx() bool
 
 	Open(dataSourceName string) (DB, error)
 	OpenForTest() (DB, error)

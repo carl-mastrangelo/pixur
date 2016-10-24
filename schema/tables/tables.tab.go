@@ -223,6 +223,9 @@ var jobCloser = func(j *Job) {
 var alloc db.IDAlloc
 
 func (j *Job) AllocID() (int64, error) {
+	if j.adap.SingleTx() {
+		return db.AllocIDJob(j.tx, &alloc, j.adap)
+	}
 	return db.AllocID(j.beg, &alloc, j.adap)
 }
 
