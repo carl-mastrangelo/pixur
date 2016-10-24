@@ -28,6 +28,8 @@ func init() {
 	_ = flag.String("config", ".config.textpb", "The default configuration file")
 	flag.StringVar(&Conf.HttpSpec, "spec", Conf.HttpSpec, "Default HTTP port")
 	flag.StringVar(&Conf.PixPath, "pix_path", Conf.PixPath, "Default picture storage directory")
+	flag.StringVar(&Conf.DbName, "db_name", Conf.DbName, "Database Name")
+	flag.StringVar(&Conf.DbConfig, "db_config", Conf.DbConfig, "Database Configuration")
 }
 
 func mergeParseConfigFlag(defaults *Config) *Config {
