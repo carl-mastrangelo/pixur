@@ -29,24 +29,9 @@ func (t *AddPicTagsTask) Run() (errCap status.S) {
 	}
 	defer cleanUp(j, &errCap)
 
-	var u *schema.User
-	if userID, ok := UserIDFromCtx(t.Ctx); ok {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&userID},
-			Lock:   db.LockNone,
-		})
-		if err != nil {
-			return status.InternalError(err, "can't lookup user")
-		}
-		if len(users) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
-		}
-		u = users[0]
-	} else {
-		u = schema.AnonymousUser
-	}
-	if !schema.UserHasPerm(u, schema.User_PIC_TAG_CREATE) {
-		return status.PermissionDenied(nil, "can't add tags")
+	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_TAG_CREATE)
+	if sts != nil {
+		return sts
 	}
 
 	pics, err := j.FindPics(db.Opts{

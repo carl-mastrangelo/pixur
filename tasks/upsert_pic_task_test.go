@@ -102,7 +102,7 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	}
 
 	sts := task.Run()
-	expected := status.PermissionDenied(nil, "missing permission")
+	expected := status.PermissionDenied(nil, "missing cap PIC_CREATE")
 	compareStatus(t, sts, expected)
 }
 

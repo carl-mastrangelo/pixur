@@ -77,24 +77,9 @@ func (t *UpsertPicTask) Run() (stsCap status.S) {
 }
 
 func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
-	var u *schema.User
-	if userID, ok := UserIDFromCtx(ctx); ok {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&userID},
-			Lock:   db.LockNone,
-		})
-		if err != nil {
-			return status.InternalError(err, "can't lookup user")
-		}
-		if len(users) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
-		}
-		u = users[0]
-	} else {
-		u = schema.AnonymousUser
-	}
-	if !schema.UserHasPerm(u, schema.User_PIC_CREATE) {
-		return status.PermissionDenied(nil, "missing permission")
+	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE)
+	if sts != nil {
+		return sts
 	}
 
 	if t.File == nil && t.FileURL == "" {

@@ -26,6 +26,34 @@ type CreateUserTask struct {
 	CreatedUser *schema.User
 }
 
+func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
+	*schema.User, status.S) {
+	var u *schema.User
+	if userID, ok := UserIDFromCtx(ctx); ok {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&userID},
+			Lock:   db.LockNone,
+		})
+		if err != nil {
+			return nil, status.InternalError(err, "can't lookup user")
+		}
+		if len(users) != 1 {
+			return nil, status.Unauthenticated(nil, "can't lookup user")
+		}
+		u = users[0]
+	} else {
+		u = schema.AnonymousUser
+	}
+	// TODO: make sure sorted.
+	for _, c := range caps {
+		if !schema.UserHasPerm(u, c) {
+			return u, status.PermissionDeniedf(nil, "missing cap %v", c)
+		}
+	}
+
+	return u, nil
+}
+
 func (t *CreateUserTask) Run() (errCap status.S) {
 	var err error
 	j, err := tab.NewJob(t.DB)
@@ -34,24 +62,8 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 	}
 	defer cleanUp(j, &errCap)
 
-	var subjectUser *schema.User
-	if userID, ok := UserIDFromCtx(t.Ctx); ok {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&userID},
-			Lock:   db.LockNone,
-		})
-		if err != nil {
-			return status.InternalError(err, "can't lookup user")
-		}
-		if len(users) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
-		}
-		subjectUser = users[0]
-	} else {
-		subjectUser = schema.AnonymousUser
-	}
-	if !schema.UserHasPerm(subjectUser, schema.User_USER_CREATE) {
-		return status.PermissionDenied(nil, "can't create users")
+	if _, sts := requireCapability(t.Ctx, j, schema.User_USER_CREATE); sts != nil {
+		return sts
 	}
 
 	if t.Ident == "" || t.Secret == "" {

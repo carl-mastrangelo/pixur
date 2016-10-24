@@ -121,24 +121,8 @@ func (t *CreatePicTask) Run() (sCap status.S) {
 	}
 	defer cleanUp(j, &sCap)
 
-	var u *schema.User
-	if userID, ok := UserIDFromCtx(t.Ctx); ok {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&userID},
-			Lock:   db.LockNone,
-		})
-		if err != nil {
-			return status.InternalError(err, "can't lookup user")
-		}
-		if len(users) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
-		}
-		u = users[0]
-	} else {
-		u = schema.AnonymousUser
-	}
-	if !schema.UserHasPerm(u, schema.User_PIC_CREATE) {
-		return status.PermissionDenied(nil, "missing permission")
+	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE); sts != nil {
+		return sts
 	}
 
 	identities, sts := generatePicIdentities(wf)
