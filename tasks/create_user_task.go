@@ -27,15 +27,32 @@ type CreateUserTask struct {
 }
 
 func (t *CreateUserTask) Run() (errCap status.S) {
-	if t.Ctx == nil {
-		return status.InternalError(nil, "missing context")
-	}
 	var err error
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
+
+	var subjectUser *schema.User
+	if userID, ok := UserIDFromCtx(t.Ctx); ok {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&userID},
+			Lock:   db.LockNone,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't lookup user")
+		}
+		if len(users) != 1 {
+			return status.Unauthenticated(nil, "can't lookup user")
+		}
+		subjectUser = users[0]
+	} else {
+		subjectUser = schema.AnonymousUser
+	}
+	if !schema.UserHasPerm(subjectUser, schema.User_USER_CREATE) {
+		return status.PermissionDenied(nil, "can't create users")
+	}
 
 	if t.Ident == "" || t.Secret == "" {
 		return status.InvalidArgument(nil, "missing ident or secret")
@@ -59,7 +76,8 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 		CreatedTs:  schema.ToTs(now),
 		ModifiedTs: schema.ToTs(now),
 		// Don't set last seen.
-		Ident: t.Ident,
+		Ident:      t.Ident,
+		Capability: schema.UserNewCap,
 	}
 
 	if err := j.InsertUser(user); err != nil {

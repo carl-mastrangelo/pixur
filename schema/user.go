@@ -28,9 +28,23 @@ func UserHasPerm(u *User, uc User_Capability) bool {
  */
 var AnonymousUserID int64 = 0
 
-var AnonymousUser = &User{
-	UserId: AnonymousUserID,
-	Capability: []User_Capability{
+// TODO: make this configurable.
+var (
+	// Capabilities of Anonymous users
+	UserAnonymousCap = []User_Capability{
 		User_USER_CREATE,
-	},
+	}
+
+	// Capabilities of new users.
+	UserNewCap = []User_Capability{
+		User_PIC_READ,
+		User_PIC_INDEX,
+		User_PIC_UPDATE_VIEW_COUNTER,
+		User_PIC_TAG_CREATE,
+	}
+)
+
+var AnonymousUser = &User{
+	UserId:     AnonymousUserID,
+	Capability: UserAnonymousCap,
 }
