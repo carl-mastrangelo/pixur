@@ -32,11 +32,6 @@ type SoftDeletePicTask struct {
 }
 
 func (t *SoftDeletePicTask) Run() (errCap status.S) {
-	userID, ok := UserIDFromCtx(t.Ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "no user provided")
-	}
-	_ = userID // TODO: use this
 	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
 	}
@@ -46,6 +41,13 @@ func (t *SoftDeletePicTask) Run() (errCap status.S) {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
+
+	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_SOFT_DELETE)
+	if sts != nil {
+		return sts
+	}
+	// TODO: use this
+	_ = u
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},

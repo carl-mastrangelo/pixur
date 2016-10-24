@@ -25,16 +25,15 @@ type FindSimilarPicsTask struct {
 }
 
 func (t *FindSimilarPicsTask) Run() (errCap status.S) {
-	userID, ok := UserIDFromCtx(t.Ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "no user provided")
-	}
-	_ = userID // TODO: use this
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create new job")
 	}
 	defer cleanUp(j, &errCap)
+
+	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_INDEX); sts != nil {
+		return sts
+	}
 
 	pics, err := j.FindPics(db.Opts{
 		Start: tab.PicsPrimary{&t.PicID},

@@ -13,6 +13,10 @@ func TestPicViewCountUpdated(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_UPDATE_VIEW_COUNTER)
+	u.Update()
+
 	p := c.CreatePic()
 	oldTime := p.Pic.GetModifiedTime()
 
@@ -20,7 +24,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 		DB:    c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
-		Ctx:   CtxFromUserID(context.Background(), -1),
+		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
@@ -39,6 +43,10 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_UPDATE_VIEW_COUNTER)
+	u.Update()
+
 	p := c.CreatePic()
 
 	nowTs := schema.ToTs(time.Now())
@@ -53,7 +61,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	task := IncrementViewCountTask{
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), -1),
+		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 		PicID: p.Pic.PicId,
 	}
 	if sts := task.Run(); sts == nil {

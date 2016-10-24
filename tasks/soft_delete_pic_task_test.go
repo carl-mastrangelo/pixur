@@ -14,6 +14,10 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_SOFT_DELETE)
+	u.Update()
+
 	p := c.CreatePic()
 
 	task := &SoftDeletePicTask{
@@ -22,7 +26,7 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
 		Temporary: true,
-		Ctx:       CtxFromUserID(context.Background(), -1),
+		Ctx:       CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -64,6 +68,10 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_SOFT_DELETE)
+	u.Update()
+
 	now := time.Now().UTC()
 	then := now.AddDate(0, 0, -1)
 
@@ -79,7 +87,7 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
-		Ctx:                 CtxFromUserID(context.Background(), -1),
+		Ctx:                 CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -102,6 +110,10 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_SOFT_DELETE)
+	u.Update()
+
 	now := time.Now().UTC()
 
 	p := c.CreatePic()
@@ -116,7 +128,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
-		Ctx:                 CtxFromUserID(context.Background(), -1),
+		Ctx:                 CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)

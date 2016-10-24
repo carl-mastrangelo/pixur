@@ -14,6 +14,10 @@ func TestPurgeWorkflow(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_PURGE)
+	u.Update()
+
 	p := c.CreatePic()
 	// This exists to show that it is not deleted.
 	p2 := c.CreatePic()
@@ -29,7 +33,7 @@ func TestPurgeWorkflow(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
-		Ctx:     CtxFromUserID(context.Background(), -1),
+		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -75,6 +79,10 @@ func TestPurge_TagsDecremented(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_PURGE)
+	u.Update()
+
 	p := c.CreatePic()
 	p2 := c.CreatePic()
 	tag := c.CreateTag()
@@ -84,7 +92,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
-		Ctx:     CtxFromUserID(context.Background(), -1),
+		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)

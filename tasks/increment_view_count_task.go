@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
 	"pixur.org/pixur/status"
@@ -30,6 +31,10 @@ func (t *IncrementViewCountTask) Run() (errCap status.S) {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
+
+	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_UPDATE_VIEW_COUNTER); sts != nil {
+		return sts
+	}
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{Id: &t.PicID},

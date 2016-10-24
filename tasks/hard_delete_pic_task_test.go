@@ -13,13 +13,17 @@ func TestHardDeleteWorkflow(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_HARD_DELETE)
+	u.Update()
+
 	p := c.CreatePic()
 
 	task := &HardDeletePicTask{
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
-		Ctx:     CtxFromUserID(context.Background(), -1),
+		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -53,6 +57,10 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_HARD_DELETE)
+	u.Update()
+
 	nowTs := schema.ToTs(time.Now())
 	laterTs := schema.ToTs(time.Now().AddDate(0, 0, 7))
 
@@ -68,7 +76,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
-		Ctx:     CtxFromUserID(context.Background(), -1),
+		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)

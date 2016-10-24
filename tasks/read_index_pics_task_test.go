@@ -94,11 +94,15 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
 	p := c.CreatePic()
 
 	task := ReadIndexPicsTask{
 		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), -1),
+		Ctx: CtxFromUserID(context.Background(), u.User.UserId),
 	}
 	if err := task.Run(); err != nil {
 		t.Fatal(err)
@@ -115,6 +119,10 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
 	p1 := c.CreatePic()
 	p3 := c.CreatePic()
 	// A hard deletion
@@ -125,7 +133,7 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 
 	task := ReadIndexPicsTask{
 		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), -1),
+		Ctx: CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	if err := task.Run(); err != nil {
