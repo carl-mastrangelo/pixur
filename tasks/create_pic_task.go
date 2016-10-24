@@ -72,12 +72,6 @@ func (t *CreatePicTask) reset() {
 }
 
 func (t *CreatePicTask) Run() (sCap status.S) {
-	userID, ok := UserIDFromCtx(t.Ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "no user provided")
-	}
-	_ = userID // TODO: use this
-
 	var err error
 	var sts status.S
 	t.now = time.Now()
@@ -126,6 +120,26 @@ func (t *CreatePicTask) Run() (sCap status.S) {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &sCap)
+
+	var u *schema.User
+	if userID, ok := UserIDFromCtx(t.Ctx); ok {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&userID},
+			Lock:   db.LockNone,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't lookup user")
+		}
+		if len(users) != 1 {
+			return status.Unauthenticated(nil, "can't lookup user")
+		}
+		u = users[0]
+	} else {
+		u = schema.AnonymousUser
+	}
+	if !schema.UserHasPerm(u, schema.User_PIC_CREATE) {
+		return status.PermissionDenied(nil, "missing permission")
+	}
 
 	identities, sts := generatePicIdentities(wf)
 	if sts != nil {

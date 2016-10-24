@@ -42,6 +42,10 @@ func TestWorkflowFileUpload(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	img := makeImage(c.ID())
 	imgData := makeImageData(img, c)
 
@@ -50,7 +54,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -90,6 +94,10 @@ func TestDuplicateImageIgnored(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	img := makeImage(c.ID())
 	imgData := makeImageData(img, c)
 
@@ -97,7 +105,7 @@ func TestDuplicateImageIgnored(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -120,6 +128,10 @@ func TestAllIdentitiesAdded(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	img := makeImage(c.ID())
 	imgData := makeImageData(img, c)
 
@@ -127,7 +139,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 		DB:       c.DB(),
 		PixPath:  c.TempDir(),
 		FileData: imgData,
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
 	runner := new(TaskRunner)
@@ -175,6 +187,10 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	img := makeImage(c.ID())
 	imgData := makeImageData(img, c)
 
@@ -186,7 +202,7 @@ func TestWorkflowAlreadyExistingTags(t *testing.T) {
 		PixPath:  c.TempDir(),
 		FileData: imgData,
 		TagNames: []string{tag1.Tag.Name, tag2.Tag.Name},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
@@ -213,6 +229,10 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
 	img := makeImage(c.ID())
 	imgData := makeImageData(img, c)
 
@@ -222,7 +242,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		FileData: imgData,
 		// All of these are the same
 		TagNames: []string{"foo", "foo", "  foo", "foo  "},
-		Ctx:      CtxFromUserID(context.Background(), -1),
+		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
