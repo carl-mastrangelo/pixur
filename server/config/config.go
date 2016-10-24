@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -64,6 +65,12 @@ func parseConfigFlag() (*Config, error) {
 	if err := proto.UnmarshalText(string(data), config); err != nil {
 		return nil, err
 	}
+
+	if !filepath.IsAbs(config.PixPath) {
+		dir := filepath.Dir(f.Name())
+		config.PixPath = filepath.Join(dir, config.PixPath)
+	}
+
 	return config, nil
 }
 

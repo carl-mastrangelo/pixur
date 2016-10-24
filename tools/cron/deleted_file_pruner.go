@@ -2,61 +2,41 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"io/ioutil"
+	"flag"
 	"log"
-	"os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
+	sdb "pixur.org/pixur/schema/db"
 	tab "pixur.org/pixur/schema/tables"
-	"pixur.org/pixur/server"
+	"pixur.org/pixur/server/config"
 	"pixur.org/pixur/tasks"
 )
 
-// TODO: make this not a hack
 func run() error {
-	f, err := os.Open(".config.textpb")
+	db, err := sdb.Open(config.Conf.DbName, config.Conf.DbConfig)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	data, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	var config = new(server.Config)
-	if err := proto.UnmarshalText(string(data), config); err != nil {
-		return err
-	}
-	DB, err := sql.Open(config.DbName, config.DbConfig)
-	if err != nil {
-		return err
-	}
-	defer DB.Close()
-	if err := DB.Ping(); err != nil {
-		return err
-	}
-	j, err := tab.NewJob(DB)
+	defer db.Close()
+
+	j, err := tab.NewJob(db)
 	if err != nil {
 		return err
 	}
 	defer j.Rollback()
 
 	perPicFn := func(p *schema.Pic) error {
-		return perPic(p, DB, config.PixPath)
+		return perPic(p, db, config.Conf.PixPath)
 	}
 
-	return j.ScanPics(db.Opts{
+	return j.ScanPics(sdb.Opts{
 		Prefix: tab.PicsPrimary{},
-		Lock:   db.LockNone,
+		Lock:   sdb.LockNone,
 	}, perPicFn)
 }
 
-func perPic(p *schema.Pic, DB *sql.DB, pixPath string) error {
+func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 	now := time.Now()
 	// No deletion info
 	if p.DeletionStatus == nil {
@@ -79,7 +59,7 @@ func perPic(p *schema.Pic, DB *sql.DB, pixPath string) error {
 
 	log.Println("Preparing to delete", p.GetVarPicID(), pendingTime)
 	var task = &tasks.HardDeletePicTask{
-		DB:      DB,
+		DB:      db,
 		PixPath: pixPath,
 		PicID:   p.PicId,
 		Ctx:     tasks.CtxFromUserID(context.TODO(), -12345), // TODO: use real userid
@@ -93,7 +73,13 @@ func perPic(p *schema.Pic, DB *sql.DB, pixPath string) error {
 }
 
 func main() {
+	flag.Parse()
+
 	if err := run(); err != nil {
-		log.Println(err)
+		log.Println(err.(stringer).String())
 	}
+}
+
+type stringer interface {
+	String() string
 }
