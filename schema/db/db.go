@@ -376,7 +376,7 @@ func Delete(exec Executor, name string, key UniqueIdx, adap DBAdapter) error {
 		colFmtParts = append(colFmtParts, adap.Quote(col)+" = ?")
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
-	query := fmt.Sprintf("DELETE FROM %s WHERE %s LIMIT 1;", adap.Quote(name), colFmt)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s;", adap.Quote(name), colFmt)
 	_, err := exec.Exec(query, vals...)
 	return err
 }
@@ -415,7 +415,7 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 	allVals = append(allVals, vals...)
 	allVals = append(allVals, idxVals...)
 
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s LIMIT 1;", adap.Quote(name), colFmt, idxColFmt)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s;", adap.Quote(name), colFmt, idxColFmt)
 	_, err := exec.Exec(query, allVals...)
 	return err
 }

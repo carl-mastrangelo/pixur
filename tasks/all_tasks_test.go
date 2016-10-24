@@ -24,7 +24,7 @@ import (
 	tab "pixur.org/pixur/schema/tables"
 )
 
-var sqlAdapterName = "mysql"
+var sqlAdapterName = "sqlite3"
 
 type TestContainer struct {
 	T       testing.TB

@@ -170,6 +170,81 @@ var SqlTables = map[string][]string{
 
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
 	},
+
+	"sqlite3": {
+
+		"CREATE TABLE \"Pics\" (" +
+
+			"\"id\" integer NOT NULL, " +
+
+			"\"index_order\" integer NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+
+		"CREATE TABLE \"Tags\" (" +
+
+			"\"id\" integer NOT NULL, " +
+
+			"\"name\" blob NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"UNIQUE(\"name\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicTags\" (" +
+
+			"\"pic_id\" integer NOT NULL, " +
+
+			"\"tag_id\" integer NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"tag_id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicIdents\" (" +
+
+			"\"pic_id\" integer NOT NULL, " +
+
+			"\"type\" integer NOT NULL, " +
+
+			"\"value\" blob NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"type\",\"value\")" +
+
+			");",
+
+		"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\",\"value\");",
+
+		"CREATE TABLE \"Users\" (" +
+
+			"\"id\" integer NOT NULL, " +
+
+			"\"ident\" blob NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"UNIQUE(\"ident\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" integer NOT NULL);",
+	},
 }
 
 var SqlInitTables = map[string][]string{
@@ -179,6 +254,10 @@ var SqlInitTables = map[string][]string{
 	},
 
 	"postgresql": {
+		"INSERT INTO \"_SequenceTable\" (\"the_sequence\") VALUES (1);",
+	},
+
+	"sqlite3": {
 		"INSERT INTO \"_SequenceTable\" (\"the_sequence\") VALUES (1);",
 	},
 }
