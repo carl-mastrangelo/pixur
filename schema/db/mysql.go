@@ -39,6 +39,10 @@ func (_ *mysqlAdapter) Name() string {
 	return "mysql"
 }
 
+func (_ *mysqlAdapter) SingleTx() bool {
+	return false
+}
+
 func (a *mysqlAdapter) OpenForTest() (_ DB, errcap error) {
 	mysqlTestServLock.Lock()
 	defer mysqlTestServLock.Unlock()
