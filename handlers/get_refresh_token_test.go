@@ -68,6 +68,7 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	s := httptest.NewServer(&GetRefreshTokenHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
 		Now:    time.Now,
+		Secure: true,
 	})
 	defer s.Close()
 
@@ -166,6 +167,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 	s := httptest.NewServer(&GetRefreshTokenHandler{
 		Runner: tasks.TestTaskRunner(successRunner),
 		Now:    time.Now,
+		Secure: true,
 	})
 	defer s.Close()
 

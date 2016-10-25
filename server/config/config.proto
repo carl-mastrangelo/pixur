@@ -21,5 +21,9 @@ message Config {
 	string token_secret = 5;
 	string session_private_key_path = 6;
 	string session_public_key_path = 7;
+	
+	// If the site is access through insecure connections.
+	// Affects cookies.
+	bool insecure = 8;
 }
 

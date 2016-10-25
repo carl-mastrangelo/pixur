@@ -46,7 +46,7 @@ func TestNewXsrfCookie(t *testing.T) {
 	now := func() time.Time {
 		return time.Unix(0, 0)
 	}
-	c := newXsrfCookie("token", now)
+	c := newXsrfCookie("token", now, true)
 	expected := http.Cookie{
 		Name:     "XSRF-TOKEN",
 		Value:    "token",
@@ -69,7 +69,7 @@ func TestXsrfTokensFromRequest(t *testing.T) {
 	now := func() time.Time {
 		return time.Unix(0, 0)
 	}
-	cookie := newXsrfCookie("c", now)
+	cookie := newXsrfCookie("c", now, true)
 	r.AddCookie(cookie)
 	r.Header.Add(xsrfHeaderName, "h")
 	c, h, err := xsrfTokensFromRequest(r)
@@ -105,7 +105,7 @@ func TestXsrfTokensFromRequestNoHeaderPasses(t *testing.T) {
 	now := func() time.Time {
 		return time.Unix(0, 0)
 	}
-	cookie := newXsrfCookie("c", now)
+	cookie := newXsrfCookie("c", now, true)
 	r.AddCookie(cookie)
 	c, h, err := xsrfTokensFromRequest(r)
 	if err != nil {

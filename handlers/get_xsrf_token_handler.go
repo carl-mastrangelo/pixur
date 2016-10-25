@@ -20,6 +20,8 @@ type GetXsrfTokenHandler struct {
 	// deps
 	Now  func() time.Time
 	Rand io.Reader
+
+	Secure bool
 }
 
 func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *GetXsrfTokenRequest) (
@@ -62,7 +64,7 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	http.SetCookie(w, newXsrfCookie(resp.XsrfToken, h.Now))
+	http.SetCookie(w, newXsrfCookie(resp.XsrfToken, h.Now, h.Secure))
 
 	returnProtoJSON(w, r, resp)
 }
@@ -70,8 +72,9 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/getXsrfToken", &GetXsrfTokenHandler{
-			Now:  time.Now,
-			Rand: rand.Reader,
+			Now:    time.Now,
+			Rand:   rand.Reader,
+			Secure: c.Secure,
 		})
 	})
 }

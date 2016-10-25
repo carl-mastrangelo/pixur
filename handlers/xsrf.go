@@ -42,13 +42,13 @@ func newXsrfToken(random io.Reader) (string, status.S) {
 	return string(b64XsrfToken), nil
 }
 
-func newXsrfCookie(token string, now func() time.Time) *http.Cookie {
+func newXsrfCookie(token string, now func() time.Time, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    token,
 		Path:     "/", // Has to be accessible from root javascript, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
-		Secure:   true,
+		Secure:   secure,
 		HttpOnly: false,
 	}
 }

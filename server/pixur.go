@@ -21,6 +21,7 @@ type Server struct {
 	tokenSecret []byte
 	publicKey   *rsa.PublicKey
 	privateKey  *rsa.PrivateKey
+	insecure    bool
 }
 
 func (s *Server) setup(c *config.Config) error {
@@ -99,6 +100,7 @@ func (s *Server) setup(c *config.Config) error {
 	if c.TokenSecret != "" {
 		s.tokenSecret = []byte(c.TokenSecret)
 	}
+	s.insecure = c.Insecure
 
 	s.s = new(http.Server)
 	s.s.Addr = c.HttpSpec
@@ -111,6 +113,7 @@ func (s *Server) setup(c *config.Config) error {
 		TokenSecret: s.tokenSecret,
 		PrivateKey:  s.privateKey,
 		PublicKey:   s.publicKey,
+		Secure:      !s.insecure,
 	})
 	return nil
 }

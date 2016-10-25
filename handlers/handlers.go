@@ -28,6 +28,7 @@ type ServerConfig struct {
 	TokenSecret []byte
 	PrivateKey  *rsa.PrivateKey
 	PublicKey   *rsa.PublicKey
+	Secure      bool
 }
 
 func register(rf registerFunc) {

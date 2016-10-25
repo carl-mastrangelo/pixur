@@ -21,6 +21,8 @@ type GetRefreshTokenHandler struct {
 	DB     db.DB
 	Now    func() time.Time
 	Runner *tasks.TaskRunner
+
+	Secure bool
 }
 
 var (
@@ -171,7 +173,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		Value:    resp.RefreshToken,
 		Path:     "/api/getRefreshToken",
 		Expires:  refreshNotAfter,
-		Secure:   true,
+		Secure:   h.Secure,
 		HttpOnly: true,
 	})
 	resp.RefreshToken = ""
@@ -185,7 +187,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		Value:    resp.AuthToken,
 		Path:     "/api/",
 		Expires:  authNotAfter,
-		Secure:   true,
+		Secure:   h.Secure,
 		HttpOnly: true,
 	})
 	resp.AuthToken = ""
@@ -196,7 +198,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 			Value:    resp.PixToken,
 			Path:     "/pix/",
 			Expires:  refreshNotAfter,
-			Secure:   true,
+			Secure:   h.Secure,
 			HttpOnly: true,
 		})
 		resp.PixToken = ""
@@ -208,8 +210,9 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/getRefreshToken", &GetRefreshTokenHandler{
-			DB:  c.DB,
-			Now: time.Now,
+			DB:     c.DB,
+			Now:    time.Now,
+			Secure: c.Secure,
 		})
 	})
 }
