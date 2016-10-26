@@ -50,6 +50,40 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	}
 }
 
+func TestCreateUserCapabilityOverride(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+	now := time.Now()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:         c.DB(),
+		Now:        func() time.Time { return now },
+		Ident:      "email",
+		Secret:     "secret",
+		Ctx:        CtxFromUserID(context.Background(), u.User.UserId),
+		Capability: []schema.User_Capability{schema.User_USER_CREATE},
+	}
+
+	if err := task.Run(); err != nil {
+		t.Fatal(err)
+	}
+	expected := &schema.User{
+		UserId:     2,
+		Secret:     task.CreatedUser.Secret,
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+		Ident:      "email",
+		Capability: []schema.User_Capability{schema.User_USER_CREATE},
+	}
+	if !proto.Equal(expected, task.CreatedUser) {
+		t.Fatal("not equal", expected, task.CreatedUser)
+	}
+}
+
 func TestCreateUserEmptyIdent(t *testing.T) {
 	c := Container(t)
 	defer c.Close()

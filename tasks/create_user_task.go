@@ -21,6 +21,8 @@ type CreateUserTask struct {
 	Ident  string
 	Secret string
 	Ctx    context.Context
+	// Special input that overrides the defaults.   Used for site bootstrapping.
+	Capability []schema.User_Capability
 
 	// Results
 	CreatedUser *schema.User
@@ -81,6 +83,13 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 		return status.InternalError(err, "can't generate password")
 	}
 
+	var newcap []schema.User_Capability
+	if len(t.Capability) != 0 {
+		newcap = t.Capability
+	} else {
+		newcap = schema.UserNewCap
+	}
+
 	now := t.Now()
 	user := &schema.User{
 		UserId:     userID,
@@ -89,7 +98,7 @@ func (t *CreateUserTask) Run() (errCap status.S) {
 		ModifiedTs: schema.ToTs(now),
 		// Don't set last seen.
 		Ident:      t.Ident,
-		Capability: schema.UserNewCap,
+		Capability: newcap,
 	}
 
 	if err := j.InsertUser(user); err != nil {
