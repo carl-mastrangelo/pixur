@@ -105,7 +105,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var filename string
 	var filedata multipart.File
-	if uploadedFile, fileHeader, err := r.FormFile("data"); err != nil {
+	if uploadedFile, fileHeader, err := r.FormFile("file"); err != nil {
 		if err != http.ErrMissingFile && err != http.ErrNotMultipart {
 			httpError(w, status.InvalidArgument(err, "can't read file"))
 			return
