@@ -42,7 +42,8 @@ func (h *UpsertPicHandler) upsertPic(
 		return nil, sts
 	}
 
-	if file == nil {
+	if file == nil && len(req.Data) != 0 {
+		// make sure this is non nil only if there actually data.
 		file = &memFile{bytes.NewReader(req.Data)}
 	}
 
