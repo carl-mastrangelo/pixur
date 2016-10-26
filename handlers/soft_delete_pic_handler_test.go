@@ -233,7 +233,7 @@ func TestSoftDeleteGetNotAllowed(t *testing.T) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusMethodNotAllowed {
+	if res.StatusCode != http.StatusBadRequest {
 		t.Fatal("bad status code", res.StatusCode)
 	}
 	if taskCap != nil {

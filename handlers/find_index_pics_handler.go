@@ -59,15 +59,15 @@ func (h *FindIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	case "/api/findPreviousIndexPics":
 		ascending = true
 	default:
-		http.Error(w, "bad path", http.StatusNotFound)
+		httpError(w, status.NotFound(nil, "Not Found"))
 		return
 	}
 
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkGet()
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *FindIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		Ascending:  ascending,
 	})
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

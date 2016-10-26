@@ -49,8 +49,8 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	rc.checkPost()
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Secret: r.FormValue("secret"),
 	})
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

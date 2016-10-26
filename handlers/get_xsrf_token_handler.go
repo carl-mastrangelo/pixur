@@ -48,8 +48,8 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		now: h.Now,
 	}
 	rc.checkPost()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	resp, sts := h.GetXsrfToken(ctx, &GetXsrfTokenRequest{})
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

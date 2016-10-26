@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -41,11 +43,16 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 	}
 }
 
-func returnTaskError(w http.ResponseWriter, sts status.S) {
-	log.Println("Error in task: ", sts)
-	w.Header().Set("Content-Type", "text/plain")
+var errorLog = log.New(os.Stderr, "", log.LstdFlags)
+
+func httpError(w http.ResponseWriter, sts status.S) {
+	w.Header().Set("Pixur-Status", strconv.Itoa(int(sts.Code())))
+	w.Header().Set("Pixur-Message", sts.Message())
+
 	code := sts.Code()
 	http.Error(w, code.String()+": "+sts.Message(), code.HttpStatus())
+
+	errorLog.Println(sts.String())
 }
 
 var protoJSONMarshaller = &jsonpb.Marshaler{}
@@ -75,8 +82,7 @@ func returnProtoJSON(w http.ResponseWriter, r *http.Request, pb proto.Message) {
 			case "application/json":
 				w.Header().Set("Content-Type", "application/json")
 				if err := protoJSONMarshaller.Marshal(writer, pb); err != nil {
-					log.Println("Error writing JSON", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					httpError(w, status.InternalError(err, "error writing json"))
 					return
 				}
 				return
@@ -84,13 +90,11 @@ func returnProtoJSON(w http.ResponseWriter, r *http.Request, pb proto.Message) {
 				w.Header().Set("Content-Type", "application/proto")
 				raw, err := proto.Marshal(pb)
 				if err != nil {
-					log.Println("Error building Proto", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					httpError(w, status.InternalError(err, "error building proto"))
 					return
 				}
 				if _, err := writer.Write(raw); err != nil {
-					log.Println("Error writing Proto", err)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					httpError(w, status.InternalError(err, "error writing proto"))
 					return
 				}
 				return
@@ -100,7 +104,6 @@ func returnProtoJSON(w http.ResponseWriter, r *http.Request, pb proto.Message) {
 	// default
 	w.Header().Set("Content-Type", "application/json")
 	if err := protoJSONMarshaller.Marshal(writer, pb); err != nil {
-		log.Println("Error writing JSON", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, status.InternalError(err, "error writing json"))
 	}
 }

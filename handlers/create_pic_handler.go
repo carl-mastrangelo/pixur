@@ -64,8 +64,8 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var filedata multipart.File
 	if uploadedFile, fileHeader, err := r.FormFile("file"); err != nil {
 		if err != http.ErrMissingFile && err != http.ErrNotMultipart {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httpError(w, status.InvalidArgument(err, "can't read file"))
 			return
 		}
 	} else {
@@ -92,7 +92,7 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Tag:      r.PostForm["tag"],
 	}, filedata)
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

@@ -70,7 +70,7 @@ func TestFileHandlerFailsOnInvalidToken(t *testing.T) {
 	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := bodyToText(res.Body), "invalid pix token"; !strings.Contains(have, want) {
+	if have, want := bodyToText(res.Body), "not pix token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
@@ -249,7 +249,7 @@ func TestFileHandlerFailsOnBadPicNameVarint(t *testing.T) {
 	}
 	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusBadRequest; have != want {
+	if have, want := res.StatusCode, http.StatusNotFound; have != want {
 		t.Error("have", have, "want", want)
 	}
 }

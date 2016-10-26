@@ -71,8 +71,8 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -85,13 +85,13 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if rawTime := r.FormValue("deletion_time"); rawTime != "" {
 		var deletionTime time.Time
 		if err := deletionTime.UnmarshalText([]byte(rawTime)); err != nil {
-			http.Error(w, "can't parse deletion time", http.StatusBadRequest)
+			httpError(w, status.InvalidArgument(err, "can't parse deletion time"))
 			return
 		}
 		var err error
 		deletionTs, err = ptypes.TimestampProto(deletionTime)
 		if err != nil {
-			http.Error(w, "bad deletion time", http.StatusBadRequest)
+			httpError(w, status.InvalidArgument(err, "bad deletion time"))
 			return
 		}
 	}
@@ -103,7 +103,7 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		DeletionTime: deletionTs,
 	})
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

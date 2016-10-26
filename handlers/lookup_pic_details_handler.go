@@ -54,8 +54,8 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		PicId: r.FormValue("pic_id"),
 	})
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

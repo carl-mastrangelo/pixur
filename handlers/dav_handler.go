@@ -98,8 +98,8 @@ func (h *davAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Currently blocks dav from working, mostly.
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPixAuth()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 

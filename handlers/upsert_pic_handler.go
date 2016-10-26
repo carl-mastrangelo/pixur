@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -93,8 +92,8 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
 	rc.checkXsrf()
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -107,8 +106,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var filedata multipart.File
 	if uploadedFile, fileHeader, err := r.FormFile("data"); err != nil {
 		if err != http.ErrMissingFile && err != http.ErrNotMultipart {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httpError(w, status.InvalidArgument(err, "can't read file"))
 			return
 		}
 	} else {
@@ -121,7 +119,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var err error
 		md5Hash, err = hex.DecodeString(hexHash)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httpError(w, status.InvalidArgument(err, "can't decode md5 hash"))
 			return
 		}
 	}
@@ -134,7 +132,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}, filedata)
 
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 

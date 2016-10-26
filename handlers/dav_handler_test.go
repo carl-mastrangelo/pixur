@@ -70,7 +70,7 @@ func TestDavHandlerFailsOnInvalidToken(t *testing.T) {
 	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := bodyToText(res.Body), "invalid pix token"; !strings.Contains(have, want) {
+	if have, want := bodyToText(res.Body), "not pix token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }

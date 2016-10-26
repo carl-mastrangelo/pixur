@@ -29,7 +29,7 @@ func TestGetRefreshTokenFailsOnNonPost(t *testing.T) {
 	}
 	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusMethodNotAllowed; have != want {
+	if have, want := res.StatusCode, http.StatusBadRequest; have != want {
 		t.Error("have", have, "want", want)
 	}
 }

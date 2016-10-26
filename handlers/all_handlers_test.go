@@ -16,6 +16,8 @@ func init() {
 		now:    time.Now,
 		secret: []byte("secret"),
 	}
+
+	errorLog.SetOutput(ioutil.Discard)
 }
 
 type testClient struct {

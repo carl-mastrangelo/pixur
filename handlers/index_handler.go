@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"pixur.org/pixur/status"
 )
 
 type IndexHandler struct {
@@ -16,7 +18,7 @@ type IndexHandler struct {
 func (h *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tpl, err := template.ParseFiles("tpl/index.html")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, status.InternalError(err, "can't parse index"))
 		return
 	}
 
@@ -33,14 +35,14 @@ func (h *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, status.InternalError(err, "can't find js"))
 		return
 	}
 	args.Scripts = append(args.Scripts, "static/pixur.js")
 
 	w.Header().Set("Content-Type", "text/html")
 	if err := tpl.Execute(w, args); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, status.InternalError(err, "can't execute template"))
 	}
 }
 

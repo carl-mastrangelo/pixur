@@ -144,8 +144,8 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	rc.checkPost()
 	rc.checkXsrf()
 	// Don't check auth, it may be invalid
-	if rc.code != 0 {
-		http.Error(w, rc.message, rc.code)
+	if rc.sts != nil {
+		httpError(w, rc.sts)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	resp, sts := h.GetRefreshToken(r.Context(), req)
 	if sts != nil {
-		http.Error(w, sts.Message(), sts.Code().HttpStatus())
+		httpError(w, sts)
 		return
 	}
 	refreshNotAfter, err := ptypes.Timestamp(resp.RefreshPayload.NotAfter)

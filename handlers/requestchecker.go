@@ -5,20 +5,20 @@ import (
 	"time"
 
 	"pixur.org/pixur/schema"
+	"pixur.org/pixur/status"
 )
 
 type requestChecker struct {
-	r       *http.Request
-	message string
-	code    int
-	now     func() time.Time
+	r   *http.Request
+	sts status.S
+	now func() time.Time
 }
 
 // getAuth Returns the validated auth token
 // It may return nil if the request is already failed
 // If there is no auth token, it returns nil but doesn't fail the request.
 func (rc *requestChecker) getAuth() *PwtPayload {
-	if rc.code != 0 {
+	if rc.sts != nil {
 		return nil
 	}
 
@@ -26,31 +26,31 @@ func (rc *requestChecker) getAuth() *PwtPayload {
 	if err == http.ErrNoCookie {
 		return nil
 	} else if err != nil {
-		rc.message, rc.code = "missing auth cookie", http.StatusUnauthorized
+		rc.sts = status.Unauthenticated(err, "missing auth cookie")
 		return nil
 	}
 
 	authPayload, err := defaultPwtCoder.decode([]byte(c.Value))
 	if err != nil {
-		rc.message, rc.code = err.Error(), http.StatusUnauthorized
+		rc.sts = status.Unauthenticated(err, err.Error())
 		return nil
 	}
 	if authPayload.Type != PwtPayload_AUTH {
-		rc.message, rc.code = "invalid auth token", http.StatusUnauthorized
+		rc.sts = status.Unauthenticated(nil, "not auth token")
 		return nil
 	}
 	return authPayload
 }
 
 func (rc *requestChecker) checkPixAuth() *PwtPayload {
-	if rc.code != 0 {
+	if rc.sts != nil {
 		return nil
 	}
 
 	c, err := rc.r.Cookie(pixPwtCookieName)
 	if err != nil {
 		if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
-			rc.message, rc.code = "missing pix cookie", http.StatusUnauthorized
+			rc.sts = status.Unauthenticated(err, "missing pix cookie")
 		}
 		return nil
 	}
@@ -58,45 +58,47 @@ func (rc *requestChecker) checkPixAuth() *PwtPayload {
 
 	pixPayload, err := defaultPwtCoder.decode([]byte(c.Value))
 	if err != nil {
-		rc.message, rc.code = err.Error(), http.StatusUnauthorized
+		rc.sts = status.Unauthenticated(err, err.Error())
 		return nil
 	}
 	if pixPayload.Type != PwtPayload_PIX {
-		rc.message, rc.code = "invalid pix token", http.StatusUnauthorized
+		rc.sts = status.Unauthenticated(nil, "not pix token")
 		return nil
 	}
 	return pixPayload
 }
 
 func (rc *requestChecker) checkPost() {
-	if rc.code != 0 {
+	if rc.sts != nil {
 		return
 	}
 	if rc.r.Method != "POST" {
-		rc.message, rc.code = "Unsupported Method", http.StatusMethodNotAllowed
+		// TODO: find a way to make this http.StatusMethodNotAllowed
+		rc.sts = status.InvalidArgument(nil, "Unsupported Method")
 	}
 }
 
 func (rc *requestChecker) checkGet() {
-	if rc.code != 0 {
+	if rc.sts != nil {
 		return
 	}
 	if rc.r.Method != "GET" {
-		rc.message, rc.code = "Unsupported Method", http.StatusMethodNotAllowed
+		// TODO: find a way to make this http.StatusMethodNotAllowed
+		rc.sts = status.InvalidArgument(nil, "Unsupported Method")
 	}
 }
 
 func (rc *requestChecker) checkXsrf() {
-	if rc.code != 0 {
+	if rc.sts != nil {
 		return
 	}
 	xsrfCookie, xsrfHeader, sts := xsrfTokensFromRequest(rc.r)
 	if sts != nil {
-		rc.message, rc.code = sts.Error(), sts.Code().HttpStatus()
+		rc.sts = sts
 		return
 	}
 	if sts := checkXsrfTokens(xsrfCookie, xsrfHeader); sts != nil {
-		rc.message, rc.code = sts.Error(), sts.Code().HttpStatus()
+		rc.sts = sts
 		return
 	}
 }
