@@ -169,6 +169,8 @@ message User {
     PIC_UPDATE_VIEW_COUNTER = 8;
     // Can this user add tags and pic tags?
     PIC_TAG_CREATE = 9;
+    // Can this user create comments.
+    PIC_COMMENT_CREATE = 10;
     // Can this user create other users?
     USER_CREATE = 4;
   }
