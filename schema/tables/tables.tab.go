@@ -79,6 +79,20 @@ var SqlTables = map[string][]string{
 
 		"CREATE INDEX `PicIdentsIdent` ON `PicIdents` (`type`,`value`(255));",
 
+		"CREATE TABLE `PicComments` (" +
+
+			"`pic_id` bigint(20) NOT NULL, " +
+
+			"`comment_id` bigint(20) NOT NULL, " +
+
+			"`data` blob NOT NULL, " +
+
+			"PRIMARY KEY(`pic_id`,`comment_id`)" +
+
+			");",
+
+		"CREATE INDEX `PicCommentsCommentId` ON `PicComments` (`comment_id`);",
+
 		"CREATE TABLE `Users` (" +
 
 			"`id` bigint(20) NOT NULL, " +
@@ -154,6 +168,20 @@ var SqlTables = map[string][]string{
 
 		"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\",\"value\");",
 
+		"CREATE TABLE \"PicComments\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"comment_id\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"comment_id\")" +
+
+			");",
+
+		"CREATE INDEX \"PicCommentsCommentId\" ON \"PicComments\" (\"comment_id\");",
+
 		"CREATE TABLE \"Users\" (" +
 
 			"\"id\" bigint NOT NULL, " +
@@ -228,6 +256,20 @@ var SqlTables = map[string][]string{
 			");",
 
 		"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\",\"value\");",
+
+		"CREATE TABLE \"PicComments\" (" +
+
+			"\"pic_id\" integer NOT NULL, " +
+
+			"\"comment_id\" integer NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"comment_id\")" +
+
+			");",
+
+		"CREATE INDEX \"PicCommentsCommentId\" ON \"PicComments\" (\"comment_id\");",
 
 		"CREATE TABLE \"Users\" (" +
 
@@ -963,6 +1005,173 @@ func (j *Job) UpdatePicIdentRow(row *PicIdentRow) error {
 
 func (j *Job) DeletePicIdent(key PicIdentsPrimary) error {
 	return db.Delete(j.tx, "PicIdents", key, j.adap)
+}
+
+type PicCommentsPrimary struct {
+	PicId *int64
+
+	CommentId *int64
+}
+
+func (_ PicCommentsPrimary) Unique() {}
+
+var _ db.UniqueIdx = PicCommentsPrimary{}
+
+var colsPicCommentsPrimary = []string{"pic_id", "comment_id"}
+
+func (idx PicCommentsPrimary) Cols() []string {
+	return colsPicCommentsPrimary
+}
+
+func (idx PicCommentsPrimary) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.PicId != nil {
+		if done {
+			panic("Extra value PicId")
+		}
+		vals = append(vals, *idx.PicId)
+	} else {
+		done = true
+	}
+
+	if idx.CommentId != nil {
+		if done {
+			panic("Extra value CommentId")
+		}
+		vals = append(vals, *idx.CommentId)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+type PicCommentsCommentId struct {
+	CommentId *int64
+}
+
+var _ db.Idx = PicCommentsCommentId{}
+
+var colsPicCommentsCommentId = []string{"comment_id"}
+
+func (idx PicCommentsCommentId) Cols() []string {
+	return colsPicCommentsCommentId
+}
+
+func (idx PicCommentsCommentId) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.CommentId != nil {
+		if done {
+			panic("Extra value CommentId")
+		}
+		vals = append(vals, *idx.CommentId)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+var colsPicComments = []string{"pic_id", "comment_id", "data"}
+
+func (j *Job) ScanPicComments(opts db.Opts, cb func(*schema.PicComment) error) error {
+	return db.Scan(j.tx, "PicComments", opts, func(data []byte) error {
+		var pb schema.PicComment
+		if err := proto.Unmarshal(data, &pb); err != nil {
+			return err
+		}
+		return cb(&pb)
+	}, j.adap)
+}
+
+func (j *Job) FindPicComments(opts db.Opts) (rows []*schema.PicComment, err error) {
+	err = j.ScanPicComments(opts, func(data *schema.PicComment) error {
+		rows = append(rows, data)
+		return nil
+	})
+	return
+}
+
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicComment)(nil)
+
+var _ interface {
+	CommentIdCol() int64
+} = (*schema.PicComment)(nil)
+
+func (j *Job) InsertPicComment(pb *schema.PicComment) error {
+	return j.InsertPicCommentRow(&PicCommentRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		CommentId: pb.CommentIdCol(),
+	})
+}
+
+func (j *Job) InsertPicCommentRow(row *PicCommentRow) error {
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.CommentId)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Insert(j.tx, "PicComments", colsPicComments, vals, j.adap)
+}
+
+var _ interface {
+	PicIdCol() int64
+} = (*schema.PicComment)(nil)
+
+var _ interface {
+	CommentIdCol() int64
+} = (*schema.PicComment)(nil)
+
+func (j *Job) UpdatePicComment(pb *schema.PicComment) error {
+	return j.UpdatePicCommentRow(&PicCommentRow{
+		Data: pb,
+
+		PicId: pb.PicIdCol(),
+
+		CommentId: pb.CommentIdCol(),
+	})
+}
+
+func (j *Job) UpdatePicCommentRow(row *PicCommentRow) error {
+
+	key := PicCommentsPrimary{
+
+		PicId: &row.PicId,
+
+		CommentId: &row.CommentId,
+	}
+
+	var vals []interface{}
+
+	vals = append(vals, row.PicId)
+
+	vals = append(vals, row.CommentId)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "PicComments", colsPicComments, vals, key, j.adap)
+}
+
+func (j *Job) DeletePicComment(key PicCommentsPrimary) error {
+	return db.Delete(j.tx, "PicComments", key, j.adap)
 }
 
 type UsersPrimary struct {

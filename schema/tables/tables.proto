@@ -94,6 +94,28 @@ message PicIdentRow {
   pixur.PicIdent data = 4;
 }
 
+message PicCommentRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "PicComments"
+    key: {
+      key_type: PRIMARY
+      col: "pic_id"
+      col: "comment_id"
+    }
+    key: {
+      name: "CommentId"
+      key_type: INDEX
+      col: "comment_id"
+    }
+  };
+  
+  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  
+  int64 comment_id = 2 [(pixur.db.model.field_opts) = {col_fn: "CommentIdCol"}];
+  
+  pixur.PicComment data = 3;
+}
+
 message UserRow {
   option (pixur.db.model.tab_opts) = {
     name: "Users"
