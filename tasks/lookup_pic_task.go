@@ -1,7 +1,9 @@
 package tasks
 
 import (
+	"bytes"
 	"context"
+	"strings"
 
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
@@ -20,8 +22,9 @@ type LookupPicTask struct {
 	Ctx   context.Context
 
 	// Results
-	Pic     *schema.Pic
-	PicTags []*schema.PicTag
+	Pic            *schema.Pic
+	PicTags        []*schema.PicTag
+	PicCommentTree *PicCommentTree
 }
 
 func (t *LookupPicTask) Run() (errCap status.S) {
@@ -48,16 +51,75 @@ func (t *LookupPicTask) Run() (errCap status.S) {
 	t.Pic = pics[0]
 
 	picTags, err := j.FindPicTags(db.Opts{
-		Start: tab.PicTagsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
 	})
 	if err != nil {
 		return status.InternalError(err, "can't find pic tags")
 	}
+	t.PicTags = picTags
+
+	picComments, err := j.FindPicComments(db.Opts{
+		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+	})
+	if err != nil {
+		return status.InternalError(err, "can't find pic comments")
+	}
+	t.PicCommentTree = buildCommentTree(picComments)
+
 	if err := j.Rollback(); err != nil {
 		return status.InternalError(err, "can't rollback job")
 	}
 
-	t.PicTags = picTags
-
 	return nil
+}
+
+type PicCommentTree struct {
+	PicComment *schema.PicComment
+	Children   []*PicCommentTree
+}
+
+func (pct *PicCommentTree) String() string {
+	var buf bytes.Buffer
+	pct.str(0, &buf)
+	return buf.String()
+}
+
+func (pct *PicCommentTree) str(level int, buf *bytes.Buffer) {
+	buf.WriteString(strings.Repeat("  ", level))
+	buf.WriteString(pct.PicComment.String())
+	buf.WriteRune('\n')
+	for _, child := range pct.Children {
+		child.str(level+1, buf)
+	}
+}
+
+func buildCommentTree(pcs []*schema.PicComment) *PicCommentTree {
+	trees := make(map[int64]*PicCommentTree, len(pcs))
+	orphans := make(map[int64][]*PicCommentTree)
+
+	root := &PicCommentTree{
+		PicComment: new(schema.PicComment),
+	}
+	trees[root.PicComment.CommentId] = root
+
+	for _, pc := range pcs {
+		node := &PicCommentTree{
+			PicComment: pc,
+			Children:   orphans[pc.CommentId],
+		}
+		delete(orphans, pc.CommentId)
+
+		trees[pc.CommentId] = node
+		if parent, present := trees[pc.CommentParentId]; present {
+			parent.Children = append(parent.Children, node)
+		} else {
+			orphans[pc.CommentParentId] = append(orphans[pc.CommentParentId], node)
+		}
+	}
+
+	for range orphans {
+		panic("unparented comments")
+	}
+
+	return root
 }
