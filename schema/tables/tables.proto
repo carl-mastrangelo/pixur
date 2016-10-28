@@ -104,7 +104,7 @@ message PicCommentRow {
     }
     key: {
       name: "CommentId"
-      key_type: INDEX
+      key_type: UNIQUE
       col: "comment_id"
     }
   };

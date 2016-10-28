@@ -87,11 +87,11 @@ var SqlTables = map[string][]string{
 
 			"`data` blob NOT NULL, " +
 
+			"UNIQUE(`comment_id`), " +
+
 			"PRIMARY KEY(`pic_id`,`comment_id`)" +
 
 			");",
-
-		"CREATE INDEX `PicCommentsCommentId` ON `PicComments` (`comment_id`);",
 
 		"CREATE TABLE `Users` (" +
 
@@ -176,11 +176,11 @@ var SqlTables = map[string][]string{
 
 			"\"data\" bytea NOT NULL, " +
 
+			"UNIQUE(\"comment_id\"), " +
+
 			"PRIMARY KEY(\"pic_id\",\"comment_id\")" +
 
 			");",
-
-		"CREATE INDEX \"PicCommentsCommentId\" ON \"PicComments\" (\"comment_id\");",
 
 		"CREATE TABLE \"Users\" (" +
 
@@ -265,11 +265,11 @@ var SqlTables = map[string][]string{
 
 			"\"data\" blob NOT NULL, " +
 
+			"UNIQUE(\"comment_id\"), " +
+
 			"PRIMARY KEY(\"pic_id\",\"comment_id\")" +
 
 			");",
-
-		"CREATE INDEX \"PicCommentsCommentId\" ON \"PicComments\" (\"comment_id\");",
 
 		"CREATE TABLE \"Users\" (" +
 
@@ -1051,7 +1051,9 @@ type PicCommentsCommentId struct {
 	CommentId *int64
 }
 
-var _ db.Idx = PicCommentsCommentId{}
+func (_ PicCommentsCommentId) Unique() {}
+
+var _ db.UniqueIdx = PicCommentsCommentId{}
 
 var colsPicCommentsCommentId = []string{"comment_id"}
 
