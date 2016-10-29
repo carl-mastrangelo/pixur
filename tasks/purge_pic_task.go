@@ -81,7 +81,7 @@ func (t *PurgePicTask) Run() (errCap status.S) {
 			TagId: &pt.TagId,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't delete pic ident")
+			return status.InternalError(err, "can't delete pic tag")
 		}
 	}
 
@@ -116,6 +116,25 @@ func (t *PurgePicTask) Run() (errCap status.S) {
 			if err != nil {
 				return status.InternalError(err, "can't delete tag")
 			}
+		}
+	}
+
+	pcs, err := j.FindPicComments(db.Opts{
+		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+		Lock:   db.LockWrite,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't find pic comments")
+	}
+
+	for _, pc := range pcs {
+
+		err := j.DeletePicComment(tab.PicCommentsPrimary{
+			PicId:     &pc.PicId,
+			CommentId: &pc.CommentId,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't delete pic comment")
 		}
 	}
 

@@ -29,6 +29,9 @@ func TestPurgeWorkflow(t *testing.T) {
 		t.Fatalf("Wrong number of identifiers: %s", len(idents))
 	}
 
+	pc := p.Comment()
+	pc2 := pc.Comment()
+
 	task := &PurgePicTask{
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
@@ -52,6 +55,12 @@ func TestPurgeWorkflow(t *testing.T) {
 	}
 	if pt.Refresh() {
 		t.Fatal("Expected PicTag to be deleted", pt)
+	}
+	if pc.Refresh() {
+		t.Error("Expected PicComment to be deleted", pc)
+	}
+	if pc2.Refresh() {
+		t.Error("Expected PicComment to be deleted", pc2)
 	}
 
 	var afterIdents []*schema.PicIdent

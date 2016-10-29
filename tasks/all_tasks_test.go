@@ -414,6 +414,65 @@ func (pt *TestPicTag) Refresh() (exists bool) {
 	return
 }
 
+type TestPicComment struct {
+	PicComment *schema.PicComment
+	c          *TestContainer
+}
+
+func (p *TestPic) Comment() *TestPicComment {
+	return p.c.createPicComment(p.Pic.PicId, 0)
+}
+
+func (pc *TestPicComment) Comment() *TestPicComment {
+	return pc.c.createPicComment(pc.PicComment.PicId, pc.PicComment.CommentId)
+}
+
+func (c *TestContainer) createPicComment(picID, commentParentID int64) *TestPicComment {
+	now := time.Now()
+	id := c.ID()
+
+	pc := &schema.PicComment{
+		PicId:           picID,
+		CommentParentId: commentParentID,
+		CommentId:       id,
+		CreatedTs:       schema.ToTs(now),
+		ModifiedTs:      schema.ToTs(now),
+	}
+	c.AutoJob(func(j *tab.Job) error {
+		return j.InsertPicComment(pc)
+	})
+	return &TestPicComment{
+		PicComment: pc,
+		c:          c,
+	}
+}
+
+func (pc *TestPicComment) Update() {
+	pc.c.AutoJob(func(j *tab.Job) error {
+		return j.UpdatePicComment(pc.PicComment)
+	})
+}
+
+func (pc *TestPicComment) Refresh() (exists bool) {
+	pc.c.AutoJob(func(j *tab.Job) error {
+		pcs, err := j.FindPicComments(db.Opts{
+			Prefix: tab.PicCommentsPrimary{&pc.PicComment.PicId, &pc.PicComment.CommentId},
+		})
+		if err != nil {
+			return err
+		}
+		if len(pcs) == 1 {
+			pc.PicComment = pcs[0]
+			exists = true
+		} else {
+			pc.PicComment = nil
+			exists = false
+		}
+		return nil
+	})
+	return
+}
+
 type TestUser struct {
 	User *schema.User
 	c    *TestContainer
