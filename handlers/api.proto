@@ -247,6 +247,17 @@ message PwtPayload {
 	Type type = 7;
 }
 
+message AddPicCommentRequest {
+	string pic_id = 1;
+	string comment_parent_id = 2;
+	
+	string text = 3;
+}
+
+message AddPicCommentResponse {
+	ApiPicComment comment = 1;
+}
+
 service PixurService {
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
@@ -260,5 +271,7 @@ service PixurService {
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
+  rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
 }
+
 
