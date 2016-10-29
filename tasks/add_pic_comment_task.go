@@ -18,9 +18,12 @@ type AddPicCommentTask struct {
 
 	// Inputs
 	PicID           int64
-	CommentParentId int64
+	CommentParentID int64
 	Text            string
 	Ctx             context.Context
+
+	// Outs
+	PicComment *schema.PicComment
 }
 
 const (
@@ -65,14 +68,16 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 		return status.InvalidArgument(nil, "can't comment on deleted pic")
 	}
 
-	comments, err := j.FindPicComments(db.Opts{
-		Prefix: tab.PicCommentsCommentId{&t.CommentParentId},
-	})
-	if err != nil {
-		return status.InternalError(err, "can't lookup comment")
-	}
-	if len(comments) != 1 {
-		return status.NotFound(err, "can't find comment")
+	if t.CommentParentID != 0 {
+		comments, err := j.FindPicComments(db.Opts{
+			Prefix: tab.PicCommentsCommentId{&t.CommentParentID},
+		})
+		if err != nil {
+			return status.InternalError(err, "can't lookup comment")
+		}
+		if len(comments) != 1 {
+			return status.NotFound(err, "can't find comment")
+		}
 	}
 
 	commentID, err := j.AllocID()
@@ -84,7 +89,7 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 	pc := &schema.PicComment{
 		PicId:           p.PicId,
 		CommentId:       commentID,
-		CommentParentId: t.CommentParentId,
+		CommentParentId: t.CommentParentID,
 		Text:            t.Text,
 		UserId:          u.UserId,
 		CreatedTs:       schema.ToTs(now),
@@ -98,6 +103,8 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 	if err := j.Commit(); err != nil {
 		return status.InternalError(err, "can't commit job")
 	}
+	t.PicComment = pc
+
 	// TODO: allow self replies?  Allow multiple replies by the same user?
 	// TODO: ratelimit
 
