@@ -46,6 +46,10 @@ func (t *AddPicTagsTask) Run() (errCap status.S) {
 	}
 	p := pics[0]
 
+	if p.HardDeleted() {
+		return status.InvalidArgument(nil, "can't tag deleted pic")
+	}
+
 	if err := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId); err != nil {
 		return err
 	}
