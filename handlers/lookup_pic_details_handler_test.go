@@ -29,6 +29,19 @@ func TestLookupPicWorkFlow(t *testing.T) {
 			PicId: 1,
 			TagId: 2,
 		}}
+		taskCap.PicCommentTree = &tasks.PicCommentTree{
+			PicComment: &schema.PicComment{
+				PicId:     1,
+				CommentId: 3,
+			},
+			Children: []*tasks.PicCommentTree{{
+				PicComment: &schema.PicComment{
+					PicId:           1,
+					CommentId:       4,
+					CommentParentId: 3,
+				},
+			}},
+		}
 
 		return nil
 	}
@@ -77,6 +90,14 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		if !proto.Equal(jpts[i], results.PicTag[i]) {
 			t.Error("Not equal", jpts[i], results.PicTag[i])
 		}
+	}
+
+	jpct := apiPicCommentTree(nil, []*schema.PicComment{
+		taskCap.PicCommentTree.Children[0].PicComment,
+		taskCap.PicCommentTree.PicComment,
+	}...)
+	if have, want := jpct, results.PicCommentTree; !proto.Equal(have, want) {
+		t.Error("have", have, "want", want)
 	}
 }
 

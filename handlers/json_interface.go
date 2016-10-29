@@ -43,3 +43,24 @@ func apiPicTag(src *schema.PicTag) *ApiPicTag {
 		Version:      src.GetModifiedTime().UnixNano(),
 	}
 }
+
+func apiPicCommentTree(dst []*ApiPicComment, srcs ...*schema.PicComment) *ApiPicCommentTree {
+	for _, src := range srcs {
+		dst = append(dst, apiPicComment(src))
+	}
+	return &ApiPicCommentTree{
+		Comment: dst,
+	}
+}
+
+func apiPicComment(src *schema.PicComment) *ApiPicComment {
+	return &ApiPicComment{
+		PicId:           schema.Varint(src.PicId).Encode(),
+		CommentId:       schema.Varint(src.CommentId).Encode(),
+		CommentParentId: schema.Varint(src.CommentParentId).Encode(),
+		Text:            src.Text,
+		CreatedTime:     src.CreatedTs,
+		ModifiedTime:    src.ModifiedTs,
+		Version:         src.GetModifiedTime().UnixNano(),
+	}
+}

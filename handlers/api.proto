@@ -55,6 +55,30 @@ message ApiPicTag {
   sfixed64 version = 6;
 }
 
+message ApiPicComment {
+  // pic_id is the unique identifier for the pic, in varint form
+  string pic_id = 1;
+  // comment_id is the unique identifier for the comment, in varint form
+  string comment_id = 2;
+  // comment_parent_id is the unique identifier for the parent comment, in varint form
+  string comment_parent_id = 3;
+  
+  string text = 7;
+  
+  // created_time is when the tag was created.
+  google.protobuf.Timestamp created_time = 4;
+  // modified_time is when the tag was last modified.
+  google.protobuf.Timestamp modified_time = 5;
+  // version is the version of the tag.  It is used when updating the tag.
+  sfixed64 version = 6;
+}
+
+message ApiPicCommentTree {
+	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested 
+	// messages well.  
+	repeated ApiPicComment comment = 1;
+}
+
 message LookupPicDetailsRequest {
 	string pic_id = 1;
 }
@@ -62,6 +86,7 @@ message LookupPicDetailsRequest {
 message LookupPicDetailsResponse {
   ApiPic pic = 1;
   repeated ApiPicTag pic_tag = 2;
+  ApiPicCommentTree pic_comment_tree = 3;
 }
 
 message FindIndexPicsRequest {

@@ -45,9 +45,15 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 		return nil, sts
 	}
 
+	var pcs []*schema.PicComment
+	if task.PicCommentTree != nil {
+		flattenPicCommentTree(&pcs, task.PicCommentTree)
+	}
+
 	return &LookupPicDetailsResponse{
-		Pic:    apiPic(task.Pic),
-		PicTag: apiPicTags(nil, task.PicTags...),
+		Pic:            apiPic(task.Pic),
+		PicTag:         apiPicTags(nil, task.PicTags...),
+		PicCommentTree: apiPicCommentTree(nil, pcs...),
 	}, nil
 }
 
@@ -73,6 +79,13 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 
 	returnProtoJSON(w, r, resp)
+}
+
+func flattenPicCommentTree(list *[]*schema.PicComment, pct *tasks.PicCommentTree) {
+	for _, c := range pct.Children {
+		flattenPicCommentTree(list, c)
+	}
+	*list = append(*list, pct.PicComment)
 }
 
 func init() {
