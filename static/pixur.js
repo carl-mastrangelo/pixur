@@ -39,4 +39,5 @@ angular.module('pixur', [
     .controller("QuickViewerCtrl", QuickViewerCtrl)
     .controller("LoginCtrl", LoginCtrl)
     .service("picsService", PicsService)
+    .service("commentsService", CommentsService)
     .service("authService", AuthService);

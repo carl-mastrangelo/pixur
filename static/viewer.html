@@ -22,6 +22,34 @@
   <ul>
     <li ng-repeat="picTag in ctrl.picTags">{{picTag.name}}<br></li>
   </ul>
+  <input type="text" ng-model="ctrl.topcomment" />
+  <br />
+  <input type="button" value="Add Comment" ng-click="ctrl.addComment(null, ctrl.topcomment)" />
+  <br />
+  
+	<script type="text/ng-template" id="comment_tree.html">
+		  <div>
+		  	{{com.commentId}}: {{com.text}}
+		  </div>
+		  <a ng-hide="com.show" ng-click="com.show = !com.show" href="#">Reply</a>
+		  <div ng-show="com.show">
+		  	<textarea type="text" ng-model="com.replyText"></textarea>
+		  	<br />
+		  	<input type="button" value="Reply" ng-click="ctrl.addComment(com, com.replyText)" />
+		  	<input type="button" value="Cancel" ng-click="com.show = !com.show" />
+		  	<br />
+		  </div>
+		  <br /><br />
+		  <ul>
+		      <li ng-repeat="com in com.children" ng-include="'comment_tree.html'"></li>
+		  </ul>
+	</script>
+
+	<ul>
+		  <li ng-repeat="com in ctrl.picComments" ng-include="'comment_tree.html'"></li>
+	</ul>
+  <br />
+  
   <a href="#" onclick="window.history.back()">Back</a>
   <br><br>
   <input type="checkbox" ng-model="ctrl.canDelete">
