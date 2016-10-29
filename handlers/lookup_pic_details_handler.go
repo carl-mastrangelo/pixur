@@ -48,6 +48,7 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 	var pcs []*schema.PicComment
 	if task.PicCommentTree != nil {
 		flattenPicCommentTree(&pcs, task.PicCommentTree)
+		pcs = pcs[1:] // Always trim the fakeroot
 	}
 
 	return &LookupPicDetailsResponse{
