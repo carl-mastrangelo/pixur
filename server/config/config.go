@@ -14,7 +14,7 @@ import (
 var (
 	defaultValues = &Config{
 		DbName:                "sqlite3",
-		DbConfig:              ":inmemory:",
+		DbConfig:              ":memory:",
 		HttpSpec:              ":http",
 		PixPath:               "pix",
 		SessionPrivateKeyPath: "",
