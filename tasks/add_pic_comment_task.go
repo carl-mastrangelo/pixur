@@ -61,6 +61,10 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 	}
 	p := pics[0]
 
+	if p.HardDeleted() {
+		return status.InvalidArgument(nil, "can't comment on deleted pic")
+	}
+
 	comments, err := j.FindPicComments(db.Opts{
 		Prefix: tab.PicCommentsCommentId{&t.CommentParentId},
 	})
