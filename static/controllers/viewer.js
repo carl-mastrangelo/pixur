@@ -24,7 +24,7 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService, commentsSe
     this.picTags = details.pic_tags;
     this.isVideo = this.pic.type == "WEBM";
     this.isImage = this.pic.type != "WEBM";
-    this.picComments = commentsService.buildTree(details.picCommentTree.comment).children;
+    this.picComments = commentsService.buildTree(details.picCommentTree.comment || []).children;
 		
     picsService.incrementViewCount(this.picId);
   }.bind(this));

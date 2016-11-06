@@ -5,16 +5,18 @@
     <span style="float:right"><a ng-show="ctrl.nextPageID" ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
     <span style="clear:both">&nbsp;</span>
   </div>
-  <ul class="thumbnail-list">
-    <li ng-repeat="pic in ctrl.pics">
-      <div class="thumbnail-cntr">
-        <a ng-href="p/{{pic.id}}"><img 
-          class="thumbnail"
-          ng-class="{deleted: pic.pendingDeletion}" 
-          ng-src="{{pic.thumbnailRelativeUrl}}" /></a>
-      </div>
-    </li>
-  </ul>
+  <ul class="thumbnail-list"><!--
+    --><li ng-repeat="pic in ctrl.pics"><!--
+      --><div class="thumbnail-cntr"><!--
+        --><a ng-href="p/{{pic.id}}"><!--
+          --><img 
+	    class="thumbnail"
+	    ng-class="{deleted: pic.pendingDeletion}" 
+	    ng-src="{{pic.thumbnailRelativeUrl}}" /><!--
+	    --></a><!--
+      --></div><!--
+    --></li><!--
+  --></ul>
   <span style="float:left"><a ng-show="ctrl.prevPageID" ng-href="{{'i/' + ctrl.prevPageID}}">Previous</a></span>
   <span style="float:right"><a ng-show="ctrl.nextPageID" ng-href="{{'i/' + ctrl.nextPageID}}">Next</a></span>
   <span style="clear:both"></span>
