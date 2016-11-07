@@ -6,6 +6,7 @@ var IndexCtrl = function(
     picsService,
     authService) {
   this.picsService_ = picsService;
+  this.authService_ = authService;
   this.location_ = $location;
   this.pics = [];
 
@@ -64,6 +65,12 @@ var IndexCtrl = function(
       }.bind(this)
     );
   }
+}
+
+IndexCtrl.prototype.logOut = function() {
+  this.authService_.logoutUser().catch(err => {
+  	console.warn(err);
+  });
 }
 
 IndexCtrl.prototype.loadNext = function() {

@@ -109,6 +109,24 @@ AuthService.prototype.loginUser = function(ident, secret) {
   }.bind(this));
 };
 
+AuthService.prototype.logoutUser = function() {
+  var httpConfig = {
+    "headers":  {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "transformRequest": AuthService.postTransform
+  };
+  console.log(this);
+  return this.getXsrfToken().then(() => {
+  	return this.http_.post("/api/deleteToken", {}, httpConfig);
+  }).then(res => {
+  	var ls = this.window_.localStorage;
+  	ls.removeItem("ident");
+  	ls.removeItem("refresh");
+  	ls.removeItem("auth");
+  });
+};
+
 AuthService.prototype.refreshToken = function() {
   var params = {};
   var httpConfig = {

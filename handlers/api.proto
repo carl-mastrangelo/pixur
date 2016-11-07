@@ -258,6 +258,14 @@ message AddPicCommentResponse {
 	ApiPicComment comment = 1;
 }
 
+message DeleteTokenRequest {
+	// empty, uses out of band auth token
+}
+
+message DeleteTokenResponse {
+	// empty
+}
+
 service PixurService {
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
@@ -272,6 +280,6 @@ service PixurService {
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
+  rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
 }
-
 
