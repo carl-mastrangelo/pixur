@@ -116,7 +116,6 @@ AuthService.prototype.logoutUser = function() {
     },
     "transformRequest": AuthService.postTransform
   };
-  console.log(this);
   return this.getXsrfToken().then(() => {
   	return this.http_.post("/api/deleteToken", {}, httpConfig);
   }).then(res => {
