@@ -116,6 +116,23 @@ message PicCommentRow {
   pixur.PicComment data = 3;
 }
 
+message PicVoteRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "PicVotes"
+    key: {
+      key_type: PRIMARY
+      col: "pic_id"
+      col: "user_id"
+    }
+  };
+  
+  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  
+  int64 user_id = 2 [(pixur.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  
+  pixur.PicVote data = 3;
+}
+
 message UserRow {
   option (pixur.db.model.tab_opts) = {
     name: "Users"

@@ -138,6 +138,23 @@ message PicComment {
   google.protobuf.Timestamp modified_ts = 6;
 }
 
+message PicVote {
+  int64 pic_id = 1;
+  int64 user_id = 2;
+
+  enum Vote {
+    UNKNOWN = 0;
+    UP = 1;
+    DOWN = 2;
+    NEUTRAL = 3;
+  }
+  
+  Vote vote = 3;
+
+  google.protobuf.Timestamp created_ts = 4;
+  google.protobuf.Timestamp modified_ts = 5;
+}
+
 message User {
   int64 user_id = 1;
 
@@ -169,8 +186,10 @@ message User {
     PIC_UPDATE_VIEW_COUNTER = 8;
     // Can this user add tags and pic tags?
     PIC_TAG_CREATE = 9;
-    // Can this user create comments.
+    // Can this user create comments?
     PIC_COMMENT_CREATE = 10;
+    // Can this user vote?
+    PIC_VOTE_CREATE = 11;
     // Can this user create other users?
     USER_CREATE = 4;
   }
