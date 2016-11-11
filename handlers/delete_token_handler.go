@@ -48,15 +48,13 @@ func (h *DeleteTokenHandler) DeleteToken(
 		TokenID: payload.TokenParentId,
 	}
 
-	var runner *tasks.TaskRunner
-	if sts := runner.Run(task); sts != nil {
+	if sts := h.Runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	return &DeleteTokenResponse{}, nil
 }
 
-// TODO: test this
 func (h *DeleteTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
