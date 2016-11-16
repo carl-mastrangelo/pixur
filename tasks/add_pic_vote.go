@@ -1,0 +1,93 @@
+package tasks
+
+import (
+	"context"
+	"time"
+
+	"pixur.org/pixur/schema"
+	"pixur.org/pixur/schema/db"
+	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/status"
+)
+
+type AddPicVoteTask struct {
+	// Deps
+	DB  db.DB
+	Now func() time.Time
+
+	// Inputs
+	PicID int64
+	Vote  schema.PicVote_Vote
+	Ctx   context.Context
+
+	// Outs
+	PicVote *schema.PicVote
+}
+
+func (t *AddPicVoteTask) Run() (errCap status.S) {
+	if t.Vote != schema.PicVote_UP && t.Vote != schema.PicVote_DOWN && t.Vote != schema.PicVote_NEUTRAL {
+		return status.InvalidArgument(nil, "bad vote dir")
+	}
+
+	j, err := tab.NewJob(t.DB)
+	if err != nil {
+		return status.InternalError(err, "can't create job")
+	}
+	defer cleanUp(j, &errCap)
+
+	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_VOTE_CREATE)
+	if sts != nil {
+		return sts
+	}
+
+	pics, err := j.FindPics(db.Opts{
+		Prefix: tab.PicsPrimary{&t.PicID},
+	})
+	if err != nil {
+		return status.InternalError(err, "can't lookup pic")
+	}
+	if len(pics) != 1 {
+		return status.NotFound(err, "can't find pic")
+	}
+	p := pics[0]
+
+	if p.HardDeleted() {
+		return status.InvalidArgument(nil, "can't vote on deleted pic")
+	}
+
+	pvs, err := j.FindPicVotes(db.Opts{
+		Prefix: tab.PicVotesPrimary{
+			PicId:  &t.PicID,
+			UserId: &u.UserId,
+		},
+		Lock: db.LockWrite,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't find pic votes")
+	}
+
+	if len(pvs) != 0 {
+		return status.AlreadyExists(nil, "can't double vote")
+	}
+
+	now := t.Now()
+	pv := &schema.PicVote{
+		PicId:      p.PicId,
+		UserId:     u.UserId,
+		Vote:       t.Vote,
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+	}
+
+	if err := j.InsertPicVote(pv); err != nil {
+		return status.InternalError(err, "can't insert vote")
+	}
+	if err := j.Commit(); err != nil {
+		return status.InternalError(err, "can't commit job")
+	}
+	t.PicVote = pv
+
+	// TODO: ratelimit
+
+	return nil
+}
