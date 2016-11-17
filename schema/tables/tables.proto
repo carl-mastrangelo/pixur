@@ -19,6 +19,16 @@ message PicRow {
       key_type: INDEX
       col: "index_order"
     }
+    key: {
+      name: "ScoreOrder"
+      key_type: INDEX
+      col: "score_order"
+    }
+    key: {
+      name: "SchedOrder"
+      key_type: INDEX
+      col: "sched_order"
+    }
   };
 
   int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
@@ -27,6 +37,9 @@ message PicRow {
 
   reserved 3;
   reserved "is_hidden";
+  
+  int32 score_order = 5 [(pixur.db.model.field_opts) = {col_fn: "LowerScoreBound"}];
+  int32 sched_order = 6 [(pixur.db.model.field_opts) = {col_fn: "UpperScoreBound"}];
 
   pixur.Pic data = 4;
 }

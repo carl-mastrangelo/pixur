@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"time"
 )
@@ -97,4 +98,37 @@ func (p *Pic) SoftDeleted() bool {
 
 func (p *Pic) HardDeleted() bool {
 	return p.GetDeletionStatus().GetActualDeletedTs() != nil
+}
+
+const (
+	Z_99 = 1.95996398612
+)
+
+// TODO: test
+func (p *Pic) wilson(z float64) (lo float64, hi float64) {
+	n := float64(p.VoteDown + p.VoteUp)
+	if n == 0 {
+		return 0.025, 0.0975 // Just return something
+	}
+	if p.HardDeleted() {
+		return 0, 0
+	}
+
+	phat := float64(p.VoteUp) / n
+	scoremid := phat + z*z/(2*n)
+	stddev := z * math.Sqrt(phat*(1-phat)/n+z*z/(4*n*n))
+	norm := 1 / (1 + z*z/n)
+	return (scoremid - stddev) / norm, (scoremid + stddev) / norm
+}
+
+// Just use 30 bits, incase of accidental float overflow
+// In a perfect world, wilson assures that the value is 0<=x<=1
+func (p *Pic) LowerScoreBound() int32 {
+	lo, _ := p.wilson(Z_99)
+	return int32(lo * (1 << 30))
+}
+
+func (p *Pic) UpperScoreBound() int32 {
+	_, hi := p.wilson(Z_99)
+	return int32(hi * (1 << 30))
 }

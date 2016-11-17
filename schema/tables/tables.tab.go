@@ -29,6 +29,10 @@ var SqlTables = map[string][]string{
 
 			"`index_order` bigint(20) NOT NULL, " +
 
+			"`score_order` int NOT NULL, " +
+
+			"`sched_order` int NOT NULL, " +
+
 			"`data` blob NOT NULL, " +
 
 			"PRIMARY KEY(`id`)" +
@@ -36,6 +40,10 @@ var SqlTables = map[string][]string{
 			");",
 
 		"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
+
+		"CREATE INDEX `PicsScoreOrder` ON `Pics` (`score_order`);",
+
+		"CREATE INDEX `PicsSchedOrder` ON `Pics` (`sched_order`);",
 
 		"CREATE TABLE `Tags` (" +
 
@@ -130,6 +138,10 @@ var SqlTables = map[string][]string{
 
 			"\"index_order\" bigint NOT NULL, " +
 
+			"\"score_order\" integer NOT NULL, " +
+
+			"\"sched_order\" integer NOT NULL, " +
+
 			"\"data\" bytea NOT NULL, " +
 
 			"PRIMARY KEY(\"id\")" +
@@ -137,6 +149,10 @@ var SqlTables = map[string][]string{
 			");",
 
 		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
 
 		"CREATE TABLE \"Tags\" (" +
 
@@ -231,6 +247,10 @@ var SqlTables = map[string][]string{
 
 			"\"index_order\" integer NOT NULL, " +
 
+			"\"score_order\" integer NOT NULL, " +
+
+			"\"sched_order\" integer NOT NULL, " +
+
 			"\"data\" blob NOT NULL, " +
 
 			"PRIMARY KEY(\"id\")" +
@@ -238,6 +258,10 @@ var SqlTables = map[string][]string{
 			");",
 
 		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
 
 		"CREATE TABLE \"Tags\" (" +
 
@@ -442,7 +466,61 @@ func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 	return
 }
 
-var colsPics = []string{"id", "index_order", "data"}
+type PicsScoreOrder struct {
+	ScoreOrder *int32
+}
+
+var _ db.Idx = PicsScoreOrder{}
+
+var colsPicsScoreOrder = []string{"score_order"}
+
+func (idx PicsScoreOrder) Cols() []string {
+	return colsPicsScoreOrder
+}
+
+func (idx PicsScoreOrder) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.ScoreOrder != nil {
+		if done {
+			panic("Extra value ScoreOrder")
+		}
+		vals = append(vals, *idx.ScoreOrder)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+type PicsSchedOrder struct {
+	SchedOrder *int32
+}
+
+var _ db.Idx = PicsSchedOrder{}
+
+var colsPicsSchedOrder = []string{"sched_order"}
+
+func (idx PicsSchedOrder) Cols() []string {
+	return colsPicsSchedOrder
+}
+
+func (idx PicsSchedOrder) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.SchedOrder != nil {
+		if done {
+			panic("Extra value SchedOrder")
+		}
+		vals = append(vals, *idx.SchedOrder)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+var colsPics = []string{"id", "index_order", "score_order", "sched_order", "data"}
 
 func (j *Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
 	return db.Scan(j.tx, "Pics", opts, func(data []byte) error {
@@ -470,6 +548,14 @@ var _ interface {
 	IndexOrderCol() int64
 } = (*schema.Pic)(nil)
 
+var _ interface {
+	LowerScoreBound() int32
+} = (*schema.Pic)(nil)
+
+var _ interface {
+	UpperScoreBound() int32
+} = (*schema.Pic)(nil)
+
 func (j *Job) InsertPic(pb *schema.Pic) error {
 	return j.InsertPicRow(&PicRow{
 		Data: pb,
@@ -477,6 +563,10 @@ func (j *Job) InsertPic(pb *schema.Pic) error {
 		Id: pb.IdCol(),
 
 		IndexOrder: pb.IndexOrderCol(),
+
+		ScoreOrder: pb.LowerScoreBound(),
+
+		SchedOrder: pb.UpperScoreBound(),
 	})
 }
 
@@ -486,6 +576,10 @@ func (j *Job) InsertPicRow(row *PicRow) error {
 	vals = append(vals, row.Id)
 
 	vals = append(vals, row.IndexOrder)
+
+	vals = append(vals, row.ScoreOrder)
+
+	vals = append(vals, row.SchedOrder)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err
@@ -504,6 +598,14 @@ var _ interface {
 	IndexOrderCol() int64
 } = (*schema.Pic)(nil)
 
+var _ interface {
+	LowerScoreBound() int32
+} = (*schema.Pic)(nil)
+
+var _ interface {
+	UpperScoreBound() int32
+} = (*schema.Pic)(nil)
+
 func (j *Job) UpdatePic(pb *schema.Pic) error {
 	return j.UpdatePicRow(&PicRow{
 		Data: pb,
@@ -511,6 +613,10 @@ func (j *Job) UpdatePic(pb *schema.Pic) error {
 		Id: pb.IdCol(),
 
 		IndexOrder: pb.IndexOrderCol(),
+
+		ScoreOrder: pb.LowerScoreBound(),
+
+		SchedOrder: pb.UpperScoreBound(),
 	})
 }
 
@@ -526,6 +632,10 @@ func (j *Job) UpdatePicRow(row *PicRow) error {
 	vals = append(vals, row.Id)
 
 	vals = append(vals, row.IndexOrder)
+
+	vals = append(vals, row.ScoreOrder)
+
+	vals = append(vals, row.SchedOrder)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err

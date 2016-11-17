@@ -42,6 +42,7 @@ func (t *AddPicVoteTask) Run() (errCap status.S) {
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},
+		Lock:   db.LockWrite,
 	})
 	if err != nil {
 		return status.InternalError(err, "can't lookup pic")
@@ -82,6 +83,22 @@ func (t *AddPicVoteTask) Run() (errCap status.S) {
 	if err := j.InsertPicVote(pv); err != nil {
 		return status.InternalError(err, "can't insert vote")
 	}
+	pic_updated := false
+	switch pv.Vote {
+	case schema.PicVote_UP:
+		p.VoteUp++
+		pic_updated = true
+	case schema.PicVote_DOWN:
+		p.VoteDown++
+		pic_updated = true
+	}
+	if pic_updated {
+		p.ModifiedTs = schema.ToTs(now)
+		if err := j.UpdatePic(p); err != nil {
+			return status.InternalError(err, "can't update pic")
+		}
+	}
+
 	if err := j.Commit(); err != nil {
 		return status.InternalError(err, "can't commit job")
 	}
