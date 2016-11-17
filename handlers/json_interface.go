@@ -12,6 +12,7 @@ func apiPics(dst []*ApiPic, srcs ...*schema.Pic) []*ApiPic {
 }
 
 func apiPic(src *schema.Pic) *ApiPic {
+	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
 	return &ApiPic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
@@ -23,6 +24,8 @@ func apiPic(src *schema.Pic) *ApiPic {
 		PendingDeletion:      src.SoftDeleted(),
 		ViewCount:            src.ViewCount,
 		Duration:             src.GetAnimationInfo().GetDuration(),
+		ScoreLo:              scorelo,
+		ScoreHi:              scorehi,
 	}
 }
 

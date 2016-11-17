@@ -105,10 +105,10 @@ const (
 )
 
 // TODO: test
-func (p *Pic) wilson(z float64) (lo float64, hi float64) {
+func (p *Pic) WilsonScoreInterval(z float64) (lo float64, hi float64) {
 	n := float64(p.VoteDown + p.VoteUp)
 	if n == 0 {
-		return 0.025, 0.0975 // Just return something
+		return 0.025, 0.975 // Just return something
 	}
 	if p.HardDeleted() {
 		return 0, 0
@@ -124,11 +124,11 @@ func (p *Pic) wilson(z float64) (lo float64, hi float64) {
 // Just use 30 bits, incase of accidental float overflow
 // In a perfect world, wilson assures that the value is 0<=x<=1
 func (p *Pic) LowerScoreBound() int32 {
-	lo, _ := p.wilson(Z_99)
+	lo, _ := p.WilsonScoreInterval(Z_99)
 	return int32(lo * (1 << 30))
 }
 
 func (p *Pic) UpperScoreBound() int32 {
-	_, hi := p.wilson(Z_99)
+	_, hi := p.WilsonScoreInterval(Z_99)
 	return int32(hi * (1 << 30))
 }

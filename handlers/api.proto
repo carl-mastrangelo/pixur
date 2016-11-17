@@ -38,6 +38,11 @@ message ApiPic {
   // duration is present if the image is animated (GIF or WEBM).  Note that
   // GIFs duration is not well defined and is subject to reinterpretation.
   google.protobuf.Duration duration = 11;
+  
+  // The estimated lower bound of the pic score
+  double score_lo = 12;
+  // The estimated upper bound of the pic score
+  double score_hi = 13;
 }
 
 message ApiPicTag {
