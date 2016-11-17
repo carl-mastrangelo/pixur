@@ -117,7 +117,7 @@ func (p *Pic) WilsonScoreInterval(z float64) (lo float64, hi float64) {
 	phat := float64(p.VoteUp) / n
 	scoremid := phat + z*z/(2*n)
 	stddev := z * math.Sqrt(phat*(1-phat)/n+z*z/(4*n*n))
-	norm := 1 / (1 + z*z/n)
+	norm := 1 + z*z/n
 	return (scoremid - stddev) / norm, (scoremid + stddev) / norm
 }
 
