@@ -76,6 +76,11 @@ message Pic {
   repeated FileSource source = 15;
 
   repeated string file_name = 16;
+  
+  // The denormalized sum of upvotes for this pic
+  int64 vote_up = 17;
+  // The denormalized sum of downvotes for this pic
+  int64 vote_down = 18;
 }
 
 // A picture identifier
