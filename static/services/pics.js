@@ -67,6 +67,33 @@ PicsService.prototype.incrementViewCount = function(picId) {
   return deferred.promise;
 }
 
+PicsService.prototype.vote = function(picId, v) {
+  var deferred = this.q_.defer();
+  var params = {
+    "pic_id": picId,
+    "vote": v,
+  }
+  var httpConfig = {
+    "headers":  {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "transformRequest": PicsService.postTransform
+  };
+	this.authService_.getXsrfToken().then(function() {
+  	return this.authService_.getAuth();
+  }.bind(this)).then(function() {
+  	return this.http_.post("/api/upsertPicVote", params, httpConfig);
+  }.bind(this)).then(
+    function(res) {
+      deferred.resolve(res.data);
+    },
+    function(error) {
+      deferred.reject(error);
+    }
+  )
+  return deferred.promise;
+}
+
 PicsService.prototype.deletePic = function(picId, details) {
   var deferred = this.q_.defer();
   // TODO: add pending deletion time

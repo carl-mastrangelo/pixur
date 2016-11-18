@@ -18,6 +18,11 @@
       Your browser does not support the video tag.
     </video> 
   </div>
+  <div>
+    <input type="button" value="▼" style="padding: 0 .5cm 0 .5cm;" ng-click="ctrl.voteDown()" /><!--
+    --><input type="button" value="meh" style="padding: 0 .5cm 0 .5cm;" ng-click="ctrl.voteNeutral()" /><!--
+    --><input type="button" value="▲" style="padding: 0 .5cm 0 .5cm;" ng-click="ctrl.voteUp()" />
+  </div>
   <div ng-show="ctrl.pic.pendingDeletion">This pic is pending deletion</div>
   <ul>
     <li ng-repeat="picTag in ctrl.picTags">{{picTag.name}}<br></li>

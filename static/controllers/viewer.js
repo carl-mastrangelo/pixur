@@ -58,3 +58,33 @@ ViewerCtrl.prototype.deletePic = function() {
       console.error(err);
     });
 }
+
+ViewerCtrl.prototype.voteUp = function() {
+  this.picsService_.vote(this.picId, "UP").then(
+    function(f) {}.bind(this),
+    function(err) {
+      // TODO: actually return a better error
+      alert(angular.toJson(err, 2));
+      console.error(err);
+    });
+}
+
+ViewerCtrl.prototype.voteDown = function() {
+  this.picsService_.vote(this.picId, "DOWN").then(
+    function(f) {}.bind(this),
+    function(err) {
+      // TODO: actually return a better error
+      alert(angular.toJson(err, 2));
+      console.error(err);
+    });
+}
+
+ViewerCtrl.prototype.voteNeutral = function() {
+  this.picsService_.vote(this.picId, "NEUTRAL").then(
+    function(f) {}.bind(this),
+    function(err) {
+      // TODO: actually return a better error
+      alert(angular.toJson(err, 2));
+      console.error(err);
+    });
+}
