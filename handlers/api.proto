@@ -271,6 +271,23 @@ message DeleteTokenResponse {
 	// empty
 }
 
+message UpsertPicVoteRequest {
+  string pic_id = 1;
+  
+  enum Vote {
+    UNKNOWN = 0;
+    UP = 1;
+    DOWN = 2;
+    NEUTRAL = 3;
+  }
+  
+  Vote vote = 2;
+}
+
+message UpsertPicVoteResponse {
+  // empty
+}
+
 service PixurService {
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
@@ -286,5 +303,6 @@ service PixurService {
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
+  rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
 }
 
