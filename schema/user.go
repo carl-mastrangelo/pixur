@@ -42,6 +42,7 @@ var (
 		User_PIC_UPDATE_VIEW_COUNTER,
 		User_PIC_TAG_CREATE,
 		User_PIC_COMMENT_CREATE,
+		User_PIC_VOTE_CREATE,
 	}
 )
 
