@@ -10,22 +10,38 @@ var IndexCtrl = function(
   this.location_ = $location;
   this.pics = [];
 
-  // For some reason, replace state causes favicon.ico requests to be 
-  // sent in Chrome.  
-  // TODO: figure out why scrolling causes a stream of http requests.
-  $window.onscroll = function() {
+  var scrollWatcher = () => {
     var x = $window.pageXOffset;
     var y = $window.pageYOffset;
     $window.history.replaceState({x:x, y:y}, '');
-  }.bind(this);
+  };
 
-  $window.scrollTo(0, 0);
-  $window.onpopstate = function (ev) {
-    if (ev.state != null) {
-      $window.scrollTo(ev.state.x, ev.state.y);
+  $window.addEventListener('scroll', scrollWatcher);
+  $scope.$on('$routeChangeStart', (un, used) => {
+    $window.removeEventListener('scroll', scrollWatcher);
+  });
+  
+  var scrollChanger = () => {
+    if ($window.history.state != null) {
+      var state = $window.history.state;
+      // When this runs, the dom has not yet been rendered or built.
+      // Rather than trying to run this after the dom has been built but
+      // before it has been rendered, just force the window size to be the 
+      // correct size.   If this is not done, the document height will be
+      // 0, and the scrollTo call will be a noop.
+      
+      // Waiting to run this with $window.setTimeout causes the page to be 
+      // rendered, then scrolled.  (jarring).  Angular makes this difficult
+      // to avoid, since its own work around $evalAsync runs before the dom
+      // is built when called from a controller.  Running from a directive
+      // works, but only runs once on page load, and the code is at the 
+      // module level.
+      document.body.style.height = state.y + $window.innerHeight + 'px';
+      $window.scrollTo(state.x, state.y);
     }
   };
-  
+  scrollChanger();
+
   this.auth = authService.getIdent(); 
   this.nextPageID = null;
   this.prevPageID = null;
