@@ -529,6 +529,60 @@ func (u *TestUser) Refresh() (exists bool) {
 	return
 }
 
+type TestPicVote struct {
+	PicVote *schema.PicVote
+	c       *TestContainer
+}
+
+func (c *TestContainer) CreatePicVote(p *TestPic, u *TestUser) *TestPicVote {
+	now := time.Now()
+	pv := &schema.PicVote{
+		PicId:      p.Pic.PicId,
+		UserId:     u.User.UserId,
+		Vote:       schema.PicVote_NEUTRAL,
+		CreatedTs:  schema.ToTs(now),
+		ModifiedTs: schema.ToTs(now),
+	}
+
+	c.AutoJob(func(j *tab.Job) error {
+		return j.InsertPicVote(pv)
+	})
+
+	return &TestPicVote{
+		PicVote: pv,
+		c:       c,
+	}
+}
+
+func (pv *TestPicVote) Update() {
+	pv.c.AutoJob(func(j *tab.Job) error {
+		return j.UpdatePicVote(pv.PicVote)
+	})
+}
+
+func (pv *TestPicVote) Refresh() (exists bool) {
+	pv.c.AutoJob(func(j *tab.Job) error {
+		pvs, err := j.FindPicVotes(db.Opts{
+			Prefix: tab.PicVotesPrimary{
+				PicId:  &pv.PicVote.PicId,
+				UserId: &pv.PicVote.UserId,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if len(pvs) == 1 {
+			pv.PicVote = pvs[0]
+			exists = true
+		} else {
+			pv.PicVote = nil
+			exists = false
+		}
+		return nil
+	})
+	return
+}
+
 func (c *TestContainer) ID() int64 {
 	var idCap int64
 	c.AutoJob(func(j *tab.Job) error {

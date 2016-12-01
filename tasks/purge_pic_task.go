@@ -138,6 +138,24 @@ func (t *PurgePicTask) Run() (errCap status.S) {
 		}
 	}
 
+	pvs, err := j.FindPicVotes(db.Opts{
+		Prefix: tab.PicVotesPrimary{PicId: &t.PicID},
+		Lock:   db.LockWrite,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't find pic votes")
+	}
+
+	for _, pv := range pvs {
+		err := j.DeletePicVote(tab.PicVotesPrimary{
+			PicId:  &pv.PicId,
+			UserId: &pv.UserId,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't delete pic vote")
+		}
+	}
+
 	err = j.DeletePic(tab.PicsPrimary{
 		Id: &t.PicID,
 	})

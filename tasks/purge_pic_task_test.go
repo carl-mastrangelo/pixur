@@ -24,6 +24,8 @@ func TestPurgeWorkflow(t *testing.T) {
 	tag := c.CreateTag()
 	pt := c.CreatePicTag(p, tag)
 
+	pv := c.CreatePicVote(p, u)
+
 	idents := p.Idents()
 	if len(idents) != 3 {
 		t.Fatalf("Wrong number of identifiers: %s", len(idents))
@@ -61,6 +63,9 @@ func TestPurgeWorkflow(t *testing.T) {
 	}
 	if pc2.Refresh() {
 		t.Error("Expected PicComment to be deleted", pc2)
+	}
+	if pv.Refresh() {
+		t.Error("Expected PicVote to be deleted", pv)
 	}
 
 	var afterIdents []*schema.PicIdent
