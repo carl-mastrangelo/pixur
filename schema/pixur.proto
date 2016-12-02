@@ -197,6 +197,8 @@ message User {
     PIC_VOTE_CREATE = 11;
     // Can this user create other users?
     USER_CREATE = 4;
+    // Can this user modify capabilities? 
+    USER_UPDATE_CAPABILITY = 12;
   }
 
   repeated Capability capability = 7;
