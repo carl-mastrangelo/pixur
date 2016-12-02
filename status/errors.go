@@ -267,3 +267,21 @@ func PermissionDeniedf(e error, format string, v ...interface{}) S {
 		stack: getStack(),
 	}
 }
+
+func Aborted(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_ABORTED,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func Abortedf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_ABORTED,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
