@@ -8,6 +8,10 @@ func (u *User) IdentCol() string {
 	return u.Ident
 }
 
+func (u *User) Version() int64 {
+	return FromTs(u.ModifiedTs).UnixNano()
+}
+
 func UserHasPerm(u *User, uc User_Capability) bool {
 	for _, c := range u.Capability {
 		if c == uc {
