@@ -62,14 +62,9 @@ func run() error {
 			Ident:  strings.TrimSpace(ident),
 			Secret: string(secret),
 			Ctx:    context.Background(),
-			Capability: []schema.User_Capability{
-				schema.User_PIC_CREATE,
-				schema.User_PIC_READ,
-				schema.User_PIC_INDEX,
+			Capability: append(schema.UserNewCap,
 				schema.User_PIC_SOFT_DELETE,
-				schema.User_PIC_UPDATE_VIEW_COUNTER,
-				schema.User_PIC_TAG_CREATE,
-			},
+				schema.User_USER_UPDATE_CAPABILITY),
 		}
 
 		// Presumably there is nobody in the database yet, so we need to temporarily relax permissions
