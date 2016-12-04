@@ -78,27 +78,35 @@ func (t *UpdateUserTask) Run() (errCap status.S) {
 		objectUser = objectUsers[0]
 	}
 
-	if !schema.UserHasPerm(subjectUser, schema.User_USER_UPDATE_CAPABILITY) {
-		return status.PermissionDeniedf(nil, "missing capability")
-	}
-
 	if objectUser.Version() != t.Version {
 		return status.Aborted(nil, "version mismatch")
 	}
 
-	now := t.Now()
-	objectUser.ModifiedTs = schema.ToTs(now)
+	var changed bool
 
 	if t.NewCapability != nil {
+		if c := schema.User_USER_UPDATE_CAPABILITY; !schema.UserHasPerm(subjectUser, c) {
+			return status.PermissionDeniedf(nil, "missing %v", c)
+		}
+		changed = true
 		objectUser.Capability = t.NewCapability
 	}
 
-	if err := j.UpdateUser(objectUser); err != nil {
-		return status.InternalError(err, "can't update user")
-	}
+	if changed {
+		now := t.Now()
+		objectUser.ModifiedTs = schema.ToTs(now)
 
-	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit")
+		if err := j.UpdateUser(objectUser); err != nil {
+			return status.InternalError(err, "can't update user")
+		}
+
+		if err := j.Commit(); err != nil {
+			return status.InternalError(err, "can't commit")
+		}
+	} else {
+		if err := j.Rollback(); err != nil {
+			return status.InternalError(err, "can't rollback")
+		}
 	}
 
 	return nil
