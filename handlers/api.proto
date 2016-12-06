@@ -78,6 +78,46 @@ message ApiPicComment {
   sfixed64 version = 6;
 }
 
+message ApiUser {
+  string user_id = 1;
+  
+  string ident = 2;
+  
+  // created_time is when the user was created.
+  google.protobuf.Timestamp created_time = 3;
+  // modified_time is when the user was last modified.
+  google.protobuf.Timestamp modified_time = 4;
+  // modified_time is when the user was last modified.
+  google.protobuf.Timestamp last_seen_time = 5;
+  // version is the version of the user.  It is used when updating the user.
+  sfixed64 version = 6;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  sfixed64 version = 2;
+
+  message ChangeIdent {
+    string ident = 1;
+  }
+  ChangeIdent ident = 3;
+  
+  message ChangeSecret {
+    string secret = 1;
+  }
+  ChangeSecret secret = 4;
+  
+  message ChangeCapability {
+    repeated int32 add = 1;
+    repeated int32 remove = 2;
+  }
+  ChangeCapability capability = 5; 
+}
+
+message UpdateUserResponse {
+  ApiUser user = 1;
+}
+
 message ApiPicCommentTree {
 	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested 
 	// messages well.  
@@ -288,8 +328,11 @@ message UpsertPicVoteResponse {
   // empty
 }
 
+
+
 service PixurService {
-  rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
   rpc UpsertPic(stream UpsertPicRequest) returns (UpsertPicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
