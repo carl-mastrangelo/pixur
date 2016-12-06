@@ -108,8 +108,7 @@ message UpdateUserRequest {
   ChangeSecret secret = 4;
   
   message ChangeCapability {
-    repeated int32 add = 1;
-    repeated int32 remove = 2;
+    repeated int32 capability = 1;
   }
   ChangeCapability capability = 5; 
 }
@@ -327,8 +326,6 @@ message UpsertPicVoteRequest {
 message UpsertPicVoteResponse {
   // empty
 }
-
-
 
 service PixurService {
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
