@@ -25,7 +25,6 @@ type UpdateUserTask struct {
 	Ctx context.Context
 }
 
-// TODO: Add tests
 func (t *UpdateUserTask) Run() (errCap status.S) {
 	j, err := tab.NewJob(t.DB)
 	if err != nil {
