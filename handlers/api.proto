@@ -93,6 +93,36 @@ message ApiUser {
   sfixed64 version = 6;
 }
 
+message ApiCapability {
+  enum Cap {
+    UNKNOWN = 0;
+    // Can this user create and upload pictures
+    PIC_CREATE = 1;
+    // Can this user view the actual image data (grants pic token)
+    PIC_READ = 2;
+    // Can this user perform general pic index queries?
+    PIC_INDEX = 3;
+    // Can this user soft delete a pic?
+    PIC_SOFT_DELETE = 5;
+    // Can this user hard delete a pic?
+    PIC_HARD_DELETE = 6;
+    // Can this user purge a pic?
+    PIC_PURGE = 7;
+    // Can this user increment the pic view counter?
+    PIC_UPDATE_VIEW_COUNTER = 8;
+    // Can this user add tags and pic tags?
+    PIC_TAG_CREATE = 9;
+    // Can this user create comments?
+    PIC_COMMENT_CREATE = 10;
+    // Can this user vote?
+    PIC_VOTE_CREATE = 11;
+    // Can this user create other users?
+    USER_CREATE = 4;
+    // Can this user modify capabilities? 
+    USER_UPDATE_CAPABILITY = 12;
+  }
+}
+
 message UpdateUserRequest {
   string user_id = 1;
   sfixed64 version = 2;
@@ -108,7 +138,8 @@ message UpdateUserRequest {
   ChangeSecret secret = 4;
   
   message ChangeCapability {
-    repeated int32 capability = 1;
+    repeated ApiCapability.Cap set_capability = 1;
+    repeated ApiCapability.Cap clear_capability = 2;
   }
   ChangeCapability capability = 5; 
 }
