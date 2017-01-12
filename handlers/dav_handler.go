@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	oldcontext "golang.org/x/net/context"
 	"golang.org/x/net/webdav"
 
 	"pixur.org/pixur/schema"
@@ -21,27 +23,27 @@ type PixFS struct {
 	DB db.DB
 }
 
-func (fs *PixFS) Mkdir(name string, perm os.FileMode) error {
+func (fs *PixFS) Mkdir(ctx oldcontext.Context, name string, perm os.FileMode) error {
 	return os.ErrPermission
 }
 
-func (fs *PixFS) RemoveAll(name string) error {
+func (fs *PixFS) RemoveAll(ctx oldcontext.Context, name string) error {
 	return os.ErrPermission
 }
 
-func (fs *PixFS) Rename(oldName, newName string) error {
+func (fs *PixFS) Rename(ctx oldcontext.Context, oldName, newName string) error {
 	return os.ErrPermission
 }
 
-func (fs *PixFS) Stat(name string) (os.FileInfo, error) {
+func (fs *PixFS) Stat(ctx oldcontext.Context, name string) (os.FileInfo, error) {
 	if isThumbnail(name) {
 		return nil, os.ErrNotExist
 	}
 
-	return fs.FileSystem.Stat(name)
+	return fs.FileSystem.Stat(context.TODO(), name)
 }
 
-func (fs *PixFS) OpenFile(name string, flag int, perm os.FileMode) (webdav.File, error) {
+func (fs *PixFS) OpenFile(ctx oldcontext.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	if isThumbnail(name) {
 		return nil, os.ErrNotExist
 	}
@@ -49,7 +51,7 @@ func (fs *PixFS) OpenFile(name string, flag int, perm os.FileMode) (webdav.File,
 		return nil, os.ErrPermission
 	}
 
-	f, err := fs.FileSystem.OpenFile(name, flag, perm)
+	f, err := fs.FileSystem.OpenFile(ctx, name, flag, perm)
 	if err != nil {
 		return nil, err
 	}
