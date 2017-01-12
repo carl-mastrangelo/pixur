@@ -91,6 +91,8 @@ message ApiUser {
   google.protobuf.Timestamp last_seen_time = 5;
   // version is the version of the user.  It is used when updating the user.
   sfixed64 version = 6;
+  
+  repeated ApiCapability.Cap capability = 7;
 }
 
 message ApiCapability {
@@ -121,6 +123,15 @@ message ApiCapability {
     // Can this user modify capabilities? 
     USER_UPDATE_CAPABILITY = 12;
   }
+}
+
+message LookupUserRequest {
+  // if absent, assumed to come from auth token
+  string user_id = 1;
+}
+
+message LookupUserResponse {
+  ApiUser user = 1;
 }
 
 message UpdateUserRequest {
@@ -375,5 +386,6 @@ service PixurService {
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
+  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
 }
 
