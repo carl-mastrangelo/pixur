@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pixur.api;
 
-option go_package = "handlers";
+option go_package = "api";
 option java_package = "org.pixur.api";
 option java_string_check_utf8 = true;
 option java_multiple_files = true;
