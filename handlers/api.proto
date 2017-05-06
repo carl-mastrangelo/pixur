@@ -373,12 +373,12 @@ service PixurService {
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
-  rpc UpsertPic(stream UpsertPicRequest) returns (UpsertPicResponse);
+  rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
-  rpc CreatePic(stream CreatePicRequest) returns (CreatePicResponse);
+  rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
