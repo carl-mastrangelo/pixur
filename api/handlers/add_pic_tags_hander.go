@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -21,8 +22,8 @@ type AddPicTagsHandler struct {
 	Now    func() time.Time
 }
 
-func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsRequest) (
-	*AddPicTagsResponse, status.S) {
+func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *api.AddPicTagsRequest) (
+	*api.AddPicTagsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -48,7 +49,7 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *AddPicTagsReque
 		return nil, err
 	}
 
-	return &AddPicTagsResponse{}, nil
+	return &api.AddPicTagsResponse{}, nil
 }
 
 func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,7 @@ func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.AddPicTags(ctx, &AddPicTagsRequest{
+	resp, sts := h.AddPicTags(ctx, &api.AddPicTagsRequest{
 		PicId: r.FormValue("pic_id"),
 		Tag:   r.PostForm["tag"],
 	})

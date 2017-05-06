@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 )
@@ -17,7 +18,7 @@ type requestChecker struct {
 // getAuth Returns the validated auth token
 // It may return nil if the request is already failed
 // If there is no auth token, it returns nil but doesn't fail the request.
-func (rc *requestChecker) getAuth() *PwtPayload {
+func (rc *requestChecker) getAuth() *api.PwtPayload {
 	if rc.sts != nil {
 		return nil
 	}
@@ -35,14 +36,14 @@ func (rc *requestChecker) getAuth() *PwtPayload {
 		rc.sts = status.Unauthenticated(err, err.Error())
 		return nil
 	}
-	if authPayload.Type != PwtPayload_AUTH {
+	if authPayload.Type != api.PwtPayload_AUTH {
 		rc.sts = status.Unauthenticated(nil, "not auth token")
 		return nil
 	}
 	return authPayload
 }
 
-func (rc *requestChecker) checkPixAuth() *PwtPayload {
+func (rc *requestChecker) checkPixAuth() *api.PwtPayload {
 	if rc.sts != nil {
 		return nil
 	}
@@ -61,7 +62,7 @@ func (rc *requestChecker) checkPixAuth() *PwtPayload {
 		rc.sts = status.Unauthenticated(err, err.Error())
 		return nil
 	}
-	if pixPayload.Type != PwtPayload_PIX {
+	if pixPayload.Type != api.PwtPayload_PIX {
 		rc.sts = status.Unauthenticated(nil, "not pix token")
 		return nil
 	}

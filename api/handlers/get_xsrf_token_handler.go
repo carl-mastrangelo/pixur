@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -24,8 +25,8 @@ type GetXsrfTokenHandler struct {
 	Secure bool
 }
 
-func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *GetXsrfTokenRequest) (
-	*GetXsrfTokenResponse, status.S) {
+func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *api.GetXsrfTokenRequest) (
+	*api.GetXsrfTokenResponse, status.S) {
 
 	_, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -37,7 +38,7 @@ func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *GetXsrfToke
 		return nil, status.InternalError(err, "can't create xsrf token")
 	}
 
-	return &GetXsrfTokenResponse{
+	return &api.GetXsrfTokenResponse{
 		XsrfToken: b64XsrfToken,
 	}, nil
 }
@@ -58,7 +59,7 @@ func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.GetXsrfToken(ctx, &GetXsrfTokenRequest{})
+	resp, sts := h.GetXsrfToken(ctx, &api.GetXsrfTokenRequest{})
 	if sts != nil {
 		httpError(w, sts)
 		return

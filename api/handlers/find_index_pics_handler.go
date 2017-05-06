@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -20,8 +21,8 @@ type FindIndexPicsHandler struct {
 	Runner tasks.TaskRunner
 }
 
-func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *FindIndexPicsRequest) (
-	*FindIndexPicsResponse, status.S) {
+func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
+	*api.FindIndexPicsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -46,7 +47,7 @@ func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *FindIndex
 		return nil, sts
 	}
 
-	return &FindIndexPicsResponse{
+	return &api.FindIndexPicsResponse{
 		Pic: apiPics(nil, task.Pics...),
 	}, nil
 }
@@ -76,7 +77,7 @@ func (h *FindIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.FindIndexPics(ctx, &FindIndexPicsRequest{
+	resp, sts := h.FindIndexPics(ctx, &api.FindIndexPicsRequest{
 		StartPicId: r.FormValue("start_pic_id"),
 		Ascending:  ascending,
 	})

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -22,7 +23,7 @@ type PurgePicHandler struct {
 }
 
 func (h *PurgePicHandler) PurgePic(
-	ctx context.Context, req *PurgePicRequest) (*PurgePicResponse, status.S) {
+	ctx context.Context, req *api.PurgePicRequest) (*api.PurgePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -47,7 +48,7 @@ func (h *PurgePicHandler) PurgePic(
 		return nil, sts
 	}
 
-	return &PurgePicResponse{}, nil
+	return &api.PurgePicResponse{}, nil
 }
 
 // TODO: add tests
@@ -65,7 +66,7 @@ func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.PurgePic(ctx, &PurgePicRequest{
+	resp, sts := h.PurgePic(ctx, &api.PurgePicRequest{
 		PicId: r.FormValue("pic_id"),
 	})
 	if sts != nil {

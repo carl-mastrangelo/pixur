@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -26,7 +27,7 @@ type SoftDeletePicHandler struct {
 }
 
 func (h *SoftDeletePicHandler) SoftDeletePic(
-	ctx context.Context, req *SoftDeletePicRequest) (*SoftDeletePicResponse, status.S) {
+	ctx context.Context, req *api.SoftDeletePicRequest) (*api.SoftDeletePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -50,7 +51,7 @@ func (h *SoftDeletePicHandler) SoftDeletePic(
 		deletionTime = h.Now().AddDate(0, 0, 7) // 7 days to live
 	}
 
-	reason := schema.Pic_DeletionStatus_Reason_value[DeletionReason_name[int32(req.Reason)]]
+	reason := schema.Pic_DeletionStatus_Reason_value[api.DeletionReason_name[int32(req.Reason)]]
 
 	var task = &tasks.SoftDeletePicTask{
 		DB:                  h.DB,
@@ -64,7 +65,7 @@ func (h *SoftDeletePicHandler) SoftDeletePic(
 		return nil, sts
 	}
 
-	return &SoftDeletePicResponse{}, nil
+	return &api.SoftDeletePicResponse{}, nil
 }
 
 func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -96,10 +97,10 @@ func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	resp, sts := h.SoftDeletePic(ctx, &SoftDeletePicRequest{
+	resp, sts := h.SoftDeletePic(ctx, &api.SoftDeletePicRequest{
 		PicId:        r.FormValue("pic_id"),
 		Details:      r.FormValue("details"),
-		Reason:       DeletionReason(DeletionReason_value[strings.ToUpper(r.FormValue("reason"))]),
+		Reason:       api.DeletionReason(api.DeletionReason_value[strings.ToUpper(r.FormValue("reason"))]),
 		DeletionTime: deletionTs,
 	})
 	if sts != nil {

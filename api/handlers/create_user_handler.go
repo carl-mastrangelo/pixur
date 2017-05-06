@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -20,8 +21,8 @@ type CreateUserHandler struct {
 	Runner *tasks.TaskRunner
 }
 
-func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserRequest) (
-	*CreateUserResponse, status.S) {
+func (h *CreateUserHandler) CreateUser(ctx context.Context, req *api.CreateUserRequest) (
+	*api.CreateUserResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -39,7 +40,7 @@ func (h *CreateUserHandler) CreateUser(ctx context.Context, req *CreateUserReque
 		return nil, sts
 	}
 
-	return &CreateUserResponse{}, nil
+	return &api.CreateUserResponse{}, nil
 }
 
 func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +60,7 @@ func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.CreateUser(ctx, &CreateUserRequest{
+	resp, sts := h.CreateUser(ctx, &api.CreateUserRequest{
 		Ident:  r.FormValue("ident"),
 		Secret: r.FormValue("secret"),
 	})

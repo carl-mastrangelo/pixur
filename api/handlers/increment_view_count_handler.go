@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -21,7 +22,7 @@ type IncrementViewCountHandler struct {
 }
 
 func (h *IncrementViewCountHandler) IncrementViewCount(
-	ctx context.Context, req *IncrementViewCountRequest) (*IncrementViewCountResponse, status.S) {
+	ctx context.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -46,7 +47,7 @@ func (h *IncrementViewCountHandler) IncrementViewCount(
 		return nil, sts
 	}
 
-	return &IncrementViewCountResponse{}, nil
+	return &api.IncrementViewCountResponse{}, nil
 }
 
 func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +64,7 @@ func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.IncrementViewCount(ctx, &IncrementViewCountRequest{
+	resp, sts := h.IncrementViewCount(ctx, &api.IncrementViewCountRequest{
 		PicId: r.FormValue("pic_id"),
 	})
 	if sts != nil {

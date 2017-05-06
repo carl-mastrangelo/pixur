@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -22,8 +23,9 @@ type AddPicCommentHandler struct {
 	Now    func() time.Time
 }
 
-func (h *AddPicCommentHandler) AddPicComment(ctx context.Context, req *AddPicCommentRequest) (
-	*AddPicCommentResponse, status.S) {
+func (h *AddPicCommentHandler) AddPicComment(
+	ctx context.Context, req *api.AddPicCommentRequest) (
+	*api.AddPicCommentResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -57,7 +59,7 @@ func (h *AddPicCommentHandler) AddPicComment(ctx context.Context, req *AddPicCom
 		return nil, err
 	}
 
-	return &AddPicCommentResponse{
+	return &api.AddPicCommentResponse{
 		Comment: apiPicComment(task.PicComment),
 	}, nil
 }
@@ -76,7 +78,7 @@ func (h *AddPicCommentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.AddPicComment(ctx, &AddPicCommentRequest{
+	resp, sts := h.AddPicComment(ctx, &api.AddPicCommentRequest{
 		PicId:           r.FormValue("pic_id"),
 		CommentParentId: r.FormValue("comment_parent_id"),
 		Text:            r.FormValue("text"),

@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -35,7 +36,7 @@ func (f *memFile) Close() error {
 }
 
 func (h *UpsertPicHandler) upsertPic(
-	ctx context.Context, req *UpsertPicRequest, file multipart.File) (*UpsertPicResponse, status.S) {
+	ctx context.Context, req *api.UpsertPicRequest, file multipart.File) (*api.UpsertPicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -78,13 +79,13 @@ func (h *UpsertPicHandler) upsertPic(
 		return nil, sts
 	}
 
-	return &UpsertPicResponse{
+	return &api.UpsertPicResponse{
 		Pic: apiPic(task.CreatedPic),
 	}, nil
 }
 
 func (h *UpsertPicHandler) UpsertPic(
-	ctx context.Context, req *UpsertPicRequest) (*UpsertPicResponse, status.S) {
+	ctx context.Context, req *api.UpsertPicRequest) (*api.UpsertPicResponse, status.S) {
 	return h.upsertPic(ctx, req, nil)
 }
 
@@ -125,7 +126,7 @@ func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	resp, sts := h.upsertPic(ctx, &UpsertPicRequest{
+	resp, sts := h.upsertPic(ctx, &api.UpsertPicRequest{
 		Url:     r.FormValue("url"),
 		Name:    filename,
 		Md5Hash: md5Hash,

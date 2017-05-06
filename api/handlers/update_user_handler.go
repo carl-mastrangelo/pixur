@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -22,14 +23,14 @@ type UpdateUserHandler struct {
 	Now    func() time.Time
 }
 
-var capcapmap = make(map[ApiCapability_Cap]schema.User_Capability)
+var capcapmap = make(map[api.ApiCapability_Cap]schema.User_Capability)
 
 func init() {
-	if len(schema.User_Capability_name) != len(ApiCapability_Cap_name) {
+	if len(schema.User_Capability_name) != len(api.ApiCapability_Cap_name) {
 		panic("cap mismatch")
 	}
 	for num := range schema.User_Capability_name {
-		if _, ok := ApiCapability_Cap_name[num]; !ok {
+		if _, ok := api.ApiCapability_Cap_name[num]; !ok {
 			panic("cap mismatch")
 		}
 	}
@@ -37,8 +38,8 @@ func init() {
 
 // TODO: add tests
 
-func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *UpdateUserRequest) (
-	*UpdateUserResponse, status.S) {
+func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *api.UpdateUserRequest) (
+	*api.UpdateUserResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -56,13 +57,13 @@ func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *UpdateUserReque
 
 	if req.Capability != nil {
 		for _, c := range req.Capability.SetCapability {
-			if _, ok := capcapmap[c]; !ok || c == ApiCapability_UNKNOWN {
+			if _, ok := capcapmap[c]; !ok || c == api.ApiCapability_UNKNOWN {
 				return nil, status.InvalidArgumentf(nil, "unknown cap %v", c)
 			}
 			newcaps = append(newcaps, schema.User_Capability(c))
 		}
 		for _, c := range req.Capability.ClearCapability {
-			if _, ok := capcapmap[c]; !ok || c == ApiCapability_UNKNOWN {
+			if _, ok := capcapmap[c]; !ok || c == api.ApiCapability_UNKNOWN {
 				return nil, status.InvalidArgumentf(nil, "unknown cap %v", c)
 			}
 			oldcaps = append(oldcaps, schema.User_Capability(c))
@@ -82,7 +83,7 @@ func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *UpdateUserReque
 		return nil, sts
 	}
 
-	return &UpdateUserResponse{}, nil
+	return &api.UpdateUserResponse{}, nil
 }
 
 // TODO: add tests
@@ -114,42 +115,42 @@ func (h *UpdateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var changeIdent *UpdateUserRequest_ChangeIdent
+	var changeIdent *api.UpdateUserRequest_ChangeIdent
 	if ident := r.FormValue("ident"); ident != "" {
-		changeIdent = &UpdateUserRequest_ChangeIdent{
+		changeIdent = &api.UpdateUserRequest_ChangeIdent{
 			Ident: ident,
 		}
 	}
 
-	var changeSecret *UpdateUserRequest_ChangeSecret
+	var changeSecret *api.UpdateUserRequest_ChangeSecret
 	if secret := r.FormValue("secret"); secret != "" {
-		changeSecret = &UpdateUserRequest_ChangeSecret{
+		changeSecret = &api.UpdateUserRequest_ChangeSecret{
 			Secret: secret,
 		}
 	}
 
-	var changeCap *UpdateUserRequest_ChangeCapability
+	var changeCap *api.UpdateUserRequest_ChangeCapability
 	if r.PostForm["set_capability"] != nil || r.PostForm["clear_capability"] != nil {
-		changeCap = &UpdateUserRequest_ChangeCapability{}
+		changeCap = &api.UpdateUserRequest_ChangeCapability{}
 		for _, set := range r.PostForm["set_capability"] {
-			c, ok := ApiCapability_Cap_value[set]
+			c, ok := api.ApiCapability_Cap_value[set]
 			if !ok {
 				httpError(w, status.InvalidArgument(nil, "unknown cap", set))
 				return
 			}
-			changeCap.SetCapability = append(changeCap.SetCapability, ApiCapability_Cap(c))
+			changeCap.SetCapability = append(changeCap.SetCapability, api.ApiCapability_Cap(c))
 		}
 		for _, clear := range r.PostForm["clear_capability"] {
-			c, ok := ApiCapability_Cap_value[clear]
+			c, ok := api.ApiCapability_Cap_value[clear]
 			if !ok {
 				httpError(w, status.InvalidArgument(nil, "unknown cap", clear))
 				return
 			}
-			changeCap.ClearCapability = append(changeCap.ClearCapability, ApiCapability_Cap(c))
+			changeCap.ClearCapability = append(changeCap.ClearCapability, api.ApiCapability_Cap(c))
 		}
 	}
 
-	resp, sts := h.UpdateUser(ctx, &UpdateUserRequest{
+	resp, sts := h.UpdateUser(ctx, &api.UpdateUserRequest{
 		UserId:     r.FormValue("user_id"),
 		Version:    version,
 		Ident:      changeIdent,

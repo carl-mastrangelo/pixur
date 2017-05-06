@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -37,7 +38,7 @@ var (
 )
 
 func (h *GetRefreshTokenHandler) GetRefreshToken(
-	ctx context.Context, req *GetRefreshTokenRequest) (*GetRefreshTokenResponse, status.S) {
+	ctx context.Context, req *api.GetRefreshTokenRequest) (*api.GetRefreshTokenResponse, status.S) {
 
 	var task = &tasks.AuthUserTask{
 		DB:     h.DB,
@@ -52,7 +53,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		if err != nil {
 			return nil, status.Unauthenticated(err, "can't decode token")
 		}
-		if oldRefreshPayload.Type != PwtPayload_REFRESH {
+		if oldRefreshPayload.Type != api.PwtPayload_REFRESH {
 			return nil, status.Unauthenticated(err, "can't decode non refresh token")
 		}
 
@@ -81,12 +82,12 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		return nil, status.InternalError(err, "can't build refresh notafter")
 	}
 
-	refreshPayload := &PwtPayload{
+	refreshPayload := &api.PwtPayload{
 		Subject:   subject,
 		NotBefore: notBefore,
 		NotAfter:  refreshNotAfter,
 		TokenId:   refreshTokenId,
-		Type:      PwtPayload_REFRESH,
+		Type:      api.PwtPayload_REFRESH,
 	}
 	refreshToken, err := defaultPwtCoder.encode(refreshPayload)
 	if err != nil {
@@ -98,30 +99,30 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		return nil, status.InternalError(err, "can't build auth notafter")
 	}
 
-	authPayload := &PwtPayload{
+	authPayload := &api.PwtPayload{
 		Subject:       subject,
 		NotBefore:     notBefore,
 		NotAfter:      authNotAfter,
 		TokenParentId: refreshTokenId,
-		Type:          PwtPayload_AUTH,
+		Type:          api.PwtPayload_AUTH,
 	}
 	authToken, err := defaultPwtCoder.encode(authPayload)
 	if err != nil {
 		return nil, status.InternalError(err, "can't build auth token")
 	}
 
-	var pixPayload *PwtPayload
+	var pixPayload *api.PwtPayload
 	var pixToken []byte
 	if schema.UserHasPerm(task.User, schema.User_PIC_READ) {
 		var err error
-		pixPayload = &PwtPayload{
+		pixPayload = &api.PwtPayload{
 			Subject:   subject,
 			NotBefore: notBefore,
 			// Pix has the lifetime of a refresh token, but the soft lifetime of an auth token
 			SoftNotAfter:  authNotAfter,
 			NotAfter:      refreshNotAfter,
 			TokenParentId: refreshTokenId,
-			Type:          PwtPayload_PIX,
+			Type:          api.PwtPayload_PIX,
 		}
 		pixToken, err = defaultPwtCoder.encode(pixPayload)
 		if err != nil {
@@ -129,7 +130,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		}
 	}
 
-	return &GetRefreshTokenResponse{
+	return &api.GetRefreshTokenResponse{
 		RefreshToken:   string(refreshToken),
 		AuthToken:      string(authToken),
 		PixToken:       string(pixToken),
@@ -149,7 +150,7 @@ func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	req := &GetRefreshTokenRequest{
+	req := &api.GetRefreshTokenRequest{
 		Ident:  r.FormValue("ident"),
 		Secret: r.FormValue("secret"),
 	}

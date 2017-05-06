@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -22,7 +23,7 @@ type FindSimilarPicsHandler struct {
 }
 
 func (h *FindSimilarPicsHandler) FindSimilarPics(
-	ctx context.Context, req *FindSimilarPicsRequest) (*FindSimilarPicsResponse, status.S) {
+	ctx context.Context, req *api.FindSimilarPicsRequest) (*api.FindSimilarPicsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -45,7 +46,7 @@ func (h *FindSimilarPicsHandler) FindSimilarPics(
 		return nil, sts
 	}
 
-	resp := FindSimilarPicsResponse{}
+	resp := api.FindSimilarPicsResponse{}
 	for _, id := range task.SimilarPicIDs {
 		resp.PicId = append(resp.PicId, schema.Varint(id).Encode())
 	}
@@ -68,7 +69,7 @@ func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.FindSimilarPics(ctx, &FindSimilarPicsRequest{
+	resp, sts := h.FindSimilarPics(ctx, &api.FindSimilarPicsRequest{
 		PicId: r.FormValue("pic_id"),
 	})
 	if sts != nil {

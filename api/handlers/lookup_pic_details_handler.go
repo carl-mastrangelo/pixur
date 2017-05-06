@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
@@ -22,7 +23,7 @@ type LookupPicDetailsHandler struct {
 }
 
 func (h *LookupPicDetailsHandler) LookupPicDetails(
-	ctx context.Context, req *LookupPicDetailsRequest) (*LookupPicDetailsResponse, status.S) {
+	ctx context.Context, req *api.LookupPicDetailsRequest) (*api.LookupPicDetailsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -51,7 +52,7 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 		pcs = pcs[:len(pcs)-1] // Always trim the fakeroot
 	}
 
-	return &LookupPicDetailsResponse{
+	return &api.LookupPicDetailsResponse{
 		Pic:            apiPic(task.Pic),
 		PicTag:         apiPicTags(nil, task.PicTags...),
 		PicCommentTree: apiPicCommentTree(nil, pcs...),
@@ -71,7 +72,7 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.LookupPicDetails(ctx, &LookupPicDetailsRequest{
+	resp, sts := h.LookupPicDetails(ctx, &api.LookupPicDetailsRequest{
 		PicId: r.FormValue("pic_id"),
 	})
 	if sts != nil {

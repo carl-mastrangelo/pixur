@@ -11,6 +11,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+
+	"pixur.org/pixur/api"
 )
 
 var (
@@ -39,7 +41,7 @@ type pwtCoder struct {
 	secret []byte
 }
 
-func (c *pwtCoder) decode(data []byte) (*PwtPayload, error) {
+func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 	sep := []byte{'.'}
 	// Split it into at most 4 chunks, to find errors.  We expect 3.
 	chunks := bytes.SplitN(data, sep, 4)
@@ -58,14 +60,14 @@ func (c *pwtCoder) decode(data []byte) (*PwtPayload, error) {
 	}
 
 	// Decode the header from raw bytes into a message
-	header := &PwtHeader{}
+	header := &api.PwtHeader{}
 	if err := proto.Unmarshal(rawHeader, header); err != nil {
 		return nil, errPwtInvalid
 	}
 
 	// Check that it's even feasible to continue.
 	// TODO: suppport more algs and versions
-	if header.Algorithm != PwtHeader_HS256 {
+	if header.Algorithm != api.PwtHeader_HS256 {
 		return nil, errPwtUnsupported
 	}
 	if header.Version != 0 {
@@ -97,7 +99,7 @@ func (c *pwtCoder) decode(data []byte) (*PwtPayload, error) {
 	}
 
 	// Decode the payload from raw bytes into a message
-	payload := &PwtPayload{}
+	payload := &api.PwtPayload{}
 	if err := proto.Unmarshal(rawPayload, payload); err != nil {
 		return nil, errPwtInvalid
 	}
@@ -115,9 +117,9 @@ func (c *pwtCoder) decode(data []byte) (*PwtPayload, error) {
 	return payload, nil
 }
 
-func (c *pwtCoder) encode(payload *PwtPayload) ([]byte, error) {
-	header := &PwtHeader{
-		Algorithm: PwtHeader_HS256,
+func (c *pwtCoder) encode(payload *api.PwtPayload) ([]byte, error) {
+	header := &api.PwtHeader{
+		Algorithm: api.PwtHeader_HS256,
 		Version:   0,
 	}
 

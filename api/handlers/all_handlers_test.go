@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+
+	"pixur.org/pixur/api"
 )
 
 func init() {
@@ -23,7 +25,7 @@ func init() {
 type testClient struct {
 	HTTPClient   *http.Client
 	DisableXSRF  bool
-	AuthOverride *PwtPayload
+	AuthOverride *api.PwtPayload
 	DisableAuth  bool
 }
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -22,7 +23,7 @@ func fillUserIDFromCtx(ctx context.Context) (context.Context, status.S) {
 	return ctx, nil
 }
 
-func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, error) {
+func addUserIDToCtx(ctx context.Context, pwt *api.PwtPayload) (context.Context, error) {
 	if pwt == nil {
 		return ctx, nil
 	}
@@ -34,12 +35,12 @@ func addUserIDToCtx(ctx context.Context, pwt *PwtPayload) (context.Context, erro
 	return tasks.CtxFromUserID(ctx, int64(userID)), nil
 }
 
-func decodeAuthToken(token string) (*PwtPayload, error) {
+func decodeAuthToken(token string) (*api.PwtPayload, error) {
 	payload, err := defaultPwtCoder.decode([]byte(token))
 	if err != nil {
 		return nil, err
 	}
-	if payload.Type != PwtPayload_AUTH {
+	if payload.Type != api.PwtPayload_AUTH {
 		return nil, errNotAuth
 	}
 	return payload, nil

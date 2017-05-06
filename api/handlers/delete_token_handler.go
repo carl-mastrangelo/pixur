@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -23,7 +24,7 @@ type DeleteTokenHandler struct {
 }
 
 func (h *DeleteTokenHandler) DeleteToken(
-	ctx context.Context, req *DeleteTokenRequest) (*DeleteTokenResponse, status.S) {
+	ctx context.Context, req *api.DeleteTokenRequest) (*api.DeleteTokenResponse, status.S) {
 
 	// Roundabout way of extracting token info.
 	token, present := tasks.AuthTokenFromCtx(ctx)
@@ -52,7 +53,7 @@ func (h *DeleteTokenHandler) DeleteToken(
 		return nil, sts
 	}
 
-	return &DeleteTokenResponse{}, nil
+	return &api.DeleteTokenResponse{}, nil
 }
 
 func (h *DeleteTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +70,7 @@ func (h *DeleteTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx = tasks.CtxFromAuthToken(ctx, token)
 	}
 
-	resp, sts := h.DeleteToken(ctx, &DeleteTokenRequest{})
+	resp, sts := h.DeleteToken(ctx, &api.DeleteTokenRequest{})
 	if sts != nil {
 		httpError(w, sts)
 		return

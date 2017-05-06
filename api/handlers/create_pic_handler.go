@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -22,14 +23,14 @@ type CreatePicHandler struct {
 	Now     func() time.Time
 }
 
-func (h *CreatePicHandler) CreatePic(ctx context.Context, req *CreatePicRequest) (
-	*CreatePicResponse, status.S) {
+func (h *CreatePicHandler) CreatePic(ctx context.Context, req *api.CreatePicRequest) (
+	*api.CreatePicResponse, status.S) {
 	return h.createPic(ctx, req, nil)
 }
 
 func (h *CreatePicHandler) createPic(
-	ctx context.Context, req *CreatePicRequest, file multipart.File) (
-	*CreatePicResponse, status.S) {
+	ctx context.Context, req *api.CreatePicRequest, file multipart.File) (
+	*api.CreatePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
@@ -55,7 +56,7 @@ func (h *CreatePicHandler) createPic(
 		return nil, sts
 	}
 
-	return &CreatePicResponse{
+	return &api.CreatePicResponse{
 		Pic: apiPic(task.CreatedPic),
 	}, nil
 }
@@ -86,7 +87,7 @@ func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		filedata = uploadedFile
 	}
 
-	resp, sts := h.createPic(ctx, &CreatePicRequest{
+	resp, sts := h.createPic(ctx, &api.CreatePicRequest{
 		FileName: filename,
 		FileUrl:  r.FormValue("url"),
 		Tag:      r.PostForm["tag"],
