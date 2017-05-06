@@ -42,15 +42,15 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 	}
 	if !c.DisableAuth {
 		// Add in Auth
-		var payload *PwtPayload
+		var payload *api.PwtPayload
 		if c.AuthOverride == nil {
 			notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 			notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-			payload = &PwtPayload{
+			payload = &api.PwtPayload{
 				Subject:   "0",
 				NotAfter:  notafter,
 				NotBefore: notbefore,
-				Type:      PwtPayload_AUTH,
+				Type:      api.PwtPayload_AUTH,
 			}
 		} else {
 			payload = c.AuthOverride

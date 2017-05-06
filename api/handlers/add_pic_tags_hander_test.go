@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -57,7 +58,7 @@ func TestAddPicTagsFailsOnBadAuth(t *testing.T) {
 	defer s.Close()
 
 	res, err := (&testClient{
-		AuthOverride: new(PwtPayload),
+		AuthOverride: new(api.PwtPayload),
 	}).PostForm(s.URL, url.Values{})
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +168,7 @@ func TestAddPicTagsHTTP(t *testing.T) {
 
 func TestAddPicTagsFailsOnBadPicId(t *testing.T) {
 	h := &AddPicTagsHandler{}
-	resp, sts := h.AddPicTags(context.Background(), &AddPicTagsRequest{
+	resp, sts := h.AddPicTags(context.Background(), &api.AddPicTagsRequest{
 		PicId: "bogus",
 	})
 
@@ -192,7 +193,7 @@ func TestAddPicTagsRPC(t *testing.T) {
 		Runner: tasks.TestTaskRunner(successRunner),
 	}
 
-	resp, sts := h.AddPicTags(context.Background(), &AddPicTagsRequest{
+	resp, sts := h.AddPicTags(context.Background(), &api.AddPicTagsRequest{
 		PicId: "1",
 		Tag:   []string{"a", "b"},
 	})
@@ -210,7 +211,7 @@ func TestAddPicTagsRPC(t *testing.T) {
 	if len(taskCap.TagNames) != 2 || taskCap.TagNames[0] != "a" || taskCap.TagNames[1] != "b" {
 		t.Error("have", taskCap.TagNames, "want", []string{"a", "b"})
 	}
-	if want := (&AddPicTagsResponse{}); !proto.Equal(resp, want) {
+	if want := (&api.AddPicTagsResponse{}); !proto.Equal(resp, want) {
 		t.Error("have", resp, "want", want)
 	}
 }

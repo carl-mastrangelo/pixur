@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -72,7 +73,7 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		t.Error("Bad Content type", res.Header.Get("Content-Type"))
 	}
 
-	var results LookupPicDetailsResponse
+	var results api.LookupPicDetailsResponse
 	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Error(err)
 	}

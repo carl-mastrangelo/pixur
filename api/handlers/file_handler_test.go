@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+
+	"pixur.org/pixur/api"
 )
 
 func TestFileHandlerFailsOnMissingToken(t *testing.T) {
@@ -39,12 +41,12 @@ func TestFileHandlerFailsOnInvalidToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_AUTH,
+		Type:         api.PwtPayload_AUTH,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)
@@ -84,12 +86,12 @@ func TestFileHandlerFailsOnHardExpiredToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_PIX,
+		Type:         api.PwtPayload_PIX,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)
@@ -129,12 +131,12 @@ func TestFileHandlerSucceedsOnSoftExpiredToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_PIX,
+		Type:         api.PwtPayload_PIX,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)
@@ -166,12 +168,12 @@ func validPixTokenCookie() *http.Cookie {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_PIX,
+		Type:         api.PwtPayload_PIX,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)

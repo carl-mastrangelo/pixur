@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -85,7 +86,7 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 		t.Error("have", have, "want", want)
 	}
 
-	resp := new(GetRefreshTokenResponse)
+	resp := new(api.GetRefreshTokenResponse)
 	if err := jsonpb.Unmarshal(res.Body, resp); err != nil {
 		t.Error(err)
 	}
@@ -187,7 +188,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		t.Error("have", have, "want", want)
 	}
 
-	resp := new(GetRefreshTokenResponse)
+	resp := new(api.GetRefreshTokenResponse)
 	if err := jsonpb.Unmarshal(res.Body, resp); err != nil {
 		t.Error(err)
 	}
@@ -257,7 +258,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 
 func TestGetRefreshTokenFailsOnInvalidToken(t *testing.T) {
 	h := &GetRefreshTokenHandler{}
-	_, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: "invalid",
 	})
 
@@ -274,18 +275,18 @@ func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
 	h := &GetRefreshTokenHandler{}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "9",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      PwtPayload_AUTH,
+		Type:      api.PwtPayload_AUTH,
 	}
 	refreshToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
 
-	_, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: string(refreshToken),
 	})
 
@@ -302,18 +303,18 @@ func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
 	h := &GetRefreshTokenHandler{}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "invalid",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      PwtPayload_REFRESH,
+		Type:      api.PwtPayload_REFRESH,
 	}
 	refreshToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
 
-	_, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: string(refreshToken),
 	})
 
@@ -334,7 +335,7 @@ func TestGetRefreshTokenFailsOnTaskError(t *testing.T) {
 		Runner: tasks.TestTaskRunner(failureRunner),
 	}
 
-	_, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{})
+	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{})
 
 	if have, want := sts.Code(), status.Code_INTERNAL_ERROR; have != want {
 		t.Error("have", have, "want", want)
@@ -358,11 +359,11 @@ func TestGetRefreshToken(t *testing.T) {
 	}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "2",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      PwtPayload_REFRESH,
+		Type:      api.PwtPayload_REFRESH,
 		TokenId:   3,
 	}
 	refreshToken, err := defaultPwtCoder.encode(payload)
@@ -375,7 +376,7 @@ func TestGetRefreshToken(t *testing.T) {
 		Now:    time.Now,
 	}
 
-	resp, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+	resp, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		Ident:        "ident",
 		Secret:       "secret",
 		RefreshToken: string(refreshToken),
@@ -409,10 +410,10 @@ func TestGetRefreshToken(t *testing.T) {
 	}
 	resp.RefreshPayload.NotBefore = nil
 	resp.RefreshPayload.NotAfter = nil
-	expectedRefresh := &PwtPayload{
+	expectedRefresh := &api.PwtPayload{
 		Subject: "2",
 		TokenId: 4,
-		Type:    PwtPayload_REFRESH,
+		Type:    api.PwtPayload_REFRESH,
 	}
 	if !proto.Equal(resp.RefreshPayload, expectedRefresh) {
 		t.Error("have", resp.RefreshPayload, "want", expectedRefresh)
@@ -426,10 +427,10 @@ func TestGetRefreshToken(t *testing.T) {
 	}
 	resp.AuthPayload.NotBefore = nil
 	resp.AuthPayload.NotAfter = nil
-	expectedAuth := &PwtPayload{
+	expectedAuth := &api.PwtPayload{
 		Subject:       "2",
 		TokenParentId: 4,
-		Type:          PwtPayload_AUTH,
+		Type:          api.PwtPayload_AUTH,
 	}
 	if !proto.Equal(resp.AuthPayload, expectedAuth) {
 		t.Error("have", resp.AuthPayload, "want", expectedAuth)
@@ -447,10 +448,10 @@ func TestGetRefreshToken(t *testing.T) {
 	resp.PixPayload.NotBefore = nil
 	resp.PixPayload.NotAfter = nil
 	resp.PixPayload.SoftNotAfter = nil
-	expectedPix := &PwtPayload{
+	expectedPix := &api.PwtPayload{
 		Subject:       "2",
 		TokenParentId: 4,
-		Type:          PwtPayload_PIX,
+		Type:          api.PwtPayload_PIX,
 	}
 	if !proto.Equal(resp.PixPayload, expectedPix) {
 		t.Error("have", resp.PixPayload, "want", expectedPix)
@@ -469,11 +470,11 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 	}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "2",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      PwtPayload_REFRESH,
+		Type:      api.PwtPayload_REFRESH,
 		TokenId:   3,
 	}
 	refreshToken, err := defaultPwtCoder.encode(payload)
@@ -486,7 +487,7 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 		Now:    time.Now,
 	}
 
-	resp, sts := h.GetRefreshToken(context.Background(), &GetRefreshTokenRequest{
+	resp, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		Ident:        "ident",
 		Secret:       "secret",
 		RefreshToken: string(refreshToken),
@@ -523,14 +524,14 @@ func withinProto(t1pb *tspb.Timestamp, t2 time.Time, diff time.Duration) bool {
 	return d <= diff
 }
 
-func testRefreshToken() (*http.Cookie, *PwtPayload) {
+func testRefreshToken() (*http.Cookie, *api.PwtPayload) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "9",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      PwtPayload_REFRESH,
+		Type:      api.PwtPayload_REFRESH,
 		TokenId:   10,
 	}
 	refreshToken, err := defaultPwtCoder.encode(payload)

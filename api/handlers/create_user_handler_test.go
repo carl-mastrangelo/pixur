@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -57,7 +58,7 @@ func TestCreateUserFailsOnBadAuth(t *testing.T) {
 	defer s.Close()
 
 	res, err := (&testClient{
-		AuthOverride: new(PwtPayload),
+		AuthOverride: new(api.PwtPayload),
 	}).PostForm(s.URL, url.Values{})
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +176,7 @@ func TestCreateUserRPC(t *testing.T) {
 		Runner: tasks.TestTaskRunner(successRunner),
 	}
 
-	resp, sts := h.CreateUser(context.Background(), &CreateUserRequest{
+	resp, sts := h.CreateUser(context.Background(), &api.CreateUserRequest{
 		Ident:  "foo@bar.com",
 		Secret: "secret",
 	})
@@ -192,7 +193,7 @@ func TestCreateUserRPC(t *testing.T) {
 	if have, want := taskCap.Secret, "secret"; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if want := (&CreateUserResponse{}); !proto.Equal(resp, want) {
+	if want := (&api.CreateUserResponse{}); !proto.Equal(resp, want) {
 		t.Error("have", resp, "want", want)
 	}
 }

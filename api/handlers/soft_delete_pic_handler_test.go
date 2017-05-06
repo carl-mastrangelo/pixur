@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
@@ -63,7 +64,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 		t.Error("Wrong deletion time", taskCap.PendingDeletionTime)
 	}
 
-	var results SoftDeletePicResponse
+	var results api.SoftDeletePicResponse
 	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Error("can't unmarshal results", err)
 	}
@@ -173,7 +174,7 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 		t.Error("wrong deletion time", taskCap.PendingDeletionTime)
 	}
 
-	var results SoftDeletePicResponse
+	var results api.SoftDeletePicResponse
 	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
 		t.Error(err)
 	}

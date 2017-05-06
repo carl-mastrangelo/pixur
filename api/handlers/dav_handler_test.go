@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+
+	"pixur.org/pixur/api"
 )
 
 func TestDavHandlerFailsOnMissingToken(t *testing.T) {
@@ -39,12 +41,12 @@ func TestDavHandlerFailsOnInvalidToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_AUTH,
+		Type:         api.PwtPayload_AUTH,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)
@@ -84,12 +86,12 @@ func TestDavHandlerFailsOnHardExpiredToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_PIX,
+		Type:         api.PwtPayload_PIX,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)
@@ -130,12 +132,12 @@ func TestDavHandlerSucceedsOnSoftExpiredToken(t *testing.T) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	softnotafter, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:      "0",
 		NotAfter:     notafter,
 		SoftNotAfter: softnotafter,
 		NotBefore:    notbefore,
-		Type:         PwtPayload_PIX,
+		Type:         api.PwtPayload_PIX,
 		TokenId:      2,
 	}
 	pixToken, err := defaultPwtCoder.encode(payload)

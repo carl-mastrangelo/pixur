@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
@@ -76,11 +77,11 @@ func TestDeleteTokenFailsOnExpiredAuth(t *testing.T) {
 	defer s.Close()
 
 	res, err := (&testClient{
-		AuthOverride: &PwtPayload{
+		AuthOverride: &api.PwtPayload{
 			Subject:   "0",
 			NotAfter:  nil,
 			NotBefore: nil,
-			Type:      PwtPayload_AUTH,
+			Type:      api.PwtPayload_AUTH,
 		},
 	}).PostForm(s.URL, url.Values{})
 	if err != nil {
@@ -137,11 +138,11 @@ func TestDeleteTokenSucess(t *testing.T) {
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 
 	res, err := (&testClient{
-		AuthOverride: &PwtPayload{
+		AuthOverride: &api.PwtPayload{
 			Subject:       "1",
 			NotAfter:      notafter,
 			NotBefore:     notbefore,
-			Type:          PwtPayload_AUTH,
+			Type:          api.PwtPayload_AUTH,
 			TokenParentId: 2,
 		},
 	}).PostForm(s.URL, url.Values{})
@@ -150,11 +151,11 @@ func TestDeleteTokenSucess(t *testing.T) {
 	}
 	defer res.Body.Close()
 
-	resp := new(DeleteTokenResponse)
+	resp := new(api.DeleteTokenResponse)
 	if err := jsonpb.Unmarshal(res.Body, resp); err != nil {
 		t.Error(err)
 	}
-	if want := new(DeleteTokenResponse); !proto.Equal(resp, want) {
+	if want := new(api.DeleteTokenResponse); !proto.Equal(resp, want) {
 		t.Error("have", resp, "want", want)
 	}
 	if have, want := res.StatusCode, http.StatusOK; have != want {

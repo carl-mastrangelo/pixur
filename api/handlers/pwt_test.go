@@ -6,6 +6,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+
+	"pixur.org/pixur/api"
 )
 
 func TestSomething(t *testing.T) {
@@ -17,7 +19,7 @@ func TestSomething(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload := &PwtPayload{
+	payload := &api.PwtPayload{
 		Subject:   "billy",
 		NotBefore: notbefore,
 		NotAfter:  notafter,

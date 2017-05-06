@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+
+	"pixur.org/pixur/api"
 )
 
 type zeros int
@@ -42,7 +44,7 @@ func TestGetXsrfTokenFailsOnBadAuth(t *testing.T) {
 	defer s.Close()
 
 	res, err := (&testClient{
-		AuthOverride: new(PwtPayload),
+		AuthOverride: new(api.PwtPayload),
 	}).PostForm(s.URL, url.Values{})
 	if err != nil {
 		t.Fatal(err)
@@ -106,13 +108,13 @@ func TestGetXsrfTokenRPC(t *testing.T) {
 		Rand: new(zeros),
 	}
 
-	resp, sts := h.GetXsrfToken(context.Background(), &GetXsrfTokenRequest{})
+	resp, sts := h.GetXsrfToken(context.Background(), &api.GetXsrfTokenRequest{})
 
 	if sts != nil {
 		t.Error("have", sts, "want", nil)
 	}
 
-	if want := (&GetXsrfTokenResponse{XsrfToken: "AAAAAAAAAAAAAAAAAAAAAA"}); !proto.Equal(resp, want) {
+	if want := (&api.GetXsrfTokenResponse{XsrfToken: "AAAAAAAAAAAAAAAAAAAAAA"}); !proto.Equal(resp, want) {
 		t.Error("have", resp, "want", want)
 	}
 }
