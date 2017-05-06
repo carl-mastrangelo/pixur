@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"pixur.org/pixur/handlers"
+	"pixur.org/pixur/api/handlers"
 	sdb "pixur.org/pixur/schema/db"
 	"pixur.org/pixur/server/config"
 )
