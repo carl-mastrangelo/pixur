@@ -11,42 +11,53 @@ type Code int
 
 var (
 	Code_OK                  Code = 0
-	Code_INVALID_ARGUMENT    Code = 1
-	Code_INTERNAL_ERROR      Code = 2
-	Code_UNKNOWN             Code = 3
-	Code_NOT_FOUND           Code = 4
-	Code_ALREADY_EXISTS      Code = 5
-	Code_PERMISSION_DENIED   Code = 6
-	Code_UNAUTHENTICATED     Code = 7
+	Code_CANCELLED           Code = 1
+	Code_UNKNOWN             Code = 2
+	Code_INVALID_ARGUMENT    Code = 3
+	Code_DEADLINE_EXCEEDED   Code = 4
+	Code_NOT_FOUND           Code = 5
+	Code_ALREADY_EXISTS      Code = 6
+	Code_PERMISSION_DENIED   Code = 7
+	Code_UNAUTHENTICATED     Code = 16
 	Code_RESOURCE_EXHAUSTED  Code = 8
 	Code_FAILED_PRECONDITION Code = 9
 	Code_ABORTED             Code = 10
-	Code_UNIMPLEMENTED       Code = 11
+	Code_OUT_OF_RANGE        Code = 11
+	Code_UNIMPLEMENTED       Code = 12
+	Code_INTERNAL            Code = 13
+	Code_UNAVAILABLE         Code = 14
+	Code_DATA_LOSS           Code = 15
 )
 
 var (
 	_codeHttpMapping = map[Code]int{
 		Code_OK:                  http.StatusOK,
-		Code_INVALID_ARGUMENT:    http.StatusBadRequest,
-		Code_INTERNAL_ERROR:      http.StatusInternalServerError,
+		Code_CANCELLED:           499, // Client Closed Request
 		Code_UNKNOWN:             http.StatusInternalServerError,
+		Code_INVALID_ARGUMENT:    http.StatusBadRequest,
+		Code_DEADLINE_EXCEEDED:   http.StatusGatewayTimeout,
 		Code_NOT_FOUND:           http.StatusNotFound,
 		Code_ALREADY_EXISTS:      http.StatusConflict,
 		Code_PERMISSION_DENIED:   http.StatusForbidden,
 		Code_UNAUTHENTICATED:     http.StatusUnauthorized,
-		Code_RESOURCE_EXHAUSTED:  429,
-		Code_FAILED_PRECONDITION: http.StatusPreconditionFailed,
+		Code_RESOURCE_EXHAUSTED:  http.StatusTooManyRequests,
+		Code_FAILED_PRECONDITION: http.StatusPreconditionFailed, // not 400, as code.proto suggests
 		Code_ABORTED:             http.StatusConflict,
+		Code_OUT_OF_RANGE:        http.StatusRequestedRangeNotSatisfiable, // not 400, as code.proto suggests
 		Code_UNIMPLEMENTED:       http.StatusNotImplemented,
+		Code_INTERNAL:            http.StatusInternalServerError,
+		Code_UNAVAILABLE:         http.StatusServiceUnavailable,
+		Code_DATA_LOSS:           http.StatusInternalServerError,
 	}
 )
 
 var (
 	_codeNameMapping = map[Code]string{
 		Code_OK:                  "OK",
-		Code_INVALID_ARGUMENT:    "INVALID_ARGUMENT",
-		Code_INTERNAL_ERROR:      "INTERNAL_ERROR",
+		Code_CANCELLED:           "CANCELLED",
 		Code_UNKNOWN:             "UNKNOWN",
+		Code_INVALID_ARGUMENT:    "INVALID_ARGUMENT",
+		Code_DEADLINE_EXCEEDED:   "DEADLINE_EXCEEDED",
 		Code_NOT_FOUND:           "NOT_FOUND",
 		Code_ALREADY_EXISTS:      "ALREADY_EXISTS",
 		Code_PERMISSION_DENIED:   "PERMISSION_DENIED",
@@ -54,7 +65,11 @@ var (
 		Code_RESOURCE_EXHAUSTED:  "RESOURCE_EXHAUSTED",
 		Code_FAILED_PRECONDITION: "FAILED_PRECONDITION",
 		Code_ABORTED:             "ABORTED",
+		Code_OUT_OF_RANGE:        "OUT_OF_RANGE",
 		Code_UNIMPLEMENTED:       "UNIMPLEMENTED",
+		Code_INTERNAL:            "INTERNAL",
+		Code_UNAVAILABLE:         "UNAVAILABLE",
+		Code_DATA_LOSS:           "DATA_LOSS",
 	}
 )
 
@@ -87,7 +102,7 @@ func From(err error) S {
 		return s
 	}
 	return &status{
-		code:  Code_INTERNAL_ERROR,
+		code:  Code_UNKNOWN,
 		cause: err,
 	}
 }
@@ -180,7 +195,7 @@ func InvalidArgumentf(e error, format string, v ...interface{}) S {
 
 func InternalError(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_INTERNAL_ERROR,
+		code:  Code_INTERNAL,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -189,7 +204,7 @@ func InternalError(e error, v ...interface{}) S {
 
 func InternalErrorf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_INTERNAL_ERROR,
+		code:  Code_INTERNAL,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -280,6 +295,24 @@ func Aborted(e error, v ...interface{}) S {
 func Abortedf(e error, format string, v ...interface{}) S {
 	return &status{
 		code:  Code_ABORTED,
+		msg:   fmt.Sprintf(format, v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func Unimplemented(e error, v ...interface{}) S {
+	return &status{
+		code:  Code_UNIMPLEMENTED,
+		msg:   fmt.Sprint(v...),
+		cause: e,
+		stack: getStack(),
+	}
+}
+
+func Unimplementedf(e error, format string, v ...interface{}) S {
+	return &status{
+		code:  Code_UNIMPLEMENTED,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
