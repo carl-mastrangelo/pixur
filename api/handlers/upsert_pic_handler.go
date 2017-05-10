@@ -4,28 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"encoding/hex"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"time"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
-
-type UpsertPicHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB      db.DB
-	PixPath string
-	Now     func() time.Time
-}
 
 type memFile struct {
 	*bytes.Reader
@@ -35,15 +22,15 @@ func (f *memFile) Close() error {
 	return nil
 }
 
-func (h *UpsertPicHandler) upsertPic(
-	ctx context.Context, req *api.UpsertPicRequest, file multipart.File) (*api.UpsertPicResponse, status.S) {
+func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (*api.UpsertPicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
 		return nil, sts
 	}
 
-	if file == nil && len(req.Data) != 0 {
+	var file multipart.File
+	if len(req.Data) != 0 {
 		// make sure this is non nil only if there actually data.
 		file = &memFile{bytes.NewReader(req.Data)}
 	}
@@ -56,13 +43,13 @@ func (h *UpsertPicHandler) upsertPic(
 	}
 
 	var task = &tasks.UpsertPicTask{
-		PixPath:    h.PixPath,
-		DB:         h.DB,
+		PixPath:    s.pixpath,
+		DB:         s.db,
 		HTTPClient: http.DefaultClient,
 		TempFile:   ioutil.TempFile,
 		Rename:     os.Rename,
 		MkdirAll:   os.MkdirAll,
-		Now:        h.Now,
+		Now:        s.now,
 
 		FileURL: req.Url,
 		File:    file,
@@ -74,8 +61,7 @@ func (h *UpsertPicHandler) upsertPic(
 		Ctx:      ctx,
 	}
 
-	runner := new(tasks.TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -84,12 +70,8 @@ func (h *UpsertPicHandler) upsertPic(
 	}, nil
 }
 
-func (h *UpsertPicHandler) UpsertPic(
-	ctx context.Context, req *api.UpsertPicRequest) (*api.UpsertPicResponse, status.S) {
-	return h.upsertPic(ctx, req, nil)
-}
-
 // TODO: add tests
+/*
 func (h *UpsertPicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -150,3 +132,4 @@ func init() {
 		})
 	})
 }
+*/

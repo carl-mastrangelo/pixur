@@ -2,26 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type FindIndexPicsHandler struct {
-	// embeds
-	http.Handler
-
-	DB     db.DB
-	Now    func() time.Time
-	Runner tasks.TaskRunner
-}
-
-func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
+func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
 	*api.FindIndexPicsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -37,13 +25,13 @@ func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *api.FindI
 	}
 
 	var task = &tasks.ReadIndexPicsTask{
-		DB:        h.DB,
+		DB:        s.db,
 		StartID:   int64(picID),
 		Ascending: req.Ascending,
 		Ctx:       ctx,
 	}
 
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -52,6 +40,7 @@ func (h *FindIndexPicsHandler) FindIndexPics(ctx context.Context, req *api.FindI
 	}, nil
 }
 
+/*
 func (h *FindIndexPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var ascending bool
 	switch r.URL.Path {
@@ -99,3 +88,4 @@ func init() {
 		mux.Handle("/api/findPreviousIndexPics", h)
 	})
 }
+*/

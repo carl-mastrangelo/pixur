@@ -2,27 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type LookupPicDetailsHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
-
-func (h *LookupPicDetailsHandler) LookupPicDetails(
+func (s *serv) handleLookupPicDetails(
 	ctx context.Context, req *api.LookupPicDetailsRequest) (*api.LookupPicDetailsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -38,11 +25,11 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 	}
 
 	var task = &tasks.LookupPicTask{
-		DB:    h.DB,
+		DB:    s.db,
 		PicID: int64(picID),
 		Ctx:   ctx,
 	}
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -59,6 +46,7 @@ func (h *LookupPicDetailsHandler) LookupPicDetails(
 	}, nil
 }
 
+/*
 func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkXsrf()
@@ -82,7 +70,7 @@ func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	returnProtoJSON(w, r, resp)
 }
-
+*/
 func flattenPicCommentTree(list *[]*schema.PicComment, pct *tasks.PicCommentTree) {
 	for _, c := range pct.Children {
 		flattenPicCommentTree(list, c)
@@ -90,6 +78,7 @@ func flattenPicCommentTree(list *[]*schema.PicComment, pct *tasks.PicCommentTree
 	*list = append(*list, pct.PicComment)
 }
 
+/*
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/api/lookupPicDetails", &LookupPicDetailsHandler{
@@ -98,3 +87,4 @@ func init() {
 		})
 	})
 }
+*/

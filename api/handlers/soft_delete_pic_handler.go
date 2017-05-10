@@ -2,31 +2,17 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type SoftDeletePicHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
-
-func (h *SoftDeletePicHandler) SoftDeletePic(
+func (s *serv) handleSoftDeletePic(
 	ctx context.Context, req *api.SoftDeletePicRequest) (*api.SoftDeletePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -48,26 +34,27 @@ func (h *SoftDeletePicHandler) SoftDeletePic(
 			return nil, status.InvalidArgument(err, "bad deletion time")
 		}
 	} else {
-		deletionTime = h.Now().AddDate(0, 0, 7) // 7 days to live
+		deletionTime = s.now().AddDate(0, 0, 7) // 7 days to live
 	}
 
 	reason := schema.Pic_DeletionStatus_Reason_value[api.DeletionReason_name[int32(req.Reason)]]
 
 	var task = &tasks.SoftDeletePicTask{
-		DB:                  h.DB,
+		DB:                  s.db,
 		PicID:               int64(picID),
 		Details:             req.Details,
 		Reason:              schema.Pic_DeletionStatus_Reason(reason),
 		PendingDeletionTime: &deletionTime,
 		Ctx:                 ctx,
 	}
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	return &api.SoftDeletePicResponse{}, nil
 }
 
+/*
 func (h *SoftDeletePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -119,3 +106,4 @@ func init() {
 		})
 	})
 }
+*/

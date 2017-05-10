@@ -2,27 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type AddPicTagsHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
-
-func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *api.AddPicTagsRequest) (
+func (s *serv) handleAddPicTags(ctx context.Context, req *api.AddPicTagsRequest) (
 	*api.AddPicTagsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -38,20 +25,21 @@ func (h *AddPicTagsHandler) AddPicTags(ctx context.Context, req *api.AddPicTagsR
 	}
 
 	var task = &tasks.AddPicTagsTask{
-		DB:  h.DB,
-		Now: h.Now,
+		DB:  s.db,
+		Now: s.now,
 
 		PicID:    int64(vid),
 		TagNames: req.Tag,
 		Ctx:      ctx,
 	}
-	if err := h.Runner.Run(task); err != nil {
+	if err := s.runner.Run(task); err != nil {
 		return nil, err
 	}
 
 	return &api.AddPicTagsResponse{}, nil
 }
 
+/*
 func (h *AddPicTagsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -87,3 +75,4 @@ func init() {
 		})
 	})
 }
+*/

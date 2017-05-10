@@ -4,32 +4,13 @@ import (
 	"bytes"
 	"context"
 	"mime/multipart"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type CreatePicHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB      db.DB
-	PixPath string
-	Now     func() time.Time
-}
-
-func (h *CreatePicHandler) CreatePic(ctx context.Context, req *api.CreatePicRequest) (
-	*api.CreatePicResponse, status.S) {
-	return h.createPic(ctx, req, nil)
-}
-
-func (h *CreatePicHandler) createPic(
-	ctx context.Context, req *api.CreatePicRequest, file multipart.File) (
+func (s *serv) handleCreatePic(ctx context.Context, req *api.CreatePicRequest) (
 	*api.CreatePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -37,13 +18,11 @@ func (h *CreatePicHandler) createPic(
 		return nil, sts
 	}
 
-	if file == nil {
-		file = &memFile{bytes.NewReader(req.FileData)}
-	}
+	var file multipart.File = &memFile{bytes.NewReader(req.FileData)}
 
 	var task = &tasks.CreatePicTask{
-		PixPath:  h.PixPath,
-		DB:       h.DB,
+		PixPath:  s.pixpath,
+		DB:       s.db,
 		FileData: file,
 		Filename: req.FileName,
 		FileURL:  req.FileUrl,
@@ -51,8 +30,7 @@ func (h *CreatePicHandler) createPic(
 		Ctx:      ctx,
 	}
 
-	var runner *tasks.TaskRunner
-	if sts := runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -61,6 +39,7 @@ func (h *CreatePicHandler) createPic(
 	}, nil
 }
 
+/*
 func (h *CreatePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -109,3 +88,4 @@ func init() {
 		})
 	})
 }
+*/

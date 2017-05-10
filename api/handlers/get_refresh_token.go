@@ -2,29 +2,15 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
-
-type GetRefreshTokenHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Now    func() time.Time
-	Runner *tasks.TaskRunner
-
-	Secure bool
-}
 
 var (
 	refreshPwtDuration = time.Hour * 24 * 30 * 6 // 6 months
@@ -37,12 +23,12 @@ var (
 	pixPwtCookieName     = "pix_token"
 )
 
-func (h *GetRefreshTokenHandler) GetRefreshToken(
+func (s *serv) handleGetRefreshToken(
 	ctx context.Context, req *api.GetRefreshTokenRequest) (*api.GetRefreshTokenResponse, status.S) {
 
 	var task = &tasks.AuthUserTask{
-		DB:     h.DB,
-		Now:    h.Now,
+		DB:     s.db,
+		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,
 		Ctx:    ctx,
@@ -65,14 +51,14 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 		task.UserID = int64(vid)
 	}
 
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	subject := schema.Varint(task.User.UserId).Encode()
 	refreshTokenId := task.NewTokenID
 
-	now := h.Now()
+	now := s.now()
 	notBefore, err := ptypes.TimestampProto(time.Unix(now.Add(-1*time.Minute).Unix(), 0))
 	if err != nil {
 		return nil, status.InternalError(err, "can't build notbefore")
@@ -140,6 +126,7 @@ func (h *GetRefreshTokenHandler) GetRefreshToken(
 	}, nil
 }
 
+/*
 func (h *GetRefreshTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -217,3 +204,4 @@ func init() {
 		})
 	})
 }
+*/

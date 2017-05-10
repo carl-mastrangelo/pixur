@@ -2,28 +2,13 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type DeleteTokenHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Now    func() time.Time
-	Runner *tasks.TaskRunner
-
-	Secure bool
-}
-
-func (h *DeleteTokenHandler) DeleteToken(
+func (s *serv) handleDeleteToken(
 	ctx context.Context, req *api.DeleteTokenRequest) (*api.DeleteTokenResponse, status.S) {
 
 	// Roundabout way of extracting token info.
@@ -42,20 +27,21 @@ func (h *DeleteTokenHandler) DeleteToken(
 	userID, _ := tasks.UserIDFromCtx(ctx)
 
 	var task = &tasks.UnauthUserTask{
-		DB:      h.DB,
+		DB:      s.db,
 		Ctx:     ctx,
-		Now:     h.Now,
+		Now:     s.now,
 		UserID:  userID,
 		TokenID: payload.TokenParentId,
 	}
 
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	return &api.DeleteTokenResponse{}, nil
 }
 
+/*
 func (h *DeleteTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -115,3 +101,4 @@ func init() {
 		})
 	})
 }
+*/

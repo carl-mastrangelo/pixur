@@ -2,26 +2,13 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type CreateUserHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Now    func() time.Time
-	Runner *tasks.TaskRunner
-}
-
-func (h *CreateUserHandler) CreateUser(ctx context.Context, req *api.CreateUserRequest) (
+func (s *serv) handleCreateUser(ctx context.Context, req *api.CreateUserRequest) (
 	*api.CreateUserResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -30,19 +17,20 @@ func (h *CreateUserHandler) CreateUser(ctx context.Context, req *api.CreateUserR
 	}
 
 	var task = &tasks.CreateUserTask{
-		DB:     h.DB,
-		Now:    h.Now,
+		DB:     s.db,
+		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,
 		Ctx:    ctx,
 	}
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	return &api.CreateUserResponse{}, nil
 }
 
+/*
 func (h *CreateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{
 		r:   r,
@@ -80,3 +68,4 @@ func init() {
 		})
 	})
 }
+*/

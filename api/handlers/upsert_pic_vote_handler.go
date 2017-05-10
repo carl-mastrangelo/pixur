@@ -2,26 +2,12 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"strings"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
-
-type UpsertPicVoteHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Now    func() time.Time
-	Runner *tasks.TaskRunner
-}
 
 var upsertPicVoteMap = map[api.UpsertPicVoteRequest_Vote]schema.PicVote_Vote{
 	api.UpsertPicVoteRequest_UP:      schema.PicVote_UP,
@@ -29,7 +15,7 @@ var upsertPicVoteMap = map[api.UpsertPicVoteRequest_Vote]schema.PicVote_Vote{
 	api.UpsertPicVoteRequest_NEUTRAL: schema.PicVote_NEUTRAL,
 }
 
-func (h *UpsertPicVoteHandler) UpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRequest) (
+func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRequest) (
 	*api.UpsertPicVoteResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -45,15 +31,15 @@ func (h *UpsertPicVoteHandler) UpsertPicVote(ctx context.Context, req *api.Upser
 	}
 
 	task := &tasks.AddPicVoteTask{
-		DB:  h.DB,
-		Now: h.Now,
+		DB:  s.db,
+		Now: s.now,
 
 		PicID: int64(picID),
 		Vote:  upsertPicVoteMap[req.Vote],
 		Ctx:   ctx,
 	}
 
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -61,6 +47,7 @@ func (h *UpsertPicVoteHandler) UpsertPicVote(ctx context.Context, req *api.Upser
 }
 
 // TODO: add tests
+/*
 func (h *UpsertPicVoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -96,3 +83,4 @@ func init() {
 		})
 	})
 }
+*/

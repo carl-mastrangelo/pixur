@@ -60,6 +60,11 @@ import math "math"
 import google_protobuf "github.com/golang/protobuf/ptypes/duration"
 import google_protobuf1 "github.com/golang/protobuf/ptypes/timestamp"
 
+import (
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
+)
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
@@ -1512,6 +1517,606 @@ func init() {
 	proto.RegisterEnum("pixur.api.PwtHeader_Algorithm", PwtHeader_Algorithm_name, PwtHeader_Algorithm_value)
 	proto.RegisterEnum("pixur.api.PwtPayload_Type", PwtPayload_Type_name, PwtPayload_Type_value)
 	proto.RegisterEnum("pixur.api.UpsertPicVoteRequest_Vote", UpsertPicVoteRequest_Vote_name, UpsertPicVoteRequest_Vote_value)
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion4
+
+// Client API for PixurService service
+
+type PixurServiceClient interface {
+	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
+	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
+	GetXsrfToken(ctx context.Context, in *GetXsrfTokenRequest, opts ...grpc.CallOption) (*GetXsrfTokenResponse, error)
+	UpsertPic(ctx context.Context, in *UpsertPicRequest, opts ...grpc.CallOption) (*UpsertPicResponse, error)
+	SoftDeletePic(ctx context.Context, in *SoftDeletePicRequest, opts ...grpc.CallOption) (*SoftDeletePicResponse, error)
+	PurgePic(ctx context.Context, in *PurgePicRequest, opts ...grpc.CallOption) (*PurgePicResponse, error)
+	IncrementViewCount(ctx context.Context, in *IncrementViewCountRequest, opts ...grpc.CallOption) (*IncrementViewCountResponse, error)
+	FindSimilarPics(ctx context.Context, in *FindSimilarPicsRequest, opts ...grpc.CallOption) (*FindSimilarPicsResponse, error)
+	CreatePic(ctx context.Context, in *CreatePicRequest, opts ...grpc.CallOption) (*CreatePicResponse, error)
+	AddPicTags(ctx context.Context, in *AddPicTagsRequest, opts ...grpc.CallOption) (*AddPicTagsResponse, error)
+	FindIndexPics(ctx context.Context, in *FindIndexPicsRequest, opts ...grpc.CallOption) (*FindIndexPicsResponse, error)
+	LookupPicDetails(ctx context.Context, in *LookupPicDetailsRequest, opts ...grpc.CallOption) (*LookupPicDetailsResponse, error)
+	GetRefreshToken(ctx context.Context, in *GetRefreshTokenRequest, opts ...grpc.CallOption) (*GetRefreshTokenResponse, error)
+	AddPicComment(ctx context.Context, in *AddPicCommentRequest, opts ...grpc.CallOption) (*AddPicCommentResponse, error)
+	DeleteToken(ctx context.Context, in *DeleteTokenRequest, opts ...grpc.CallOption) (*DeleteTokenResponse, error)
+	UpsertPicVote(ctx context.Context, in *UpsertPicVoteRequest, opts ...grpc.CallOption) (*UpsertPicVoteResponse, error)
+	LookupUser(ctx context.Context, in *LookupUserRequest, opts ...grpc.CallOption) (*LookupUserResponse, error)
+}
+
+type pixurServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewPixurServiceClient(cc *grpc.ClientConn) PixurServiceClient {
+	return &pixurServiceClient{cc}
+}
+
+func (c *pixurServiceClient) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error) {
+	out := new(CreateUserResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/CreateUser", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error) {
+	out := new(UpdateUserResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/UpdateUser", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) GetXsrfToken(ctx context.Context, in *GetXsrfTokenRequest, opts ...grpc.CallOption) (*GetXsrfTokenResponse, error) {
+	out := new(GetXsrfTokenResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/GetXsrfToken", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) UpsertPic(ctx context.Context, in *UpsertPicRequest, opts ...grpc.CallOption) (*UpsertPicResponse, error) {
+	out := new(UpsertPicResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/UpsertPic", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) SoftDeletePic(ctx context.Context, in *SoftDeletePicRequest, opts ...grpc.CallOption) (*SoftDeletePicResponse, error) {
+	out := new(SoftDeletePicResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/SoftDeletePic", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) PurgePic(ctx context.Context, in *PurgePicRequest, opts ...grpc.CallOption) (*PurgePicResponse, error) {
+	out := new(PurgePicResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/PurgePic", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) IncrementViewCount(ctx context.Context, in *IncrementViewCountRequest, opts ...grpc.CallOption) (*IncrementViewCountResponse, error) {
+	out := new(IncrementViewCountResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/IncrementViewCount", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) FindSimilarPics(ctx context.Context, in *FindSimilarPicsRequest, opts ...grpc.CallOption) (*FindSimilarPicsResponse, error) {
+	out := new(FindSimilarPicsResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/FindSimilarPics", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) CreatePic(ctx context.Context, in *CreatePicRequest, opts ...grpc.CallOption) (*CreatePicResponse, error) {
+	out := new(CreatePicResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/CreatePic", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) AddPicTags(ctx context.Context, in *AddPicTagsRequest, opts ...grpc.CallOption) (*AddPicTagsResponse, error) {
+	out := new(AddPicTagsResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/AddPicTags", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) FindIndexPics(ctx context.Context, in *FindIndexPicsRequest, opts ...grpc.CallOption) (*FindIndexPicsResponse, error) {
+	out := new(FindIndexPicsResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/FindIndexPics", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) LookupPicDetails(ctx context.Context, in *LookupPicDetailsRequest, opts ...grpc.CallOption) (*LookupPicDetailsResponse, error) {
+	out := new(LookupPicDetailsResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/LookupPicDetails", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) GetRefreshToken(ctx context.Context, in *GetRefreshTokenRequest, opts ...grpc.CallOption) (*GetRefreshTokenResponse, error) {
+	out := new(GetRefreshTokenResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/GetRefreshToken", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) AddPicComment(ctx context.Context, in *AddPicCommentRequest, opts ...grpc.CallOption) (*AddPicCommentResponse, error) {
+	out := new(AddPicCommentResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/AddPicComment", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) DeleteToken(ctx context.Context, in *DeleteTokenRequest, opts ...grpc.CallOption) (*DeleteTokenResponse, error) {
+	out := new(DeleteTokenResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/DeleteToken", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) UpsertPicVote(ctx context.Context, in *UpsertPicVoteRequest, opts ...grpc.CallOption) (*UpsertPicVoteResponse, error) {
+	out := new(UpsertPicVoteResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/UpsertPicVote", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pixurServiceClient) LookupUser(ctx context.Context, in *LookupUserRequest, opts ...grpc.CallOption) (*LookupUserResponse, error) {
+	out := new(LookupUserResponse)
+	err := grpc.Invoke(ctx, "/pixur.api.PixurService/LookupUser", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for PixurService service
+
+type PixurServiceServer interface {
+	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
+	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
+	GetXsrfToken(context.Context, *GetXsrfTokenRequest) (*GetXsrfTokenResponse, error)
+	UpsertPic(context.Context, *UpsertPicRequest) (*UpsertPicResponse, error)
+	SoftDeletePic(context.Context, *SoftDeletePicRequest) (*SoftDeletePicResponse, error)
+	PurgePic(context.Context, *PurgePicRequest) (*PurgePicResponse, error)
+	IncrementViewCount(context.Context, *IncrementViewCountRequest) (*IncrementViewCountResponse, error)
+	FindSimilarPics(context.Context, *FindSimilarPicsRequest) (*FindSimilarPicsResponse, error)
+	CreatePic(context.Context, *CreatePicRequest) (*CreatePicResponse, error)
+	AddPicTags(context.Context, *AddPicTagsRequest) (*AddPicTagsResponse, error)
+	FindIndexPics(context.Context, *FindIndexPicsRequest) (*FindIndexPicsResponse, error)
+	LookupPicDetails(context.Context, *LookupPicDetailsRequest) (*LookupPicDetailsResponse, error)
+	GetRefreshToken(context.Context, *GetRefreshTokenRequest) (*GetRefreshTokenResponse, error)
+	AddPicComment(context.Context, *AddPicCommentRequest) (*AddPicCommentResponse, error)
+	DeleteToken(context.Context, *DeleteTokenRequest) (*DeleteTokenResponse, error)
+	UpsertPicVote(context.Context, *UpsertPicVoteRequest) (*UpsertPicVoteResponse, error)
+	LookupUser(context.Context, *LookupUserRequest) (*LookupUserResponse, error)
+}
+
+func RegisterPixurServiceServer(s *grpc.Server, srv PixurServiceServer) {
+	s.RegisterService(&_PixurService_serviceDesc, srv)
+}
+
+func _PixurService_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).CreateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/CreateUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).CreateUser(ctx, req.(*CreateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_UpdateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).UpdateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/UpdateUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).UpdateUser(ctx, req.(*UpdateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_GetXsrfToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetXsrfTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).GetXsrfToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/GetXsrfToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).GetXsrfToken(ctx, req.(*GetXsrfTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_UpsertPic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertPicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).UpsertPic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/UpsertPic",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).UpsertPic(ctx, req.(*UpsertPicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_SoftDeletePic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SoftDeletePicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).SoftDeletePic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/SoftDeletePic",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).SoftDeletePic(ctx, req.(*SoftDeletePicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_PurgePic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgePicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).PurgePic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/PurgePic",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).PurgePic(ctx, req.(*PurgePicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_IncrementViewCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IncrementViewCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).IncrementViewCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/IncrementViewCount",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).IncrementViewCount(ctx, req.(*IncrementViewCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_FindSimilarPics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindSimilarPicsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).FindSimilarPics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/FindSimilarPics",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).FindSimilarPics(ctx, req.(*FindSimilarPicsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_CreatePic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).CreatePic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/CreatePic",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).CreatePic(ctx, req.(*CreatePicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_AddPicTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddPicTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).AddPicTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/AddPicTags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).AddPicTags(ctx, req.(*AddPicTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_FindIndexPics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindIndexPicsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).FindIndexPics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/FindIndexPics",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).FindIndexPics(ctx, req.(*FindIndexPicsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_LookupPicDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupPicDetailsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).LookupPicDetails(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/LookupPicDetails",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).LookupPicDetails(ctx, req.(*LookupPicDetailsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_GetRefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRefreshTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).GetRefreshToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/GetRefreshToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).GetRefreshToken(ctx, req.(*GetRefreshTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_AddPicComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddPicCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).AddPicComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/AddPicComment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).AddPicComment(ctx, req.(*AddPicCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_DeleteToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).DeleteToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/DeleteToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).DeleteToken(ctx, req.(*DeleteTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_UpsertPicVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertPicVoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).UpsertPicVote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/UpsertPicVote",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).UpsertPicVote(ctx, req.(*UpsertPicVoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PixurService_LookupUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PixurServiceServer).LookupUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pixur.api.PixurService/LookupUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PixurServiceServer).LookupUser(ctx, req.(*LookupUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _PixurService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "pixur.api.PixurService",
+	HandlerType: (*PixurServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateUser",
+			Handler:    _PixurService_CreateUser_Handler,
+		},
+		{
+			MethodName: "UpdateUser",
+			Handler:    _PixurService_UpdateUser_Handler,
+		},
+		{
+			MethodName: "GetXsrfToken",
+			Handler:    _PixurService_GetXsrfToken_Handler,
+		},
+		{
+			MethodName: "UpsertPic",
+			Handler:    _PixurService_UpsertPic_Handler,
+		},
+		{
+			MethodName: "SoftDeletePic",
+			Handler:    _PixurService_SoftDeletePic_Handler,
+		},
+		{
+			MethodName: "PurgePic",
+			Handler:    _PixurService_PurgePic_Handler,
+		},
+		{
+			MethodName: "IncrementViewCount",
+			Handler:    _PixurService_IncrementViewCount_Handler,
+		},
+		{
+			MethodName: "FindSimilarPics",
+			Handler:    _PixurService_FindSimilarPics_Handler,
+		},
+		{
+			MethodName: "CreatePic",
+			Handler:    _PixurService_CreatePic_Handler,
+		},
+		{
+			MethodName: "AddPicTags",
+			Handler:    _PixurService_AddPicTags_Handler,
+		},
+		{
+			MethodName: "FindIndexPics",
+			Handler:    _PixurService_FindIndexPics_Handler,
+		},
+		{
+			MethodName: "LookupPicDetails",
+			Handler:    _PixurService_LookupPicDetails_Handler,
+		},
+		{
+			MethodName: "GetRefreshToken",
+			Handler:    _PixurService_GetRefreshToken_Handler,
+		},
+		{
+			MethodName: "AddPicComment",
+			Handler:    _PixurService_AddPicComment_Handler,
+		},
+		{
+			MethodName: "DeleteToken",
+			Handler:    _PixurService_DeleteToken_Handler,
+		},
+		{
+			MethodName: "UpsertPicVote",
+			Handler:    _PixurService_UpsertPicVote_Handler,
+		},
+		{
+			MethodName: "LookupUser",
+			Handler:    _PixurService_LookupUser_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api.proto",
 }
 
 func init() { proto.RegisterFile("api.proto", fileDescriptor0) }

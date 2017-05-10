@@ -2,26 +2,12 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"strconv"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
-
-type UpdateUserHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
 
 var capcapmap = make(map[api.ApiCapability_Cap]schema.User_Capability)
 
@@ -38,7 +24,7 @@ func init() {
 
 // TODO: add tests
 
-func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *api.UpdateUserRequest) (
+func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest) (
 	*api.UpdateUserResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -71,7 +57,7 @@ func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *api.UpdateUserR
 	}
 
 	var task = &tasks.UpdateUserTask{
-		DB:              h.DB,
+		DB:              s.db,
 		ObjectUserID:    int64(objectUserID),
 		Version:         req.Version,
 		SetCapability:   newcaps,
@@ -79,7 +65,7 @@ func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *api.UpdateUserR
 		Ctx:             ctx,
 	}
 
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -87,6 +73,7 @@ func (h *UpdateUserHandler) UpdateUser(ctx context.Context, req *api.UpdateUserR
 }
 
 // TODO: add tests
+/*
 func (h *UpdateUserHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -174,3 +161,4 @@ func init() {
 		})
 	})
 }
+*/

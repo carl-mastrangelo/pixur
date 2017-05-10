@@ -2,30 +2,14 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"io"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 // TODO: add tests
 
-type GetXsrfTokenHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	Now  func() time.Time
-	Rand io.Reader
-
-	Secure bool
-}
-
-func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *api.GetXsrfTokenRequest) (
+func (s *serv) handleGetXsrfToken(ctx context.Context, req *api.GetXsrfTokenRequest) (
 	*api.GetXsrfTokenResponse, status.S) {
 
 	_, sts := fillUserIDFromCtx(ctx)
@@ -33,7 +17,7 @@ func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *api.GetXsrf
 		return nil, sts
 	}
 
-	b64XsrfToken, err := newXsrfToken(h.Rand)
+	b64XsrfToken, err := newXsrfToken(s.rand)
 	if err != nil {
 		return nil, status.InternalError(err, "can't create xsrf token")
 	}
@@ -43,6 +27,7 @@ func (h *GetXsrfTokenHandler) GetXsrfToken(ctx context.Context, req *api.GetXsrf
 	}, nil
 }
 
+/*
 func (h *GetXsrfTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{
 		r:   r,
@@ -79,3 +64,4 @@ func init() {
 		})
 	})
 }
+*/

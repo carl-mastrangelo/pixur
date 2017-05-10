@@ -2,27 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type FindSimilarPicsHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
-
-func (h *FindSimilarPicsHandler) FindSimilarPics(
+func (s *serv) handleFindSimilarPics(
 	ctx context.Context, req *api.FindSimilarPicsRequest) (*api.FindSimilarPicsResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -38,11 +25,11 @@ func (h *FindSimilarPicsHandler) FindSimilarPics(
 	}
 
 	var task = &tasks.FindSimilarPicsTask{
-		DB:    h.DB,
+		DB:    s.db,
 		PicID: int64(requestedPicID),
 		Ctx:   ctx,
 	}
-	if sts := h.Runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -54,6 +41,7 @@ func (h *FindSimilarPicsHandler) FindSimilarPics(
 	return &resp, nil
 }
 
+/*
 // TODO: test this
 func (h *FindSimilarPicsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
@@ -88,3 +76,4 @@ func init() {
 		})
 	})
 }
+*/

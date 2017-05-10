@@ -2,26 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type IncrementViewCountHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB  db.DB
-	Now func() time.Time
-}
-
-func (h *IncrementViewCountHandler) IncrementViewCount(
+func (s *serv) handleIncrementViewCount(
 	ctx context.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -37,19 +25,19 @@ func (h *IncrementViewCountHandler) IncrementViewCount(
 	}
 
 	var task = &tasks.IncrementViewCountTask{
-		DB:    h.DB,
-		Now:   h.Now,
+		DB:    s.db,
+		Now:   s.now,
 		PicID: int64(picID),
 		Ctx:   ctx,
 	}
-	runner := new(tasks.TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
 	return &api.IncrementViewCountResponse{}, nil
 }
 
+/*
 func (h *IncrementViewCountHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -83,3 +71,4 @@ func init() {
 		})
 	})
 }
+*/

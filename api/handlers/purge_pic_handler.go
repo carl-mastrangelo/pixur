@@ -2,27 +2,14 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
-type PurgePicHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	PixPath string
-	DB      db.DB
-	Now     func() time.Time
-}
-
-func (h *PurgePicHandler) PurgePic(
+func (s *serv) handlePurgePic(
 	ctx context.Context, req *api.PurgePicRequest) (*api.PurgePicResponse, status.S) {
 
 	ctx, sts := fillUserIDFromCtx(ctx)
@@ -38,13 +25,12 @@ func (h *PurgePicHandler) PurgePic(
 	}
 
 	var task = &tasks.PurgePicTask{
-		DB:      h.DB,
-		PixPath: h.PixPath,
+		DB:      s.db,
+		PixPath: s.pixpath,
 		PicID:   int64(picID),
 		Ctx:     ctx,
 	}
-	runner := new(tasks.TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	if sts := s.runner.Run(task); sts != nil {
 		return nil, sts
 	}
 
@@ -52,6 +38,7 @@ func (h *PurgePicHandler) PurgePic(
 }
 
 // TODO: add tests
+/*
 func (h *PurgePicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -86,3 +73,4 @@ func init() {
 		})
 	})
 }
+*/

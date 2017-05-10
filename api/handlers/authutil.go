@@ -3,11 +3,21 @@ package handlers
 import (
 	"context"
 
+	"google.golang.org/grpc/metadata"
+
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
+
+func authTokenFromMD(md metadata.MD) (string, bool) {
+	tokens, ok := md[authPwtCookieName]
+	if !ok || len(tokens) != 1 {
+		return "", false
+	}
+	return tokens[0], true
+}
 
 func fillUserIDFromCtx(ctx context.Context) (context.Context, status.S) {
 	if auth, ok := tasks.AuthTokenFromCtx(ctx); ok {

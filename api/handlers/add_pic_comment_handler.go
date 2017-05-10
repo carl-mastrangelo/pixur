@@ -2,31 +2,15 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
 
 // TODO: add tests
-type AddPicCommentHandler struct {
-	// embeds
-	http.Handler
-
-	// deps
-	DB     db.DB
-	Runner *tasks.TaskRunner
-	Now    func() time.Time
-}
-
-func (h *AddPicCommentHandler) AddPicComment(
-	ctx context.Context, req *api.AddPicCommentRequest) (
-	*api.AddPicCommentResponse, status.S) {
-
+func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRequest) (*api.AddPicCommentResponse, status.S) {
 	ctx, sts := fillUserIDFromCtx(ctx)
 	if sts != nil {
 		return nil, sts
@@ -47,23 +31,25 @@ func (h *AddPicCommentHandler) AddPicComment(
 	}
 
 	var task = &tasks.AddPicCommentTask{
-		DB:  h.DB,
-		Now: h.Now,
+		DB:  s.db,
+		Now: s.now,
 
 		PicID:           int64(picID),
 		CommentParentID: int64(commentParentID),
 		Text:            req.Text,
 		Ctx:             ctx,
 	}
-	if err := h.Runner.Run(task); err != nil {
+	if err := s.runner.Run(task); err != nil {
 		return nil, err
 	}
 
 	return &api.AddPicCommentResponse{
 		Comment: apiPicComment(task.PicComment),
 	}, nil
+
 }
 
+/*
 func (h *AddPicCommentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPost()
@@ -100,3 +86,5 @@ func init() {
 		})
 	})
 }
+
+*/
