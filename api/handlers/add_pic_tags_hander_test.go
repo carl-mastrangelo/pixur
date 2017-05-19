@@ -83,8 +83,9 @@ func TestAddPicTags(t *testing.T) {
 		runner: tasks.TestTaskRunner(successRunner),
 		now:    time.Now,
 	}
+	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
 
-	res, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
+	res, sts := s.handleAddPicTags(ctx, &api.AddPicTagsRequest{
 		PicId: "1",
 		Tag:   []string{"a", "b"},
 	})

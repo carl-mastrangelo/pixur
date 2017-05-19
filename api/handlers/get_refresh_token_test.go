@@ -40,8 +40,8 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	if sts != nil {
 		t.Fatal(sts)
 	}
-	if resp.RefreshToken != "" || resp.AuthToken != "" || resp.PixToken != "" {
-		t.Error("tokens should have been removed", resp)
+	if resp.RefreshToken == "" || resp.AuthToken == "" || resp.PixToken == "" {
+		t.Error("tokens should be present", resp)
 	}
 	if resp.RefreshPayload.Subject != "2" || resp.RefreshPayload.TokenId != 3 {
 		t.Error("wrong token ids", resp)
@@ -78,8 +78,8 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if res.RefreshToken != "" || res.AuthToken != "" || res.PixToken != "" {
-		t.Error("tokens should have been removed", res)
+	if res.RefreshToken == "" || res.AuthToken == "" || res.PixToken == "" {
+		t.Error("tokens should be present", res)
 	}
 	if res.RefreshPayload.Subject != "2" || res.RefreshPayload.TokenId != 3 {
 		t.Error("wrong token ids", res)

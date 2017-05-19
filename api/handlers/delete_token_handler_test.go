@@ -38,8 +38,9 @@ func TestDeleteTokenFailsOnTaskError(t *testing.T) {
 		runner: tasks.TestTaskRunner(failureRunner),
 		now:    time.Now,
 	}
+	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
 
-	_, sts := s.handleDeleteToken(context.Background(), &api.DeleteTokenRequest{})
+	_, sts := s.handleDeleteToken(ctx, &api.DeleteTokenRequest{})
 
 	if sts == nil {
 		t.Fatal("didn't fail")
@@ -76,7 +77,7 @@ func TestDeleteTokenSucess(t *testing.T) {
 	if have, want := taskCap.UserID, int64(0); /* testAuthPayload.Subject */ have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.TokenID, int64(testAuthPayload.TokenId); have != want {
+	if have, want := taskCap.TokenID, int64(testAuthPayload.TokenParentId); have != want {
 		t.Error("have", have, "want", want)
 	}
 }

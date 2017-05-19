@@ -94,7 +94,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	}
 	_, sts := s.handleSoftDeletePic(context.Background(), &api.SoftDeletePicRequest{
 		DeletionTime: &tspb.Timestamp{
-			Seconds: -1,
+			Nanos: -1,
 		},
 	})
 	if sts == nil {
