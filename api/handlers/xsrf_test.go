@@ -37,8 +37,8 @@ func TestNewXsrfTokenError(t *testing.T) {
 	_, sts := newXsrfToken(zeroReader{
 		err: errors.New("fail"),
 	})
-	if sts.Code() != status.Code_INTERNAL_ERROR || sts.Message() != "can't create xsrf token" {
-		t.Error("have", sts, "want", status.Code_INTERNAL_ERROR, "can't create xsrf token")
+	if sts.Code() != status.Code_INTERNAL || sts.Message() != "can't create xsrf token" {
+		t.Error("have", sts, "want", status.Code_INTERNAL, "can't create xsrf token")
 	}
 }
 

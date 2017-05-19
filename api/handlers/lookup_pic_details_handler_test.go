@@ -1,15 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/api"
@@ -46,21 +44,16 @@ func TestLookupPicWorkFlow(t *testing.T) {
 
 		return nil
 	}
-	s := httptest.NewServer(&LookupPicDetailsHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	})
-	defer s.Close()
+	s := &serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(successRunner),
+	}
 
-	res, err := (&testClient{}).Get(s.URL)
-	if err != nil {
-		t.Fatal(err)
+	resp, sts := s.handleLookupPicDetails(context.Background(), &api.LookupPicDetailsRequest{})
+	if sts != nil {
+		t.Fatal(sts)
 	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(res.Body)
-		t.Error("bad status code", res.StatusCode, string(body))
-	}
+
 	if taskCap == nil {
 		t.Fatal("Task didn't run")
 	}
@@ -69,34 +62,26 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	if taskCap.PicID != 0 {
 		t.Error("expected empty PicID", taskCap.PicID)
 	}
-	if res.Header.Get("Content-Type") != "application/json" {
-		t.Error("Bad Content type", res.Header.Get("Content-Type"))
-	}
-
-	var results api.LookupPicDetailsResponse
-	if err := jsonpb.Unmarshal(res.Body, &results); err != nil {
-		t.Error(err)
-	}
 
 	jp := apiPic(taskCap.Pic)
-	if !proto.Equal(results.Pic, jp) {
-		t.Error("Not equal", results.Pic, jp)
+	if !proto.Equal(resp.Pic, jp) {
+		t.Error("Not equal", resp.Pic, jp)
 	}
 
 	jpts := apiPicTags(nil, taskCap.PicTags...)
-	if len(jpts) != len(results.PicTag) {
-		t.Error("Wrong number of tags", len(jpts), len(results.PicTag))
+	if len(jpts) != len(resp.PicTag) {
+		t.Error("Wrong number of tags", len(jpts), len(resp.PicTag))
 	}
 	for i := 0; i < len(jpts); i++ {
-		if !proto.Equal(jpts[i], results.PicTag[i]) {
-			t.Error("Not equal", jpts[i], results.PicTag[i])
+		if !proto.Equal(jpts[i], resp.PicTag[i]) {
+			t.Error("Not equal", jpts[i], resp.PicTag[i])
 		}
 	}
 
 	jpct := apiPicCommentTree(nil, []*schema.PicComment{
 		taskCap.PicCommentTree.Children[0].PicComment,
 	}...)
-	if have, want := jpct, results.PicCommentTree; !proto.Equal(have, want) {
+	if have, want := jpct, resp.PicCommentTree; !proto.Equal(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
@@ -111,22 +96,18 @@ func TestLookupPicParsePicId(t *testing.T) {
 		}
 		return nil
 	}
-	s := httptest.NewServer(&LookupPicDetailsHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	})
-	defer s.Close()
+	s := &serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(successRunner),
+	}
 
-	// hf = 16
-	// test server claims that the url is missing a slash
-	res, err := (&testClient{}).Get(s.URL + "/?pic_id=g0")
-	if err != nil {
-		t.Fatal(err)
+	_, sts := s.handleLookupPicDetails(context.Background(), &api.LookupPicDetailsRequest{
+		PicId: "g0",
+	})
+	if sts != nil {
+		t.Fatal(sts)
 	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		t.Error("bad status code", res.StatusCode)
-	}
+
 	if taskCap == nil {
 		t.Fatal("Task didn't run")
 	}
@@ -143,50 +124,46 @@ func TestLookupPicBadPicId(t *testing.T) {
 		// Not run, but we still need a placeholder
 		return nil
 	}
-	s := httptest.NewServer(&LookupPicDetailsHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	})
-	defer s.Close()
-
-	res, err := (&testClient{}).Get(s.URL + "?pic_id=g11")
-	if err != nil {
-		t.Fatal(err)
+	s := &serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(successRunner),
 	}
-	defer res.Body.Close()
+
+	_, sts := s.handleLookupPicDetails(context.Background(), &api.LookupPicDetailsRequest{
+		PicId: "g11",
+	})
+
 	if lookupPicTask != nil {
 		t.Fatal("Task should not have been run")
 	}
-	if res.StatusCode != http.StatusBadRequest {
-		t.Fatal(res.StatusCode)
+	if sts.Code() != status.Code_INVALID_ARGUMENT {
+		t.Error(sts)
 	}
 }
 
 func TestLookupPicTaskError(t *testing.T) {
 	var taskCap *tasks.LookupPicTask
-	successRunner := func(task tasks.Task) status.S {
+	failureRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
 		return status.InternalError(nil, "bad")
 	}
-	s := httptest.NewServer(&LookupPicDetailsHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	})
-	defer s.Close()
+	s := &serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(failureRunner),
+	}
 
 	// Disable logging for the call
 	log.SetOutput(ioutil.Discard)
-	res, err := (&testClient{}).Get(s.URL + "?pic_id=g5")
-	if err != nil {
-		log.SetOutput(os.Stderr)
-		t.Fatal(err)
-	}
+	_, sts := s.handleLookupPicDetails(context.Background(), &api.LookupPicDetailsRequest{
+		PicId: "g5",
+	})
 	log.SetOutput(os.Stderr)
+	if sts == nil {
+		t.Fatal("should have failed")
+	}
 
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusInternalServerError {
-		t.Error("bad status code", res.StatusCode)
+	if sts.Code() != status.Code_INTERNAL {
+		t.Error("bad status code", sts)
 	}
 	if taskCap == nil {
 		t.Fatal("Task didn't run")

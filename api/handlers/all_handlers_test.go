@@ -19,8 +19,30 @@ func init() {
 		secret: []byte("secret"),
 	}
 
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
+	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
+	testAuthPayload = &api.PwtPayload{
+		Subject:       "0",
+		NotAfter:      notafter,
+		NotBefore:     notbefore,
+		Type:          api.PwtPayload_AUTH,
+		TokenId:       1,
+		TokenParentId: 2,
+	}
+
+	authToken, err := defaultPwtCoder.encode(testAuthPayload)
+	if err != nil {
+		panic(err)
+	}
+	testAuthToken = string(authToken)
+
 	errorLog.SetOutput(ioutil.Discard)
 }
+
+var (
+	testAuthPayload *api.PwtPayload
+	testAuthToken   string
+)
 
 type testClient struct {
 	HTTPClient   *http.Client

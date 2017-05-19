@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +9,8 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/status"
+	"pixur.org/pixur/tasks"
 )
 
 type zeros int
@@ -21,100 +20,46 @@ func (z *zeros) Read(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestGetXsrfTokenFailsOnNonPost(t *testing.T) {
-	s := httptest.NewServer(&GetXsrfTokenHandler{})
-	defer s.Close()
-
-	res, err := (&testClient{}).Get(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusBadRequest; have != want {
-		t.Error("have", have, "want", want)
-	}
-}
-
 func TestGetXsrfTokenFailsOnBadAuth(t *testing.T) {
-	s := httptest.NewServer(&GetXsrfTokenHandler{
-		Now:  time.Now,
-		Rand: new(zeros),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{
-		AuthOverride: new(api.PwtPayload),
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
+	s := serv{
+		now:  time.Now,
+		rand: new(zeros),
 	}
-	defer res.Body.Close()
+	ctx := tasks.CtxFromAuthToken(context.Background(), "")
+	_, sts := s.handleGetXsrfToken(ctx, &api.GetXsrfTokenRequest{})
 
-	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
+	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := bodyToText(res.Body), "decode auth token"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "decode auth token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
 
 func TestGetXsrfTokenSucceedsOnNoAuth(t *testing.T) {
-	s := httptest.NewServer(&GetXsrfTokenHandler{
-		Now:  time.Now,
-		Rand: new(zeros),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{
-		DisableAuth: true,
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
+	s := serv{
+		now:  time.Now,
+		rand: new(zeros),
 	}
-	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want, bodyToText(res.Body))
-	}
-}
-
-func TestGetXsrfTokenHTTP(t *testing.T) {
-	s := httptest.NewServer(&GetXsrfTokenHandler{
-		Now:  time.Now,
-		Rand: new(zeros),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := bodyToText(res.Body), "{\"xsrfToken\":\"AAAAAAAAAAAAAAAAAAAAAA\"}"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
-	}
-	if cs := res.Cookies(); len(cs) != 1 || cs[0].Name != xsrfCookieName || cs[0].Value != "AAAAAAAAAAAAAAAAAAAAAA" {
-		t.Error("have", cs, err, "want", "AAAAAAAAAAAAAAAAAAAAAA")
+	_, sts := s.handleGetXsrfToken(context.Background(), &api.GetXsrfTokenRequest{})
+	if sts != nil {
+		t.Error(sts)
 	}
 }
 
 func TestGetXsrfTokenRPC(t *testing.T) {
-	h := &GetXsrfTokenHandler{
-		Rand: new(zeros),
+	s := serv{
+		now:  time.Now,
+		rand: new(zeros),
 	}
 
-	resp, sts := h.GetXsrfToken(context.Background(), &api.GetXsrfTokenRequest{})
-
+	resp, sts := s.handleGetXsrfToken(context.Background(), &api.GetXsrfTokenRequest{})
 	if sts != nil {
-		t.Error("have", sts, "want", nil)
+		t.Error(sts)
 	}
 
-	if want := (&api.GetXsrfTokenResponse{XsrfToken: "AAAAAAAAAAAAAAAAAAAAAA"}); !proto.Equal(resp, want) {
-		t.Error("have", resp, "want", want)
+	if have, want := resp, (&api.GetXsrfTokenResponse{XsrfToken: "AAAAAAAAAAAAAAAAAAAAAA"}); !proto.Equal(have, want) {
+		t.Error("have", have, "want", want)
 	}
 }

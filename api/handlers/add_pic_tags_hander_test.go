@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -16,59 +13,19 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-func TestAddPicTagsFailsOnNonPost(t *testing.T) {
-	s := httptest.NewServer(&AddPicTagsHandler{})
-	defer s.Close()
-
-	res, err := (&testClient{}).Get(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusBadRequest; have != want {
-		t.Error("have", have, "want", want)
-	}
-}
-
-func TestAddPicTagsFailsOnMissingXsrf(t *testing.T) {
-	s := httptest.NewServer(&AddPicTagsHandler{})
-	defer s.Close()
-
-	res, err := (&testClient{
-		DisableXSRF: true,
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := bodyToText(res.Body), "xsrf cookie"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
-	}
-}
-
 func TestAddPicTagsFailsOnBadAuth(t *testing.T) {
-	s := httptest.NewServer(&AddPicTagsHandler{
-		Now: time.Now,
-	})
-	defer s.Close()
+	s := &serv{}
+	ctx := tasks.CtxFromAuthToken(context.Background(), "")
 
-	res, err := (&testClient{
-		AuthOverride: new(api.PwtPayload),
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
+	_, sts := s.handleAddPicTags(ctx, &api.AddPicTagsRequest{})
+
+	if sts == nil {
+		t.Fatal("didn't fail")
 	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
+	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := bodyToText(res.Body), "decode auth token"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "decode auth token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
@@ -79,22 +36,15 @@ func TestAddPicTagsSucceedsOnNoAuth(t *testing.T) {
 		taskCap = task.(*tasks.AddPicTagsTask)
 		return nil
 	}
-	s := httptest.NewServer(&AddPicTagsHandler{
-		Now:    time.Now,
-		Runner: tasks.TestTaskRunner(successRunner),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{
-		DisableAuth: true,
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
+	s := &serv{
+		runner: tasks.TestTaskRunner(successRunner),
+		now:    time.Now,
 	}
-	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want, bodyToText(res.Body))
+	_, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{})
+
+	if sts != nil {
+		t.Error(sts)
 	}
 	if taskCap == nil {
 		t.Error("task didn't run")
@@ -105,51 +55,44 @@ func TestAddPicTagsFailsOnTaskFailure(t *testing.T) {
 	failureRunner := func(task tasks.Task) status.S {
 		return status.InternalError(nil, "bad things")
 	}
-	s := httptest.NewServer(&AddPicTagsHandler{
-		Now:    time.Now,
-		Runner: tasks.TestTaskRunner(failureRunner),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
+	s := &serv{
+		runner: tasks.TestTaskRunner(failureRunner),
+		now:    time.Now,
 	}
-	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusInternalServerError; have != want {
+	_, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{})
+
+	if sts == nil {
+		t.Fatal("didn't fail")
+	}
+	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := bodyToText(res.Body), "bad things"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "bad things"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
 
-func TestAddPicTagsHTTP(t *testing.T) {
+func TestAddPicTags(t *testing.T) {
 	var taskCap *tasks.AddPicTagsTask
 	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.AddPicTagsTask)
 		return nil
 	}
-	s := httptest.NewServer(&AddPicTagsHandler{
-		Now:    time.Now,
-		Runner: tasks.TestTaskRunner(successRunner),
-	})
-	defer s.Close()
-
-	res, err := (&testClient{}).PostForm(s.URL, url.Values{
-		"pic_id": []string{"1"},
-		"tag":    []string{"a", "b"},
-	})
-	if err != nil {
-		t.Fatal(err)
+	s := &serv{
+		runner: tasks.TestTaskRunner(successRunner),
+		now:    time.Now,
 	}
-	defer res.Body.Close()
 
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want)
+	res, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
+		PicId: "1",
+		Tag:   []string{"a", "b"},
+	})
+
+	if sts != nil {
+		t.Fatal(sts)
 	}
-	if have, want := bodyToText(res.Body), "{}"; !strings.Contains(have, want) {
+	if have, want := res, (&api.AddPicTagsResponse{}); !proto.Equal(have, want) {
 		t.Error("have", have, "want", want)
 	}
 	if taskCap == nil {
@@ -167,8 +110,9 @@ func TestAddPicTagsHTTP(t *testing.T) {
 }
 
 func TestAddPicTagsFailsOnBadPicId(t *testing.T) {
-	h := &AddPicTagsHandler{}
-	resp, sts := h.AddPicTags(context.Background(), &api.AddPicTagsRequest{
+	s := &serv{}
+
+	resp, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
 		PicId: "bogus",
 	})
 
@@ -189,11 +133,12 @@ func TestAddPicTagsRPC(t *testing.T) {
 		taskCap = task.(*tasks.AddPicTagsTask)
 		return nil
 	}
-	h := &AddPicTagsHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
+	s := &serv{
+		runner: tasks.TestTaskRunner(successRunner),
+		now:    time.Now,
 	}
 
-	resp, sts := h.AddPicTags(context.Background(), &api.AddPicTagsRequest{
+	resp, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
 		PicId: "1",
 		Tag:   []string{"a", "b"},
 	})

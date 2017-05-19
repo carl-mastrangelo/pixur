@@ -2,14 +2,10 @@ package handlers
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
@@ -19,41 +15,6 @@ import (
 	"pixur.org/pixur/status"
 	"pixur.org/pixur/tasks"
 )
-
-func TestGetRefreshTokenFailsOnNonPost(t *testing.T) {
-	s := httptest.NewServer(&GetRefreshTokenHandler{})
-	defer s.Close()
-
-	res, err := (&testClient{}).Get(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusBadRequest; have != want {
-		t.Error("have", have, "want", want)
-	}
-}
-
-func TestGetRefreshTokenFailsOnMissingXsrf(t *testing.T) {
-	s := httptest.NewServer(&GetRefreshTokenHandler{})
-	defer s.Close()
-
-	res, err := (&testClient{
-		DisableXSRF: true,
-	}).PostForm(s.URL, url.Values{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusUnauthorized; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := bodyToText(res.Body), "xsrf cookie"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
-	}
-}
 
 func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
@@ -66,29 +27,18 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 		}
 		return nil
 	}
-	s := httptest.NewServer(&GetRefreshTokenHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-		Secure: true,
-	})
-	defer s.Close()
 
-	res, err := (&testClient{}).PostForm(s.URL, url.Values{
-		"ident":  []string{"a"},
-		"secret": []string{"b"},
-	})
-	if err != nil {
-		t.Fatal(err)
+	s := serv{
+		runner: tasks.TestTaskRunner(successRunner),
+		now:    time.Now,
 	}
-	defer res.Body.Close()
+	resp, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+		Ident:  "a",
+		Secret: "b",
+	})
 
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want)
-	}
-
-	resp := new(api.GetRefreshTokenResponse)
-	if err := jsonpb.Unmarshal(res.Body, resp); err != nil {
-		t.Error(err)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 	if resp.RefreshToken != "" || resp.AuthToken != "" || resp.PixToken != "" {
 		t.Error("tokens should have been removed", resp)
@@ -101,56 +51,6 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	}
 	if taskCap.Ident != "a" || taskCap.Secret != "b" {
 		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
-	}
-
-	// Cookie verification
-	cs := make(map[string]*http.Cookie)
-	for _, c := range res.Cookies() {
-		cs[c.Name] = c
-	}
-	if len(cs) != 3 {
-		t.Error("expected 3 cookies", cs)
-	}
-	refreshCookie, ok := cs[refreshPwtCookieName]
-	if !ok || refreshCookie.Value == "" {
-		t.Error("missing", refreshPwtCookieName, "have", refreshCookie, ok)
-	}
-	if have, want := refreshCookie.Path, "/api/getRefreshToken"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !refreshCookie.Secure || !refreshCookie.HttpOnly {
-		t.Error("expected secure and httponly", refreshCookie)
-	}
-	if !within(time.Unix(resp.RefreshPayload.NotAfter.Seconds, 0), refreshCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.RefreshPayload.NotAfter, " != ", refreshCookie.Expires)
-	}
-
-	authCookie, ok := cs[authPwtCookieName]
-	if !ok || authCookie.Value == "" {
-		t.Error("missing", authPwtCookieName, "have", authCookie, ok)
-	}
-	if have, want := authCookie.Path, "/api/"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !authCookie.Secure || !authCookie.HttpOnly {
-		t.Error("expected secure and httponly", authCookie)
-	}
-	if !within(time.Unix(resp.AuthPayload.NotAfter.Seconds, 0), authCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.AuthPayload.NotAfter, " != ", authCookie.Expires)
-	}
-
-	pixCookie, ok := cs[pixPwtCookieName]
-	if !ok || pixCookie.Value == "" {
-		t.Error("missing", pixPwtCookieName, "have", pixCookie, ok)
-	}
-	if have, want := pixCookie.Path, "/pix/"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !pixCookie.Secure || !pixCookie.HttpOnly {
-		t.Error("expected secure and httponly", pixCookie)
-	}
-	if !within(time.Unix(resp.PixPayload.NotAfter.Seconds, 0), pixCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.PixPayload.NotAfter, " != ", pixCookie.Expires)
 	}
 }
 
@@ -165,38 +65,24 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		}
 		return nil
 	}
-	s := httptest.NewServer(&GetRefreshTokenHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-		Secure: true,
+	s := serv{
+		runner: tasks.TestTaskRunner(successRunner),
+		now:    time.Now,
+	}
+
+	token, payload := testRefreshToken()
+	res, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+		RefreshToken: token,
 	})
-	defer s.Close()
-
-	req, err := http.NewRequest("POST", s.URL, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cookie, payload := testRefreshToken()
-	req.AddCookie(cookie)
-	res, err := (&testClient{}).Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	if have, want := res.StatusCode, http.StatusOK; have != want {
-		t.Error("have", have, "want", want)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
-	resp := new(api.GetRefreshTokenResponse)
-	if err := jsonpb.Unmarshal(res.Body, resp); err != nil {
-		t.Error(err)
+	if res.RefreshToken != "" || res.AuthToken != "" || res.PixToken != "" {
+		t.Error("tokens should have been removed", res)
 	}
-	if resp.RefreshToken != "" || resp.AuthToken != "" || resp.PixToken != "" {
-		t.Error("tokens should have been removed", resp)
-	}
-	if resp.RefreshPayload.Subject != "2" || resp.RefreshPayload.TokenId != 3 {
-		t.Error("wrong token ids", resp)
+	if res.RefreshPayload.Subject != "2" || res.RefreshPayload.TokenId != 3 {
+		t.Error("wrong token ids", res)
 	}
 	if taskCap == nil {
 		t.Fatal("task didn't run")
@@ -204,75 +90,25 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 	if taskCap.TokenID != payload.TokenId || taskCap.UserID != 9 /* payload.Subject */ {
 		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
 	}
-
-	// Cookie verification
-	cs := make(map[string]*http.Cookie)
-	for _, c := range res.Cookies() {
-		cs[c.Name] = c
-	}
-	if len(cs) != 3 {
-		t.Error("expected 3 cookies", cs)
-	}
-	refreshCookie, ok := cs[refreshPwtCookieName]
-	if !ok || refreshCookie.Value == "" {
-		t.Error("missing", refreshPwtCookieName, "have", refreshCookie, ok)
-	}
-	if have, want := refreshCookie.Path, "/api/getRefreshToken"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !refreshCookie.Secure || !refreshCookie.HttpOnly {
-		t.Error("expected secure and httponly", refreshCookie)
-	}
-	if !within(time.Unix(resp.RefreshPayload.NotAfter.Seconds, 0), refreshCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.RefreshPayload.NotAfter, " != ", refreshCookie.Expires)
-	}
-
-	authCookie, ok := cs[authPwtCookieName]
-	if !ok || authCookie.Value == "" {
-		t.Error("missing", authPwtCookieName, "have", authCookie, ok)
-	}
-	if have, want := authCookie.Path, "/api/"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !authCookie.Secure || !authCookie.HttpOnly {
-		t.Error("expected secure and httponly", authCookie)
-	}
-	if !within(time.Unix(resp.AuthPayload.NotAfter.Seconds, 0), authCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.AuthPayload.NotAfter, " != ", authCookie.Expires)
-	}
-
-	pixCookie, ok := cs[pixPwtCookieName]
-	if !ok || pixCookie.Value == "" {
-		t.Error("missing", pixPwtCookieName, "have", pixCookie, ok)
-	}
-	if have, want := pixCookie.Path, "/pix/"; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if !pixCookie.Secure || !pixCookie.HttpOnly {
-		t.Error("expected secure and httponly", pixCookie)
-	}
-	if !within(time.Unix(resp.PixPayload.NotAfter.Seconds, 0), pixCookie.Expires, time.Minute) {
-		t.Error("wrong expires", resp.PixPayload.NotAfter, " != ", pixCookie.Expires)
-	}
 }
 
 func TestGetRefreshTokenFailsOnInvalidToken(t *testing.T) {
-	h := &GetRefreshTokenHandler{}
-	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+	s := serv{
+		now: time.Now,
+	}
+	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: "invalid",
 	})
 
 	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
 		t.Error("have", have, "want", want)
 	}
-
 	if have, want := sts.Message(), "can't decode token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
 
 func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
-	h := &GetRefreshTokenHandler{}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
@@ -285,8 +121,10 @@ func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+	s := serv{
+		now: time.Now,
+	}
+	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: string(refreshToken),
 	})
 
@@ -300,7 +138,6 @@ func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
 }
 
 func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
-	h := &GetRefreshTokenHandler{}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
@@ -313,8 +150,10 @@ func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-
-	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+	s := serv{
+		now: time.Now,
+	}
+	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		RefreshToken: string(refreshToken),
 	})
 
@@ -331,13 +170,15 @@ func TestGetRefreshTokenFailsOnTaskError(t *testing.T) {
 	failureRunner := func(task tasks.Task) status.S {
 		return status.InternalError(nil, "bad")
 	}
-	h := &GetRefreshTokenHandler{
-		Runner: tasks.TestTaskRunner(failureRunner),
+
+	s := serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(failureRunner),
 	}
 
-	_, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{})
+	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{})
 
-	if have, want := sts.Code(), status.Code_INTERNAL_ERROR; have != want {
+	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
 		t.Error("have", have, "want", want)
 	}
 
@@ -357,6 +198,10 @@ func TestGetRefreshToken(t *testing.T) {
 		taskCap.NewTokenID = 4
 		return nil
 	}
+	s := serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(successRunner),
+	}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
@@ -371,12 +216,7 @@ func TestGetRefreshToken(t *testing.T) {
 		panic(err)
 	}
 
-	h := &GetRefreshTokenHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
-	}
-
-	resp, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+	resp, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		Ident:        "ident",
 		Secret:       "secret",
 		RefreshToken: string(refreshToken),
@@ -482,12 +322,12 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 		panic(err)
 	}
 
-	h := &GetRefreshTokenHandler{
-		Runner: tasks.TestTaskRunner(successRunner),
-		Now:    time.Now,
+	s := serv{
+		now:    time.Now,
+		runner: tasks.TestTaskRunner(successRunner),
 	}
 
-	resp, sts := h.GetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
+	resp, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
 		Ident:        "ident",
 		Secret:       "secret",
 		RefreshToken: string(refreshToken),
@@ -524,7 +364,7 @@ func withinProto(t1pb *tspb.Timestamp, t2 time.Time, diff time.Duration) bool {
 	return d <= diff
 }
 
-func testRefreshToken() (*http.Cookie, *api.PwtPayload) {
+func testRefreshToken() (string, *api.PwtPayload) {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
@@ -538,8 +378,5 @@ func testRefreshToken() (*http.Cookie, *api.PwtPayload) {
 	if err != nil {
 		panic(err)
 	}
-	return &http.Cookie{
-		Name:  refreshPwtCookieName,
-		Value: string(refreshToken),
-	}, payload
+	return string(refreshToken), payload
 }
