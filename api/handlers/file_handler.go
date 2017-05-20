@@ -53,6 +53,7 @@ func (fs *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fs.Handler.ServeHTTP(w, r)
 }
 
+/*
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -68,3 +69,4 @@ func init() {
 		}))
 	})
 }
+*/

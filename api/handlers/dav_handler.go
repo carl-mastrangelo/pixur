@@ -108,6 +108,7 @@ func (h *davAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Handler.ServeHTTP(w, r)
 }
 
+/*
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/x/dav/", &davAuthHandler{
@@ -123,3 +124,4 @@ func init() {
 		})
 	})
 }
+*/

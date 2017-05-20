@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"compress/gzip"
+	"crypto/rand"
 	"crypto/rsa"
 	"io"
 	"log"
@@ -124,12 +125,6 @@ func (s *serv) UpsertPicVote(ctx oldctx.Context, req *api.UpsertPicVoteRequest) 
 	return s.handleUpsertPicVote(ctx, req)
 }
 
-type registerFunc func(mux *http.ServeMux, c *ServerConfig)
-
-var (
-	handlerFuncs []registerFunc
-)
-
 type ServerConfig struct {
 	DB          db.DB
 	PixPath     string
@@ -139,14 +134,21 @@ type ServerConfig struct {
 	Secure      bool
 }
 
-func register(rf registerFunc) {
-	handlerFuncs = append(handlerFuncs, rf)
-}
-
 func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
-	for _, rf := range handlerFuncs {
-		rf(mux, c)
-	}
+	gserv := grpc.NewServer()
+	api.RegisterPixurServiceServer(gserv, &serv{
+		db:          c.DB,
+		pixpath:     c.PixPath,
+		tokenSecret: c.TokenSecret,
+		privkey:     c.PrivateKey,
+		pubkey:      c.PublicKey,
+		secure:      c.Secure,
+		runner:      nil,
+		now:         time.Now,
+		rand:        rand.Reader,
+	})
+	mux.Handle("/api/", http.StripPrefix("/api/", gserv))
+	initPwtCoder(c)
 }
 
 var errorLog = log.New(os.Stderr, "", log.LstdFlags)

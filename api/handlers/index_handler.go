@@ -46,8 +46,9 @@ func (h *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
 func init() {
 	register(func(mux *http.ServeMux, c *ServerConfig) {
 		mux.Handle("/", new(IndexHandler))
 	})
-}
+}*/

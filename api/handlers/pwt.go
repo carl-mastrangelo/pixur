@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"net/http"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -25,15 +24,13 @@ var (
 
 var defaultPwtCoder *pwtCoder
 
-func init() {
-	register(func(mux *http.ServeMux, c *ServerConfig) {
-		if defaultPwtCoder == nil {
-			defaultPwtCoder = &pwtCoder{
-				now:    time.Now,
-				secret: c.TokenSecret,
-			}
+func initPwtCoder(c *ServerConfig) {
+	if defaultPwtCoder == nil {
+		defaultPwtCoder = &pwtCoder{
+			now:    time.Now,
+			secret: c.TokenSecret,
 		}
-	})
+	}
 }
 
 type pwtCoder struct {
