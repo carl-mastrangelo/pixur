@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"html/template"
@@ -10,12 +10,22 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/fe/server"
 )
 
 const (
 	refreshPwtCookieName = "refresh_token"
 	authPwtCookieName    = "auth_token"
 	pixPwtCookieName     = "pix_token"
+)
+
+const (
+	ROOT_PATH         = "/"
+	PIX_PATH          = "/pix/"
+	ACTION_PATH       = "/a/"
+	LOGIN_PATH        = "/login"
+	LOGOUT_PATH       = "/logout"
+	LOGIN_ACTION_PATH = "/a/auth"
 )
 
 type baseData struct {
@@ -146,24 +156,15 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	log.Println(resp)
 }
 
-const (
-	ROOT_PATH         = "/"
-	PIX_PATH          = "/pix/"
-	ACTION_PATH       = "/a/"
-	LOGIN_PATH        = "/login"
-	LOGOUT_PATH       = "/logout"
-	LOGIN_ACTION_PATH = "/a/auth"
-)
-
 func init() {
-	register(func(s *server) {
+	register(func(s *server.Server) {
 		h := loginHandler{
-			c:      s.c,
-			now:    s.now,
-			random: s.random,
+			c:      s.Client,
+			now:    s.Now,
+			random: s.Random,
 		}
-		s.mux.HandleFunc(LOGIN_PATH, h.static)
-		s.mux.HandleFunc(LOGOUT_PATH, h.static)
-		s.mux.HandleFunc(LOGIN_ACTION_PATH, h.login)
+		s.HTTPMux.HandleFunc(LOGIN_PATH, h.static)
+		s.HTTPMux.HandleFunc(LOGOUT_PATH, h.static)
+		s.HTTPMux.HandleFunc(LOGIN_ACTION_PATH, h.login)
 	})
 }
