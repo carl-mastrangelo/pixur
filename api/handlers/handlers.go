@@ -148,6 +148,7 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 		rand:        rand.Reader,
 	})
 	mux.Handle("/api/", http.StripPrefix("/api/", gserv))
+	mux.Handle("/", gserv)
 	initPwtCoder(c)
 }
 

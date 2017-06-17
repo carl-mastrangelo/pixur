@@ -1,0 +1,9 @@
+{{define "body"}}
+<form action="{{.LoginActionPath}}" method="post">
+  <input type="text" name="ident" placeholder="Ident" /><br />
+  <input type="password" name="secret" /><br />
+  <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
+  <input type="submit" value="login" />
+  {{- if .Next}}<input type="hidden" value="{{.Next}}" />{{end -}}
+</form>
+{{end}}
