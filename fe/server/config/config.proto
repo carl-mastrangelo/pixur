@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pixur.fe;
+
+option go_package = "config";
+
+
+// Config describes fe server configuration.
+message Config {
+	// Address to bind to, like ":http"
+	string http_spec = 1;
+	
+	// Pixur API server target
+	string pixur_spec = 2;
+	
+	// If the site is access through insecure connections.
+	// Affects cookies.
+	bool insecure = 3;
+}
+
