@@ -147,8 +147,11 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 		now:         time.Now,
 		rand:        rand.Reader,
 	})
-	mux.Handle("/api/", http.StripPrefix("/api/", gserv))
 	mux.Handle("/", gserv)
+	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
+		Handler: http.FileServer(http.Dir(c.PixPath)),
+		Now:     time.Now,
+	}))
 	initPwtCoder(c)
 }
 

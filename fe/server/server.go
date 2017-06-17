@@ -20,6 +20,9 @@ type Server struct {
 	HTTPMux *http.ServeMux
 	Random  io.Reader
 
+	// static needs to know where to forward pix requests to
+	PixurSpec string
+
 	regfuncs []RegFunc
 }
 
@@ -45,6 +48,9 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 			}
 		}()
 		s.Client = api.NewPixurServiceClient(channel)
+	}
+	if s.PixurSpec == "" {
+		s.PixurSpec = c.PixurSpec
 	}
 	if s.Now == nil {
 		s.Now = time.Now
