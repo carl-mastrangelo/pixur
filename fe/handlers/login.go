@@ -157,7 +157,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	register(func(s *server.Server) {
+	register(func(s *server.Server) error {
 		h := loginHandler{
 			c:      s.Client,
 			now:    s.Now,
@@ -166,5 +166,6 @@ func init() {
 		s.HTTPMux.HandleFunc(LOGIN_PATH, h.static)
 		s.HTTPMux.HandleFunc(LOGOUT_PATH, h.static)
 		s.HTTPMux.HandleFunc(LOGIN_ACTION_PATH, h.login)
+		return nil
 	})
 }

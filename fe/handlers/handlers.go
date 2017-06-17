@@ -12,7 +12,7 @@ func register(rf server.RegFunc) {
 	regfuncs = append(regfuncs, rf)
 }
 
-func RegisterAll(s server.Server) {
+func RegisterAll(s *server.Server) {
 	for _, rf := range regfuncs {
 		s.Register(rf)
 	}

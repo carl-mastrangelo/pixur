@@ -30,7 +30,7 @@ func (s *Server) Register(rf RegFunc) {
 }
 
 func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
-	if s.Client != nil {
+	if s.Client == nil {
 		channel, err := grpc.DialContext(ctx, c.PixurSpec, grpc.WithInsecure())
 		if err != nil {
 			return err
