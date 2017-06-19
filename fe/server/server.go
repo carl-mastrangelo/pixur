@@ -23,6 +23,8 @@ type Server struct {
 	// static needs to know where to forward pix requests to
 	PixurSpec string
 
+	Secure bool
+
 	regfuncs []RegFunc
 }
 
@@ -61,6 +63,7 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 	if s.Random == nil {
 		s.Random = rand.Reader
 	}
+	s.Secure = !c.Insecure
 	// Server has all values initialized, notify registrants.
 	for _, rf := range s.regfuncs {
 		if err := rf(s); err != nil {

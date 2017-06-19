@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"io"
@@ -20,6 +21,17 @@ var (
 	b64XsrfTokenLength = b64XsrfEnc.EncodedLen(xsrfTokenLength)
 )
 
+type xsrfContextKey struct{}
+
+func contextFromXsrfToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, xsrfContextKey{}, token)
+}
+
+func xsrfTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(xsrfContextKey{}).(string)
+	return token, ok
+}
+
 func newXsrfToken(random io.Reader) (string, error) {
 	xsrfToken := make([]byte, xsrfTokenLength)
 	if _, err := io.ReadFull(random, xsrfToken); err != nil {
@@ -35,7 +47,7 @@ func newXsrfCookie(token string, now func() time.Time, secure bool) *http.Cookie
 	return &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    token,
-		Path:     "/", // Has to be accessible from root, reset from previous
+		Path:     ROOT_PATH, // Has to be accessible from root, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
 		Secure:   secure,
 		HttpOnly: true,

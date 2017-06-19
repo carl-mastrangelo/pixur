@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"html/template"
-	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -20,11 +18,10 @@ const (
 )
 
 const (
-	ROOT_PATH         = "/"
 	PIX_PATH          = "/pix/"
 	ACTION_PATH       = "/a/"
-	LOGIN_PATH        = "/login"
-	LOGOUT_PATH       = "/logout"
+	LOGIN_PATH        = "/u/login"
+	LOGOUT_PATH       = "/u/logout"
 	LOGIN_ACTION_PATH = "/a/auth"
 )
 
@@ -41,37 +38,16 @@ type loginData struct {
 	LoginActionPath string
 }
 
-var loginTpl = template.Must(template.ParseFiles("base.html", "login.html"))
+var loginTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/login.html"))
 
 type loginHandler struct {
-	now    func() time.Time
 	c      api.PixurServiceClient
-	random io.Reader
+	now    func() time.Time
 	secure bool
 }
 
 func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
-	rc := &reqChk{r: r}
-	rc.CheckGet()
-	if err := rc.Err(); err != nil {
-		httpError(w, err)
-		return
-	}
-
-	var xsrfToken string
-	if xsrfTokenCookie, err := r.Cookie(xsrfCookieName); err == nil {
-		xsrfToken = xsrfTokenCookie.Value
-	} else if err == http.ErrNoCookie {
-		xsrfToken, err = newXsrfToken(h.random)
-		if err != nil {
-			httpError(w, err)
-			return
-		}
-		http.SetCookie(w, newXsrfCookie(xsrfToken, h.now, h.secure))
-	} else if err != nil {
-		httpError(w, err)
-		return
-	}
+	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := loginData{
 		baseData: baseData{
 			Title: "Login",
@@ -87,18 +63,15 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
-	rc := &reqChk{r: r}
-	rc.CheckPost()
-	rc.CheckParseForm()
-	rc.CheckXsrf()
-	if err := rc.Err(); err != nil {
-		httpError(w, err)
-		return
+	var refreshToken string
+	if c, err := r.Cookie(refreshPwtCookieName); err == nil {
+		refreshToken = c.Value
 	}
 
 	req := &api.GetRefreshTokenRequest{
-		Ident:  r.FormValue("ident"),
-		Secret: r.FormValue("secret"),
+		Ident:        r.PostFormValue("ident"),
+		Secret:       r.PostFormValue("secret"),
+		RefreshToken: refreshToken,
 	}
 
 	ctx := r.Context()
@@ -153,19 +126,22 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	log.Println(resp)
+	http.Redirect(w, r, ROOT_PATH, http.StatusSeeOther)
 }
 
 func init() {
 	register(func(s *server.Server) error {
+		bh := newBaseHandler(s)
 		h := loginHandler{
 			c:      s.Client,
+			secure: s.Secure,
 			now:    s.Now,
-			random: s.Random,
 		}
-		s.HTTPMux.HandleFunc(LOGIN_PATH, h.static)
-		s.HTTPMux.HandleFunc(LOGOUT_PATH, h.static)
-		s.HTTPMux.HandleFunc(LOGIN_ACTION_PATH, h.login)
+
+		// TODO: maybe consolidate these?
+		s.HTTPMux.Handle(LOGIN_PATH, bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(LOGOUT_PATH, bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(LOGIN_ACTION_PATH, bh.action(http.HandlerFunc(h.login)))
 		return nil
 	})
 }
