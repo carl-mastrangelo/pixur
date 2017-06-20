@@ -5,16 +5,16 @@ import (
 	"pixur.org/pixur/schema"
 )
 
-func apiPics(dst []*api.ApiPic, srcs ...*schema.Pic) []*api.ApiPic {
+func apiPics(dst []*api.Pic, srcs ...*schema.Pic) []*api.Pic {
 	for _, src := range srcs {
 		dst = append(dst, apiPic(src))
 	}
 	return dst
 }
 
-func apiPic(src *schema.Pic) *api.ApiPic {
+func apiPic(src *schema.Pic) *api.Pic {
 	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
-	return &api.ApiPic{
+	return &api.Pic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
 		Height:               int32(src.Height),
@@ -30,15 +30,15 @@ func apiPic(src *schema.Pic) *api.ApiPic {
 	}
 }
 
-func apiPicTags(dst []*api.ApiPicTag, srcs ...*schema.PicTag) []*api.ApiPicTag {
+func apiPicTags(dst []*api.PicTag, srcs ...*schema.PicTag) []*api.PicTag {
 	for _, src := range srcs {
 		dst = append(dst, apiPicTag(src))
 	}
 	return dst
 }
 
-func apiPicTag(src *schema.PicTag) *api.ApiPicTag {
-	return &api.ApiPicTag{
+func apiPicTag(src *schema.PicTag) *api.PicTag {
+	return &api.PicTag{
 		PicId:        schema.Varint(src.PicId).Encode(),
 		TagId:        schema.Varint(src.TagId).Encode(),
 		Name:         src.Name,
@@ -48,17 +48,17 @@ func apiPicTag(src *schema.PicTag) *api.ApiPicTag {
 	}
 }
 
-func apiPicCommentTree(dst []*api.ApiPicComment, srcs ...*schema.PicComment) *api.ApiPicCommentTree {
+func apiPicCommentTree(dst []*api.PicComment, srcs ...*schema.PicComment) *api.PicCommentTree {
 	for _, src := range srcs {
 		dst = append(dst, apiPicComment(src))
 	}
-	return &api.ApiPicCommentTree{
+	return &api.PicCommentTree{
 		Comment: dst,
 	}
 }
 
-func apiPicComment(src *schema.PicComment) *api.ApiPicComment {
-	return &api.ApiPicComment{
+func apiPicComment(src *schema.PicComment) *api.PicComment {
+	return &api.PicComment{
 		PicId:           schema.Varint(src.PicId).Encode(),
 		CommentId:       schema.Varint(src.CommentId).Encode(),
 		CommentParentId: schema.Varint(src.CommentParentId).Encode(),
