@@ -135,8 +135,7 @@ type ServerConfig struct {
 }
 
 func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
-	gserv := grpc.NewServer()
-	api.RegisterPixurServiceServer(gserv, &serv{
+	regServ := &serv{
 		db:          c.DB,
 		pixpath:     c.PixPath,
 		tokenSecret: c.TokenSecret,
@@ -146,8 +145,15 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 		runner:      nil,
 		now:         time.Now,
 		rand:        rand.Reader,
-	})
-	mux.Handle("/api/", http.StripPrefix("/api/", gserv))
+	}
+
+	gserv := grpc.NewServer(grpc.UnaryInterceptor(regServ.intercept))
+	api.RegisterPixurServiceServer(gserv, regServ)
+	mux.Handle("/", gserv)
+	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
+		Handler: http.FileServer(http.Dir(c.PixPath)),
+		Now:     time.Now,
+	}))
 	initPwtCoder(c)
 }
 
