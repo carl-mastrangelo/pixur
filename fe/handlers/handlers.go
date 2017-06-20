@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strconv"
@@ -69,6 +70,7 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 				Message: "Method not allowed",
 				Code:    http.StatusMethodNotAllowed,
 			})
+			return
 		}
 
 		c, err := r.Cookie(xsrfCookieName)
@@ -92,7 +94,13 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 			}
 		}
 
-		r = r.WithContext(contextFromXsrfToken(r.Context(), c.Value))
+		ctx := r.Context()
+		ctx = contextFromXsrfToken(ctx, c.Value)
+		if authToken, present := authTokenFromReq(r); present {
+			ctx = contextFromAuthToken(ctx, authToken)
+		}
+
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -104,6 +112,7 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 				Message: "Method not allowed",
 				Code:    http.StatusMethodNotAllowed,
 			})
+			return
 		}
 
 		if err := r.ParseForm(); err != nil {
@@ -123,10 +132,25 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 			httpError(w, err)
 			return
 		}
+		ctx := r.Context()
+		if authToken, present := authTokenFromReq(r); present {
+			ctx = contextFromAuthToken(ctx, authToken)
+		}
 
-		r = r.WithContext(contextFromXsrfToken(r.Context(), xsrfField))
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
+}
+
+type authContextKey struct{}
+
+func contextFromAuthToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, authContextKey{}, token)
+}
+
+func authTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(authContextKey{}).(string)
+	return token, ok
 }
 
 func authTokenFromReq(req *http.Request) (token string, present bool) {

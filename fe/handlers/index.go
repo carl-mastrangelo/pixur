@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"html/template"
+	"log"
 	"net/http"
+
+	"google.golang.org/grpc/metadata"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
@@ -27,6 +30,24 @@ type indexHandler struct {
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
+	var id string
+	if len(r.URL.Path) >= len(INDEX_PATH) {
+		id = r.URL.Path[len(INDEX_PATH):]
+	}
+	req := &api.FindIndexPicsRequest{
+		StartPicId: id,
+		Ascending:  false,
+	}
+	ctx := r.Context()
+	if authToken, present := authTokenFromContext(ctx); present {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtCookieName, authToken))
+	}
+	resp, err := h.c.FindIndexPics(ctx, req)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	log.Println(resp)
 
 	data := indexData{
 		baseData: baseData{

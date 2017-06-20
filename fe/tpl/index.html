@@ -1,3 +1,13 @@
 {{define "body"}}
+<div class="index">
+  {{if .Pics}}
+  <div>
+    <span style="text-align: center"><a href="{{ .RootPath}}">Home</a></span>
+    {{if .PrevID}}<span style="float:left"><a href="{{ .PrevID}}">Previous</a></span>{{end}}
+    {{if .NextID}}<span style="float:right"><a href="{{ .NextID}}">Next</a></span>{{end}}
+    <span style="clear:both">&nbsp;</span>
+  </div>
+  {{end}}
+</div>
 <a href="{{.LoginPath}}">Login / Join</a>
 {{end}}
