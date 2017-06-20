@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"html/template"
-	"log"
 	"net/http"
+	"strings"
 
 	"google.golang.org/grpc/metadata"
 
@@ -11,32 +11,74 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-const (
-	ROOT_PATH  = "/"
-	INDEX_PATH = "/i/"
-)
+var defaultPaths = Paths{}
+
+type Paths struct {
+	r string
+}
+
+func (p Paths) Root() string {
+	if p.r != "" {
+		return p.r
+	}
+	return "/"
+}
+
+func (p Paths) IndexDir() string {
+	return p.Root() + "i/"
+}
+
+func (p Paths) Index(id string) string {
+	return p.IndexDir() + id
+}
+
+func (p Paths) ViewerDir() string {
+	return p.Root() + "p/"
+}
+
+func (p Paths) Viewer(id string) string {
+	return p.ViewerDir() + id
+}
 
 type indexData struct {
 	baseData
 
-	LoginPath  string
-	LogoutPath string
+	Pic []*api.Pic
+
+	NextID, PrevID string
+	Paths          Paths
 }
 
 var indexTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/index.html"))
 
 type indexHandler struct {
-	c api.PixurServiceClient
+	c     api.PixurServiceClient
+	paths Paths
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	var id string
-	if len(r.URL.Path) >= len(INDEX_PATH) {
-		id = r.URL.Path[len(INDEX_PATH):]
+	switch {
+	case r.URL.Path == h.paths.Root():
+	case strings.HasPrefix(r.URL.Path, h.paths.IndexDir()):
+		id = r.URL.Path[len(h.paths.IndexDir()):]
+	default:
+		http.NotFound(w, r)
+		return
 	}
+
+	if err := r.ParseForm(); err != nil {
+		httpError(w, &HTTPErr{
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	_, isPrev := r.Form["prev"]
 	req := &api.FindIndexPicsRequest{
 		StartPicId: id,
-		Ascending:  false,
+		Ascending:  isPrev,
 	}
 	ctx := r.Context()
 	if authToken, present := authTokenFromContext(ctx); present {
@@ -47,14 +89,38 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
-	log.Println(resp)
+	var prevID string
+	var nextID string
+	if !isPrev {
+		if len(resp.Pic) >= 2 {
+			nextID = resp.Pic[len(resp.Pic)-1].Id
+		}
+		if id != "" {
+			prevID = id
+		}
+	} else {
+		if len(resp.Pic) >= 2 {
+			prevID = resp.Pic[len(resp.Pic)-1].Id
+		}
+		if id != "" {
+			nextID = id
+		}
+	}
+
+	if isPrev {
+		for i := 0; i < len(resp.Pic)/2; i++ {
+			resp.Pic[i], resp.Pic[len(resp.Pic)-i-1] = resp.Pic[len(resp.Pic)-i-1], resp.Pic[i]
+		}
+	}
 
 	data := indexData{
 		baseData: baseData{
 			Title: "Index",
 		},
-		LoginPath:  LOGIN_PATH,
-		LogoutPath: LOGOUT_PATH,
+		Paths:  defaultPaths,
+		Pic:    resp.Pic,
+		NextID: nextID,
+		PrevID: prevID,
 	}
 	if err := indexTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -69,8 +135,8 @@ func init() {
 			c: s.Client,
 		}
 
-		s.HTTPMux.Handle(INDEX_PATH, bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(ROOT_PATH, bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(defaultPaths.IndexDir(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(defaultPaths.Root(), bh.static(http.HandlerFunc(h.static)))
 		return nil
 	})
 }

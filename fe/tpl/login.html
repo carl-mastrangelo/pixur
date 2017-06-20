@@ -1,5 +1,6 @@
 {{define "body"}}
-<form action="{{.LoginActionPath}}" method="post">
+{{ $ps := .Paths}}
+<form action="{{$ps.LoginAction}}" method="post">
   <input type="text" name="ident" placeholder="Ident" /><br />
   <input type="password" name="secret" /><br />
   <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />

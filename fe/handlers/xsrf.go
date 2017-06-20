@@ -47,7 +47,7 @@ func newXsrfCookie(token string, now func() time.Time, secure bool) *http.Cookie
 	return &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    token,
-		Path:     ROOT_PATH, // Has to be accessible from root, reset from previous
+		Path:     (Paths{}).Root(), // Has to be accessible from root, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
 		Secure:   secure,
 		HttpOnly: true,

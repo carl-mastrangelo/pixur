@@ -31,7 +31,7 @@ func init() {
 			},
 			Transport: t,
 		}
-		s.HTTPMux.Handle(PIX_PATH, rp)
+		s.HTTPMux.Handle((Paths{}).PixDir(), rp)
 		return nil
 	})
 }
