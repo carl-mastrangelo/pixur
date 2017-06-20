@@ -11,7 +11,7 @@ option optimize_for = CODE_SIZE;
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
-message ApiPic {
+message Pic {
   // id is the unique identifier for the pic, in varint form
   string id = 1;
   // width is the width of pic
@@ -45,7 +45,7 @@ message ApiPic {
   double score_hi = 13;
 }
 
-message ApiPicTag {
+message PicTag {
   // pic_id is the unique identifier for the pic, in varint form
   string pic_id = 1;
   // tag_id is the unique identifier for the tag, in varint form
@@ -60,7 +60,7 @@ message ApiPicTag {
   sfixed64 version = 6;
 }
 
-message ApiPicComment {
+message PicComment {
   // pic_id is the unique identifier for the pic, in varint form
   string pic_id = 1;
   // comment_id is the unique identifier for the comment, in varint form
@@ -78,7 +78,7 @@ message ApiPicComment {
   sfixed64 version = 6;
 }
 
-message ApiUser {
+message User {
   string user_id = 1;
   
   string ident = 2;
@@ -92,10 +92,10 @@ message ApiUser {
   // version is the version of the user.  It is used when updating the user.
   sfixed64 version = 6;
   
-  repeated ApiCapability.Cap capability = 7;
+  repeated Capability.Cap capability = 7;
 }
 
-message ApiCapability {
+message Capability {
   enum Cap {
     UNKNOWN = 0;
     // Can this user create and upload pictures
@@ -131,7 +131,7 @@ message LookupUserRequest {
 }
 
 message LookupUserResponse {
-  ApiUser user = 1;
+  User user = 1;
 }
 
 message UpdateUserRequest {
@@ -149,20 +149,20 @@ message UpdateUserRequest {
   ChangeSecret secret = 4;
   
   message ChangeCapability {
-    repeated ApiCapability.Cap set_capability = 1;
-    repeated ApiCapability.Cap clear_capability = 2;
+    repeated Capability.Cap set_capability = 1;
+    repeated Capability.Cap clear_capability = 2;
   }
   ChangeCapability capability = 5; 
 }
 
 message UpdateUserResponse {
-  ApiUser user = 1;
+  User user = 1;
 }
 
-message ApiPicCommentTree {
+message PicCommentTree {
 	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested 
 	// messages well.  
-	repeated ApiPicComment comment = 1;
+	repeated PicComment comment = 1;
 }
 
 message LookupPicDetailsRequest {
@@ -170,9 +170,9 @@ message LookupPicDetailsRequest {
 }
 
 message LookupPicDetailsResponse {
-  ApiPic pic = 1;
-  repeated ApiPicTag pic_tag = 2;
-  ApiPicCommentTree pic_comment_tree = 3;
+  Pic pic = 1;
+  repeated PicTag pic_tag = 2;
+  PicCommentTree pic_comment_tree = 3;
 }
 
 message FindIndexPicsRequest {
@@ -182,7 +182,7 @@ message FindIndexPicsRequest {
 }
 
 message FindIndexPicsResponse {
-  repeated ApiPic pic = 1;
+  repeated Pic pic = 1;
 }
 
 message AddPicTagsRequest {
@@ -208,7 +208,7 @@ message CreatePicRequest {
 }
 
 message CreatePicResponse {
-  ApiPic pic = 1;
+  Pic pic = 1;
 }
 
 message FindSimilarPicsRequest {
@@ -265,7 +265,7 @@ message UpsertPicRequest {
 }
 
 message UpsertPicResponse {
-  ApiPic pic = 1;
+  Pic pic = 1;
 }
 
 message GetXsrfTokenRequest {
@@ -341,7 +341,7 @@ message AddPicCommentRequest {
 }
 
 message AddPicCommentResponse {
-	ApiPicComment comment = 1;
+	PicComment comment = 1;
 }
 
 message DeleteTokenRequest {

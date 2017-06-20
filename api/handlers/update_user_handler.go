@@ -9,14 +9,14 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-var capcapmap = make(map[api.ApiCapability_Cap]schema.User_Capability)
+var capcapmap = make(map[api.Capability_Cap]schema.User_Capability)
 
 func init() {
-	if len(schema.User_Capability_name) != len(api.ApiCapability_Cap_name) {
+	if len(schema.User_Capability_name) != len(api.Capability_Cap_name) {
 		panic("cap mismatch")
 	}
 	for num := range schema.User_Capability_name {
-		if _, ok := api.ApiCapability_Cap_name[num]; !ok {
+		if _, ok := api.Capability_Cap_name[num]; !ok {
 			panic("cap mismatch")
 		}
 	}
@@ -43,13 +43,13 @@ func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest)
 
 	if req.Capability != nil {
 		for _, c := range req.Capability.SetCapability {
-			if _, ok := capcapmap[c]; !ok || c == api.ApiCapability_UNKNOWN {
+			if _, ok := capcapmap[c]; !ok || c == api.Capability_UNKNOWN {
 				return nil, status.InvalidArgumentf(nil, "unknown cap %v", c)
 			}
 			newcaps = append(newcaps, schema.User_Capability(c))
 		}
 		for _, c := range req.Capability.ClearCapability {
-			if _, ok := capcapmap[c]; !ok || c == api.ApiCapability_UNKNOWN {
+			if _, ok := capcapmap[c]; !ok || c == api.Capability_UNKNOWN {
 				return nil, status.InvalidArgumentf(nil, "unknown cap %v", c)
 			}
 			oldcaps = append(oldcaps, schema.User_Capability(c))
