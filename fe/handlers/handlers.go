@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	oldctx "golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"pixur.org/pixur/fe/server"
@@ -20,7 +23,19 @@ func register(rf server.RegFunc) {
 	regfuncs = append(regfuncs, rf)
 }
 
+var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
+
+func cookieToGRPCAuthInterceptor(
+	ctx oldctx.Context, method string, req, reply interface{},
+	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	if token, present := authTokenFromContext(ctx); present {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtCookieName, token))
+	}
+	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
 func RegisterAll(s *server.Server) {
+	s.GetAndSetInterceptor(cookieToGRPCAuthInterceptor)
 	for _, rf := range regfuncs {
 		s.Register(rf)
 	}

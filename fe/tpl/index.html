@@ -1,10 +1,10 @@
 {{define "body"}}
 <div class="index">
-  {{ $ps := .Paths}} 
+  {{ $ps := .}} 
   <div>
-    <span style="text-align: center"><a href="{{$ps.Root}}">Home</a></span>
-    {{if .PrevID}}<span style="float:left"><a href="{{$ps.Index .PrevID}}?prev">Previous</a></span>{{end}}
-    {{if .NextID}}<span style="float:right"><a href="{{$ps.Index .NextID}}">Next</a></span>{{end}}
+    <span style="text-align: center"><a href="{{.Root}}">Home</a></span>
+    {{if .PrevID}}<span style="float:left"><a href="{{.Index .PrevID}}?prev">Previous</a></span>{{end}}
+    {{if .NextID}}<span style="float:right"><a href="{{.Index .NextID}}">Next</a></span>{{end}}
     <span style="clear:both">&nbsp;</span>
   </div>
   {{if .Pic}}
@@ -23,9 +23,9 @@
   </ul>
   {{end}}
   <div>
-    <span style="text-align: center"><a href="{{$ps.Root}}">Home</a></span>
-    {{if .PrevID}}<span style="float:left"><a href="{{$ps.Index .PrevID}}?prev">Previous</a></span>{{end}}
-    {{if .NextID}}<span style="float:right"><a href="{{$ps.Index .NextID}}">Next</a></span>{{end}}
+    <span style="text-align: center"><a href="{{.Root}}">Home</a></span>
+    {{if .PrevID}}<span style="float:left"><a href="{{.Index .PrevID}}?prev">Previous</a></span>{{end}}
+    {{if .NextID}}<span style="float:right"><a href="{{.Index .NextID}}">Next</a></span>{{end}}
     <span style="clear:both">&nbsp;</span>
   </div>
 </div>
@@ -34,5 +34,5 @@
     <input placeholder="File URL" name="url" /><br />
     <input type="submit" value="Submit" />
 </form>
-  <a href="{{$ps.Login}}">Login / Join</a>
+  <a href="{{.Login}}">Login / Join</a>
 {{end}}

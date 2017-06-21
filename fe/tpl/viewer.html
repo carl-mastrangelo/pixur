@@ -1,0 +1,22 @@
+{{define "body"}}
+<div class="viewer">
+  <div>
+    {{if ne .Pic.Type "WEBM"}}
+    <a href="{{.Root}}{{.Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
+      <img src="{{.Root}}{{.Pic.RelativeUrl}}" style="width: auto; height: auto; max-width: 100%" />
+      {{- /**/ -}}
+    </a>
+    {{else}}
+    <video
+        style="width: auto; height: auto; max-width: 100%"
+        src="{{.Root}}{{.Pic.RelativeUrl}}"
+        loop
+        muted
+        autoplay
+        controls>
+      Your browser does not support the video tag.
+    </video>
+    {{end}}
+  </div>
+<div>
+{{end}}

@@ -25,7 +25,8 @@ type Server struct {
 
 	Secure bool
 
-	regfuncs []RegFunc
+	regfuncs    []RegFunc
+	interceptor grpc.UnaryClientInterceptor
 }
 
 type RegFunc func(s *Server) error
@@ -34,9 +35,21 @@ func (s *Server) Register(rf RegFunc) {
 	s.regfuncs = append(s.regfuncs, rf)
 }
 
+func (s *Server) GetAndSetInterceptor(in grpc.UnaryClientInterceptor) grpc.UnaryClientInterceptor {
+	ret := s.interceptor
+	s.interceptor = in
+	return ret
+}
+
 func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 	if s.Client == nil {
-		channel, err := grpc.DialContext(ctx, c.PixurSpec, grpc.WithInsecure())
+		var dos []grpc.DialOption
+		dos = append(dos, grpc.WithInsecure())
+		if s.interceptor != nil {
+			dos = append(dos, grpc.WithUnaryInterceptor(s.interceptor))
+		}
+
+		channel, err := grpc.DialContext(ctx, c.PixurSpec, dos...)
 		if err != nil {
 			return err
 		}

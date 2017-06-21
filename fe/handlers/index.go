@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"google.golang.org/grpc/metadata"
-
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
 )
@@ -32,21 +30,13 @@ func (p Paths) Index(id string) string {
 	return p.IndexDir() + id
 }
 
-func (p Paths) ViewerDir() string {
-	return p.Root() + "p/"
-}
-
-func (p Paths) Viewer(id string) string {
-	return p.ViewerDir() + id
-}
-
 type indexData struct {
+	Paths
 	baseData
 
 	Pic []*api.Pic
 
 	NextID, PrevID string
-	Paths          Paths
 }
 
 var indexTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/index.html"))
@@ -80,11 +70,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		StartPicId: id,
 		Ascending:  isPrev,
 	}
-	ctx := r.Context()
-	if authToken, present := authTokenFromContext(ctx); present {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtCookieName, authToken))
-	}
-	resp, err := h.c.FindIndexPics(ctx, req)
+
+	res, err := h.c.FindIndexPics(r.Context(), req)
 	if err != nil {
 		httpError(w, err)
 		return
@@ -92,15 +79,15 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	var prevID string
 	var nextID string
 	if !isPrev {
-		if len(resp.Pic) >= 2 {
-			nextID = resp.Pic[len(resp.Pic)-1].Id
+		if len(res.Pic) >= 2 {
+			nextID = res.Pic[len(res.Pic)-1].Id
 		}
 		if id != "" {
 			prevID = id
 		}
 	} else {
-		if len(resp.Pic) >= 2 {
-			prevID = resp.Pic[len(resp.Pic)-1].Id
+		if len(res.Pic) >= 2 {
+			prevID = res.Pic[len(res.Pic)-1].Id
 		}
 		if id != "" {
 			nextID = id
@@ -108,8 +95,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isPrev {
-		for i := 0; i < len(resp.Pic)/2; i++ {
-			resp.Pic[i], resp.Pic[len(resp.Pic)-i-1] = resp.Pic[len(resp.Pic)-i-1], resp.Pic[i]
+		for i := 0; i < len(res.Pic)/2; i++ {
+			res.Pic[i], res.Pic[len(res.Pic)-i-1] = res.Pic[len(res.Pic)-i-1], res.Pic[i]
 		}
 	}
 
@@ -118,7 +105,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 			Title: "Index",
 		},
 		Paths:  defaultPaths,
-		Pic:    resp.Pic,
+		Pic:    res.Pic,
 		NextID: nextID,
 		PrevID: prevID,
 	}

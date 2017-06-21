@@ -57,10 +57,10 @@ type loginData struct {
 var loginTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/login.html"))
 
 type loginHandler struct {
+	Paths
 	c      api.PixurServiceClient
 	now    func() time.Time
 	secure bool
-	paths  Paths
 }
 
 func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 		},
 		XsrfName:  xsrfFieldName,
 		XsrfToken: xsrfToken,
-		Paths:     h.paths,
+		Paths:     h.Paths,
 	}
 	if err := loginTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -92,58 +92,58 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	resp, err := h.c.GetRefreshToken(ctx, req)
+	res, err := h.c.GetRefreshToken(ctx, req)
 	if err != nil {
 		httpError(w, err)
 		return
 	}
-	if resp.RefreshPayload != nil {
-		notAfter, err := ptypes.Timestamp(resp.RefreshPayload.NotAfter)
+	if res.RefreshPayload != nil {
+		notAfter, err := ptypes.Timestamp(res.RefreshPayload.NotAfter)
 		if err != nil {
 			httpError(w, err)
 			return
 		}
 		http.SetCookie(w, &http.Cookie{
 			Name:     refreshPwtCookieName,
-			Value:    resp.RefreshToken,
-			Path:     h.paths.LoginAction(),
+			Value:    res.RefreshToken,
+			Path:     h.LoginAction(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
 		})
 	}
-	if resp.AuthPayload != nil {
-		notAfter, err := ptypes.Timestamp(resp.AuthPayload.NotAfter)
+	if res.AuthPayload != nil {
+		notAfter, err := ptypes.Timestamp(res.AuthPayload.NotAfter)
 		if err != nil {
 			httpError(w, err)
 			return
 		}
 		http.SetCookie(w, &http.Cookie{
 			Name:     authPwtCookieName,
-			Value:    resp.AuthToken,
-			Path:     h.paths.Root(),
+			Value:    res.AuthToken,
+			Path:     h.Root(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
 		})
 	}
-	if resp.PixPayload != nil {
-		notAfter, err := ptypes.Timestamp(resp.PixPayload.NotAfter)
+	if res.PixPayload != nil {
+		notAfter, err := ptypes.Timestamp(res.PixPayload.NotAfter)
 		if err != nil {
 			httpError(w, err)
 			return
 		}
 		http.SetCookie(w, &http.Cookie{
 			Name:     pixPwtCookieName,
-			Value:    resp.PixToken,
-			Path:     h.paths.PixDir(),
+			Value:    res.PixToken,
+			Path:     h.PixDir(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
 		})
 	}
 
-	http.Redirect(w, r, h.paths.Root(), http.StatusSeeOther)
+	http.Redirect(w, r, h.Root(), http.StatusSeeOther)
 }
 
 func init() {
@@ -153,13 +153,13 @@ func init() {
 			c:      s.Client,
 			secure: s.Secure,
 			now:    s.Now,
-			paths:  Paths{},
+			Paths:  Paths{},
 		}
 
 		// TODO: maybe consolidate these?
-		s.HTTPMux.Handle(h.paths.Login(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.paths.Logout(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.paths.LoginAction(), bh.action(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.Login(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.Logout(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.LoginAction(), bh.action(http.HandlerFunc(h.login)))
 		return nil
 	})
 }
