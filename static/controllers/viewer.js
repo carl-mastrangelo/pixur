@@ -18,7 +18,7 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService, commentsSe
   //this.topcomment = "";
 
   authService.getXsrfToken().then(function() {
-    return picsService.getSingle(this.picId)
+    return picsService.getSingle(this.picId);
   }.bind(this)).then(function(details) {
     this.pic = details.pic;
     this.picTags = details.pic_tags;
@@ -28,7 +28,7 @@ var ViewerCtrl = function($scope, $routeParams, $window, picsService, commentsSe
 		
     picsService.incrementViewCount(this.picId);
   }.bind(this));
-}
+};
 
 ViewerCtrl.prototype.addComment = function(commentParent, text) {
 	var commentParentId = 0;
@@ -45,7 +45,7 @@ ViewerCtrl.prototype.addComment = function(commentParent, text) {
       alert(angular.toJson(err, 2));
       console.error(err);
     });
-}
+};
 
 ViewerCtrl.prototype.deletePic = function() {
   this.picsService_.deletePic(this.picId).then(
@@ -54,37 +54,38 @@ ViewerCtrl.prototype.deletePic = function() {
     }.bind(this),
     function(err) {
       // TODO: actually return a better error
-      alert(angular.toJson(err, 2));
+      alert(angular.toJson(err, true));
       console.error(err);
     });
-}
+};
 
 ViewerCtrl.prototype.voteUp = function() {
   this.picsService_.vote(this.picId, "UP").then(
     function(f) {}.bind(this),
     function(err) {
       // TODO: actually return a better error
-      alert(angular.toJson(err, 2));
+      alert(angular.toJson(err, true));
       console.error(err);
     });
-}
+};
 
 ViewerCtrl.prototype.voteDown = function() {
   this.picsService_.vote(this.picId, "DOWN").then(
     function(f) {}.bind(this),
     function(err) {
       // TODO: actually return a better error
-      alert(angular.toJson(err, 2));
+      alert(angular.toJson(err, true));
       console.error(err);
     });
-}
+};
 
 ViewerCtrl.prototype.voteNeutral = function() {
   this.picsService_.vote(this.picId, "NEUTRAL").then(
     function(f) {}.bind(this),
     function(err) {
       // TODO: actually return a better error
-      alert(angular.toJson(err, 2));
+      alert(angular.toJson(err, true));
       console.error(err);
     });
-}
+};
+

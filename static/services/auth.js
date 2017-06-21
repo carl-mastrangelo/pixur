@@ -40,7 +40,7 @@ AuthService.prototype.createUser = function(ident, secret) {
   var params = {
     "ident": ident,
     "secret": secret
-  }
+  };
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"
@@ -87,7 +87,7 @@ AuthService.prototype.loginUser = function(ident, secret) {
   var params = {
     "ident": ident,
     "secret": secret
-  }
+  };
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"

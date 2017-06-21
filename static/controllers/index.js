@@ -81,13 +81,13 @@ var IndexCtrl = function(
       }.bind(this)
     );
   }
-}
+};
 
 IndexCtrl.prototype.logOut = function() {
   this.authService_.logoutUser().catch(err => {
   	console.warn(err);
   });
-}
+};
 
 IndexCtrl.prototype.loadNext = function() {
   this.picsService_.get(this.nextPageID).then(
@@ -98,7 +98,7 @@ IndexCtrl.prototype.loadNext = function() {
       }
     }.bind(this)
   );
-}
+};
 
 IndexCtrl.prototype.fileChange = function(elem) {
   if (elem.files.length > 0) {

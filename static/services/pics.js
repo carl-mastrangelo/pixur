@@ -39,13 +39,13 @@ PicsService.prototype.getSingle = function(picId) {
   );
 
   return deferred.promise;
-}
+};
 
 PicsService.prototype.incrementViewCount = function(picId) {
   var deferred = this.q_.defer();
   var params = {
     "pic_id": picId
-  }
+  };
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"
@@ -63,16 +63,16 @@ PicsService.prototype.incrementViewCount = function(picId) {
     function(error) {
       deferred.reject(error);
     }
-  )
+  );
   return deferred.promise;
-}
+};
 
 PicsService.prototype.vote = function(picId, v) {
   var deferred = this.q_.defer();
   var params = {
     "pic_id": picId,
     "vote": v,
-  }
+  };
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"
@@ -90,9 +90,9 @@ PicsService.prototype.vote = function(picId, v) {
     function(error) {
       deferred.reject(error);
     }
-  )
+  );
   return deferred.promise;
-}
+};
 
 PicsService.prototype.deletePic = function(picId, details) {
   var deferred = this.q_.defer();
@@ -100,7 +100,7 @@ PicsService.prototype.deletePic = function(picId, details) {
   var params = {
     "pic_id": picId,
     "reason": "NONE"
-  }
+  };
   if (details !== undefined) {
     params["details"] = details;
   }
@@ -125,7 +125,7 @@ PicsService.prototype.deletePic = function(picId, details) {
     }
   );
   return deferred.promise;
-}
+};
 
 PicsService.prototype.getNextIndexPics = function(startId) {
   var deferred = this.q_.defer();
@@ -153,7 +153,7 @@ PicsService.prototype.getNextIndexPics = function(startId) {
     }
   );
   return deferred.promise;
-}
+};
 
 PicsService.prototype.getPreviousIndexPics = function(startId) {
   var deferred = this.q_.defer();
@@ -181,7 +181,7 @@ PicsService.prototype.getPreviousIndexPics = function(startId) {
     }
   );
   return deferred.promise;
-}
+};
 
 PicsService.prototype.create = function(file, url) {
   var deferred = this.q_.defer();
