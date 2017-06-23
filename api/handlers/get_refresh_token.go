@@ -14,7 +14,7 @@ import (
 
 var (
 	refreshPwtDuration = time.Hour * 24 * 30 * 6 // 6 months
-	authPwtDuration    = time.Hour * 24          // 1 day
+	authPwtDuration    = time.Hour * 24 * 30     // 1 month
 )
 
 var (
