@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/carl-mastrangelo/h2c"
 	"google.golang.org/grpc"
 
 	"pixur.org/pixur/api"
@@ -85,10 +86,12 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 	}
 
 	// TODO: Forward error logs?
-	hs := http.Server{
+	hs := &http.Server{
 		Addr:    c.HttpSpec,
 		Handler: s.HTTPMux,
 	}
+
+	h2c.AttachClearTextHandler(nil /* default http2 server */, hs)
 
 	watcher := make(chan error)
 	go func() {

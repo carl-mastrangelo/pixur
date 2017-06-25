@@ -4,16 +4,20 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/binary"
 	"io"
 	"net/http"
 	"time"
 )
 
 const (
-	xsrfCookieName    = "xsrf_token"
-	xsrfFieldName     = "x_xsrf_token"
-	xsrfTokenLength   = 128 / 8
-	xsrfTokenLifetime = time.Hour * 24 * 365 * 10
+	xsrfCookieName          = "xt"
+	xsrfFieldName           = "x_xt"
+	xsrfTokenIssuedAtLength = 48 / 8
+	xsrfTokenExpiresLength  = 48 / 8
+	xsrfTokenRandLength     = 48 / 8
+	xsrfTokenLength         = xsrfTokenIssuedAtLength + xsrfTokenExpiresLength + xsrfTokenRandLength
+	xsrfTokenLifetime       = time.Hour * 24 * 365 * 10
 )
 
 var (
@@ -32,11 +36,21 @@ func xsrfTokenFromContext(ctx context.Context) (string, bool) {
 	return token, ok
 }
 
-func newXsrfToken(random io.Reader) (string, error) {
-	xsrfToken := make([]byte, xsrfTokenLength)
-	if _, err := io.ReadFull(random, xsrfToken); err != nil {
+func newXsrfToken(random io.Reader, now func() time.Time) (string, error) {
+	xsrfTokenRand := make([]byte, xsrfTokenRandLength)
+	if _, err := io.ReadFull(random, xsrfTokenRand); err != nil {
 		return "", err
 	}
+	theTime := now()
+	xsrfTokenIssuedAt := make([]byte, 8)
+	binary.BigEndian.PutUint64(xsrfTokenIssuedAt, uint64(theTime.Unix()))
+	xsrfTokenExpires := make([]byte, 8)
+	binary.BigEndian.PutUint64(xsrfTokenExpires, uint64(theTime.Add(xsrfTokenLifetime).Unix()))
+
+	xsrfToken := make([]byte, 0, xsrfTokenLength)
+	xsrfToken = append(xsrfToken, xsrfTokenIssuedAt[len(xsrfTokenIssuedAt)-xsrfTokenIssuedAtLength:]...)
+	xsrfToken = append(xsrfToken, xsrfTokenExpires[len(xsrfTokenExpires)-xsrfTokenExpiresLength:]...)
+	xsrfToken = append(xsrfToken, xsrfTokenRand...)
 
 	b64XsrfToken := make([]byte, b64XsrfTokenLength)
 	b64XsrfEnc.Encode(b64XsrfToken, xsrfToken)

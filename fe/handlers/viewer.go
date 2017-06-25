@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
 )
@@ -35,19 +37,39 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	req := &api.LookupPicDetailsRequest{
 		PicId: id,
 	}
-	res, err := h.c.LookupPicDetails(r.Context(), req)
+	ctx := r.Context()
+	details, err := h.c.LookupPicDetails(ctx, req)
 	if err != nil {
 		httpError(w, err)
 		return
 	}
 	data := viewerData{
 		Paths: h.Paths,
-		Pic:   res.Pic,
+		Pic:   details.Pic,
 	}
 	if err := viewerTpl.Execute(w, data); err != nil {
 		httpError(w, err)
 		return
 	}
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+	// This happens after
+	eg, egctx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		_, err := h.c.IncrementViewCount(egctx, &api.IncrementViewCountRequest{
+			PicId: id,
+		})
+		return err
+	})
+	if err := eg.Wait(); err != nil {
+		httpError(w, err)
+		return
+	}
+}
+
+func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func init() {

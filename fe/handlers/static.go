@@ -1,35 +1,30 @@
 package handlers
 
 import (
-	"crypto/tls"
-	"net"
 	"net/http"
 	"net/http/httputil"
 
-	"golang.org/x/net/http2"
+	"github.com/carl-mastrangelo/h2c"
 
 	"pixur.org/pixur/fe/server"
 )
 
+const (
+	pixPwtDelegateCookieName = "pix_token"
+)
+
 func init() {
 	register(func(s *server.Server) error {
-		t := &http2.Transport{
-			AllowHTTP: true,
-			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-				ta, err := net.ResolveTCPAddr(network, addr)
-				if err != nil {
-					return nil, err
-				}
-				return net.DialTCP(network, nil, ta)
-			},
-		}
-
 		rp := &httputil.ReverseProxy{
 			Director: func(r *http.Request) {
 				r.URL.Scheme = "http"
 				r.URL.Host = s.PixurSpec
+				if c, err := r.Cookie(pixPwtCookieName); err == nil {
+					c.Name = pixPwtDelegateCookieName
+					r.AddCookie(c)
+				}
 			},
-			Transport: t,
+			Transport: h2c.NewClearTextTransport(http.DefaultTransport),
 		}
 		s.HTTPMux.Handle((Paths{}).PixDir(), rp)
 		return nil

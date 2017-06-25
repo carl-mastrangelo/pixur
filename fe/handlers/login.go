@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	refreshPwtCookieName = "refresh_token"
-	authPwtCookieName    = "auth_token"
-	pixPwtCookieName     = "pix_token"
+	refreshPwtCookieName = "rt"
+	authPwtCookieName    = "at"
+	pixPwtCookieName     = "pt"
 )
 
 func (p Paths) PixDir() string {
@@ -142,6 +142,15 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 			HttpOnly: true,
 		})
 	}
+	// destroy previous xsrf cookie after login
+	http.SetCookie(w, &http.Cookie{
+		Name:     xsrfCookieName,
+		Value:    "",
+		Path:     (Paths{}).Root(), // Has to be accessible from root, reset from previous
+		Expires:  h.now().Add(-time.Hour),
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
 
 	http.Redirect(w, r, h.Root(), http.StatusSeeOther)
 }

@@ -23,13 +23,17 @@ func register(rf server.RegFunc) {
 	regfuncs = append(regfuncs, rf)
 }
 
+const (
+	authPwtHeaderName = "auth_token"
+)
+
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
 
 func cookieToGRPCAuthInterceptor(
 	ctx oldctx.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	if token, present := authTokenFromContext(ctx); present {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtCookieName, token))
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderName, token))
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
@@ -88,14 +92,24 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 			return
 		}
 
+		ctx := r.Context()
+		authToken, authTokenPresent := authTokenFromReq(r)
+		if authTokenPresent {
+			ctx = contextFromAuthToken(ctx, authToken)
+		}
+
+		theTime := h.now()
+		now := func() time.Time {
+			return theTime
+		}
 		c, err := r.Cookie(xsrfCookieName)
 		if err == http.ErrNoCookie {
-			token, err := newXsrfToken(h.random)
+			token, err := newXsrfToken(h.random, now)
 			if err != nil {
 				httpError(w, err)
 				return
 			}
-			c = newXsrfCookie(token, h.now, h.secure)
+			c = newXsrfCookie(token, now, h.secure)
 			http.SetCookie(w, c)
 		} else if err != nil {
 			httpError(w, err)
@@ -108,12 +122,7 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 				return
 			}
 		}
-
-		ctx := r.Context()
 		ctx = contextFromXsrfToken(ctx, c.Value)
-		if authToken, present := authTokenFromReq(r); present {
-			ctx = contextFromAuthToken(ctx, authToken)
-		}
 
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
