@@ -269,3 +269,50 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 		t.Error("expected old token to be deleted", lastToken)
 	}
 }
+
+func TestAuthUserTask_PreferIdent(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u1 := c.CreateUser()
+	u1.User.NextTokenId++
+	u1.User.UserToken = append(u1.User.UserToken, &schema.UserToken{
+		TokenId: u1.User.NextTokenId,
+		LastSeenTs: &tspb.Timestamp{
+			Seconds: 1,
+		},
+	})
+	u1.Update()
+
+	u2 := c.CreateUser()
+	u2.User.NextTokenId++
+	u2.User.UserToken = append(u2.User.UserToken, &schema.UserToken{
+		TokenId: u2.User.NextTokenId,
+		LastSeenTs: &tspb.Timestamp{
+			Seconds: 1,
+		},
+	})
+	u2.Update()
+
+	task := &AuthUserTask{
+		Ctx:    context.Background(),
+		DB:     c.DB(),
+		Now:    time.Now,
+		Ident:  u1.User.Ident,
+		Secret: "secret",
+
+		// A seemingly good token
+		UserID:  u2.User.UserId,
+		TokenID: u2.User.NextTokenId - 1,
+	}
+
+	sts := task.Run()
+	if sts != nil {
+		t.Fatal("expected nil status", sts)
+	}
+
+	if task.User.UserId != u1.User.UserId {
+		t.Error("Wrong user preferred")
+	}
+
+}

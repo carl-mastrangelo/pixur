@@ -56,31 +56,7 @@ func (t *AuthUserTask) Run() (sCap status.S) {
 		status.InternalError(err, "can't create timestamp")
 	}
 	var newTokenID int64
-	if t.UserID != 0 {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&t.UserID},
-			Lock:   db.LockWrite,
-			Limit:  1,
-		})
-		if err != nil {
-			return status.InternalError(err, "can't find users")
-		}
-		if len(users) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
-		}
-		user = users[0]
-		for _, ut := range user.UserToken {
-			if ut.TokenId == t.TokenID {
-				ut.LastSeenTs = nowts
-				newTokenID = t.TokenID
-				break
-			}
-		}
-		if newTokenID == 0 {
-			return status.Unauthenticated(nil, "can't find token")
-		}
-
-	} else if t.Ident != "" {
+	if t.Ident != "" {
 		users, err := j.FindUsers(db.Opts{
 			Prefix: tab.UsersIdent{&t.Ident},
 			Lock:   db.LockWrite,
@@ -104,6 +80,30 @@ func (t *AuthUserTask) Run() (sCap status.S) {
 			CreatedTs:  nowts,
 			LastSeenTs: nowts,
 		})
+
+	} else if t.UserID != 0 {
+		users, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&t.UserID},
+			Lock:   db.LockWrite,
+			Limit:  1,
+		})
+		if err != nil {
+			return status.InternalError(err, "can't find users")
+		}
+		if len(users) != 1 {
+			return status.Unauthenticated(nil, "can't lookup user")
+		}
+		user = users[0]
+		for _, ut := range user.UserToken {
+			if ut.TokenId == t.TokenID {
+				ut.LastSeenTs = nowts
+				newTokenID = t.TokenID
+				break
+			}
+		}
+		if newTokenID == 0 {
+			return status.Unauthenticated(nil, "can't find token")
+		}
 
 	} else {
 		return status.InvalidArgument(nil, "no user identifier provided")
