@@ -25,7 +25,7 @@ func TestAuthUserTaskFailsOnMissingContext(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INTERNAL_ERROR; have != want {
+	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "missing context"; !strings.Contains(have, want) {
@@ -48,7 +48,7 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INTERNAL_ERROR; have != want {
+	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't create job"; !strings.Contains(have, want) {
