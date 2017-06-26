@@ -3,6 +3,7 @@ package handlers
 import (
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"pixur.org/pixur/api"
@@ -12,22 +13,26 @@ import (
 var defaultPaths = Paths{}
 
 type Paths struct {
-	r string
+	r *url.URL
 }
 
-func (p Paths) Root() string {
-	if p.r != "" {
+func (p Paths) Root() *url.URL {
+	if p.r != nil {
 		return p.r
 	}
-	return "/"
+	return &url.URL{Path: "/"}
 }
 
-func (p Paths) IndexDir() string {
-	return p.Root() + "i/"
+func (p Paths) IndexDir() *url.URL {
+	return p.Root().ResolveReference(&url.URL{Path: "i/"})
 }
 
-func (p Paths) Index(id string) string {
-	return p.IndexDir() + id
+func (p Paths) Index(id string) *url.URL {
+	return p.IndexDir().ResolveReference(&url.URL{Path: id})
+}
+
+func (p Paths) IndexPrev(id string) *url.URL {
+	return p.IndexDir().ResolveReference(&url.URL{Path: id, RawQuery: "prev"})
 }
 
 type indexData struct {
@@ -49,9 +54,9 @@ type indexHandler struct {
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	var id string
 	switch {
-	case r.URL.Path == h.paths.Root():
-	case strings.HasPrefix(r.URL.Path, h.paths.IndexDir()):
-		id = r.URL.Path[len(h.paths.IndexDir()):]
+	case r.URL.Path == h.paths.Root().String():
+	case strings.HasPrefix(r.URL.Path, h.paths.IndexDir().String()):
+		id = r.URL.Path[len(h.paths.IndexDir().String()):]
 	default:
 		http.NotFound(w, r)
 		return
@@ -122,8 +127,8 @@ func init() {
 			c: s.Client,
 		}
 
-		s.HTTPMux.Handle(defaultPaths.IndexDir(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(defaultPaths.Root(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(defaultPaths.IndexDir().String(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(defaultPaths.Root().String(), bh.static(http.HandlerFunc(h.static)))
 		return nil
 	})
 }

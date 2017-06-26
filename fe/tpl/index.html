@@ -1,38 +1,99 @@
+{{define "style"}}
+<style>
+  .index {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    /*fit inside a 1024 monitor.*/
+    max-width: 950px
+  }
+
+  .index ul.thumbnail-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .index ul.thumbnail-list li {
+    display: inline;
+  }
+  
+  .index .thumbnail-cntr {
+    background-color: #FFFFEE;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #2c1fc0;
+    border-radius: 10px;
+    display: inline-block;
+    height: 224px;
+    margin: 6px;
+    padding: 0;
+    text-align: center;
+    width: 224px;
+  }
+  
+  .index .thumbnail-cntr:hover {
+    border-color: #9c99bf;
+  }
+  
+  .index img.thumbnail {
+    width: 224px;
+    height: 224px;
+    border-radius: 8px;
+  }
+
+  .index img.deleted {
+    filter: blur(5px) grayscale(5%);
+    -webkit-filter: blur(5px) grayscale(5%);
+  }
+  
+  .index .nav-home {
+    text-align: center;
+  }
+  .index .nav-prev {
+    float: left;
+  }
+  .index .nav-next {
+    float: right;
+  }
+  .index .nav-clear {
+    clear: both;
+  }
+</style>
+{{end}}
+{{define "nav"}}
+  {{- $p := .Paths -}}
+  <div>
+    <span class="nav-home"><a href="{{$p.Root}}">Home</a></span>
+    {{if .PrevID}}<span class="nav-prev"><a href="{{$p.IndexPrev .PrevID}}">Previous</a></span>{{end}}
+    {{if .NextID}}<span class="nav-next"><a href="{{$p.Index .NextID}}">Next</a></span>{{end}}
+    <span class="nav-clear"></span>
+  </div>
+{{end}}
 {{define "body"}}
 <div class="index">
-  {{ $ps := .}} 
-  <div>
-    <span style="text-align: center"><a href="{{.Root}}">Home</a></span>
-    {{if .PrevID}}<span style="float:left"><a href="{{.Index .PrevID}}?prev">Previous</a></span>{{end}}
-    {{if .NextID}}<span style="float:right"><a href="{{.Index .NextID}}">Next</a></span>{{end}}
-    <span style="clear:both">&nbsp;</span>
-  </div>
+  {{ $p := .Paths}}
+  {{- template "nav" . -}}
   {{if .Pic}}
   <ul class="thumbnail-list">
     {{- range .Pic -}}
     <li>{{- /**/ -}}
       <div class="thumbnail-cntr">{{- /**/ -}}
-        <a href="{{$ps.Viewer .Id}}">{{- /**/ -}}
+        <a href="{{$p.Viewer .Id}}">{{- /**/ -}}
           <img {{/**/ -}}
 	          class="thumbnail{{if .PendingDeletion}} deleted{{end}}" {{/**/ -}}
-	          src="{{$ps.Root}}{{.ThumbnailRelativeUrl}}" />{{- /**/ -}}
+	          src="{{$p.PicThumb .ThumbnailRelativeUrl}}" />{{- /**/ -}}
 	      </a>{{- /**/ -}}
       </div>{{- /**/ -}}
     </li>{{- /**/ -}}
     {{- end -}}
   </ul>
   {{end}}
-  <div>
-    <span style="text-align: center"><a href="{{.Root}}">Home</a></span>
-    {{if .PrevID}}<span style="float:left"><a href="{{.Index .PrevID}}?prev">Previous</a></span>{{end}}
-    {{if .NextID}}<span style="float:right"><a href="{{.Index .NextID}}">Next</a></span>{{end}}
-    <span style="clear:both">&nbsp;</span>
-  </div>
+  {{- template "nav" . -}}
 </div>
 <form action="" method="post" enctype="multipart/form-data">
     <input type="file" name="file" /><br />
     <input placeholder="File URL" name="url" /><br />
     <input type="submit" value="Submit" />
 </form>
-  <a href="{{.Login}}">Login / Join</a>
+  <a href="{{$p.Login}}">Login / Join</a>
 {{end}}

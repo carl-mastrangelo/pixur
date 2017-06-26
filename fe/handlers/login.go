@@ -3,6 +3,7 @@ package handlers
 import (
 	"html/template"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -17,47 +18,47 @@ const (
 	pixPwtCookieName     = "pt"
 )
 
-func (p Paths) PixDir() string {
-	return p.Root() + "pix/"
+func (p Paths) PixDir() *url.URL {
+	return p.Root().ResolveReference(&url.URL{Path: "pix/"})
 }
 
-func (p Paths) User() string {
-	return p.Root() + "u/"
+func (p Paths) User() *url.URL {
+	return p.Root().ResolveReference(&url.URL{Path: "u/"})
 }
 
-func (p Paths) Login() string {
-	return p.User() + "login"
+func (p Paths) Login() *url.URL {
+	return p.User().ResolveReference(&url.URL{Path: "login"})
 }
 
-func (p Paths) Logout() string {
-	return p.User() + "logout"
+func (p Paths) Logout() *url.URL {
+	return p.User().ResolveReference(&url.URL{Path: "logout"})
 }
 
-func (p Paths) ActionDir() string {
-	return p.Root() + "a/"
+func (p Paths) ActionDir() *url.URL {
+	return p.Root().ResolveReference(&url.URL{Path: "a/"})
 }
 
-func (p Paths) LoginAction() string {
-	return p.ActionDir() + "auth"
+func (p Paths) LoginAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "auth"})
 }
 
 type baseData struct {
-	Title string
+	Title     string
+	XsrfName  string
+	XsrfToken string
 }
 
 type loginData struct {
 	baseData
 
-	XsrfName  string
-	XsrfToken string
-	Next      string
-	Paths     Paths
+	Next  string
+	Paths Paths
 }
 
 var loginTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/login.html"))
 
 type loginHandler struct {
-	Paths
+	p      Paths
 	c      api.PixurServiceClient
 	now    func() time.Time
 	secure bool
@@ -67,11 +68,12 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := loginData{
 		baseData: baseData{
-			Title: "Login",
+			Title:     "Login",
+			XsrfName:  xsrfFieldName,
+			XsrfToken: xsrfToken,
 		},
-		XsrfName:  xsrfFieldName,
-		XsrfToken: xsrfToken,
-		Paths:     h.Paths,
+
+		Paths: h.p,
 	}
 	if err := loginTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -106,7 +108,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     refreshPwtCookieName,
 			Value:    res.RefreshToken,
-			Path:     h.LoginAction(),
+			Path:     h.p.LoginAction().String(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -121,7 +123,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     authPwtCookieName,
 			Value:    res.AuthToken,
-			Path:     h.Root(),
+			Path:     h.p.Root().String(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -136,7 +138,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     pixPwtCookieName,
 			Value:    res.PixToken,
-			Path:     h.PixDir(),
+			Path:     h.p.PixDir().String(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -146,13 +148,13 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    "",
-		Path:     (Paths{}).Root(), // Has to be accessible from root, reset from previous
+		Path:     h.p.Root().String(), // Has to be accessible from root, reset from previous
 		Expires:  h.now().Add(-time.Hour),
 		Secure:   h.secure,
 		HttpOnly: true,
 	})
 
-	http.Redirect(w, r, h.Root(), http.StatusSeeOther)
+	http.Redirect(w, r, h.p.Root().String(), http.StatusSeeOther)
 }
 
 func init() {
@@ -162,13 +164,13 @@ func init() {
 			c:      s.Client,
 			secure: s.Secure,
 			now:    s.Now,
-			Paths:  Paths{},
+			p:      Paths{},
 		}
 
 		// TODO: maybe consolidate these?
-		s.HTTPMux.Handle(h.Login(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.Logout(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.LoginAction(), bh.action(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.p.Login().String(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.Logout().String(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.LoginAction().String(), bh.action(http.HandlerFunc(h.login)))
 		return nil
 	})
 }

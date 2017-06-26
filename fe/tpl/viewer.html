@@ -1,15 +1,31 @@
+{{- define "style" -}}
+<style>
+  .viewer .thepic, .viewer .thevideo {
+    height: auto;
+    max-width: 100%;
+    width: auto;
+  }
+  .viewer .votebutton {
+    padding: 0 .5cm 0 .5cm;
+  }
+  .votebar form {
+    display: inline;
+  }
+</style>
+{{- end -}}
 {{define "body"}}
+{{- $p := .Paths -}}
 <div class="viewer">
   <div>
     {{if ne .Pic.Type "WEBM"}}
-    <a href="{{.Root}}{{.Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
-      <img src="{{.Root}}{{.Pic.RelativeUrl}}" style="width: auto; height: auto; max-width: 100%" />
+    <a href="{{$p.Pic .Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
+      <img class="thepic" src="{{$p.Pic .Pic.RelativeUrl}}" />
       {{- /**/ -}}
     </a>
     {{else}}
     <video
-        style="width: auto; height: auto; max-width: 100%"
-        src="{{.Root}}{{.Pic.RelativeUrl}}"
+        class="thevideo"
+        src="{{$p.Pic .Pic.RelativeUrl}}"
         loop
         muted
         autoplay
@@ -18,6 +34,29 @@
     </video>
     {{end}}
   </div>
-  {{ .Pic.ViewCount }}
+  <div class="votebar">
+    <form action="{{$p.VoteAction}}" method="post">
+      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{.Vote}}" value="DOWN" />
+      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+      <input type="submit" value="▼" class="votebutton" />
+    </form>
+    <form action="{{$p.VoteAction}}" method="post">
+      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{.Vote}}" value="NEUTRAL" />
+      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+      <input type="submit" value="meh" class="votebutton" />
+    </form>
+    <form action="{{$p.VoteAction}}" method="post">
+      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{.Vote}}" value="UP" />
+      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+      <input type="submit" value="▲" class="votebutton" />
+    </form>
+  </div>
+  {{ .Pic }}
 <div>
 {{end}}

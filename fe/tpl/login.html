@@ -1,10 +1,11 @@
+{{define "style"}}{{end}}
 {{define "body"}}
-{{ $ps := .Paths}}
-<form action="{{$ps.LoginAction}}" method="post">
+{{ $p := .Paths}}
+<form action="{{$p.LoginAction}}" method="post">
   <input type="text" name="ident" placeholder="Ident" /><br />
   <input type="password" name="secret" /><br />
   <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
-  <input type="submit" value="login" />
+  <input type="submit" value="Login" />
   {{- if .Next}}<input type="hidden" value="{{.Next}}" />{{end -}}
 </form>
 {{end}}

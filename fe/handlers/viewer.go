@@ -3,6 +3,7 @@ package handlers
 import (
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -11,14 +12,32 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var viewerTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/viewer.html"))
+type Params struct{}
 
-func (p Paths) ViewerDir() string {
-	return p.Root() + "p/"
+func (p Params) Vote() string {
+	return "vote"
 }
 
-func (p Paths) Viewer(id string) string {
-	return p.ViewerDir() + id
+func (p Params) PicId() string {
+	return "pic_id"
+}
+
+func (p Params) Next() string {
+	return "next"
+}
+
+var viewerTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/viewer.html"))
+
+func (p Paths) ViewerDir() *url.URL {
+	return p.Root().ResolveReference(&url.URL{Path: "p/"})
+}
+
+func (p Paths) Viewer(id string) *url.URL {
+	return p.ViewerDir().ResolveReference(&url.URL{Path: id})
+}
+
+func (p Paths) VoteAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "picVote"})
 }
 
 type viewerHandler struct {
@@ -29,11 +48,12 @@ type viewerHandler struct {
 type viewerData struct {
 	baseData
 	Paths
+	Params
 	Pic *api.Pic
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, h.ViewerDir())
+	id := strings.TrimPrefix(r.URL.Path, h.ViewerDir().String())
 	req := &api.LookupPicDetailsRequest{
 		PicId: id,
 	}
@@ -43,7 +63,13 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
+	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	data := viewerData{
+		baseData: baseData{
+			Title:     "",
+			XsrfName:  xsrfFieldName,
+			XsrfToken: xsrfToken,
+		},
 		Paths: h.Paths,
 		Pic:   details.Pic,
 	}
@@ -69,7 +95,34 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
+	postedVote := r.PostFormValue((Params{}).Vote())
+	mappedVote := api.UpsertPicVoteRequest_Vote(api.UpsertPicVoteRequest_Vote_value[postedVote])
 
+	next := r.PostFormValue((Params{}).Next())
+	nextURL, err := url.Parse(next)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	nextURL.Scheme = ""
+	nextURL.Opaque = ""
+	nextURL.User = nil
+	nextURL.Host = ""
+
+	req := &api.UpsertPicVoteRequest{
+		PicId: r.PostFormValue((Params{}).PicId()),
+		Vote:  mappedVote,
+	}
+
+	ctx := r.Context()
+
+	_, err = h.c.UpsertPicVote(ctx, req)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, nextURL.String(), http.StatusSeeOther)
 }
 
 func init() {
@@ -79,7 +132,8 @@ func init() {
 			c: s.Client,
 		}
 
-		s.HTTPMux.Handle(defaultPaths.ViewerDir(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(defaultPaths.VoteAction().String(), bh.action(http.HandlerFunc(h.vote)))
+		s.HTTPMux.Handle(defaultPaths.ViewerDir().String(), bh.static(http.HandlerFunc(h.static)))
 		return nil
 	})
 }
