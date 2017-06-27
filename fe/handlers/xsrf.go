@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	b64XsrfEnc         = base64.RawStdEncoding
+	b64XsrfEnc         = base64.URLEncoding
 	b64XsrfTokenLength = b64XsrfEnc.EncodedLen(xsrfTokenLength)
 )
 

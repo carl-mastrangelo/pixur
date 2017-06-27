@@ -92,10 +92,6 @@ func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
-	nextURL.Scheme = ""
-	nextURL.Opaque = ""
-	nextURL.User = nil
-	nextURL.Host = ""
 
 	req := &api.UpsertPicVoteRequest{
 		PicId: r.PostFormValue((Params{}).PicId()),
@@ -110,7 +106,7 @@ func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, nextURL.String(), http.StatusSeeOther)
+	http.Redirect(w, r, nextURL.RequestURI(), http.StatusSeeOther)
 }
 
 func init() {
