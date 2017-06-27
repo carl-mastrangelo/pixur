@@ -21,16 +21,16 @@ type indexData struct {
 var indexTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/index.html"))
 
 type indexHandler struct {
-	c     api.PixurServiceClient
-	paths Paths
+	c api.PixurServiceClient
+	p Paths
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	var id string
 	switch {
-	case r.URL.Path == h.paths.Root().String():
-	case strings.HasPrefix(r.URL.Path, h.paths.IndexDir().String()):
-		id = r.URL.Path[len(h.paths.IndexDir().String()):]
+	case r.URL.Path == h.p.Root().RequestURI():
+	case strings.HasPrefix(r.URL.Path, h.p.IndexDir().RequestURI()):
+		id = r.URL.Path[len(h.p.IndexDir().RequestURI()):]
 	default:
 		http.NotFound(w, r)
 		return
@@ -83,7 +83,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		baseData: baseData{
 			Title: "Index",
 		},
-		Paths:  defaultPaths,
+		Paths:  h.p,
 		Pic:    res.Pic,
 		NextID: nextID,
 		PrevID: prevID,
@@ -99,10 +99,11 @@ func init() {
 		bh := newBaseHandler(s)
 		h := indexHandler{
 			c: s.Client,
+			p: Paths{R: s.HTTPRoot},
 		}
 
-		s.HTTPMux.Handle(defaultPaths.IndexDir().String(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(defaultPaths.Root().String(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.IndexDir().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.Root().RequestURI(), bh.static(http.HandlerFunc(h.static)))
 		return nil
 	})
 }

@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 	"net/http/httputil"
+	"net/url"
+	"strings"
 
 	"github.com/carl-mastrangelo/h2c"
 
@@ -15,10 +17,15 @@ const (
 
 func init() {
 	register(func(s *server.Server) error {
+		p := Paths{R: s.HTTPRoot}
+		oldroot := p.Root()
+		oldrootpath := oldroot.RequestURI()
+		newroot := &url.URL{Scheme: "http", Host: s.PixurSpec}
+
 		rp := &httputil.ReverseProxy{
 			Director: func(r *http.Request) {
-				r.URL.Scheme = "http"
-				r.URL.Host = s.PixurSpec
+				r.URL.Path = strings.TrimPrefix(r.URL.Path, oldrootpath)
+				r.URL = newroot.ResolveReference(r.URL)
 				if c, err := r.Cookie(pixPwtCookieName); err == nil {
 					c.Name = pixPwtDelegateCookieName
 					r.AddCookie(c)
@@ -26,7 +33,7 @@ func init() {
 			},
 			Transport: h2c.NewClearTextTransport(http.DefaultTransport),
 		}
-		s.HTTPMux.Handle((Paths{}).PixDir().String(), rp)
+		s.HTTPMux.Handle(p.PixDir().RequestURI(), rp)
 		return nil
 	})
 }

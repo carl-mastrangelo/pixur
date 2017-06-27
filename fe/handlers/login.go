@@ -83,7 +83,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     refreshPwtCookieName,
 			Value:    res.RefreshToken,
-			Path:     h.p.LoginAction().String(),
+			Path:     h.p.LoginAction().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -98,7 +98,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     authPwtCookieName,
 			Value:    res.AuthToken,
-			Path:     h.p.Root().String(),
+			Path:     h.p.Root().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -113,7 +113,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     pixPwtCookieName,
 			Value:    res.PixToken,
-			Path:     h.p.PixDir().String(),
+			Path:     h.p.PixDir().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -123,7 +123,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    "",
-		Path:     h.p.Root().String(), // Has to be accessible from root, reset from previous
+		Path:     h.p.Root().RequestURI(), // Has to be accessible from root, reset from previous
 		Expires:  h.now().Add(-time.Hour),
 		Secure:   h.secure,
 		HttpOnly: true,
@@ -139,13 +139,13 @@ func init() {
 			c:      s.Client,
 			secure: s.Secure,
 			now:    s.Now,
-			p:      Paths{},
+			p:      Paths{R: s.HTTPRoot},
 		}
 
 		// TODO: maybe consolidate these?
-		s.HTTPMux.Handle(h.p.Login().String(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.p.Logout().String(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.p.LoginAction().String(), bh.action(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.p.Login().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.Logout().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.LoginAction().RequestURI(), bh.action(http.HandlerFunc(h.login)))
 		return nil
 	})
 }

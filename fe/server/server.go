@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/carl-mastrangelo/h2c"
@@ -24,7 +25,8 @@ type Server struct {
 	// static needs to know where to forward pix requests to
 	PixurSpec string
 
-	Secure bool
+	Secure   bool
+	HTTPRoot *url.URL
 
 	regfuncs    []RegFunc
 	interceptor grpc.UnaryClientInterceptor
@@ -76,6 +78,13 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 	}
 	if s.Random == nil {
 		s.Random = rand.Reader
+	}
+	if s.HTTPRoot == nil {
+		var err error
+		s.HTTPRoot, err = url.Parse(c.HttpRoot)
+		if err != nil {
+			return err
+		}
 	}
 	s.Secure = !c.Insecure
 	// Server has all values initialized, notify registrants.

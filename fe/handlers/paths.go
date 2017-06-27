@@ -4,15 +4,13 @@ import (
 	"net/url"
 )
 
-var defaultPaths = Paths{}
-
 type Paths struct {
 	R *url.URL
 }
 
 func (p Paths) Root() *url.URL {
 	if p.R != nil {
-		return p.R
+		return &*p.R
 	}
 	return &url.URL{Path: "/"}
 }

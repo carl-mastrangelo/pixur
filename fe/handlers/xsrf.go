@@ -57,11 +57,11 @@ func newXsrfToken(random io.Reader, now func() time.Time) (string, error) {
 	return string(b64XsrfToken), nil
 }
 
-func newXsrfCookie(token string, now func() time.Time, secure bool) *http.Cookie {
+func newXsrfCookie(token string, now func() time.Time, p Paths, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     xsrfCookieName,
 		Value:    token,
-		Path:     (Paths{}).Root().String(), // Has to be accessible from root, reset from previous
+		Path:     p.Root().RequestURI(), // Has to be accessible from root, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
 		Secure:   secure,
 		HttpOnly: true,

@@ -15,6 +15,7 @@ var (
 		HttpSpec:  ":http",
 		PixurSpec: ":8888",
 		Insecure:  false,
+		HttpRoot:  "/",
 	}
 	Conf = mergeParseConfigFlag(defaultValues)
 )
@@ -24,6 +25,7 @@ func init() {
 	flag.StringVar(&Conf.HttpSpec, "http_spec", Conf.HttpSpec, "Default HTTP port")
 	flag.StringVar(&Conf.PixurSpec, "pixur_spec", Conf.PixurSpec, "Pixur API server")
 	flag.BoolVar(&Conf.Insecure, "insecure", Conf.Insecure, "Http server is insecure")
+	flag.StringVar(&Conf.HttpRoot, "http_root", Conf.HttpRoot, "Serving root for http")
 }
 
 func mergeParseConfigFlag(defaults *Config) *Config {

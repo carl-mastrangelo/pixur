@@ -16,5 +16,8 @@ message Config {
 	// If the site is access through insecure connections.
 	// Affects cookies.
 	bool insecure = 3;
+	
+	// describes the root url to serve from.
+	string http_root = 4;
 }
 

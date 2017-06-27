@@ -29,7 +29,7 @@ func (p Params) Next() string {
 var viewerTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/viewer.html"))
 
 type viewerHandler struct {
-	Paths
+	p Paths
 	c api.PixurServiceClient
 }
 
@@ -41,7 +41,7 @@ type viewerData struct {
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, h.ViewerDir().String())
+	id := strings.TrimPrefix(r.URL.Path, h.p.ViewerDir().RequestURI())
 	req := &api.LookupPicDetailsRequest{
 		PicId: id,
 	}
@@ -58,7 +58,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 			XsrfName:  xsrfFieldName,
 			XsrfToken: xsrfToken,
 		},
-		Paths: h.Paths,
+		Paths: h.p,
 		Pic:   details.Pic,
 	}
 	if err := viewerTpl.Execute(w, data); err != nil {
@@ -118,10 +118,10 @@ func init() {
 		bh := newBaseHandler(s)
 		h := viewerHandler{
 			c: s.Client,
+			p: Paths{s.HTTPRoot},
 		}
-
-		s.HTTPMux.Handle(defaultPaths.VoteAction().String(), bh.action(http.HandlerFunc(h.vote)))
-		s.HTTPMux.Handle(defaultPaths.ViewerDir().String(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.p.VoteAction().RequestURI(), bh.action(http.HandlerFunc(h.vote)))
+		s.HTTPMux.Handle(h.p.ViewerDir().RequestURI(), bh.static(http.HandlerFunc(h.static)))
 		return nil
 	})
 }
