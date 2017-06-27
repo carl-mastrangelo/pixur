@@ -3,37 +3,11 @@ package handlers
 import (
 	"html/template"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
 )
-
-var defaultPaths = Paths{}
-
-type Paths struct {
-	r *url.URL
-}
-
-func (p Paths) Root() *url.URL {
-	if p.r != nil {
-		return p.r
-	}
-	return &url.URL{Path: "/"}
-}
-
-func (p Paths) IndexDir() *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: "i/"})
-}
-
-func (p Paths) Index(id string) *url.URL {
-	return p.IndexDir().ResolveReference(&url.URL{Path: id})
-}
-
-func (p Paths) IndexPrev(id string) *url.URL {
-	return p.IndexDir().ResolveReference(&url.URL{Path: id, RawQuery: "prev"})
-}
 
 type indexData struct {
 	Paths

@@ -3,7 +3,6 @@ package handlers
 import (
 	"html/template"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -17,30 +16,6 @@ const (
 	authPwtCookieName    = "at"
 	pixPwtCookieName     = "pt"
 )
-
-func (p Paths) PixDir() *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: "pix/"})
-}
-
-func (p Paths) User() *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: "u/"})
-}
-
-func (p Paths) Login() *url.URL {
-	return p.User().ResolveReference(&url.URL{Path: "login"})
-}
-
-func (p Paths) Logout() *url.URL {
-	return p.User().ResolveReference(&url.URL{Path: "logout"})
-}
-
-func (p Paths) ActionDir() *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: "a/"})
-}
-
-func (p Paths) LoginAction() *url.URL {
-	return p.ActionDir().ResolveReference(&url.URL{Path: "auth"})
-}
 
 type baseData struct {
 	Title     string

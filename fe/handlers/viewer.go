@@ -28,18 +28,6 @@ func (p Params) Next() string {
 
 var viewerTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/viewer.html"))
 
-func (p Paths) ViewerDir() *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: "p/"})
-}
-
-func (p Paths) Viewer(id string) *url.URL {
-	return p.ViewerDir().ResolveReference(&url.URL{Path: id})
-}
-
-func (p Paths) VoteAction() *url.URL {
-	return p.ActionDir().ResolveReference(&url.URL{Path: "picVote"})
-}
-
 type viewerHandler struct {
 	Paths
 	c api.PixurServiceClient
