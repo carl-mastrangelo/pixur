@@ -3,10 +3,8 @@ package handlers
 import (
 	"html/template"
 	"net/http"
-	"strings"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/fe/server"
 )
 
 type indexData struct {
@@ -26,16 +24,6 @@ type indexHandler struct {
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
-	var id string
-	switch {
-	case r.URL.Path == h.p.Root().RequestURI():
-	case strings.HasPrefix(r.URL.Path, h.p.IndexDir().RequestURI()):
-		id = r.URL.Path[len(h.p.IndexDir().RequestURI()):]
-	default:
-		http.NotFound(w, r)
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		httpError(w, &HTTPErr{
 			Message: err.Error(),
@@ -43,8 +31,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	_, isPrev := r.Form["prev"]
+	id := r.FormValue(h.p.IndexParamPic())
+	_, isPrev := r.Form[h.p.IndexParamPrev()]
 	req := &api.FindIndexPicsRequest{
 		StartPicId: id,
 		Ascending:  isPrev,
@@ -92,18 +80,4 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
-}
-
-func init() {
-	register(func(s *server.Server) error {
-		bh := newBaseHandler(s)
-		h := indexHandler{
-			c: s.Client,
-			p: Paths{R: s.HTTPRoot},
-		}
-
-		s.HTTPMux.Handle(h.p.IndexDir().RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.p.Root().RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		return nil
-	})
 }

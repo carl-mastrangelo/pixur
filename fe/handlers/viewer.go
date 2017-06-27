@@ -121,7 +121,7 @@ func init() {
 			p: Paths{s.HTTPRoot},
 		}
 		s.HTTPMux.Handle(h.p.VoteAction().RequestURI(), bh.action(http.HandlerFunc(h.vote)))
-		s.HTTPMux.Handle(h.p.ViewerDir().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		// static is initialized in root.go
 		return nil
 	})
 }
