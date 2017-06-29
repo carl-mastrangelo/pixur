@@ -10,7 +10,7 @@ CommentsService.prototype.addComment = function(picId, commentParentId, text) {
       pic_id: picId,
       comment_parent_id: commentParentId,
       text: text
-  }
+  };
   var httpConfig = {
     "headers":  {
       "Content-Type": "application/x-www-form-urlencoded"
@@ -32,7 +32,7 @@ CommentsService.prototype.addComment = function(picId, commentParentId, text) {
   );
 
   return deferred.promise;
-}
+};
 
 
 // Must be in post order
@@ -44,14 +44,15 @@ CommentsService.prototype.buildTree = function(comments) {
 		if (!("children" in map[comments[i].commentParentId])) {
 			map[comments[i].commentParentId].children = [];
 		}
-		map[comments[i].commentParentId].children.push(comments[i])
+		map[comments[i].commentParentId].children.push(comments[i]);
 	}
 	return map[0];
-}
+};
 
 CommentsService.postTransform = function(o) {
   var str = [];
-  for(var p in o)
-  str.push(encodeURIComponent(p) + "=" + encodeURIComponent(o[p]));
+  for(var p in o) {
+    str.push(encodeURIComponent(p) + "=" + encodeURIComponent(o[p]));
+  }
   return str.join("&");
 };

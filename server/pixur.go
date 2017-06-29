@@ -108,6 +108,7 @@ func (s *Server) setup(c *config.Config) error {
 	s.s.Addr = c.HttpSpec
 	mux := http.NewServeMux()
 	s.s.Handler = mux
+	h2c.AttachClearTextHandler(nil /* default http2 server */, s.s)
 
 	h2c.AttachClearTextHandler(nil, s.s)
 

@@ -9,7 +9,7 @@ var LoginCtrl = function($scope, $http, $window, authService) {
 	this.window_ = $window;
 	
 	this.errorText = null;
-}
+};
 
 LoginCtrl.prototype.createUser = function() {
 	this.authService_.createUser(this.createIdent, this.createSecret).then(function (res) {
