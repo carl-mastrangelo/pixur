@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/carl-mastrangelo/h2c"
+
 	"pixur.org/pixur/api/handlers"
 	sdb "pixur.org/pixur/schema/db"
 	"pixur.org/pixur/server/config"
@@ -106,6 +108,7 @@ func (s *Server) setup(c *config.Config) error {
 	s.s.Addr = c.HttpSpec
 	mux := http.NewServeMux()
 	s.s.Handler = mux
+	h2c.AttachClearTextHandler(nil /* default http2 server */, s.s)
 
 	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
 		DB:          db,
