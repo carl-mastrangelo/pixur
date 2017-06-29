@@ -12,32 +12,23 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-type Params struct{}
-
-func (p Params) Vote() string {
-	return "vote"
-}
-
-func (p Params) PicId() string {
-	return "pic_id"
-}
-
-func (p Params) Next() string {
-	return "next"
-}
-
 var viewerTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/viewer.html"))
 
 type viewerHandler struct {
-	p Paths
+	p paths
 	c api.PixurServiceClient
+}
+
+type picComment struct {
+	*api.PicComment
+	Child []*picComment
+	baseData
 }
 
 type viewerData struct {
 	baseData
-	Paths
-	Params
-	Pic *api.Pic
+	Pic        *api.Pic
+	PicComment []*picComment
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -51,15 +42,30 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
+
 	xsrfToken, _ := xsrfTokenFromContext(ctx)
+	bd := baseData{
+		Paths:     h.p,
+		XsrfToken: xsrfToken,
+	}
+
+	root := new(picComment)
+	if details.PicCommentTree != nil && len(details.PicCommentTree.Comment) > 0 {
+		m := make(map[string][]*picComment)
+		for _, c := range details.PicCommentTree.Comment {
+			m[c.CommentParentId] = append(m[c.CommentParentId], &picComment{
+				PicComment: c,
+				Child:      m[c.CommentId],
+				baseData:   bd,
+			})
+		}
+		root.Child = m["0"]
+	}
+
 	data := viewerData{
-		baseData: baseData{
-			Title:     "",
-			XsrfName:  xsrfFieldName,
-			XsrfToken: xsrfToken,
-		},
-		Paths: h.p,
-		Pic:   details.Pic,
+		baseData:   bd,
+		Pic:        details.Pic,
+		PicComment: root.Child,
 	}
 	if err := viewerTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -83,10 +89,10 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
-	postedVote := r.PostFormValue((Params{}).Vote())
+	postedVote := r.PostFormValue((params{}).Vote())
 	mappedVote := api.UpsertPicVoteRequest_Vote(api.UpsertPicVoteRequest_Vote_value[postedVote])
 
-	next := r.PostFormValue((Params{}).Next())
+	next := r.PostFormValue((params{}).Next())
 	nextURL, err := url.Parse(next)
 	if err != nil {
 		httpError(w, err)
@@ -94,7 +100,7 @@ func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &api.UpsertPicVoteRequest{
-		PicId: r.PostFormValue((Params{}).PicId()),
+		PicId: r.PostFormValue((params{}).PicId()),
 		Vote:  mappedVote,
 	}
 
@@ -114,7 +120,7 @@ func init() {
 		bh := newBaseHandler(s)
 		h := viewerHandler{
 			c: s.Client,
-			p: Paths{s.HTTPRoot},
+			p: paths{r: s.HTTPRoot},
 		}
 		s.HTTPMux.Handle(h.p.VoteAction().RequestURI(), bh.action(http.HandlerFunc(h.vote)))
 		// static is initialized in root.go

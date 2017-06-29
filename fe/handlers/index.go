@@ -8,7 +8,6 @@ import (
 )
 
 type indexData struct {
-	Paths
 	baseData
 
 	Pic []*api.Pic
@@ -20,7 +19,7 @@ var indexTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/index.htm
 
 type indexHandler struct {
 	c api.PixurServiceClient
-	p Paths
+	p paths
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -70,8 +69,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	data := indexData{
 		baseData: baseData{
 			Title: "Index",
+			Paths: h.p,
 		},
-		Paths:  h.p,
 		Pic:    res.Pic,
 		NextID: nextID,
 		PrevID: prevID,

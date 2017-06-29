@@ -14,18 +14,19 @@
 </style>
 {{- end -}}
 {{define "body"}}
-{{- $p := .Paths -}}
+{{- $pt := .Paths -}}
+{{- $pr := .Params -}}
 <div class="viewer">
   <div>
     {{if ne .Pic.Type "WEBM"}}
-    <a href="{{$p.Pic .Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
-      <img class="thepic" src="{{$p.Pic .Pic.RelativeUrl}}" />
+    <a href="{{$pt.Pic .Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
+      <img class="thepic" src="{{$pt.Pic .Pic.RelativeUrl}}" />
       {{- /**/ -}}
     </a>
     {{else}}
     <video
         class="thevideo"
-        src="{{$p.Pic .Pic.RelativeUrl}}"
+        src="{{$pt.Pic .Pic.RelativeUrl}}"
         loop
         muted
         autoplay
@@ -35,28 +36,51 @@
     {{end}}
   </div>
   <div class="votebar">
-    <form action="{{$p.VoteAction}}" method="post">
-      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{.Vote}}" value="DOWN" />
-      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+    <form action="{{$pt.VoteAction}}" method="post">
+      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{$pr.Vote}}" value="DOWN" />
+      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
       <input type="submit" value="▼" class="votebutton" />
     </form>
-    <form action="{{$p.VoteAction}}" method="post">
-      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{.Vote}}" value="NEUTRAL" />
-      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+    <form action="{{$pt.VoteAction}}" method="post">
+      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{$pr.Vote}}" value="NEUTRAL" />
+      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
       <input type="submit" value="meh" class="votebutton" />
     </form>
-    <form action="{{$p.VoteAction}}" method="post">
-      <input type="hidden" name="{{.XsrfName}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{.Vote}}" value="UP" />
-      <input type="hidden" name="{{.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{.Next}}" value="{{.Viewer .Pic.Id}}" />
+    <form action="{{$pt.VoteAction}}" method="post">
+      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{$pr.Vote}}" value="UP" />
+      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
       <input type="submit" value="▲" class="votebutton" />
     </form>
   </div>
   {{ .Pic }}
+  <br>
+  {{template "comment" .PicComment}}
 <div>
+{{end}}
+{{define "comment"}}
+  <ul>
+	    {{- range . -}}
+	    {{- $pt := .Paths -}}
+	    {{- $pr := .Params -}}
+	    <li>
+	      <div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
+	      	{{.CommentId}}: {{.Text}}
+	      </div>
+	      <form action="{{$pt.Comment}}" method="post">
+	          <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+	          <input type="hidden" name="{{$pr.PicId}}" value="{{.PicId}}" />
+	          <input type="hidden" name="{{$pr.CommentId}}" value="{{.CommentId}}" />
+	          <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .PicId}}" />
+	          <input type="submit" value="Reply" />
+	      </form>
+	      {{if .Child}}{{template "comment" .Child}}{{end}}
+	    </li>
+	    {{- end -}}
+  </ul>
 {{end}}

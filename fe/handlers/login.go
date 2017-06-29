@@ -17,23 +17,16 @@ const (
 	pixPwtCookieName     = "pt"
 )
 
-type baseData struct {
-	Title     string
-	XsrfName  string
-	XsrfToken string
-}
-
 type loginData struct {
 	baseData
 
-	Next  string
-	Paths Paths
+	Next string
 }
 
 var loginTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/login.html"))
 
 type loginHandler struct {
-	p      Paths
+	p      paths
 	c      api.PixurServiceClient
 	now    func() time.Time
 	secure bool
@@ -44,11 +37,9 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 	data := loginData{
 		baseData: baseData{
 			Title:     "Login",
-			XsrfName:  xsrfFieldName,
 			XsrfToken: xsrfToken,
+			Paths:     h.p,
 		},
-
-		Paths: h.p,
 	}
 	if err := loginTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -121,7 +112,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	// destroy previous xsrf cookie after login
 	http.SetCookie(w, &http.Cookie{
-		Name:     xsrfCookieName,
+		Name:     (params{}).XsrfCookie(),
 		Value:    "",
 		Path:     h.p.Root().RequestURI(), // Has to be accessible from root, reset from previous
 		Expires:  h.now().Add(-time.Hour),
@@ -139,7 +130,7 @@ func init() {
 			c:      s.Client,
 			secure: s.Secure,
 			now:    s.Now,
-			p:      Paths{R: s.HTTPRoot},
+			p:      paths{r: s.HTTPRoot},
 		}
 
 		// TODO: maybe consolidate these?

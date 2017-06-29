@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	oldctx "golang.org/x/net/context"
@@ -21,6 +23,13 @@ var (
 
 func register(rf server.RegFunc) {
 	regfuncs = append(regfuncs, rf)
+}
+
+type baseData struct {
+	Title     string
+	XsrfToken string
+	Paths     paths
+	Params    params
 }
 
 const (
@@ -73,7 +82,7 @@ func newBaseHandler(s *server.Server) *baseHandler {
 		now:    s.Now,
 		random: s.Random,
 		secure: s.Secure,
-		p:      Paths{s.HTTPRoot},
+		p:      paths{s.HTTPRoot},
 	}
 }
 
@@ -81,7 +90,7 @@ type baseHandler struct {
 	now    func() time.Time
 	random io.Reader
 	secure bool
-	p      Paths
+	p      paths
 }
 
 func (h *baseHandler) static(next http.Handler) http.Handler {
@@ -104,7 +113,7 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		now := func() time.Time {
 			return theTime
 		}
-		c, err := r.Cookie(xsrfCookieName)
+		c, err := r.Cookie((params{}).XsrfCookie())
 		if err == http.ErrNoCookie {
 			token, err := newXsrfToken(h.random, now)
 			if err != nil {
@@ -127,7 +136,11 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		ctx = contextFromXsrfToken(ctx, c.Value)
 
 		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
+
+		cw := compressResponse(w, r)
+		defer cw.Close()
+
+		next.ServeHTTP(cw, r)
 	})
 }
 
@@ -164,8 +177,91 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 		}
 
 		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
+		cw := compressResponse(w, r)
+		defer cw.Close()
+
+		next.ServeHTTP(cw, r)
 	})
+}
+
+var _ http.ResponseWriter = &compressingResponseWriter{}
+var _ http.Flusher = &compressingResponseWriter{}
+var _ http.Pusher = &compressingResponseWriter{}
+
+type compressingResponseWriter struct {
+	delegate http.ResponseWriter
+	writer   io.Writer
+	whcalled bool
+}
+
+func compressResponse(w http.ResponseWriter, r *http.Request) *compressingResponseWriter {
+	if encs := r.Header.Get("Accept-Encoding"); encs != "" {
+		for _, enc := range strings.Split(encs, ",") {
+			if strings.TrimSpace(enc) == "gzip" {
+				if gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed); err != nil {
+					panic(err)
+				} else {
+					return &compressingResponseWriter{delegate: w, writer: gw}
+				}
+			}
+		}
+	}
+	return &compressingResponseWriter{delegate: w}
+}
+
+func (rw *compressingResponseWriter) Close() error {
+	if closer, ok := rw.writer.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
+func (rw *compressingResponseWriter) Flush() {
+	if flusher, ok := rw.writer.(interface {
+		Flush() error
+	}); ok {
+		if err := flusher.Flush(); err != nil {
+			httpError(rw, err)
+			return
+		}
+	} else if flusher, ok := rw.delegate.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (rw *compressingResponseWriter) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := rw.delegate.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return http.ErrNotSupported
+}
+
+func (rw *compressingResponseWriter) Header() http.Header {
+	return rw.delegate.Header()
+}
+
+func (rw *compressingResponseWriter) WriteHeader(code int) {
+	if !rw.whcalled {
+		header := rw.Header()
+		if header.Get("Content-Type") == "" {
+			header.Set("Content-Type", "text/html; charset=utf-8")
+		}
+		if header.Get("Content-Encoding") == "" && rw.writer != nil {
+			header.Set("Content-Encoding", "gzip")
+		} else {
+			rw.writer = rw.delegate
+
+		}
+		rw.whcalled = true
+	}
+	rw.delegate.WriteHeader(code)
+}
+
+func (rw *compressingResponseWriter) Write(data []byte) (int, error) {
+	if !rw.whcalled {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.writer.Write(data)
 }
 
 type authContextKey struct{}

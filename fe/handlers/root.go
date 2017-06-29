@@ -9,7 +9,7 @@ import (
 )
 
 type rootHandler struct {
-	p             Paths
+	p             paths
 	indexHandler  http.Handler
 	viewerHandler http.Handler
 	pixHandler    http.Handler
@@ -37,28 +37,28 @@ func (h *rootHandler) static(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		paths := Paths{R: s.HTTPRoot}
+		pts := paths{r: s.HTTPRoot}
 		ih := &indexHandler{
 			c: s.Client,
-			p: paths,
+			p: pts,
 		}
 		vh := &viewerHandler{
 			c: s.Client,
-			p: paths,
+			p: pts,
 		}
 		ph := &pixHandler{
 			pixurSpec: s.PixurSpec,
-			p:         paths,
+			p:         pts,
 		}
 		bh := newBaseHandler(s)
 		rh := rootHandler{
-			p:             paths,
-			indexHandler:  http.HandlerFunc(ih.static),
-			viewerHandler: http.HandlerFunc(vh.static),
+			p:             pts,
+			indexHandler:  bh.static(http.HandlerFunc(ih.static)),
+			viewerHandler: bh.static(http.HandlerFunc(vh.static)),
 			pixHandler:    ph,
 		}
 
-		s.HTTPMux.Handle(paths.Root().RequestURI(), bh.static(http.HandlerFunc(rh.static)))
+		s.HTTPMux.Handle(pts.Root().RequestURI(), http.HandlerFunc(rh.static))
 		return nil
 	})
 }

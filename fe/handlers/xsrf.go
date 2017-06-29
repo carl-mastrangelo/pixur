@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	xsrfCookieName          = "xt"
-	xsrfFieldName           = "x_xt"
 	xsrfTokenIssuedAtLength = 48 / 8
 	xsrfTokenExpiresLength  = 48 / 8
 	xsrfTokenRandLength     = 48 / 8
@@ -57,9 +55,9 @@ func newXsrfToken(random io.Reader, now func() time.Time) (string, error) {
 	return string(b64XsrfToken), nil
 }
 
-func newXsrfCookie(token string, now func() time.Time, p Paths, secure bool) *http.Cookie {
+func newXsrfCookie(token string, now func() time.Time, p paths, secure bool) *http.Cookie {
 	return &http.Cookie{
-		Name:     xsrfCookieName,
+		Name:     (params{}).XsrfCookie(),
 		Value:    token,
 		Path:     p.Root().RequestURI(), // Has to be accessible from root, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
@@ -70,7 +68,7 @@ func newXsrfCookie(token string, now func() time.Time, p Paths, secure bool) *ht
 
 // xsrfTokensFromRequest extracts the cookie and header xsrf tokens from r
 func xsrfTokensFromRequest(r *http.Request) (string, string, *HTTPErr) {
-	c, err := r.Cookie(xsrfCookieName)
+	c, err := r.Cookie((params{}).XsrfCookie())
 	if err == http.ErrNoCookie {
 		return "", "", &HTTPErr{
 			Code:    http.StatusUnauthorized,
@@ -83,7 +81,7 @@ func xsrfTokensFromRequest(r *http.Request) (string, string, *HTTPErr) {
 			Message: "can't get xsrf token from cookie",
 		}
 	}
-	f := r.PostFormValue(xsrfFieldName)
+	f := r.PostFormValue((params{}).Xsrf())
 	return c.Value, f, nil
 }
 

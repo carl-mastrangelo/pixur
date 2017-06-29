@@ -15,7 +15,7 @@ const (
 )
 
 type pixHandler struct {
-	p         Paths
+	p         paths
 	pixurSpec string
 	once      sync.Once
 	rp        http.Handler

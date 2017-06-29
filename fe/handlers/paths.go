@@ -5,30 +5,30 @@ import (
 	"path"
 )
 
-type Paths struct {
-	R *url.URL
+type paths struct {
+	r *url.URL
 }
 
-func (p Paths) Root() *url.URL {
-	if p.R != nil {
-		return &*p.R
+func (p paths) Root() *url.URL {
+	if p.r != nil {
+		return &*p.r
 	}
 	return &url.URL{Path: "/"}
 }
 
-func (p Paths) IndexDir() *url.URL {
+func (p paths) IndexDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: ""})
 }
 
-func (p Paths) Index(id string) *url.URL {
+func (p paths) Index(id string) *url.URL {
 	return p.index(id, false)
 }
 
-func (p Paths) IndexPrev(id string) *url.URL {
+func (p paths) IndexPrev(id string) *url.URL {
 	return p.index(id, true)
 }
 
-func (p Paths) index(id string, prev bool) *url.URL {
+func (p paths) index(id string, prev bool) *url.URL {
 	v, err := url.ParseQuery(p.IndexDir().RawQuery)
 	if err != nil {
 		panic(err)
@@ -40,54 +40,62 @@ func (p Paths) index(id string, prev bool) *url.URL {
 	return p.IndexDir().ResolveReference(&url.URL{RawQuery: v.Encode()})
 }
 
-func (p Paths) IndexParamPic() string {
+func (p paths) IndexParamPic() string {
 	return "p"
 }
 
-func (p Paths) IndexParamPrev() string {
+func (p paths) IndexParamPrev() string {
 	return "prev"
 }
 
-func (p Paths) PixDir() *url.URL {
+func (p paths) PixDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: ""})
 }
 
-func (p Paths) User() *url.URL {
+func (p paths) User() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "u/"})
 }
 
-func (p Paths) Login() *url.URL {
+func (p paths) Login() *url.URL {
 	return p.User().ResolveReference(&url.URL{Path: "login"})
 }
 
-func (p Paths) Logout() *url.URL {
+func (p paths) Logout() *url.URL {
 	return p.User().ResolveReference(&url.URL{Path: "logout"})
 }
 
-func (p Paths) ActionDir() *url.URL {
+func (p paths) ActionDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "a/"})
 }
 
-func (p Paths) LoginAction() *url.URL {
+func (p paths) LoginAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "auth"})
 }
 
-func (p Paths) PicThumb(relativeURL string) *url.URL {
+func (p paths) PicThumb(relativeURL string) *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: path.Base(relativeURL)})
 }
 
-func (p Paths) Pic(relativeURL string) *url.URL {
+func (p paths) Pic(relativeURL string) *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: path.Base(relativeURL)})
 }
 
-func (p Paths) ViewerDir() *url.URL {
+func (p paths) ViewerDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: ""})
 }
 
-func (p Paths) Viewer(id string) *url.URL {
+func (p paths) Viewer(id string) *url.URL {
 	return p.ViewerDir().ResolveReference(&url.URL{Path: id})
 }
 
-func (p Paths) VoteAction() *url.URL {
+func (p paths) ViewerComment(picID, commentID string) *url.URL {
+	return p.ViewerDir().ResolveReference(&url.URL{Path: picID, Fragment: commentID})
+}
+
+func (p paths) VoteAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "picvote"})
+}
+
+func (p paths) Comment() *url.URL {
+	return p.ViewerDir().ResolveReference(&url.URL{Path: "comment"})
 }
