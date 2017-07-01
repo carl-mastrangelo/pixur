@@ -60,7 +60,8 @@
   </div>
   {{ .Pic }}
   <br>
-  {{template "comment" .PicComment}}
+  {{template "commentreply" .PicComment}}
+  {{template "comment" .PicComment.Child}}
 <div>
 {{end}}
 {{define "comment"}}
@@ -72,13 +73,7 @@
 	      <div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
 	      	{{.CommentId}}: {{.Text}}
 	      </div>
-	      <form action="{{$pt.Comment}}" method="post">
-	          <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-	          <input type="hidden" name="{{$pr.PicId}}" value="{{.PicId}}" />
-	          <input type="hidden" name="{{$pr.CommentId}}" value="{{.CommentId}}" />
-	          <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .PicId}}" />
-	          <input type="submit" value="Reply" />
-	      </form>
+	      <a href="{{$pt.CommentReply .PicId .CommentId}}">Reply</a>
 	      {{if .Child}}{{template "comment" .Child}}{{end}}
 	    </li>
 	    {{- end -}}

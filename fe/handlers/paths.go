@@ -6,7 +6,8 @@ import (
 )
 
 type paths struct {
-	r *url.URL
+	r  *url.URL
+	pr params
 }
 
 func (p paths) Root() *url.URL {
@@ -33,19 +34,11 @@ func (p paths) index(id string, prev bool) *url.URL {
 	if err != nil {
 		panic(err)
 	}
-	v.Set(p.IndexParamPic(), id)
+	v.Set(p.pr.IndexPic(), id)
 	if prev {
-		v.Set(p.IndexParamPrev(), "")
+		v.Set(p.pr.IndexPrev(), "")
 	}
 	return p.IndexDir().ResolveReference(&url.URL{RawQuery: v.Encode()})
-}
-
-func (p paths) IndexParamPic() string {
-	return "p"
-}
-
-func (p paths) IndexParamPrev() string {
-	return "prev"
 }
 
 func (p paths) PixDir() *url.URL {
@@ -98,4 +91,15 @@ func (p paths) VoteAction() *url.URL {
 
 func (p paths) Comment() *url.URL {
 	return p.ViewerDir().ResolveReference(&url.URL{Path: "comment"})
+}
+
+func (p paths) CommentReply(picID, commentID string) *url.URL {
+	v := url.Values{}
+	v.Add(p.pr.PicId(), picID)
+	v.Add(p.pr.CommentParentId(), commentID)
+	return p.Comment().ResolveReference(&url.URL{RawQuery: v.Encode()})
+}
+
+func (p paths) CommentAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "comment"})
 }

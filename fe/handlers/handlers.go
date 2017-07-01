@@ -82,7 +82,7 @@ func newBaseHandler(s *server.Server) *baseHandler {
 		now:    s.Now,
 		random: s.Random,
 		secure: s.Secure,
-		p:      paths{s.HTTPRoot},
+		pt:     paths{r: s.HTTPRoot},
 	}
 }
 
@@ -90,7 +90,7 @@ type baseHandler struct {
 	now    func() time.Time
 	random io.Reader
 	secure bool
-	p      paths
+	pt     paths
 }
 
 func (h *baseHandler) static(next http.Handler) http.Handler {
@@ -113,14 +113,14 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		now := func() time.Time {
 			return theTime
 		}
-		c, err := r.Cookie((params{}).XsrfCookie())
+		c, err := r.Cookie(h.pt.pr.XsrfCookie())
 		if err == http.ErrNoCookie {
 			token, err := newXsrfToken(h.random, now)
 			if err != nil {
 				httpError(w, err)
 				return
 			}
-			c = newXsrfCookie(token, now, h.p, h.secure)
+			c = newXsrfCookie(token, now, h.pt, h.secure)
 			http.SetCookie(w, c)
 		} else if err != nil {
 			httpError(w, err)
@@ -162,7 +162,7 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 			return
 		}
 
-		xsrfCookie, xsrfField, err := xsrfTokensFromRequest(r)
+		xsrfCookie, xsrfField, err := xsrfTokensFromRequest(r, h.pt.pr)
 		if err != nil {
 			httpError(w, err)
 			return

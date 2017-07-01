@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"html/template"
 	"net/http"
 	"path"
 	"strings"
@@ -8,15 +9,17 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
+var rootTpl = template.Must(template.ParseFiles("tpl/base.html")).Option("missingkey=error")
+
 type rootHandler struct {
-	p             paths
+	pt            paths
 	indexHandler  http.Handler
 	viewerHandler http.Handler
 	pixHandler    http.Handler
 }
 
 func (h *rootHandler) static(w http.ResponseWriter, r *http.Request) {
-	relpath := strings.TrimPrefix(r.URL.Path, h.p.Root().RequestURI())
+	relpath := strings.TrimPrefix(r.URL.Path, h.pt.Root().RequestURI())
 	if relpath == "" {
 		h.indexHandler.ServeHTTP(w, r)
 		return
@@ -37,28 +40,28 @@ func (h *rootHandler) static(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		pts := paths{r: s.HTTPRoot}
+		pt := paths{r: s.HTTPRoot}
 		ih := &indexHandler{
-			c: s.Client,
-			p: pts,
+			c:  s.Client,
+			pt: pt,
 		}
 		vh := &viewerHandler{
-			c: s.Client,
-			p: pts,
+			c:  s.Client,
+			pt: pt,
 		}
 		ph := &pixHandler{
 			pixurSpec: s.PixurSpec,
-			p:         pts,
+			pt:        pt,
 		}
 		bh := newBaseHandler(s)
 		rh := rootHandler{
-			p:             pts,
+			pt:            pt,
 			indexHandler:  bh.static(http.HandlerFunc(ih.static)),
 			viewerHandler: bh.static(http.HandlerFunc(vh.static)),
 			pixHandler:    ph,
 		}
 
-		s.HTTPMux.Handle(pts.Root().RequestURI(), http.HandlerFunc(rh.static))
+		s.HTTPMux.Handle(pt.Root().RequestURI(), http.HandlerFunc(rh.static))
 		return nil
 	})
 }

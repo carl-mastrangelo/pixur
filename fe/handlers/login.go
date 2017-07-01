@@ -23,10 +23,10 @@ type loginData struct {
 	Next string
 }
 
-var loginTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/login.html"))
+var loginTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/login.html"))
 
 type loginHandler struct {
-	p      paths
+	pt     paths
 	c      api.PixurServiceClient
 	now    func() time.Time
 	secure bool
@@ -38,7 +38,8 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 		baseData: baseData{
 			Title:     "Login",
 			XsrfToken: xsrfToken,
-			Paths:     h.p,
+			Paths:     h.pt,
+			Params:    h.pt.pr,
 		},
 	}
 	if err := loginTpl.Execute(w, data); err != nil {
@@ -74,7 +75,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     refreshPwtCookieName,
 			Value:    res.RefreshToken,
-			Path:     h.p.LoginAction().RequestURI(),
+			Path:     h.pt.LoginAction().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -89,7 +90,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     authPwtCookieName,
 			Value:    res.AuthToken,
-			Path:     h.p.Root().RequestURI(),
+			Path:     h.pt.Root().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -104,7 +105,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     pixPwtCookieName,
 			Value:    res.PixToken,
-			Path:     h.p.PixDir().RequestURI(),
+			Path:     h.pt.PixDir().RequestURI(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -112,15 +113,15 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	// destroy previous xsrf cookie after login
 	http.SetCookie(w, &http.Cookie{
-		Name:     (params{}).XsrfCookie(),
+		Name:     h.pt.pr.XsrfCookie(),
 		Value:    "",
-		Path:     h.p.Root().RequestURI(), // Has to be accessible from root, reset from previous
+		Path:     h.pt.Root().RequestURI(), // Has to be accessible from root, reset from previous
 		Expires:  h.now().Add(-time.Hour),
 		Secure:   h.secure,
 		HttpOnly: true,
 	})
 
-	http.Redirect(w, r, h.p.Root().String(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
 }
 
 func init() {
@@ -130,13 +131,13 @@ func init() {
 			c:      s.Client,
 			secure: s.Secure,
 			now:    s.Now,
-			p:      paths{r: s.HTTPRoot},
+			pt:     paths{r: s.HTTPRoot},
 		}
 
 		// TODO: maybe consolidate these?
-		s.HTTPMux.Handle(h.p.Login().RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.p.Logout().RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.p.LoginAction().RequestURI(), bh.action(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.pt.Login().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.Logout().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.LoginAction().RequestURI(), bh.action(http.HandlerFunc(h.login)))
 		return nil
 	})
 }

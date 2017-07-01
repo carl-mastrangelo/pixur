@@ -1,0 +1,16 @@
+{{define "commentreply" }}
+{{if .PicComment.CommentId }}
+<div>
+  {{.PicComment.CommentId}}: {{.PicComment.Text}}
+</div>
+{{end}}
+{{$pt := .Paths}}
+{{$pr := .Params}}
+<form action="{{$pt.CommentAction}}" method="post">
+  <textarea name="{{$pr.CommentText}}"></textarea>
+  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+  <input type="hidden" name="{{$pr.PicId}}" value="{{.PicComment.PicId}}" />
+  <input type="hidden" name="{{$pr.CommentParentId}}" value="{{.PicComment.CommentId}}" />
+  <input type="submit" value="Reply" />
+<form>
+{{end}}

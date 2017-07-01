@@ -15,7 +15,7 @@ const (
 )
 
 type pixHandler struct {
-	p         paths
+	pt        paths
 	pixurSpec string
 	once      sync.Once
 	rp        http.Handler
@@ -23,7 +23,7 @@ type pixHandler struct {
 
 func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.once.Do(func() {
-		oldroot := h.p.Root()
+		oldroot := h.pt.Root()
 		oldrootpath := oldroot.RequestURI()
 		newroot := &url.URL{Scheme: "http", Host: h.pixurSpec, Path: "/pix/"}
 

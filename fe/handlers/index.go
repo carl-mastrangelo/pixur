@@ -15,11 +15,11 @@ type indexData struct {
 	NextID, PrevID string
 }
 
-var indexTpl = template.Must(template.ParseFiles("tpl/base.html", "tpl/index.html"))
+var indexTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/index.html"))
 
 type indexHandler struct {
-	c api.PixurServiceClient
-	p paths
+	c  api.PixurServiceClient
+	pt paths
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -30,8 +30,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	id := r.FormValue(h.p.IndexParamPic())
-	_, isPrev := r.Form[h.p.IndexParamPrev()]
+	id := r.FormValue(h.pt.pr.IndexPic())
+	_, isPrev := r.Form[h.pt.pr.IndexPrev()]
 	req := &api.FindIndexPicsRequest{
 		StartPicId: id,
 		Ascending:  isPrev,
@@ -68,8 +68,9 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 
 	data := indexData{
 		baseData: baseData{
-			Title: "Index",
-			Paths: h.p,
+			Title:  "Index",
+			Paths:  h.pt,
+			Params: h.pt.pr,
 		},
 		Pic:    res.Pic,
 		NextID: nextID,
