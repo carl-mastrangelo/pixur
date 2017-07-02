@@ -45,9 +45,8 @@ func TestAddPicTags(t *testing.T) {
 		runner: tasks.TestTaskRunner(successRunner),
 		now:    time.Now,
 	}
-	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
 
-	res, sts := s.handleAddPicTags(ctx, &api.AddPicTagsRequest{
+	res, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
 		PicId: "1",
 		Tag:   []string{"a", "b"},
 	})
@@ -84,39 +83,5 @@ func TestAddPicTagsFailsOnBadPicId(t *testing.T) {
 	}
 	if resp != nil {
 		t.Error("have", resp, "want", nil)
-	}
-}
-
-func TestAddPicTagsRPC(t *testing.T) {
-	var taskCap *tasks.AddPicTagsTask
-	successRunner := func(task tasks.Task) status.S {
-		taskCap = task.(*tasks.AddPicTagsTask)
-		return nil
-	}
-	s := &serv{
-		runner: tasks.TestTaskRunner(successRunner),
-		now:    time.Now,
-	}
-
-	resp, sts := s.handleAddPicTags(context.Background(), &api.AddPicTagsRequest{
-		PicId: "1",
-		Tag:   []string{"a", "b"},
-	})
-
-	if sts != nil {
-		t.Error("have", sts, "want", nil)
-	}
-	if taskCap == nil {
-		t.Fatal("task didn't run")
-	}
-
-	if have, want := taskCap.PicID, int64(1); have != want {
-		t.Error("have", have, "want", want)
-	}
-	if len(taskCap.TagNames) != 2 || taskCap.TagNames[0] != "a" || taskCap.TagNames[1] != "b" {
-		t.Error("have", taskCap.TagNames, "want", []string{"a", "b"})
-	}
-	if want := (&api.AddPicTagsResponse{}); !proto.Equal(resp, want) {
-		t.Error("have", resp, "want", want)
 	}
 }
