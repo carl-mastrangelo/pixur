@@ -28,7 +28,12 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-func (s *serv) intercept(ctx oldctx.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+type serverInterceptor struct {
+}
+
+func (si *serverInterceptor) intercept(
+	ctx oldctx.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (
+	interface{}, error) {
 	if md, present := metadata.FromIncomingContext(ctx); present {
 		if token, present := authTokenFromMD(md); present {
 			ctx = tasks.CtxFromAuthToken(ctx, token)
@@ -156,7 +161,7 @@ func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
 		rand:        rand.Reader,
 	}
 
-	gserv := grpc.NewServer(grpc.UnaryInterceptor(regServ.intercept))
+	gserv := grpc.NewServer(grpc.UnaryInterceptor((&serverInterceptor{}).intercept))
 	api.RegisterPixurServiceServer(gserv, regServ)
 	mux.Handle("/", gserv)
 	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{

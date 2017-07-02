@@ -40,6 +40,7 @@ func init() {
 }
 
 var (
+	testAuthSubject = int64(0)
 	testAuthPayload *api.PwtPayload
 	testAuthToken   string
 )
