@@ -62,3 +62,4 @@ QuickViewerCtrl.prototype.keydown = function(ev) {
     this.loadNext();
   }
 };
+
