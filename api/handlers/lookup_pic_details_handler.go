@@ -41,45 +41,9 @@ func (s *serv) handleLookupPicDetails(
 	}, nil
 }
 
-/*
-func (h *LookupPicDetailsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rc := &requestChecker{r: r, now: h.Now}
-	rc.checkXsrf()
-	if rc.sts != nil {
-		httpError(w, rc.sts)
-		return
-	}
-
-	ctx := r.Context()
-	if token, present := authTokenFromReq(r); present {
-		ctx = tasks.CtxFromAuthToken(ctx, token)
-	}
-
-	resp, sts := h.LookupPicDetails(ctx, &api.LookupPicDetailsRequest{
-		PicId: r.FormValue("pic_id"),
-	})
-	if sts != nil {
-		httpError(w, sts)
-		return
-	}
-
-	returnProtoJSON(w, r, resp)
-}
-*/
 func flattenPicCommentTree(list *[]*schema.PicComment, pct *tasks.PicCommentTree) {
 	for _, c := range pct.Children {
 		flattenPicCommentTree(list, c)
 	}
 	*list = append(*list, pct.PicComment)
 }
-
-/*
-func init() {
-	register(func(mux *http.ServeMux, c *ServerConfig) {
-		mux.Handle("/api/lookupPicDetails", &LookupPicDetailsHandler{
-			DB:  c.DB,
-			Now: time.Now,
-		})
-	})
-}
-*/
