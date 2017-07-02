@@ -36,7 +36,6 @@ func (si *serverInterceptor) intercept(
 			var sts status.S
 			switch req.(type) {
 			case *api.GetRefreshTokenRequest:
-			case *api.DeleteTokenRequest:
 			default:
 				ctx, sts = fillUserIDFromCtx(ctx)
 				if sts != nil {

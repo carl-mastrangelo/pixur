@@ -66,7 +66,7 @@ func TestServerInterceptorIgnoresOnAuthHandlers(t *testing.T) {
 
 	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtCookieName, "bogus"))
 
-	for _, req := range []interface{}{&api.GetRefreshTokenRequest{}, &api.DeleteTokenRequest{}} {
+	for _, req := range []interface{}{&api.GetRefreshTokenRequest{}} {
 		_, err := si.intercept(ctx, req, nil, handler)
 
 		if err != nil {

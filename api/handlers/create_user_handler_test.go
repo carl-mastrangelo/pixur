@@ -35,7 +35,7 @@ func TestCreateUserFailsOnTaskFailure(t *testing.T) {
 	}
 }
 
-func TestCreateUserRPC(t *testing.T) {
+func TestCreateUser(t *testing.T) {
 	var taskCap *tasks.CreateUserTask
 	successRunner := func(task tasks.Task) status.S {
 		taskCap = task.(*tasks.CreateUserTask)
