@@ -40,28 +40,18 @@ func init() {
 }
 
 var (
+	testAuthSubject = int64(0)
 	testAuthPayload *api.PwtPayload
 	testAuthToken   string
 )
 
 type testClient struct {
 	HTTPClient   *http.Client
-	DisableXSRF  bool
 	AuthOverride *api.PwtPayload
 	DisableAuth  bool
 }
 
 func (c *testClient) Do(req *http.Request) (*http.Response, error) {
-	// Add in XSRF
-	if !c.DisableXSRF {
-		b64XsrfToken := make([]byte, b64XsrfTokenLength)
-		b64XsrfEnc.Encode(b64XsrfToken, make([]byte, xsrfTokenLength))
-		req.AddCookie(&http.Cookie{
-			Name:  xsrfCookieName,
-			Value: string(b64XsrfToken),
-		})
-		req.Header.Add(xsrfHeaderName, string(b64XsrfToken))
-	}
 	if !c.DisableAuth {
 		// Add in Auth
 		var payload *api.PwtPayload

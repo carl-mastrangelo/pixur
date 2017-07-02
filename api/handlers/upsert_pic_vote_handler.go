@@ -17,12 +17,6 @@ var upsertPicVoteMap = map[api.UpsertPicVoteRequest_Vote]schema.PicVote_Vote{
 
 func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRequest) (
 	*api.UpsertPicVoteResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {

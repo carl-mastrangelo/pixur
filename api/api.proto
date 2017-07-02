@@ -268,13 +268,6 @@ message UpsertPicResponse {
   Pic pic = 1;
 }
 
-message GetXsrfTokenRequest {
-}
-
-message GetXsrfTokenResponse {
-  string xsrf_token = 1;
-}
-
 message CreateUserRequest {
 	// ident is the unique identity of the user being created, usually an email address
 	string ident = 1;
@@ -372,7 +365,6 @@ message UpsertPicVoteResponse {
 service PixurService {
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  rpc GetXsrfToken(GetXsrfTokenRequest) returns (GetXsrfTokenResponse);
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);

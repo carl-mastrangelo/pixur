@@ -26,12 +26,6 @@ func init() {
 
 func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest) (
 	*api.UpdateUserResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var objectUserID schema.Varint
 	if req.UserId != "" {
 		if err := objectUserID.DecodeAll(req.UserId); err != nil {

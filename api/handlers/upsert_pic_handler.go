@@ -24,11 +24,6 @@ func (f *memFile) Close() error {
 
 func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (*api.UpsertPicResponse, status.S) {
 
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var file multipart.File
 	if len(req.Data) != 0 {
 		// make sure this is non nil only if there actually data.

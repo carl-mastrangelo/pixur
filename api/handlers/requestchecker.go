@@ -15,34 +15,6 @@ type requestChecker struct {
 	now func() time.Time
 }
 
-// getAuth Returns the validated auth token
-// It may return nil if the request is already failed
-// If there is no auth token, it returns nil but doesn't fail the request.
-func (rc *requestChecker) getAuth() *api.PwtPayload {
-	if rc.sts != nil {
-		return nil
-	}
-
-	c, err := rc.r.Cookie(authPwtCookieName)
-	if err == http.ErrNoCookie {
-		return nil
-	} else if err != nil {
-		rc.sts = status.Unauthenticated(err, "missing auth cookie")
-		return nil
-	}
-
-	authPayload, err := defaultPwtCoder.decode([]byte(c.Value))
-	if err != nil {
-		rc.sts = status.Unauthenticated(err, err.Error())
-		return nil
-	}
-	if authPayload.Type != api.PwtPayload_AUTH {
-		rc.sts = status.Unauthenticated(nil, "not auth token")
-		return nil
-	}
-	return authPayload
-}
-
 func (rc *requestChecker) checkPixAuth() *api.PwtPayload {
 	if rc.sts != nil {
 		return nil
@@ -69,47 +41,12 @@ func (rc *requestChecker) checkPixAuth() *api.PwtPayload {
 	return pixPayload
 }
 
-func (rc *requestChecker) checkPost() {
-	if rc.sts != nil {
-		return
-	}
-	if rc.r.Method != "POST" {
-		// TODO: find a way to make this http.StatusMethodNotAllowed
-		rc.sts = status.InvalidArgument(nil, "Unsupported Method")
-	}
-}
-
 func (rc *requestChecker) checkGet() {
 	if rc.sts != nil {
 		return
 	}
-	if rc.r.Method != "GET" {
+	if rc.r.Method != http.MethodGet {
 		// TODO: find a way to make this http.StatusMethodNotAllowed
 		rc.sts = status.InvalidArgument(nil, "Unsupported Method")
 	}
-}
-
-func (rc *requestChecker) checkXsrf() {
-	if rc.sts != nil {
-		return
-	}
-	xsrfCookie, xsrfHeader, sts := xsrfTokensFromRequest(rc.r)
-	if sts != nil {
-		rc.sts = sts
-		return
-	}
-	if sts := checkXsrfTokens(xsrfCookie, xsrfHeader); sts != nil {
-		rc.sts = sts
-		return
-	}
-}
-
-func authTokenFromReq(req *http.Request) (token string, present bool) {
-	c, err := req.Cookie(authPwtCookieName)
-	if err == http.ErrNoCookie {
-		return "", false
-	} else if err != nil {
-		panic(err) // docs say should never happen
-	}
-	return c.Value, true
 }

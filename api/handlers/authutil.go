@@ -20,8 +20,8 @@ func authTokenFromMD(md metadata.MD) (string, bool) {
 }
 
 func fillUserIDFromCtx(ctx context.Context) (context.Context, status.S) {
-	if auth, ok := tasks.AuthTokenFromCtx(ctx); ok {
-		payload, err := decodeAuthToken(auth)
+	if token, ok := tasks.AuthTokenFromCtx(ctx); ok {
+		payload, err := decodeAuthToken(token)
 		if err != nil {
 			return nil, status.Unauthenticated(err, "can't decode auth token")
 		}
