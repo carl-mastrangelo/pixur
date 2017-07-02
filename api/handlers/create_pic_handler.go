@@ -12,12 +12,6 @@ import (
 
 func (s *serv) handleCreatePic(ctx context.Context, req *api.CreatePicRequest) (
 	*api.CreatePicResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var file multipart.File = &memFile{bytes.NewReader(req.FileData)}
 
 	var task = &tasks.CreatePicTask{

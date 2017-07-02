@@ -11,12 +11,6 @@ import (
 
 func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
 	*api.FindIndexPicsResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var picID schema.Varint
 	if req.StartPicId != "" {
 		if err := picID.DecodeAll(req.StartPicId); err != nil {

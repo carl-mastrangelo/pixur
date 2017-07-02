@@ -11,12 +11,6 @@ import (
 
 func (s *serv) handleAddPicTags(ctx context.Context, req *api.AddPicTagsRequest) (
 	*api.AddPicTagsResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var vid schema.Varint
 	if req.PicId != "" {
 		if err := vid.DecodeAll(req.PicId); err != nil {

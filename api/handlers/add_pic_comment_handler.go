@@ -11,11 +11,6 @@ import (
 
 // TODO: add tests
 func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRequest) (*api.AddPicCommentResponse, status.S) {
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
@@ -46,7 +41,6 @@ func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRe
 	return &api.AddPicCommentResponse{
 		Comment: apiPicComment(task.PicComment),
 	}, nil
-
 }
 
 /*

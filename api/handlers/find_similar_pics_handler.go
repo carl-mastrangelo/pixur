@@ -9,14 +9,8 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-func (s *serv) handleFindSimilarPics(
-	ctx context.Context, req *api.FindSimilarPicsRequest) (*api.FindSimilarPicsResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
+func (s *serv) handleFindSimilarPics(ctx context.Context, req *api.FindSimilarPicsRequest) (
+	*api.FindSimilarPicsResponse, status.S) {
 	var requestedPicID schema.Varint
 	if req.PicId != "" {
 		if err := requestedPicID.DecodeAll(req.PicId); err != nil {

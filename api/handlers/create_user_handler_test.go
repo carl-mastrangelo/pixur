@@ -13,44 +13,6 @@ import (
 	"pixur.org/pixur/tasks"
 )
 
-func TestCreateUserFailsOnBadAuth(t *testing.T) {
-	s := &serv{}
-	ctx := tasks.CtxFromAuthToken(context.Background(), "")
-	_, sts := s.handleCreateUser(ctx, &api.CreateUserRequest{})
-
-	if sts == nil {
-		t.Fatal("didn't fail")
-	}
-
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := sts.Message(), "decode auth token"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
-	}
-}
-
-func TestCreateUserSucceedsOnNoAuth(t *testing.T) {
-	var taskCap *tasks.CreateUserTask
-	successRunner := func(task tasks.Task) status.S {
-		taskCap = task.(*tasks.CreateUserTask)
-		return nil
-	}
-	s := &serv{
-		runner: tasks.TestTaskRunner(successRunner),
-		now:    time.Now,
-	}
-
-	_, sts := s.handleCreateUser(context.Background(), &api.CreateUserRequest{})
-
-	if sts != nil {
-		t.Error(sts)
-	}
-	if taskCap == nil {
-		t.Error("task didn't run")
-	}
-}
-
 func TestCreateUserFailsOnTaskFailure(t *testing.T) {
 	failureRunner := func(task tasks.Task) status.S {
 		return status.InternalError(nil, "bad things")

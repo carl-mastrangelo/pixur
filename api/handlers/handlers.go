@@ -32,6 +32,19 @@ func (s *serv) intercept(ctx oldctx.Context, req interface{}, info *grpc.UnarySe
 	if md, present := metadata.FromIncomingContext(ctx); present {
 		if token, present := authTokenFromMD(md); present {
 			ctx = tasks.CtxFromAuthToken(ctx, token)
+
+			// Don't decode token on management calls.  They have special handling.
+			// Check the request type rather than the handler because it's wrapped.
+			var sts status.S
+			switch req.(type) {
+			case *api.GetRefreshTokenRequest:
+			case *api.DeleteTokenRequest:
+			default:
+				ctx, sts = fillUserIDFromCtx(ctx)
+				if sts != nil {
+					return nil, gstatus.Error(gcodes.Code(sts.Code()), sts.Message())
+				}
+			}
 		}
 	}
 
@@ -90,7 +103,7 @@ func (s *serv) GetRefreshToken(ctx oldctx.Context, req *api.GetRefreshTokenReque
 }
 
 func (s *serv) GetXsrfToken(ctx oldctx.Context, req *api.GetXsrfTokenRequest) (*api.GetXsrfTokenResponse, error) {
-	return s.handleGetXsrfToken(ctx, req)
+	return nil, status.Unimplemented(nil, "Not implemented")
 }
 
 func (s *serv) IncrementViewCount(ctx oldctx.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, error) {

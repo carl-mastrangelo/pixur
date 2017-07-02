@@ -10,12 +10,6 @@ import (
 
 func (s *serv) handleCreateUser(ctx context.Context, req *api.CreateUserRequest) (
 	*api.CreateUserResponse, status.S) {
-
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var task = &tasks.CreateUserTask{
 		DB:     s.db,
 		Now:    s.now,

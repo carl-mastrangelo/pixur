@@ -12,11 +12,6 @@ import (
 func (s *serv) handleLookupPicDetails(
 	ctx context.Context, req *api.LookupPicDetailsRequest) (*api.LookupPicDetailsResponse, status.S) {
 
-	ctx, sts := fillUserIDFromCtx(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
