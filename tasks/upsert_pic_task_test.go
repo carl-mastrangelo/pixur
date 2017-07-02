@@ -756,7 +756,7 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 
 	_, sts := createNewTags(j, []string{"a"}, now)
 	// It could fail for the id allocator or tag creation, so just check the code.
-	if sts.Code() != status.Code_INTERNAL_ERROR {
+	if sts.Code() != status.Code_INTERNAL {
 		t.Fatal(sts)
 	}
 }
