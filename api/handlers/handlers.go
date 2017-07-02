@@ -102,10 +102,6 @@ func (s *serv) GetRefreshToken(ctx oldctx.Context, req *api.GetRefreshTokenReque
 	return s.handleGetRefreshToken(ctx, req)
 }
 
-func (s *serv) GetXsrfToken(ctx oldctx.Context, req *api.GetXsrfTokenRequest) (*api.GetXsrfTokenResponse, error) {
-	return nil, status.Unimplemented(nil, "Not implemented")
-}
-
 func (s *serv) IncrementViewCount(ctx oldctx.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, error) {
 	return s.handleIncrementViewCount(ctx, req)
 }

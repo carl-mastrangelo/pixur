@@ -89,21 +89,6 @@ func (rc *requestChecker) checkGet() {
 	}
 }
 
-func (rc *requestChecker) checkXsrf() {
-	if rc.sts != nil {
-		return
-	}
-	xsrfCookie, xsrfHeader, sts := xsrfTokensFromRequest(rc.r)
-	if sts != nil {
-		rc.sts = sts
-		return
-	}
-	if sts := checkXsrfTokens(xsrfCookie, xsrfHeader); sts != nil {
-		rc.sts = sts
-		return
-	}
-}
-
 func authTokenFromReq(req *http.Request) (token string, present bool) {
 	c, err := req.Cookie(authPwtCookieName)
 	if err == http.ErrNoCookie {
