@@ -41,3 +41,19 @@ func (p params) XsrfCookie() string {
 func (p params) Xsrf() string {
 	return "x_xt"
 }
+
+func (p params) File() string {
+	return "file"
+}
+
+func (p params) Md5Hash() string {
+	return "md5"
+}
+
+func (p params) Url() string {
+	return "url"
+}
+
+func (p params) Tag() string {
+	return "tag"
+}

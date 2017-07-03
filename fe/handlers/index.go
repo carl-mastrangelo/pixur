@@ -65,12 +65,13 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 			res.Pic[i], res.Pic[len(res.Pic)-i-1] = res.Pic[len(res.Pic)-i-1], res.Pic[i]
 		}
 	}
-
+	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := indexData{
 		baseData: baseData{
-			Title:  "Index",
-			Paths:  h.pt,
-			Params: h.pt.pr,
+			Title:     "Index",
+			Paths:     h.pt,
+			Params:    h.pt.pr,
+			XsrfToken: xsrfToken,
 		},
 		Pic:    res.Pic,
 		NextID: nextID,

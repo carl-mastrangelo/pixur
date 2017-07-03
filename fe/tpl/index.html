@@ -61,27 +61,29 @@
 </style>
 {{end}}
 {{define "nav"}}
-  {{- $p := .Paths -}}
+  {{- $pt := .Paths -}}
+  {{- $pr := .Params -}}
   <div>
-    <span class="nav-home"><a href="{{$p.Root}}">Home</a></span>
-    {{if .PrevID}}<span class="nav-prev"><a href="{{$p.IndexPrev .PrevID}}">Previous</a></span>{{end}}
-    {{if .NextID}}<span class="nav-next"><a href="{{$p.Index .NextID}}">Next</a></span>{{end}}
+    <span class="nav-home"><a href="{{$pt.Root}}">Home</a></span>
+    {{if .PrevID}}<span class="nav-prev"><a href="{{$pt.IndexPrev .PrevID}}">Previous</a></span>{{end}}
+    {{if .NextID}}<span class="nav-next"><a href="{{$pt.Index .NextID}}">Next</a></span>{{end}}
     <span class="nav-clear"></span>
   </div>
 {{end}}
 {{define "body"}}
 <div class="index">
-  {{ $p := .Paths}}
+  {{ $pt := .Paths}}
+  {{- $pr := .Params -}}
   {{- template "nav" . -}}
   {{if .Pic}}
   <ul class="thumbnail-list">
     {{- range .Pic -}}
     <li>{{- /**/ -}}
       <div class="thumbnail-cntr">{{- /**/ -}}
-        <a href="{{$p.Viewer .Id}}">{{- /**/ -}}
+        <a href="{{$pt.Viewer .Id}}">{{- /**/ -}}
           <img {{/**/ -}}
 	          class="thumbnail{{if .PendingDeletion}} deleted{{end}}" {{/**/ -}}
-	          src="{{$p.PicThumb .ThumbnailRelativeUrl}}" />{{- /**/ -}}
+	          src="{{$pt.PicThumb .ThumbnailRelativeUrl}}" />{{- /**/ -}}
 	      </a>{{- /**/ -}}
       </div>{{- /**/ -}}
     </li>{{- /**/ -}}
@@ -90,10 +92,11 @@
   {{end}}
   {{- template "nav" . -}}
 </div>
-<form action="" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" /><br />
-    <input placeholder="File URL" name="url" /><br />
+<form action="{{$pt.UpsertPicAction}}" method="post" enctype="multipart/form-data">
+    <input type="file" name="{{$pr.File}}" /><br />
+      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+    <input placeholder="File URL" name="{{$pr.Url}}" /><br />
     <input type="submit" value="Submit" />
 </form>
-  <a href="{{$p.Login}}">Login / Join</a>
+  <a href="{{$pt.Login}}">Login / Join</a>
 {{end}}

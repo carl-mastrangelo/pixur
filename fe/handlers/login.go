@@ -121,7 +121,7 @@ func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Root().RequestURI(), http.StatusSeeOther)
 }
 
 func init() {

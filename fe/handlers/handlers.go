@@ -68,6 +68,7 @@ func (err *HTTPErr) Error() string {
 func httpError(w http.ResponseWriter, err error) {
 	if sts, ok := status.FromError(err); ok {
 		http.Error(w, sts.Message(), http.StatusInternalServerError)
+		return
 	}
 	switch err := err.(type) {
 	case *HTTPErr:
@@ -150,14 +151,6 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 			httpError(w, &HTTPErr{
 				Message: "Method not allowed",
 				Code:    http.StatusMethodNotAllowed,
-			})
-			return
-		}
-
-		if err := r.ParseForm(); err != nil {
-			httpError(w, &HTTPErr{
-				Message: err.Error(),
-				Code:    http.StatusBadRequest,
 			})
 			return
 		}
