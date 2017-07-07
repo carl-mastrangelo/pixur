@@ -48,15 +48,82 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *loginHandler) createUser(w http.ResponseWriter, r *http.Request) {
+	req := &api.CreateUserRequest{
+		Ident:  r.PostFormValue(h.pt.pr.Ident()),
+		Secret: r.PostFormValue(h.pt.pr.Secret()),
+	}
+
+	ctx := r.Context()
+	_, err := h.c.CreateUser(ctx, req)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	h.login(w, r)
+}
+
+func (h *loginHandler) logout(w http.ResponseWriter, r *http.Request) {
+	if _, err := h.c.DeleteToken(r.Context(), &api.DeleteTokenRequest{}); err != nil {
+		httpError(w, err)
+		return
+	}
+
+	past := h.now().AddDate(0, 0, -1)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshPwtCookieName,
+		Value:    "",
+		Path:     h.pt.LoginAction().RequestURI(),
+		Expires:  past,
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     authPwtCookieName,
+		Value:    "",
+		Path:     h.pt.Root().RequestURI(),
+		Expires:  past,
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     pixPwtCookieName,
+		Value:    "",
+		Path:     h.pt.PixDir().RequestURI(),
+		Expires:  past,
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
+	// destroy previous xsrf cookie after logout
+	http.SetCookie(w, &http.Cookie{
+		Name:     h.pt.pr.XsrfCookie(),
+		Value:    "",
+		Path:     h.pt.Root().RequestURI(), // Has to be accessible from root, reset from previous
+		Expires:  past,
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
+
+	http.Redirect(w, r, h.pt.Root().RequestURI(), http.StatusSeeOther)
+}
+
 func (h *loginHandler) login(w http.ResponseWriter, r *http.Request) {
+	// hack, maybe remove this
+	if r.PostFormValue(h.pt.pr.Logout()) != "" {
+		h.logout(w, r)
+		return
+	}
+
 	var refreshToken string
 	if c, err := r.Cookie(refreshPwtCookieName); err == nil {
 		refreshToken = c.Value
 	}
 
 	req := &api.GetRefreshTokenRequest{
-		Ident:        r.PostFormValue("ident"),
-		Secret:       r.PostFormValue("secret"),
+		Ident:        r.PostFormValue(h.pt.pr.Ident()),
+		Secret:       r.PostFormValue(h.pt.pr.Secret()),
 		RefreshToken: refreshToken,
 	}
 
@@ -137,7 +204,9 @@ func init() {
 		// TODO: maybe consolidate these?
 		s.HTTPMux.Handle(h.pt.Login().RequestURI(), bh.static(http.HandlerFunc(h.static)))
 		s.HTTPMux.Handle(h.pt.Logout().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		// handles both login  and log out
 		s.HTTPMux.Handle(h.pt.LoginAction().RequestURI(), bh.action(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.pt.CreateUserAction().RequestURI(), bh.action(http.HandlerFunc(h.createUser)))
 		return nil
 	})
 }

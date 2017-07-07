@@ -14,6 +14,18 @@ func (p params) IndexPrev() string {
 	return "prev"
 }
 
+func (p params) Ident() string {
+	return "ident"
+}
+
+func (p params) Secret() string {
+	return "secret"
+}
+
+func (p params) Logout() string {
+	return "is_logout"
+}
+
 func (p params) PicId() string {
 	return "pic_id"
 }

@@ -2,10 +2,26 @@
 {{ $pt := .Paths}}
 {{ $pr := .Params}}
 <form action="{{$pt.LoginAction}}" method="post">
-  <input type="text" name="ident" placeholder="Ident" /><br />
-  <input type="password" name="secret" /><br />
+  <input type="text" name="{{$pr.Ident}}" placeholder="Ident" /><br />
+  <input type="password" name="{{$pr.Secret}}" /><br />
   <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
   <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
   <input type="submit" value="Login" />
+</form>
+<hr>
+<form action="{{$pt.CreateUserAction}}" method="post">
+  <input type="text" name="{{$pr.Ident}}" placeholder="Ident" /><br />
+  <input type="password" name="{{$pr.Secret}}" /><br />
+  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+  <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
+  <input type="submit" value="CreateUser" />
+</form>
+<hr>
+{{/*login action is same as log out*/}}
+<form action="{{$pt.LoginAction}}" method="post">
+  <input type="hidden" name="{{$pr.Logout}}" value="non-empty string" />
+  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+  <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
+  <input type="submit" value="Logout" />
 </form>
 {{end}}

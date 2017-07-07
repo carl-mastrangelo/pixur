@@ -61,8 +61,13 @@ func (p paths) ActionDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "a/"})
 }
 
+// Same as logout action, differentiated by Params.Logout
 func (p paths) LoginAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "auth"})
+}
+
+func (p paths) CreateUserAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "createUser"})
 }
 
 func (p paths) PicThumb(relativeURL string) *url.URL {
@@ -105,5 +110,5 @@ func (p paths) CommentAction() *url.URL {
 }
 
 func (p paths) UpsertPicAction() *url.URL {
-	return p.ActionDir().ResolveReference(&url.URL{Path: "upsert"})
+	return p.ActionDir().ResolveReference(&url.URL{Path: "upsertPic"})
 }
