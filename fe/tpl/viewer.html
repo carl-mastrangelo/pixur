@@ -62,6 +62,29 @@
   <br>
   {{template "commentreply" .PicComment}}
   {{template "comment" .PicComment.Child}}
+  
+  <hr>
+    {{if .Pic.PendingDeletion }}
+    <div>This pic is pending deletion</div>
+    {{else}}
+    <form action="{{$pt.SoftDeletePicAction}}" method="post">
+      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
+      <input type="details" name="{{$pr.DeletePicDetails}}" placeholder="Details why this pic is deleted" /><br />
+      <select name="{{$pr.DeletePicReason}}">
+        {{ range .DeletionReason }}
+          <option value="{{.Value}}" {{/*1 is NONE*/}}{{if eq .Value 1}}selected="selected"{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <br/>
+      <input type="submit" value="Delete"/>
+      <label>
+        <input type="checkbox" name="{{$pr.DeletePicReally}}" value="non-empty text" />
+        Really?
+      </label>
+    </form>
+    {{end}}
 <div>
 {{end}}
 {{define "comment"}}

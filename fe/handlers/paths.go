@@ -112,3 +112,7 @@ func (p paths) CommentAction() *url.URL {
 func (p paths) UpsertPicAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "upsertPic"})
 }
+
+func (p paths) SoftDeletePicAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "softDeletePic"})
+}

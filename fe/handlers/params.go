@@ -69,3 +69,15 @@ func (p params) Url() string {
 func (p params) Tag() string {
 	return "tag"
 }
+
+func (p params) DeletePicReally() string {
+	return "really"
+}
+
+func (p params) DeletePicReason() string {
+	return "reason"
+}
+
+func (p params) DeletePicDetails() string {
+	return "details"
+}
