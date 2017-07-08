@@ -4,6 +4,7 @@ package pixur;
 
 option go_package = "schema";
 
+import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -81,6 +82,9 @@ message Pic {
   int64 vote_up = 17;
   // The denormalized sum of downvotes for this pic
   int64 vote_down = 18;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 19;
 }
 
 // A picture identifier
@@ -100,6 +104,9 @@ message PicIdent {
 
   // dct0 are the upper 8x8 corner of the 32x32 dct of the image
   repeated float dct0_values = 4 [packed=true];
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 5;
 }
 
 message AnimationInfo {
@@ -114,6 +121,9 @@ message Tag {
   int64 usage_count = 3;
   google.protobuf.Timestamp created_ts = 6;
   google.protobuf.Timestamp modified_ts = 7;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 8;
 }
 
 message PicTag {
@@ -125,6 +135,9 @@ message PicTag {
   int64 user_id = 8;
   google.protobuf.Timestamp created_ts = 6;
   google.protobuf.Timestamp modified_ts = 7;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 9;
 }
 
 message PicComment {
@@ -141,6 +154,9 @@ message PicComment {
 
   google.protobuf.Timestamp created_ts = 5;
   google.protobuf.Timestamp modified_ts = 6;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 8;
 }
 
 message PicVote {
@@ -158,6 +174,9 @@ message PicVote {
 
   google.protobuf.Timestamp created_ts = 4;
   google.protobuf.Timestamp modified_ts = 5;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 6;
 }
 
 message User {
@@ -206,6 +225,9 @@ message User {
   // Always increment-then-get
   int64 next_token_id = 8;
   repeated UserToken user_token = 9;
+  
+  // Extra information that may not fit into the schema
+  repeated google.protobuf.Any ext = 10;
 }
 
 // Represent the valid auth tokens.  When a user logs out, these will be 
