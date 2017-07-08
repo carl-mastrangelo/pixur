@@ -542,13 +542,20 @@ func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, st
 	}
 
 	// TODO: make sure this isn't reading from ourself
-	resp, err := t.HTTPClient.Get(rawurl)
+	req, err := http.NewRequest(http.MethodGet, rawurl, nil)
+	if err != nil {
+		// if this fails, it's probably our fault
+		return nil, status.InternalError(err, "Can't create request")
+	}
+	req = req.WithContext(t.Ctx)
+	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, status.InvalidArgument(err, "Can't download ", rawurl)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		// todo: log the response and headers
 		return nil, status.InvalidArgumentf(nil, "Can't download %s [%d]", rawurl, resp.StatusCode)
 	}
 

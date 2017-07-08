@@ -363,21 +363,21 @@ message UpsertPicVoteResponse {
 }
 
 service PixurService {
+  rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
+  rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
+  rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
+  rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
+  rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
+  rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
+  rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
+  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
+  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
+  rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
+  rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
-  rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
-  rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
-  rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
-  rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
-  rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
-  rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
-  rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
-  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
-  rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
-  rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
-  rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
-  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
 }
 

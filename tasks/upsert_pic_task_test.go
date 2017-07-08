@@ -1322,6 +1322,7 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		Ctx:        context.Background(),
 	}
 	_, sts := task.downloadFile(f, "http://")
 	expected := status.InvalidArgument(nil, "Can't download http://")
@@ -1348,6 +1349,7 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		Ctx:        context.Background(),
 	}
 	_, sts := task.downloadFile(f, serv.URL)
 	expected := status.InvalidArgumentf(nil,
@@ -1378,6 +1380,7 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		Ctx:        context.Background(),
 	}
 	_, sts := task.downloadFile(f, serv.URL)
 	expected := status.InvalidArgument(nil, "Can't copy downloaded file")
@@ -1407,6 +1410,7 @@ func TestDownloadFile(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		Ctx:        context.Background(),
 	}
 	fh, err := task.downloadFile(f, serv.URL+"/foo/bar.jpg?ignore=true#content")
 	if err != nil {
@@ -1453,6 +1457,7 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		Ctx:        context.Background(),
 	}
 	fh, err := task.downloadFile(f, serv.URL)
 	if err != nil {
