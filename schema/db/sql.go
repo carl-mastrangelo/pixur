@@ -16,7 +16,10 @@ func (w dbWrapper) Adapter() DBAdapter {
 
 func (w dbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) {
 	tx, err := w.db.Begin()
-	return txWrapper{tx}, err
+	return txWrapper{
+		tx:  tx,
+		ctx: ctx,
+	}, err
 }
 
 func (w dbWrapper) Close() error {
@@ -35,16 +38,17 @@ func (w dbWrapper) InitSchema(tables []string) error {
 }
 
 type txWrapper struct {
-	tx *sql.Tx
+	ctx context.Context
+	tx  *sql.Tx
 }
 
 func (w txWrapper) Exec(query string, args ...interface{}) (Result, error) {
-	res, err := w.tx.Exec(query, args...)
+	res, err := w.tx.ExecContext(w.ctx, query, args...)
 	return Result(res), err
 }
 
 func (w txWrapper) Query(query string, args ...interface{}) (Rows, error) {
-	rows, err := w.tx.Query(query, args...)
+	rows, err := w.tx.QueryContext(w.ctx, query, args...)
 	return Rows(rows), err
 }
 
