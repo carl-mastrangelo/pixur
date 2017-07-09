@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -74,7 +75,7 @@ func (c *TestContainer) Close() {
 }
 
 func (c *TestContainer) Job() *tab.Job {
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		c.T.Fatal(err)
 	}

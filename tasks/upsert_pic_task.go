@@ -56,7 +56,7 @@ type FileHeader struct {
 }
 
 func (t *UpsertPicTask) Run() (stsCap status.S) {
-	j, err := tab.NewJob(t.DB)
+	j, err := tab.NewJob(t.Ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}

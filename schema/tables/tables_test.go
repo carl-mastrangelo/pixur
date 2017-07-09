@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ import (
 
 type fakeDB chan struct{}
 
-func (db fakeDB) Begin() (sdb.QuerierExecutorCommitter, error) {
+func (db fakeDB) Begin(_ context.Context) (sdb.QuerierExecutorCommitter, error) {
 	return db, nil
 }
 
@@ -59,7 +60,7 @@ func TestUnclosedJobLogs(t *testing.T) {
 	}
 
 	db := make(fakeDB)
-	j, err := NewJob(db)
+	j, err := NewJob(context.Background(), db)
 	if err != nil {
 		t.Fatal(err)
 	}

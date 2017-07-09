@@ -1,6 +1,7 @@
 package tables
 
 import (
+	"context"
 	"log"
 	"runtime"
 
@@ -364,12 +365,13 @@ var SqlInitTables = map[string][]string{
 	},
 }
 
-func NewJob(DB db.DB) (*Job, error) {
-	tx, err := DB.Begin()
+func NewJob(ctx context.Context, DB db.DB) (*Job, error) {
+	tx, err := DB.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	j := &Job{
+		ctx:  ctx,
 		beg:  DB,
 		tx:   tx,
 		adap: DB.Adapter(),
@@ -379,6 +381,7 @@ func NewJob(DB db.DB) (*Job, error) {
 }
 
 type Job struct {
+	ctx  context.Context
 	beg  db.Beginner
 	tx   db.QuerierExecutorCommitter
 	adap db.DBAdapter
@@ -407,7 +410,7 @@ func (j *Job) AllocID() (int64, error) {
 	if j.adap.SingleTx() {
 		return db.AllocIDJob(j.tx, &alloc, j.adap)
 	}
-	return db.AllocID(j.beg, &alloc, j.adap)
+	return db.AllocID(j.ctx, j.beg, &alloc, j.adap)
 }
 
 type PicsPrimary struct {

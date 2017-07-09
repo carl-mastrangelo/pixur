@@ -20,7 +20,7 @@ func run() error {
 	}
 	defer db.Close()
 
-	j, err := tab.NewJob(db)
+	j, err := tab.NewJob(context.Background(), db)
 	if err != nil {
 		return err
 	}

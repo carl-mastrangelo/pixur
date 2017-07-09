@@ -58,7 +58,7 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 
 func (t *CreateUserTask) Run() (errCap status.S) {
 	var err error
-	j, err := tab.NewJob(t.DB)
+	j, err := tab.NewJob(t.Ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}

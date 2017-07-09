@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -13,7 +14,7 @@ func (w dbWrapper) Adapter() DBAdapter {
 	return w.adap
 }
 
-func (w dbWrapper) Begin() (QuerierExecutorCommitter, error) {
+func (w dbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) {
 	tx, err := w.db.Begin()
 	return txWrapper{tx}, err
 }

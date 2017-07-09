@@ -25,7 +25,7 @@ type PurgePicTask struct {
 }
 
 func (t *PurgePicTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.DB)
+	j, err := tab.NewJob(t.Ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}

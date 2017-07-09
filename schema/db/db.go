@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -20,7 +21,7 @@ type QuerierExecutorCommitter interface {
 }
 
 type Beginner interface {
-	Begin() (QuerierExecutorCommitter, error)
+	Begin(context.Context) (QuerierExecutorCommitter, error)
 }
 
 type DB interface {

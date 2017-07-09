@@ -562,7 +562,7 @@ func TestMerge(t *testing.T) {
 	fu := "http://url"
 	tagNames := []string{"a", "b"}
 
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		t.Fatal(err)
 	}

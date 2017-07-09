@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log"
 	"sync"
@@ -68,8 +69,8 @@ func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (i
 	return num, nil
 }
 
-func (alloc *IDAlloc) refill(exec Beginner, grab int64, adap DBAdapter) (errcap error) {
-	j, err := exec.Begin()
+func (alloc *IDAlloc) refill(ctx context.Context, exec Beginner, grab int64, adap DBAdapter) (errcap error) {
+	j, err := exec.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -94,11 +95,11 @@ func (alloc *IDAlloc) refill(exec Beginner, grab int64, adap DBAdapter) (errcap 
 	return nil
 }
 
-func AllocID(exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
+func AllocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	if alloc.available == 0 {
-		if err := alloc.refill(exec, AllocatorGrab, adap); err != nil {
+		if err := alloc.refill(ctx, exec, AllocatorGrab, adap); err != nil {
 			return 0, err
 		}
 	}

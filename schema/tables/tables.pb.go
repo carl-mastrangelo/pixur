@@ -32,7 +32,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type PicRow struct {
 	Id         int64      `protobuf:"varint,1,opt,name=id" json:"id,omitempty"`
@@ -46,6 +48,34 @@ func (m *PicRow) Reset()                    { *m = PicRow{} }
 func (m *PicRow) String() string            { return proto.CompactTextString(m) }
 func (*PicRow) ProtoMessage()               {}
 func (*PicRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *PicRow) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *PicRow) GetIndexOrder() int64 {
+	if m != nil {
+		return m.IndexOrder
+	}
+	return 0
+}
+
+func (m *PicRow) GetScoreOrder() int32 {
+	if m != nil {
+		return m.ScoreOrder
+	}
+	return 0
+}
+
+func (m *PicRow) GetSchedOrder() int32 {
+	if m != nil {
+		return m.SchedOrder
+	}
+	return 0
+}
 
 func (m *PicRow) GetData() *pixur.Pic {
 	if m != nil {
@@ -65,6 +95,20 @@ func (m *TagRow) String() string            { return proto.CompactTextString(m) 
 func (*TagRow) ProtoMessage()               {}
 func (*TagRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
+func (m *TagRow) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *TagRow) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *TagRow) GetData() *pixur.Tag {
 	if m != nil {
 		return m.Data
@@ -82,6 +126,20 @@ func (m *PicTagRow) Reset()                    { *m = PicTagRow{} }
 func (m *PicTagRow) String() string            { return proto.CompactTextString(m) }
 func (*PicTagRow) ProtoMessage()               {}
 func (*PicTagRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *PicTagRow) GetPicId() int64 {
+	if m != nil {
+		return m.PicId
+	}
+	return 0
+}
+
+func (m *PicTagRow) GetTagId() int64 {
+	if m != nil {
+		return m.TagId
+	}
+	return 0
+}
 
 func (m *PicTagRow) GetData() *pixur.PicTag {
 	if m != nil {
@@ -102,6 +160,27 @@ func (m *PicIdentRow) String() string            { return proto.CompactTextStrin
 func (*PicIdentRow) ProtoMessage()               {}
 func (*PicIdentRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
+func (m *PicIdentRow) GetPicId() int64 {
+	if m != nil {
+		return m.PicId
+	}
+	return 0
+}
+
+func (m *PicIdentRow) GetType() pixur.PicIdent_Type {
+	if m != nil {
+		return m.Type
+	}
+	return pixur.PicIdent_UNKNOWN
+}
+
+func (m *PicIdentRow) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
 func (m *PicIdentRow) GetData() *pixur.PicIdent {
 	if m != nil {
 		return m.Data
@@ -119,6 +198,20 @@ func (m *PicCommentRow) Reset()                    { *m = PicCommentRow{} }
 func (m *PicCommentRow) String() string            { return proto.CompactTextString(m) }
 func (*PicCommentRow) ProtoMessage()               {}
 func (*PicCommentRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *PicCommentRow) GetPicId() int64 {
+	if m != nil {
+		return m.PicId
+	}
+	return 0
+}
+
+func (m *PicCommentRow) GetCommentId() int64 {
+	if m != nil {
+		return m.CommentId
+	}
+	return 0
+}
 
 func (m *PicCommentRow) GetData() *pixur.PicComment {
 	if m != nil {
@@ -138,6 +231,20 @@ func (m *PicVoteRow) String() string            { return proto.CompactTextString
 func (*PicVoteRow) ProtoMessage()               {}
 func (*PicVoteRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
+func (m *PicVoteRow) GetPicId() int64 {
+	if m != nil {
+		return m.PicId
+	}
+	return 0
+}
+
+func (m *PicVoteRow) GetUserId() int64 {
+	if m != nil {
+		return m.UserId
+	}
+	return 0
+}
+
 func (m *PicVoteRow) GetData() *pixur.PicVote {
 	if m != nil {
 		return m.Data
@@ -156,6 +263,20 @@ func (m *UserRow) String() string            { return proto.CompactTextString(m)
 func (*UserRow) ProtoMessage()               {}
 func (*UserRow) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
+func (m *UserRow) GetId() int64 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *UserRow) GetIdent() string {
+	if m != nil {
+		return m.Ident
+	}
+	return ""
+}
+
 func (m *UserRow) GetData() *pixur.User {
 	if m != nil {
 		return m.Data
@@ -173,9 +294,11 @@ func init() {
 	proto.RegisterType((*UserRow)(nil), "pixur.tables.UserRow")
 }
 
+func init() { proto.RegisterFile("tables.proto", fileDescriptor0) }
+
 var fileDescriptor0 = []byte{
 	// 714 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x95, 0xcb, 0x4e, 0xdb, 0x4c,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x95, 0xcb, 0x4e, 0xdb, 0x4c,
 	0x14, 0xc7, 0x35, 0x89, 0xed, 0x90, 0x93, 0x9b, 0x19, 0xbe, 0x8f, 0xd2, 0xa0, 0xc2, 0x60, 0x40,
 	0x8a, 0x54, 0x29, 0xa8, 0xb4, 0x6a, 0xa5, 0xaa, 0x0b, 0x14, 0xba, 0xa1, 0xaa, 0xda, 0x28, 0x04,
 	0x16, 0xdd, 0x20, 0x63, 0x8f, 0x92, 0x91, 0x92, 0xd8, 0xb2, 0x9d, 0x02, 0xbb, 0x59, 0x8f, 0xba,

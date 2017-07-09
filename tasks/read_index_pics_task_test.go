@@ -24,7 +24,7 @@ func TestReadIndex_LookupStartPicAsc(t *testing.T) {
 		smaller = p2
 	}
 
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestReadIndex_LookupStartPicDesc(t *testing.T) {
 		larger = p2
 	}
 
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestReadIndex_LookupStartPicNone(t *testing.T) {
 
 	p := c.CreatePic()
 
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		t.Fatal(err)
 	}

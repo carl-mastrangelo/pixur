@@ -36,7 +36,7 @@ func (t *SoftDeletePicTask) Run() (errCap status.S) {
 		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
 	}
 
-	j, err := tab.NewJob(t.DB)
+	j, err := tab.NewJob(t.Ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}

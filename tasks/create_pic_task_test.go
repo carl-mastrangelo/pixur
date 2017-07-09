@@ -22,7 +22,7 @@ import (
 
 // TODO: Remove this
 func mustFindTagByName(name string, c *TestContainer) *TestTag {
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		c.T.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestWorkflowTrimAndCollapseDuplicateTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	j, err := tab.NewJob(c.DB())
+	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
 		c.T.Fatal(err)
 	}
