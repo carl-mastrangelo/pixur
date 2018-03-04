@@ -4,10 +4,10 @@ package config
 import (
 	"flag"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -35,24 +35,25 @@ func init() {
 func mergeParseConfigFlag(defaults *Config) *Config {
 	conf, err := parseConfigFlag()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
-	merged := &*defaults
-	proto.Merge(merged, conf)
-	return merged
+	merged := *defaults
+	proto.Merge(&merged, conf)
+	return &merged
 }
 
 func parseConfigFlag() (*Config, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(ioutil.Discard)
-	configPath := fs.String("config", defaultFromEnv("PIXUR_CONFIG", ".config.textpb"), "")
+	configPath := fs.String("config", envOrDefault("PIXUR_CONFIG", ".config.textpb"), "")
 	if err := fs.Parse(os.Args[1:]); err != nil && err != flag.ErrHelp {
-		_ = err // ignore, the next parse call will find it.
+		// ignore, the next parse call will find it.
+		glog.V(2).Info(err)
 	}
 	var config = new(Config)
 	f, err := os.Open(*configPath)
 	if os.IsNotExist(err) {
-		log.Println("Unable to open config file, using defaults")
+		glog.Warning("Unable to open config file, using defaults", err)
 		return config, nil
 	} else if err != nil {
 		return nil, err
@@ -76,9 +77,8 @@ func parseConfigFlag() (*Config, error) {
 	return config, nil
 }
 
-func defaultFromEnv(name, defaultVal string) string {
-	val, ok := os.LookupEnv(name)
-	if ok {
+func envOrDefault(name, defaultVal string) string {
+	if val, ok := os.LookupEnv(name); ok {
 		return val
 	}
 	return defaultVal
