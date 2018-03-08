@@ -28,7 +28,7 @@ func TestPurgeWorkflow(t *testing.T) {
 
 	idents := p.Idents()
 	if len(idents) != 3 {
-		t.Fatalf("Wrong number of identifiers: %s", len(idents))
+		t.Fatalf("Wrong number of identifiers: %v", len(idents))
 	}
 
 	pc := p.Comment()

@@ -80,13 +80,13 @@ func TestWorkflowFileUpload(t *testing.T) {
 	// Zero out these, since they can change from test to test
 	actual.PicId = 0
 	if actual.GetCreatedTime() != actual.GetModifiedTime() {
-		t.Fatalf("%s != %s", actual.GetCreatedTime(), actual.GetModifiedTime())
+		t.Fatalf("%v != %v", actual.GetCreatedTime(), actual.GetModifiedTime())
 	}
 	expected.SetCreatedTime(actual.GetCreatedTime())
 	expected.SetModifiedTime(actual.GetModifiedTime())
 
 	if !proto.Equal(&actual, &expected) {
-		t.Fatalf("%s != %s", actual, expected)
+		t.Fatalf("%v != %v", actual, expected)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestDuplicateImageIgnored(t *testing.T) {
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		t.Fatalf("%s %t", err, err)
+		t.Fatalf("%v %t", err, err)
 	}
 
 	task.ResetForRetry()
@@ -144,7 +144,7 @@ func TestAllIdentitiesAdded(t *testing.T) {
 
 	runner := new(TaskRunner)
 	if err := runner.Run(task); err != nil {
-		t.Fatalf("%s %t", err, err)
+		t.Fatalf("%v %t", err, err)
 	}
 
 	p := c.WrapPic(task.CreatedPic)

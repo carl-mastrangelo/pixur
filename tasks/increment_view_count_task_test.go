@@ -35,7 +35,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 		t.Fatalf("Expected view count %v but was %v", 1, p.Pic.ViewCount)
 	}
 	if p.Pic.GetModifiedTime() == oldTime {
-		t.Fatalf("Expected Modified Time to be updated but is  %v but was %v", oldTime)
+		t.Fatalf("Expected Modified Time to be updated but was %v", oldTime)
 	}
 }
 
