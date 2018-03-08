@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/carl-mastrangelo/h2c"
+	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
 	"pixur.org/pixur/api"
@@ -61,7 +61,7 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 				if errCap == nil {
 					errCap = err
 				} else if err != ctx.Err() {
-					log.Println("Additional error closing channel", err)
+					glog.Warning("Additional error closing channel", err)
 				}
 			}
 		}()

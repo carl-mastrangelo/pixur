@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+
+	"github.com/golang/glog"
 
 	"pixur.org/pixur/fe/handlers"
 	"pixur.org/pixur/fe/server"
@@ -16,5 +17,5 @@ func main() {
 	s := new(server.Server)
 	handlers.RegisterAll(s)
 
-	log.Fatal(s.Serve(context.Background(), config.Conf))
+	glog.Fatal(s.Serve(context.Background(), config.Conf))
 }

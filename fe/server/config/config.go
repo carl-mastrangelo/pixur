@@ -4,9 +4,9 @@ package config
 import (
 	"flag"
 	"io/ioutil"
-	"log"
 	"os"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -31,7 +31,7 @@ func init() {
 func mergeParseConfigFlag(defaults *Config) *Config {
 	conf, err := parseConfigFlag()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	merged := &*defaults
 	proto.Merge(merged, conf)
@@ -48,7 +48,7 @@ func parseConfigFlag() (*Config, error) {
 	var config = new(Config)
 	f, err := os.Open(*configPath)
 	if os.IsNotExist(err) {
-		log.Println("Unable to open config file, using defaults")
+		glog.Warning("Unable to open config file, using defaults", err)
 		return config, nil
 	} else if err != nil {
 		return nil, err
