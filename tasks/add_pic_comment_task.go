@@ -31,7 +31,6 @@ const (
 	maxCommentLen = 16384
 )
 
-// TODO: add tests
 func (t *AddPicCommentTask) Run() (errCap status.S) {
 	if len(t.Text) < minCommentLen || len(t.Text) > maxCommentLen {
 		return status.InvalidArgument(nil, "invalid comment length")
@@ -70,7 +69,7 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 
 	if t.CommentParentID != 0 {
 		comments, err := j.FindPicComments(db.Opts{
-			Prefix: tab.PicCommentsCommentId{&t.CommentParentID},
+			Prefix: tab.PicCommentsPrimary{&t.PicID, &t.CommentParentID},
 		})
 		if err != nil {
 			return status.InternalError(err, "can't lookup comment")
