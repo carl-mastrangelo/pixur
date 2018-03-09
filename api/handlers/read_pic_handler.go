@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"os"
 
+	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/metadata"
 
 	"pixur.org/pixur/api"
@@ -11,9 +13,35 @@ import (
 	"pixur.org/pixur/status"
 )
 
-// TODO: add tests
-func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
-	if md, present := metadata.FromIncomingContext(rps.Context()); present {
+func (s *serv) handleReadPicFileInfoRequest(ctx context.Context, req *api.ReadPicFileInfoRequest) (
+	*api.ReadPicFileInfoResponse, status.S) {
+	if sts := authReadPicRequest(ctx); sts != nil {
+		return nil, sts
+	}
+
+	path, sts := getPathForReadPic(s.pixpath, req.PicId, req.Type, req.Thumbnail)
+	if sts != nil {
+		return nil, sts
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, status.NotFound(err, "can't open pic")
+	}
+
+	ts, err := ptypes.TimestampProto(fi.ModTime())
+	if err != nil {
+		return nil, status.InternalError(err, "bad ts")
+	}
+
+	return &api.ReadPicFileInfoResponse{
+		Name:         fi.Name(),
+		Size:         fi.Size(),
+		ModifiedTime: ts,
+	}, nil
+}
+
+func authReadPicRequest(ctx context.Context) status.S {
+	if md, present := metadata.FromIncomingContext(ctx); present {
 		if tokens, ok := md[pixPwtCookieName]; !ok || len(tokens) == 0 {
 			if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
 				return status.Unauthenticated(nil, "missing pix token")
@@ -32,11 +60,19 @@ func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
 	} else {
 		return status.InternalError(nil, "missing MD")
 	}
+	return nil
+}
+
+// TODO: add tests
+func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
+	if sts := authReadPicRequest(rps.Context()); sts != nil {
+		return sts
+	}
 
 	// ok, authed!
 
 	var f *os.File
-	for rps.Context().Err() == nil {
+	for {
 		req, err := rps.Recv()
 		if err == io.EOF {
 			return nil
@@ -74,8 +110,6 @@ func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
 			return status.InternalError(err, "can't send")
 		}
 	}
-
-	return rps.Context().Err()
 }
 
 func getPathForReadPic(pixPath, rawPicID, typ string, thumbnail bool) (string, status.S) {

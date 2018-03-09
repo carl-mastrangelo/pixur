@@ -362,6 +362,19 @@ message UpsertPicVoteResponse {
   // empty
 }
 
+message ReadPicFileInfoRequest {
+  string pic_id = 1;
+  // (JPEG, GIF, PNG, or WEBM)
+  string type = 2;
+  bool thumbnail = 3;
+}
+
+message ReadPicFileInfoResponse {
+  string name = 1;
+  int64 size = 2;
+  google.protobuf.Timestamp modified_time = 3;
+}
+
 message ReadPicRequest {
   // Required for the first request, but ignored for subsequent requests.
   string pic_id = 1;
@@ -397,6 +410,7 @@ service PixurService {
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
+  rpc ReadPicFileInfo(ReadPicFileInfoRequest) returns (ReadPicFileInfoResponse);
   rpc ReadPic(stream ReadPicRequest) returns (stream ReadPicResponse);
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);

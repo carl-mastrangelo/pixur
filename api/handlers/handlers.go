@@ -135,6 +135,10 @@ func (s *serv) ReadPic(rps api.PixurService_ReadPicServer) error {
 	return s.handleReadPic(rps)
 }
 
+func (s *serv) ReadPicFileInfo(ctx oldctx.Context, req *api.ReadPicFileInfoRequest) (*api.ReadPicFileInfoResponse, error) {
+	return s.handleReadPicFileInfoRequest(ctx, req)
+}
+
 type ServerConfig struct {
 	DB          db.DB
 	PixPath     string
