@@ -362,6 +362,30 @@ message UpsertPicVoteResponse {
   // empty
 }
 
+message ReadPicRequest {
+  // Required for the first request, but ignored for subsequent requests.
+  string pic_id = 1;
+  
+  // Required for the first request, but ignored for subsequent requests.
+  // (JPEG, GIF, PNG, or WEBM)
+  string type = 2;
+  
+  // Required for the first request, but ignored for subsequent requests.
+  bool thumbnail = 3;
+  
+  // The offset into the file to start reading at.
+  int64 offset = 4;
+  // The maximum number of bytes to read.   Maybe be 0.
+  int64 limit = 5;
+}
+
+message ReadPicResponse {
+  // may be empty
+  bytes data = 1;
+  // indicates that the end of the pic has been reached.
+  bool eof = 2;
+}
+
 service PixurService {
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
@@ -373,6 +397,7 @@ service PixurService {
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
+  rpc ReadPic(stream ReadPicRequest) returns (stream ReadPicResponse);
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);

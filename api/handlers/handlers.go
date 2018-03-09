@@ -131,6 +131,10 @@ func (s *serv) UpsertPicVote(ctx oldctx.Context, req *api.UpsertPicVoteRequest) 
 	return s.handleUpsertPicVote(ctx, req)
 }
 
+func (s *serv) ReadPic(rps api.PixurService_ReadPicServer) error {
+	return s.handleReadPic(rps)
+}
+
 type ServerConfig struct {
 	DB          db.DB
 	PixPath     string
