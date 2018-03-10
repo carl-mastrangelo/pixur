@@ -148,27 +148,23 @@ type ServerConfig struct {
 	Secure      bool
 }
 
-func AddAllHandlers(mux *http.ServeMux, c *ServerConfig) {
-	regServ := &serv{
-		db:          c.DB,
-		pixpath:     c.PixPath,
-		tokenSecret: c.TokenSecret,
-		privkey:     c.PrivateKey,
-		pubkey:      c.PublicKey,
-		secure:      c.Secure,
-		runner:      nil,
-		now:         time.Now,
-		rand:        rand.Reader,
-	}
-
-	gserv := grpc.NewServer(grpc.UnaryInterceptor((&serverInterceptor{}).intercept))
-	api.RegisterPixurServiceServer(gserv, regServ)
-	mux.Handle("/", gserv)
-	mux.Handle("/pix/", http.StripPrefix("/pix/", &fileServer{
-		Handler: http.FileServer(http.Dir(c.PixPath)),
-		Now:     time.Now,
-	}))
+func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 	initPwtCoder(c)
+
+	opts := []grpc.ServerOption{grpc.UnaryInterceptor((&serverInterceptor{}).intercept)}
+	return opts, func(s *grpc.Server) {
+		api.RegisterPixurServiceServer(s, &serv{
+			db:          c.DB,
+			pixpath:     c.PixPath,
+			tokenSecret: c.TokenSecret,
+			privkey:     c.PrivateKey,
+			pubkey:      c.PublicKey,
+			secure:      c.Secure,
+			runner:      nil,
+			now:         time.Now,
+			rand:        rand.Reader,
+		})
+	}
 }
 
 var errorLog = log.New(os.Stderr, "", log.LstdFlags)

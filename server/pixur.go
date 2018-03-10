@@ -6,10 +6,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"net"
 	"os"
 
-	"github.com/carl-mastrangelo/h2c"
+	"google.golang.org/grpc"
 
 	"pixur.org/pixur/api/handlers"
 	sdb "pixur.org/pixur/schema/db"
@@ -18,7 +18,8 @@ import (
 
 type Server struct {
 	db          sdb.DB
-	s           *http.Server
+	s           *grpc.Server
+	ln          net.Listener
 	pixPath     string
 	tokenSecret []byte
 	publicKey   *rsa.PublicKey
@@ -104,15 +105,7 @@ func (s *Server) setup(c *config.Config) error {
 	}
 	s.insecure = c.Insecure
 
-	s.s = new(http.Server)
-	s.s.Addr = c.HttpSpec
-	mux := http.NewServeMux()
-	s.s.Handler = mux
-	h2c.AttachClearTextHandler(nil /* default http2 server */, s.s)
-
-	h2c.AttachClearTextHandler(nil, s.s)
-
-	handlers.AddAllHandlers(mux, &handlers.ServerConfig{
+	opts, cb := handlers.HandlersInit(&handlers.ServerConfig{
 		DB:          db,
 		PixPath:     s.pixPath,
 		TokenSecret: s.tokenSecret,
@@ -120,6 +113,14 @@ func (s *Server) setup(c *config.Config) error {
 		PublicKey:   s.publicKey,
 		Secure:      !s.insecure,
 	})
+	s.s = grpc.NewServer(opts...)
+	cb(s.s)
+
+	ln, err := net.Listen(c.ListenNetwork, c.ListenAddress)
+	if err != nil {
+		return err
+	}
+	s.ln = ln
 	return nil
 }
 
@@ -127,5 +128,5 @@ func (s *Server) StartAndWait(c *config.Config) error {
 	if err := s.setup(c); err != nil {
 		return err
 	}
-	return s.s.ListenAndServe()
+	return s.s.Serve(s.ln)
 }

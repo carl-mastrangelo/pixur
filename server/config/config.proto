@@ -12,8 +12,11 @@ message Config {
 	
 	string db_config = 2;
 	
-	// Address to bind to, like ":http"
-	string http_spec = 3;
+	// listen network (e.g. "tcp")
+	string listen_network = 3;
+	// listen address (e.g. "localhost:1234")
+	string listen_address = 9;
+	
 	// Path to look for pictures.
 	string pix_path = 4;
 	

@@ -15,7 +15,8 @@ var (
 	defaultValues = &Config{
 		DbName:                "sqlite3",
 		DbConfig:              ":memory:",
-		HttpSpec:              ":http",
+		ListenAddress:         ":8889",
+		ListenNetwork:         "tcp",
 		PixPath:               "pix",
 		SessionPrivateKeyPath: "",
 		SessionPublicKeyPath:  "",
@@ -26,7 +27,8 @@ var (
 
 func init() {
 	_ = flag.String("config", ".config.textpb", "The default configuration file")
-	flag.StringVar(&Conf.HttpSpec, "spec", Conf.HttpSpec, "Default HTTP port")
+	flag.StringVar(&Conf.ListenAddress, "listen_address", Conf.ListenAddress, "Listening Address")
+	flag.StringVar(&Conf.ListenNetwork, "listen_network", Conf.ListenNetwork, "Listening Network")
 	flag.StringVar(&Conf.PixPath, "pix_path", Conf.PixPath, "Default picture storage directory")
 	flag.StringVar(&Conf.DbName, "db_name", Conf.DbName, "Database Name")
 	flag.StringVar(&Conf.DbConfig, "db_config", Conf.DbConfig, "Database Configuration")
