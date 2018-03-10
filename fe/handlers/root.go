@@ -50,8 +50,7 @@ func init() {
 			pt: pt,
 		}
 		ph := &pixHandler{
-			pixurSpec: s.PixurSpec,
-			pt:        pt,
+			c: s.Client,
 		}
 		bh := newBaseHandler(s)
 		rh := rootHandler{
