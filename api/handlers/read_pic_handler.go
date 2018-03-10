@@ -13,13 +13,31 @@ import (
 	"pixur.org/pixur/status"
 )
 
-func (s *serv) handleReadPicFileInfoRequest(ctx context.Context, req *api.ReadPicFileInfoRequest) (
-	*api.ReadPicFileInfoResponse, status.S) {
+func apiFormatToSchemaMime(format api.PicFile_Format) (schema.Pic_Mime, status.S) {
+	apiName, present := api.PicFile_Format_name[int32(format)]
+	if !present {
+		return schema.Pic_UNKNOWN, status.InvalidArgument(nil, "unknown format")
+	}
+	schemaValue, present := schema.Pic_Mime_value[apiName]
+	if !present {
+		return schema.Pic_UNKNOWN, status.InvalidArgument(nil, "unknown name")
+	}
+	return schema.Pic_Mime(schemaValue), nil
+}
+
+// TODO: add tests
+func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRequest) (
+	*api.LookupPicFileResponse, status.S) {
 	if sts := authReadPicRequest(ctx); sts != nil {
 		return nil, sts
 	}
 
-	path, sts := getPathForReadPic(s.pixpath, req.PicId, req.Type, req.Thumbnail)
+	mime, sts := apiFormatToSchemaMime(req.Format)
+	if sts != nil {
+		return nil, sts
+	}
+
+	path, sts := schema.PicFilePath(s.pixpath, req.PicFileId, mime)
 	if sts != nil {
 		return nil, sts
 	}
@@ -28,15 +46,21 @@ func (s *serv) handleReadPicFileInfoRequest(ctx context.Context, req *api.ReadPi
 		return nil, status.NotFound(err, "can't open pic")
 	}
 
-	ts, err := ptypes.TimestampProto(fi.ModTime())
+	mts, err := ptypes.TimestampProto(fi.ModTime())
 	if err != nil {
 		return nil, status.InternalError(err, "bad ts")
 	}
 
-	return &api.ReadPicFileInfoResponse{
-		Name:         fi.Name(),
-		Size:         fi.Size(),
-		ModifiedTime: ts,
+	return &api.LookupPicFileResponse{
+		PicFile: &api.PicFile{
+			Id:     req.PicFileId,
+			Format: req.Format,
+			// TODO: return right value
+			CreatedTime:  mts,
+			ModifiedTime: mts,
+			Size:         fi.Size(),
+			// TODO: include the rest of the values
+		},
 	}, nil
 }
 
@@ -64,7 +88,7 @@ func authReadPicRequest(ctx context.Context) status.S {
 }
 
 // TODO: add tests
-func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
+func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.S {
 	if sts := authReadPicRequest(rps.Context()); sts != nil {
 		return sts
 	}
@@ -80,10 +104,15 @@ func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
 			return status.InternalError(err, "can't recv")
 		}
 		if f == nil {
-			path, sts := getPathForReadPic(s.pixpath, req.PicId, req.Type, req.Thumbnail)
+			mime, sts := apiFormatToSchemaMime(req.Format)
 			if sts != nil {
 				return sts
 			}
+			path, sts := schema.PicFilePath(s.pixpath, req.PicFileId, mime)
+			if sts != nil {
+				return sts
+			}
+
 			f, err = os.Open(path)
 			if err != nil {
 				return status.NotFound(err, "can't open pic")
@@ -91,7 +120,7 @@ func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
 			defer f.Close()
 		}
 
-		resp := &api.ReadPicResponse{}
+		resp := &api.ReadPicFileResponse{}
 		if req.Limit > 1048576 || req.Limit == 0 {
 			resp.Data = make([]byte, 1048576)
 		} else if req.Limit < 0 {
@@ -110,23 +139,4 @@ func (s *serv) handleReadPic(rps api.PixurService_ReadPicServer) status.S {
 			return status.InternalError(err, "can't send")
 		}
 	}
-}
-
-func getPathForReadPic(pixPath, rawPicID, typ string, thumbnail bool) (string, status.S) {
-	var picID schema.Varint
-	if err := picID.DecodeAll(rawPicID); err != nil {
-		return "", status.NotFound(err, "Unable to decode pic id")
-	}
-	mime, err := schema.FromImageFormat(typ)
-	if err != nil {
-		return "", status.NotFound(err, "Unable to decode pic type")
-	}
-	p := &schema.Pic{
-		PicId: int64(picID),
-		Mime:  mime,
-	}
-	if thumbnail {
-		return p.ThumbnailPath(pixPath), nil
-	}
-	return p.Path(pixPath), nil
 }

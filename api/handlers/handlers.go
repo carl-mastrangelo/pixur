@@ -131,12 +131,12 @@ func (s *serv) UpsertPicVote(ctx oldctx.Context, req *api.UpsertPicVoteRequest) 
 	return s.handleUpsertPicVote(ctx, req)
 }
 
-func (s *serv) ReadPic(rps api.PixurService_ReadPicServer) error {
-	return s.handleReadPic(rps)
+func (s *serv) ReadPicFile(rps api.PixurService_ReadPicFileServer) error {
+	return s.handleReadPicFile(rps)
 }
 
-func (s *serv) ReadPicFileInfo(ctx oldctx.Context, req *api.ReadPicFileInfoRequest) (*api.ReadPicFileInfoResponse, error) {
-	return s.handleReadPicFileInfoRequest(ctx, req)
+func (s *serv) LookupPicFile(ctx oldctx.Context, req *api.LookupPicFileRequest) (*api.LookupPicFileResponse, error) {
+	return s.handleLookupPicFile(ctx, req)
 }
 
 type ServerConfig struct {

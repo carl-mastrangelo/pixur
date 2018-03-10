@@ -21,13 +21,17 @@ message Pic {
   // version is the version of the pic.  It is used when updating the pic.
   sfixed64 version = 4;
   // type is the mime type of the pic. (JPEG, GIF, PNG, or WEBM)
-  string type = 5;
+  string type = 5 [deprecated = true];
+  // created_time is when the pic was created.
+  google.protobuf.Timestamp created_time = 14;
+  // modified_time is when the pic was last modified.
+  google.protobuf.Timestamp modified_time = 15;
   
   // relative_url is the location of the pic file relative to the root dir.
-  string relative_url = 6;
+  string relative_url = 6 [deprecated = true];
   // thumbnail_relative_url is the location of the the pic thumbnail
   // relative to the root dir.
-  string thumbnail_relative_url = 7;
+  string thumbnail_relative_url = 7 [deprecated = true];
   reserved 8;
 
   // pending_deletion indicates if the pic may be deleted soon.
@@ -37,12 +41,43 @@ message Pic {
 
   // duration is present if the image is animated (GIF or WEBM).  Note that
   // GIFs duration is not well defined and is subject to reinterpretation.
-  google.protobuf.Duration duration = 11;
+  google.protobuf.Duration duration = 11 [deprecated = true];
   
   // The estimated lower bound of the pic score
   double score_lo = 12;
   // The estimated upper bound of the pic score
   double score_hi = 13;
+}
+
+message PicFile {
+  // The fully qualified picfile id.  The first component is always the pic id.
+  string id = 1;
+  enum Format {
+    UNKNOWN = 0;
+    JPEG = 1;
+    GIF = 2;
+    PNG = 3;
+    WEBM = 4;
+  }
+  Format format = 2;
+
+  int32 width = 3;
+  int32 height = 4;
+  
+  // duration is present if the image is animated (GIF or WEBM).  Note that
+  // GIFs duration is not well defined and is subject to reinterpretation.
+  google.protobuf.Duration duration = 5;
+  
+  // Is this pic considered a thumbnail
+  bool thumbnail = 6;
+  
+  // created_time is when the PicFile was created.
+  google.protobuf.Timestamp created_time = 7;
+  // modified_time is when the PicFile was last modified.
+  google.protobuf.Timestamp modified_time = 8;
+
+  // the size in bytes of the file
+  int64 size = 9;
 }
 
 message PicTag {
@@ -173,6 +208,7 @@ message LookupPicDetailsResponse {
   Pic pic = 1;
   repeated PicTag pic_tag = 2;
   PicCommentTree pic_comment_tree = 3;
+  repeated PicFile pic_file = 4;
 }
 
 message FindIndexPicsRequest {
@@ -362,37 +398,27 @@ message UpsertPicVoteResponse {
   // empty
 }
 
-message ReadPicFileInfoRequest {
-  string pic_id = 1;
-  // (JPEG, GIF, PNG, or WEBM)
-  string type = 2;
-  bool thumbnail = 3;
+
+message LookupPicFileRequest {
+  string pic_file_id = 1;
+  PicFile.Format format = 2;
 }
 
-message ReadPicFileInfoResponse {
-  string name = 1;
-  int64 size = 2;
-  google.protobuf.Timestamp modified_time = 3;
+message LookupPicFileResponse {
+  PicFile pic_file = 1;
 }
 
-message ReadPicRequest {
-  // Required for the first request, but ignored for subsequent requests.
-  string pic_id = 1;
+message ReadPicFileRequest {
+  string pic_file_id = 1;
+  PicFile.Format format = 2;
   
-  // Required for the first request, but ignored for subsequent requests.
-  // (JPEG, GIF, PNG, or WEBM)
-  string type = 2;
-  
-  // Required for the first request, but ignored for subsequent requests.
-  bool thumbnail = 3;
-  
-  // The offset into the file to start reading at.
-  int64 offset = 4;
+  // The offset into the file to start reading at.  Required
+  int64 offset = 3;
   // The maximum number of bytes to read.   Maybe be 0.
-  int64 limit = 5;
+  int64 limit = 4;
 }
 
-message ReadPicResponse {
+message ReadPicFileResponse {
   // may be empty
   bytes data = 1;
   // indicates that the end of the pic has been reached.
@@ -410,8 +436,8 @@ service PixurService {
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
-  rpc ReadPicFileInfo(ReadPicFileInfoRequest) returns (ReadPicFileInfoResponse);
-  rpc ReadPic(stream ReadPicRequest) returns (stream ReadPicResponse);
+  rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse);
+  rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse);
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
