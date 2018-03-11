@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/be/status"
 	"pixur.org/pixur/be/tasks"
-	"pixur.org/pixur/status"
 )
 
 var _ multipart.File = memFile{}

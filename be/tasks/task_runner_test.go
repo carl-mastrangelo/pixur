@@ -3,7 +3,7 @@ package tasks
 import (
 	"testing"
 
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 
 	"github.com/go-sql-driver/mysql"
 )

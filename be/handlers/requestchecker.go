@@ -6,7 +6,7 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 )
 
 type requestChecker struct {

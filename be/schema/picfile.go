@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 )
 
 func PicFilePath(pixPath, picFileID string, format Pic_Mime) (string, status.S) {

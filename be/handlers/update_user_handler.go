@@ -5,8 +5,8 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/status"
 	"pixur.org/pixur/be/tasks"
-	"pixur.org/pixur/status"
 )
 
 var capcapmap = make(map[api.Capability_Cap]schema.User_Capability)

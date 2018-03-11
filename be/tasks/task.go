@@ -4,7 +4,7 @@ import (
 	"log"
 
 	tab "pixur.org/pixur/be/schema/tables"
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 )
 
 type Task interface {

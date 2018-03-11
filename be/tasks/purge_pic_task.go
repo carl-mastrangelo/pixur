@@ -9,7 +9,7 @@ import (
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 )
 
 var _ Task = &PurgePicTask{}

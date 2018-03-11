@@ -13,8 +13,8 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/status"
 	"pixur.org/pixur/be/tasks"
-	"pixur.org/pixur/status"
 )
 
 func TestLookupPicWorkFlow(t *testing.T) {

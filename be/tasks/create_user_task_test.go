@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
-	"pixur.org/pixur/status"
+	"pixur.org/pixur/be/status"
 )
 
 func TestCreateUserWorkFlow(t *testing.T) {
