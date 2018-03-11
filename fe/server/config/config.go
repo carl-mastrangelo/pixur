@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	_ = flag.String("config", ".config.textpb", "The default configuration file")
+	_ = flag.String("config", ".configfe.textpb", "The default configuration file")
 	flag.StringVar(&Conf.HttpSpec, "http_spec", Conf.HttpSpec, "Default HTTP port")
 	flag.StringVar(&Conf.PixurSpec, "pixur_spec", Conf.PixurSpec, "Pixur API server")
 	flag.BoolVar(&Conf.Insecure, "insecure", Conf.Insecure, "Http server is insecure")

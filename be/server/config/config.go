@@ -47,7 +47,7 @@ func mergeParseConfigFlag(defaults *Config) *Config {
 func parseConfigFlag() (*Config, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(ioutil.Discard)
-	configPath := fs.String("config", envOrDefault("PIXUR_CONFIG", ".config.textpb"), "")
+	configPath := fs.String("config", envOrDefault("PIXUR_BE_CONFIG", ".configbe.textpb"), "")
 	if err := fs.Parse(os.Args[1:]); err != nil && err != flag.ErrHelp {
 		// ignore, the next parse call will find it.
 		glog.V(2).Info(err)
