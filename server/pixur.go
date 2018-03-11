@@ -24,7 +24,6 @@ type Server struct {
 	tokenSecret []byte
 	publicKey   *rsa.PublicKey
 	privateKey  *rsa.PrivateKey
-	insecure    bool
 }
 
 func (s *Server) setup(c *config.Config) error {
@@ -103,7 +102,6 @@ func (s *Server) setup(c *config.Config) error {
 	if c.TokenSecret != "" {
 		s.tokenSecret = []byte(c.TokenSecret)
 	}
-	s.insecure = c.Insecure
 
 	opts, cb := handlers.HandlersInit(&handlers.ServerConfig{
 		DB:          db,
@@ -111,7 +109,6 @@ func (s *Server) setup(c *config.Config) error {
 		TokenSecret: s.tokenSecret,
 		PrivateKey:  s.privateKey,
 		PublicKey:   s.publicKey,
-		Secure:      !s.insecure,
 	})
 	s.s = grpc.NewServer(opts...)
 	cb(s.s)
