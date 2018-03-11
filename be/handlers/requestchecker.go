@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/status"
 )
 

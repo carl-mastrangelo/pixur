@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	_ = flag.String("config", ".config.textpb", "The default configuration file")
+	_ = flag.String("config", ".configbe.textpb", "The default configuration file")
 	flag.StringVar(&Conf.ListenAddress, "listen_address", Conf.ListenAddress, "Listening Address")
 	flag.StringVar(&Conf.ListenNetwork, "listen_network", Conf.ListenNetwork, "Listening Network")
 	flag.StringVar(&Conf.PixPath, "pix_path", Conf.PixPath, "Default picture storage directory")

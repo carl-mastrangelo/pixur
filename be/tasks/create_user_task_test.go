@@ -8,7 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/bcrypt"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/status"
 )
 

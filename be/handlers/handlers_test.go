@@ -11,8 +11,8 @@ import (
 	gstatus "google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 func TestServerInterceptorSucceedsOnNoAuth(t *testing.T) {

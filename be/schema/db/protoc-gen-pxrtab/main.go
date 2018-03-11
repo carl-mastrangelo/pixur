@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"pixur.org/pixur/schema/db/protoc-gen-pxrtab/generator"
+	"pixur.org/pixur/be/schema/db/protoc-gen-pxrtab/generator"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func TestHardDeleteWorkflow(t *testing.T) {

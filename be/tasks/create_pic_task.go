@@ -19,10 +19,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"pixur.org/pixur/imaging"
-	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
-	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/be/imaging"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/schema/db"
+	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/status"
 )
 

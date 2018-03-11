@@ -10,7 +10,7 @@ import (
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func TestAuthUserTaskFailsOnMissingContext(t *testing.T) {

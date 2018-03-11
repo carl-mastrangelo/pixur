@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func createTestImage(t *testing.T) string {

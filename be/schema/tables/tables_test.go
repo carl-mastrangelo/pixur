@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	sdb "pixur.org/pixur/schema/db"
+	sdb "pixur.org/pixur/be/schema/db"
 )
 
 type fakeDB chan struct{}

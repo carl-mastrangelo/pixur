@@ -18,8 +18,8 @@ import (
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/nfnt/resize"
 
-	"pixur.org/pixur/imaging/webm"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/imaging/webm"
+	"pixur.org/pixur/be/schema"
 )
 
 var (

@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 func TestFindIndexPicsFailsOnBadPicID(t *testing.T) {

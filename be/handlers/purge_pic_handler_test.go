@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 func TestPurgePicFailsOnBadPicID(t *testing.T) {

@@ -15,8 +15,8 @@ import (
 	descriptor "google/protobuf"
 	plugin "google/protobuf/compiler"
 
-	"pixur.org/pixur/schema/db"
-	"pixur.org/pixur/schema/db/model"
+	"pixur.org/pixur/be/schema/db"
+	"pixur.org/pixur/be/schema/db/model"
 )
 
 type keyType string
@@ -106,7 +106,7 @@ func (g *Generator) addDefaultImports() {
 		FullName: "github.com/golang/protobuf/proto",
 	})
 	g.args.Imports = append(g.args.Imports, tplImport{
-		FullName: "pixur.org/pixur/schema/db",
+		FullName: "pixur.org/pixur/be/schema/db",
 	})
 }
 

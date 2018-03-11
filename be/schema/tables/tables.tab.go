@@ -7,11 +7,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"pixur.org/pixur/schema/db"
+	"pixur.org/pixur/be/schema/db"
 
-	schema "pixur.org/pixur/schema"
+	schema "pixur.org/pixur/be/schema"
 
-	model "pixur.org/pixur/schema/db/model"
+	model "pixur.org/pixur/be/schema/db/model"
 )
 
 var (

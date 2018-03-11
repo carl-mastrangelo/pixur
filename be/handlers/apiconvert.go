@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func apiPics(dst []*api.Pic, srcs ...*schema.Pic) []*api.Pic {

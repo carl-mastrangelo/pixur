@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"pixur.org/pixur/schema/db"
+	"pixur.org/pixur/be/schema/db"
 )
 
 // Rather than have schema/db depend on a live database, do the id allocator tests here.

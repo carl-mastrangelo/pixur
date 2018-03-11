@@ -6,9 +6,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
-	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/schema/db"
+	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/status"
 )
 

@@ -6,9 +6,9 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 func authTokenFromMD(md metadata.MD) (string, bool) {

@@ -11,8 +11,8 @@ import (
 	oldcontext "golang.org/x/net/context"
 	"golang.org/x/net/webdav"
 
-	"pixur.org/pixur/schema"
-	"pixur.org/pixur/schema/db"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/schema/db"
 )
 
 type PixFS struct {

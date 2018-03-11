@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRequest) (*api.AddPicCommentResponse, status.S) {

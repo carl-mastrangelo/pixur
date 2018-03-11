@@ -3,7 +3,7 @@ package tasks
 import (
 	"log"
 
-	tab "pixur.org/pixur/schema/tables"
+	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/status"
 )
 

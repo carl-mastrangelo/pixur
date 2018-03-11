@@ -4,8 +4,8 @@ import (
 	"flag"
 	"log"
 
-	"pixur.org/pixur/server"
-	"pixur.org/pixur/server/config"
+	"pixur.org/pixur/be/server"
+	"pixur.org/pixur/be/server/config"
 )
 
 func main() {

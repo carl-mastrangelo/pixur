@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func TestPicViewCountUpdated(t *testing.T) {

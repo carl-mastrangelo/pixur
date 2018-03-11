@@ -13,8 +13,8 @@ import (
 	"testing"
 	"unicode"
 
-	"pixur.org/pixur/schema"
-	tab "pixur.org/pixur/schema/tables"
+	"pixur.org/pixur/be/schema"
+	tab "pixur.org/pixur/be/schema/tables"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"

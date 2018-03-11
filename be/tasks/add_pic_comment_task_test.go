@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func TestAddPicCommentTaskWorkFlow(t *testing.T) {

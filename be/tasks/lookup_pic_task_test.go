@@ -3,7 +3,7 @@ package tasks
 import (
 	"testing"
 
-	"pixur.org/pixur/schema"
+	"pixur.org/pixur/be/schema"
 )
 
 func TestPicCommentTree(t *testing.T) {

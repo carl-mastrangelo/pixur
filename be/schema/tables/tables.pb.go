@@ -22,8 +22,8 @@ package tables
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import pixur "pixur.org/pixur/schema"
-import _ "pixur.org/pixur/schema/db/model"
+import pixur "pixur.org/pixur/be/schema"
+import _ "pixur.org/pixur/be/schema/db/model"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

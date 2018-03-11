@@ -14,9 +14,9 @@ import (
 	gstatus "google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
-	"pixur.org/pixur/schema/db"
+	"pixur.org/pixur/be/schema/db"
+	"pixur.org/pixur/be/tasks"
 	"pixur.org/pixur/status"
-	"pixur.org/pixur/tasks"
 )
 
 type serverInterceptor struct{}

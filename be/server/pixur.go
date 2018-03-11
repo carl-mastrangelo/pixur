@@ -11,9 +11,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"pixur.org/pixur/api/handlers"
-	sdb "pixur.org/pixur/schema/db"
-	"pixur.org/pixur/server/config"
+	"pixur.org/pixur/be/handlers"
+	sdb "pixur.org/pixur/be/schema/db"
+	"pixur.org/pixur/be/server/config"
 )
 
 type Server struct {
