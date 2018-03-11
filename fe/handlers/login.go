@@ -23,7 +23,7 @@ type loginData struct {
 	Next string
 }
 
-var loginTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/login.html"))
+var loginTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/login.html"))
 
 type loginHandler struct {
 	pt     paths

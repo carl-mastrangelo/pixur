@@ -8,7 +8,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var commentTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/comment.html", "tpl/comment_reply.html"))
+var commentTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/comment.html", "fe/tpl/comment_reply.html"))
 
 type commentHandler struct {
 	pt paths

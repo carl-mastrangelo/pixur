@@ -9,7 +9,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var rootTpl = template.Must(template.ParseFiles("tpl/base.html")).Option("missingkey=error")
+var rootTpl = template.Must(template.ParseFiles("fe/tpl/base.html")).Option("missingkey=error")
 
 type rootHandler struct {
 	pt            paths

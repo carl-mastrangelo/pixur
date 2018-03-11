@@ -13,7 +13,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var viewerTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/viewer.html", "tpl/comment_reply.html"))
+var viewerTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/viewer.html", "fe/tpl/comment_reply.html"))
 
 type viewerHandler struct {
 	pt paths

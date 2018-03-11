@@ -15,7 +15,7 @@ type indexData struct {
 	NextID, PrevID string
 }
 
-var indexTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("tpl/index.html"))
+var indexTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/index.html"))
 
 type indexHandler struct {
 	c  api.PixurServiceClient
