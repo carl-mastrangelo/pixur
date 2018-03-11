@@ -3,93 +3,14 @@ package status
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"runtime"
+
+	"google.golang.org/grpc/codes"
 )
-
-type Code int
-
-var (
-	Code_OK                  Code = 0
-	Code_CANCELLED           Code = 1
-	Code_UNKNOWN             Code = 2
-	Code_INVALID_ARGUMENT    Code = 3
-	Code_DEADLINE_EXCEEDED   Code = 4
-	Code_NOT_FOUND           Code = 5
-	Code_ALREADY_EXISTS      Code = 6
-	Code_PERMISSION_DENIED   Code = 7
-	Code_UNAUTHENTICATED     Code = 16
-	Code_RESOURCE_EXHAUSTED  Code = 8
-	Code_FAILED_PRECONDITION Code = 9
-	Code_ABORTED             Code = 10
-	Code_OUT_OF_RANGE        Code = 11
-	Code_UNIMPLEMENTED       Code = 12
-	Code_INTERNAL            Code = 13
-	Code_UNAVAILABLE         Code = 14
-	Code_DATA_LOSS           Code = 15
-)
-
-var (
-	_codeHttpMapping = map[Code]int{
-		Code_OK:                  http.StatusOK,
-		Code_CANCELLED:           499, // Client Closed Request
-		Code_UNKNOWN:             http.StatusInternalServerError,
-		Code_INVALID_ARGUMENT:    http.StatusBadRequest,
-		Code_DEADLINE_EXCEEDED:   http.StatusGatewayTimeout,
-		Code_NOT_FOUND:           http.StatusNotFound,
-		Code_ALREADY_EXISTS:      http.StatusConflict,
-		Code_PERMISSION_DENIED:   http.StatusForbidden,
-		Code_UNAUTHENTICATED:     http.StatusUnauthorized,
-		Code_RESOURCE_EXHAUSTED:  http.StatusTooManyRequests,
-		Code_FAILED_PRECONDITION: http.StatusPreconditionFailed, // not 400, as code.proto suggests
-		Code_ABORTED:             http.StatusConflict,
-		Code_OUT_OF_RANGE:        http.StatusRequestedRangeNotSatisfiable, // not 400, as code.proto suggests
-		Code_UNIMPLEMENTED:       http.StatusNotImplemented,
-		Code_INTERNAL:            http.StatusInternalServerError,
-		Code_UNAVAILABLE:         http.StatusServiceUnavailable,
-		Code_DATA_LOSS:           http.StatusInternalServerError,
-	}
-)
-
-var (
-	_codeNameMapping = map[Code]string{
-		Code_OK:                  "OK",
-		Code_CANCELLED:           "CANCELLED",
-		Code_UNKNOWN:             "UNKNOWN",
-		Code_INVALID_ARGUMENT:    "INVALID_ARGUMENT",
-		Code_DEADLINE_EXCEEDED:   "DEADLINE_EXCEEDED",
-		Code_NOT_FOUND:           "NOT_FOUND",
-		Code_ALREADY_EXISTS:      "ALREADY_EXISTS",
-		Code_PERMISSION_DENIED:   "PERMISSION_DENIED",
-		Code_UNAUTHENTICATED:     "UNAUTHENTICATED",
-		Code_RESOURCE_EXHAUSTED:  "RESOURCE_EXHAUSTED",
-		Code_FAILED_PRECONDITION: "FAILED_PRECONDITION",
-		Code_ABORTED:             "ABORTED",
-		Code_OUT_OF_RANGE:        "OUT_OF_RANGE",
-		Code_UNIMPLEMENTED:       "UNIMPLEMENTED",
-		Code_INTERNAL:            "INTERNAL",
-		Code_UNAVAILABLE:         "UNAVAILABLE",
-		Code_DATA_LOSS:           "DATA_LOSS",
-	}
-)
-
-func (c Code) String() string {
-	if mapping, present := _codeNameMapping[c]; present {
-		return mapping
-	}
-	return fmt.Sprintf("Unknown Code %d", c)
-}
-
-func (c Code) HttpStatus() int {
-	if mapping, present := _codeHttpMapping[c]; present {
-		return mapping
-	}
-	return http.StatusInternalServerError
-}
 
 type S interface {
 	error
-	Code() Code
+	Code() codes.Code
 	Message() string
 	Cause() error
 	Stack() []uintptr
@@ -102,7 +23,7 @@ func From(err error) S {
 		return s
 	}
 	return &status{
-		code:  Code_UNKNOWN,
+		code:  codes.Unknown,
 		cause: err,
 	}
 }
@@ -110,13 +31,13 @@ func From(err error) S {
 var _ S = &status{}
 
 type status struct {
-	code  Code
+	code  codes.Code
 	msg   string
 	cause error
 	stack []uintptr
 }
 
-func (s *status) Code() Code {
+func (s *status) Code() codes.Code {
 	return s.code
 }
 
@@ -177,7 +98,7 @@ func getStack() []uintptr {
 
 func InvalidArgument(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_INVALID_ARGUMENT,
+		code:  codes.InvalidArgument,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -186,7 +107,7 @@ func InvalidArgument(e error, v ...interface{}) S {
 
 func InvalidArgumentf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_INVALID_ARGUMENT,
+		code:  codes.InvalidArgument,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -195,7 +116,7 @@ func InvalidArgumentf(e error, format string, v ...interface{}) S {
 
 func InternalError(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_INTERNAL,
+		code:  codes.Internal,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -204,7 +125,7 @@ func InternalError(e error, v ...interface{}) S {
 
 func InternalErrorf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_INTERNAL,
+		code:  codes.Internal,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -213,7 +134,7 @@ func InternalErrorf(e error, format string, v ...interface{}) S {
 
 func NotFound(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_NOT_FOUND,
+		code:  codes.NotFound,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -222,7 +143,7 @@ func NotFound(e error, v ...interface{}) S {
 
 func NotFoundf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_NOT_FOUND,
+		code:  codes.NotFound,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -231,7 +152,7 @@ func NotFoundf(e error, format string, v ...interface{}) S {
 
 func AlreadyExists(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_ALREADY_EXISTS,
+		code:  codes.AlreadyExists,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -240,7 +161,7 @@ func AlreadyExists(e error, v ...interface{}) S {
 
 func AlreadyExistsf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_ALREADY_EXISTS,
+		code:  codes.AlreadyExists,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -249,7 +170,7 @@ func AlreadyExistsf(e error, format string, v ...interface{}) S {
 
 func Unauthenticated(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_UNAUTHENTICATED,
+		code:  codes.Unauthenticated,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -258,7 +179,7 @@ func Unauthenticated(e error, v ...interface{}) S {
 
 func Unauthenticatedf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_UNAUTHENTICATED,
+		code:  codes.Unauthenticated,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -267,7 +188,7 @@ func Unauthenticatedf(e error, format string, v ...interface{}) S {
 
 func PermissionDenied(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_PERMISSION_DENIED,
+		code:  codes.PermissionDenied,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -276,7 +197,7 @@ func PermissionDenied(e error, v ...interface{}) S {
 
 func PermissionDeniedf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_PERMISSION_DENIED,
+		code:  codes.PermissionDenied,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -285,7 +206,7 @@ func PermissionDeniedf(e error, format string, v ...interface{}) S {
 
 func Aborted(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_ABORTED,
+		code:  codes.Aborted,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -294,7 +215,7 @@ func Aborted(e error, v ...interface{}) S {
 
 func Abortedf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_ABORTED,
+		code:  codes.Aborted,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),
@@ -303,7 +224,7 @@ func Abortedf(e error, format string, v ...interface{}) S {
 
 func Unimplemented(e error, v ...interface{}) S {
 	return &status{
-		code:  Code_UNIMPLEMENTED,
+		code:  codes.Unimplemented,
 		msg:   fmt.Sprint(v...),
 		cause: e,
 		stack: getStack(),
@@ -312,7 +233,7 @@ func Unimplemented(e error, v ...interface{}) S {
 
 func Unimplementedf(e error, format string, v ...interface{}) S {
 	return &status{
-		code:  Code_UNIMPLEMENTED,
+		code:  codes.Unimplemented,
 		msg:   fmt.Sprintf(format, v...),
 		cause: e,
 		stack: getStack(),

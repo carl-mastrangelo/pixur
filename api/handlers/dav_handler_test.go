@@ -123,9 +123,12 @@ func TestDavHandlerFailsOnHardExpiredToken(t *testing.T) {
 }
 
 func TestDavHandlerSucceedsOnSoftExpiredToken(t *testing.T) {
+
+	hh := func(w http.ResponseWriter, r *http.Request) {}
+
 	s := httptest.NewServer(&davAuthHandler{
-		Handler: &capHandler{},
 		Now:     time.Now,
+		Handler: http.HandlerFunc(hh),
 	})
 	defer s.Close()
 

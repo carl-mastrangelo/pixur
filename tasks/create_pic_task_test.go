@@ -15,9 +15,9 @@ import (
 
 	"pixur.org/pixur/schema"
 	tab "pixur.org/pixur/schema/tables"
-	"pixur.org/pixur/status"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
 )
 
 // TODO: Remove this
@@ -119,7 +119,7 @@ func TestDuplicateImageIgnored(t *testing.T) {
 		t.Fatal("Task should have failed")
 	}
 
-	if sts.Code() != status.Code_ALREADY_EXISTS {
+	if sts.Code() != codes.AlreadyExists {
 		t.Fatalf("Expected Already exists: %s", sts)
 	}
 }

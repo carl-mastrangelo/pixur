@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/grpc/codes"
+
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
 	"pixur.org/pixur/status"
@@ -19,7 +21,7 @@ func TestFindIndexPicsFailsOnBadPicID(t *testing.T) {
 	if sts == nil {
 		t.Fatal("nil status")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "bad pic id"; !strings.Contains(have, want) {

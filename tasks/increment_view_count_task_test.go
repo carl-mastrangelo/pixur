@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 )
 
 func TestPicViewCountUpdated(t *testing.T) {
@@ -67,8 +68,8 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	if sts := task.Run(); sts == nil {
 		t.Fatal("Expected an error")
 	} else {
-		if sts.Code() != status.Code_INVALID_ARGUMENT {
-			t.Fatalf("Expected code %v but was %v", status.Code_INVALID_ARGUMENT, sts.Code())
+		if sts.Code() != codes.InvalidArgument {
+			t.Fatalf("Expected code %v but was %v", codes.InvalidArgument, sts.Code())
 		}
 	}
 

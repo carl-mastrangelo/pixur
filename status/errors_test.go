@@ -2,23 +2,24 @@ package status
 
 import (
 	"errors"
-	"fmt"
 	"testing"
+
+	"google.golang.org/grpc/codes"
 )
 
 func TestStatus(t *testing.T) {
 	s := &status{
 		msg:   "Foo",
-		code:  Code_INVALID_ARGUMENT,
+		code:  codes.InvalidArgument,
 		stack: getStack(),
 		cause: errors.New("bad"),
 	}
 	s2 := &status{
 		msg:   "Bar",
-		code:  Code_NOT_FOUND,
+		code:  codes.NotFound,
 		stack: getStack(),
 		cause: s,
 	}
 
-	fmt.Println(s2.String())
+	t.Log(s2.String())
 }

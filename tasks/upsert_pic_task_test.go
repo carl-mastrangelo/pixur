@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/imaging"
 	"pixur.org/pixur/schema"
@@ -756,7 +757,7 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 
 	_, sts := createNewTags(j, []string{"a"}, now)
 	// It could fail for the id allocator or tag creation, so just check the code.
-	if sts.Code() != status.Code_INTERNAL {
+	if sts.Code() != codes.Internal {
 		t.Fatal(sts)
 	}
 }

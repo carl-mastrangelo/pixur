@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 )
 
 func TestUpdateUserTaskDifferentUser(t *testing.T) {
@@ -190,7 +191,7 @@ func TestUpdateUserTaskMissingCap(t *testing.T) {
 		t.Fatal("expected status", sts)
 	}
 
-	if have, want := sts.Code(), status.Code_PERMISSION_DENIED; have != want {
+	if have, want := sts.Code(), codes.PermissionDenied; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "missing USER_UPDATE_CAPABILITY"; !strings.Contains(have, want) {
@@ -221,7 +222,7 @@ func TestUpdateUserTaskDupeCap(t *testing.T) {
 		t.Fatal("expected status", sts)
 	}
 
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "cap change overlap"; !strings.Contains(have, want) {
@@ -249,7 +250,7 @@ func TestUpdateUserTaskWrongVersion(t *testing.T) {
 		t.Fatal("expected nil status", sts)
 	}
 
-	if have, want := sts.Code(), status.Code_ABORTED; have != want {
+	if have, want := sts.Code(), codes.Aborted; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "version mismatch"; !strings.Contains(have, want) {
@@ -277,7 +278,7 @@ func TestUpdateUserTaskMissingSubject(t *testing.T) {
 		t.Fatal("expected nil status", sts)
 	}
 
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {
@@ -305,7 +306,7 @@ func TestUpdateUserTaskMissingObject(t *testing.T) {
 		t.Fatal("expected nil status", sts)
 	}
 
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {

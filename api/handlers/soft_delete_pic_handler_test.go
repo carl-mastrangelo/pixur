@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
@@ -72,7 +73,7 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 		t.Fatal("didn't fail")
 	}
 
-	if sts.Code() != status.Code_INVALID_ARGUMENT {
+	if sts.Code() != codes.InvalidArgument {
 		t.Error(sts)
 	}
 
@@ -100,7 +101,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	if sts == nil {
 		t.Fatal("didn't fail")
 	}
-	if sts.Code() != status.Code_INVALID_ARGUMENT {
+	if sts.Code() != codes.InvalidArgument {
 		t.Error("wrong status code", sts)
 	}
 
@@ -165,7 +166,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 		PicId: "g0",
 	})
 
-	if sts.Code() != status.Code_INTERNAL {
+	if sts.Code() != codes.Internal {
 		t.Error("wrong status code", sts)
 	}
 	if taskCap == nil {

@@ -5,14 +5,11 @@ import (
 	"crypto/rsa"
 	"io"
 	"log"
-	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
-	gcodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	gstatus "google.golang.org/grpc/status"
 
@@ -39,7 +36,7 @@ func (si *serverInterceptor) intercept(
 			default:
 				ctx, sts = fillUserIDFromCtx(ctx)
 				if sts != nil {
-					return nil, gstatus.Error(gcodes.Code(sts.Code()), sts.Message())
+					return nil, gstatus.Error(sts.Code(), sts.Message())
 				}
 			}
 		}
@@ -48,7 +45,7 @@ func (si *serverInterceptor) intercept(
 	resp, err := handler(ctx, req)
 	if err != nil {
 		sts := err.(status.S)
-		err = gstatus.Error(gcodes.Code(sts.Code()), sts.Message())
+		err = gstatus.Error(sts.Code(), sts.Message())
 	}
 	return resp, err
 }
@@ -168,13 +165,3 @@ func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 }
 
 var errorLog = log.New(os.Stderr, "", log.LstdFlags)
-
-func httpError(w http.ResponseWriter, sts status.S) {
-	w.Header().Set("Pixur-Status", strconv.Itoa(int(sts.Code())))
-	w.Header().Set("Pixur-Message", sts.Message())
-
-	code := sts.Code()
-	http.Error(w, code.String()+": "+sts.Message(), code.HttpStatus())
-
-	errorLog.Println(sts.String())
-}

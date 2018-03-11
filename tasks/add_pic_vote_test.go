@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 )
 
 func TestAddPicVoteTaskWorkFlow(t *testing.T) {
@@ -92,7 +92,7 @@ func TestAddPicVoteTaskWork_NoDoubleVoting(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_ALREADY_EXISTS; have != want {
+	if have, want := sts.Code(), codes.AlreadyExists; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't double vote"; !strings.Contains(have, want) {
@@ -126,7 +126,7 @@ func TestAddPicVoteTaskWork_MissingPic(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_NOT_FOUND; have != want {
+	if have, want := sts.Code(), codes.NotFound; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't find pic"; !strings.Contains(have, want) {
@@ -165,7 +165,7 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't vote on deleted pic"; !strings.Contains(have, want) {
@@ -188,7 +188,7 @@ func TestAddPicVoteTask_BadVoteDir(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "bad vote dir"; !strings.Contains(have, want) {

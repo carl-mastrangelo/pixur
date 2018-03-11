@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 )
 
 func TestSoftDeleteWorkflow(t *testing.T) {
@@ -136,7 +137,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 	if sts == nil {
 		t.Fatal("expected error")
 	}
-	if sts.Code() != status.Code_INVALID_ARGUMENT {
+	if sts.Code() != codes.InvalidArgument {
 		t.Fatal(sts)
 	}
 }

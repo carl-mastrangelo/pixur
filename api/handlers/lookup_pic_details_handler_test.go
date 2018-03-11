@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/schema"
@@ -136,7 +137,7 @@ func TestLookupPicBadPicId(t *testing.T) {
 	if lookupPicTask != nil {
 		t.Fatal("Task should not have been run")
 	}
-	if sts.Code() != status.Code_INVALID_ARGUMENT {
+	if sts.Code() != codes.InvalidArgument {
 		t.Error(sts)
 	}
 }
@@ -162,7 +163,7 @@ func TestLookupPicTaskError(t *testing.T) {
 		t.Fatal("should have failed")
 	}
 
-	if sts.Code() != status.Code_INTERNAL {
+	if sts.Code() != codes.Internal {
 		t.Error("bad status code", sts)
 	}
 	if taskCap == nil {

@@ -8,9 +8,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/schema"
-	"pixur.org/pixur/status"
 )
 
 func TestAuthUserTaskFailsOnMissingContext(t *testing.T) {
@@ -25,7 +25,7 @@ func TestAuthUserTaskFailsOnMissingContext(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
+	if have, want := sts.Code(), codes.Internal; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "missing context"; !strings.Contains(have, want) {
@@ -48,7 +48,7 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
+	if have, want := sts.Code(), codes.Internal; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't create job"; !strings.Contains(have, want) {
@@ -70,7 +70,7 @@ func TestAuthUserTaskFailsOnNoIdentifier(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "no user identifier provided"; !strings.Contains(have, want) {
@@ -95,7 +95,7 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {
@@ -121,7 +121,7 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't find token"; !strings.Contains(have, want) {
@@ -183,7 +183,7 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {
@@ -209,7 +209,7 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {

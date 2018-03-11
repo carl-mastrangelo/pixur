@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/status"
@@ -22,7 +23,7 @@ func TestDeleteTokenFailsOnMissingAuth(t *testing.T) {
 	if sts == nil {
 		t.Fatal("didn't fail")
 	}
-	if have, want := sts.Code(), status.Code_UNAUTHENTICATED; have != want {
+	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "decode auth token"; !strings.Contains(have, want) {
@@ -46,7 +47,7 @@ func TestDeleteTokenFailsOnTaskError(t *testing.T) {
 	if sts == nil {
 		t.Fatal("didn't fail")
 	}
-	if have, want := sts.Code(), status.Code_INTERNAL; have != want {
+	if have, want := sts.Code(), codes.Internal; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "bad things"; !strings.Contains(have, want) {

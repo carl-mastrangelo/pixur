@@ -101,7 +101,7 @@ func (h *davAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rc := &requestChecker{r: r, now: h.Now}
 	rc.checkPixAuth()
 	if rc.sts != nil {
-		httpError(w, rc.sts)
+		http.Error(w, rc.sts.Error(), 401)
 		return
 	}
 

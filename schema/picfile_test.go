@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"pixur.org/pixur/status"
+	"google.golang.org/grpc/codes"
 )
 
 func mustPicFilePath(t *testing.T, pixPath, picFileID string, format Pic_Mime) string {
@@ -34,7 +34,7 @@ func TestPicFilePath_Slashes(t *testing.T) {
 	if sts == nil {
 		t.Fatal("expected error")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "varint"; !strings.Contains(have, want) {
@@ -47,7 +47,7 @@ func TestPicFilePath_BadVar(t *testing.T) {
 	if sts == nil {
 		t.Fatal("expected error")
 	}
-	if have, want := sts.Code(), status.Code_INVALID_ARGUMENT; have != want {
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't decode"; !strings.Contains(have, want) {
