@@ -13,6 +13,7 @@ import (
 
 func main() {
 	flag.Parse()
+	defer glog.Flush()
 
 	s := new(server.Server)
 	handlers.RegisterAll(s)

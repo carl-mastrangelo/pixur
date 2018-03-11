@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
 )
@@ -86,16 +89,30 @@ func (fs *pixurFS) Open(name string) (http.File, error) {
 		Format:    format,
 	})
 	if err != nil {
+		glog.Info(err)
+		if s, ok := status.FromError(err); ok {
+			switch s.Code() {
+			case codes.NotFound:
+				return nil, os.ErrNotExist
+			case codes.PermissionDenied:
+				return nil, os.ErrPermission
+			case codes.Unauthenticated:
+				return nil, os.ErrPermission
+			}
+		}
+
 		return nil, err
 	}
 
 	mtime, err := ptypes.Timestamp(resp.PicFile.ModifiedTime)
 	if err != nil {
+		glog.Info(err)
 		return nil, err
 	}
 
 	rpfc, err := fs.c.ReadPicFile(fs.ctx)
 	if err != nil {
+		glog.Info(err)
 		return nil, err
 	}
 
@@ -121,12 +138,14 @@ type pixurFile struct {
 
 func (f *pixurFile) Close() error {
 	if err := f.rpfc.CloseSend(); err != nil {
+		glog.Info(err)
 		return err
 	}
 	_, err := f.rpfc.Recv()
 	if err == nil || err == io.EOF {
 		return nil
 	}
+	glog.Info(err)
 	return err
 }
 
@@ -155,10 +174,12 @@ func (f *pixurFile) Read(data []byte) (int, error) {
 		Limit:     int64(len(data)),
 	})
 	if err != nil {
+		glog.Info(err)
 		return 0, err
 	}
 	resp, err := f.rpfc.Recv()
 	if err != nil {
+		glog.Info(err)
 		return 0, err
 	}
 	n := copy(data, resp.Data)

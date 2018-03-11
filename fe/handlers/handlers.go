@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/glog"
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
@@ -65,9 +67,38 @@ func (err *HTTPErr) Error() string {
 	return strconv.Itoa(err.Code) + ": " + err.Message
 }
 
+var (
+	_codeHttpMapping = map[codes.Code]int{
+		codes.OK:                 http.StatusOK,
+		codes.Canceled:           499, // Client Closed Request
+		codes.Unknown:            http.StatusInternalServerError,
+		codes.InvalidArgument:    http.StatusBadRequest,
+		codes.DeadlineExceeded:   http.StatusGatewayTimeout,
+		codes.NotFound:           http.StatusNotFound,
+		codes.AlreadyExists:      http.StatusConflict,
+		codes.PermissionDenied:   http.StatusForbidden,
+		codes.Unauthenticated:    http.StatusUnauthorized,
+		codes.ResourceExhausted:  http.StatusTooManyRequests,
+		codes.FailedPrecondition: http.StatusPreconditionFailed, // not 400, as code.proto suggests
+		codes.Aborted:            http.StatusConflict,
+		codes.OutOfRange:         http.StatusRequestedRangeNotSatisfiable, // not 400, as code.proto suggests
+		codes.Unimplemented:      http.StatusNotImplemented,
+		codes.Internal:           http.StatusInternalServerError,
+		codes.Unavailable:        http.StatusServiceUnavailable,
+		codes.DataLoss:           http.StatusInternalServerError,
+	}
+)
+
 func httpError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
 	if sts, ok := status.FromError(err); ok {
-		http.Error(w, sts.Message(), http.StatusInternalServerError)
+		if sts.Code() == codes.OK {
+			return
+		}
+		glog.Info(sts.Code(), ": ", sts.Message())
+		http.Error(w, sts.Message(), _codeHttpMapping[sts.Code()])
 		return
 	}
 	switch err := err.(type) {
@@ -76,6 +107,7 @@ func httpError(w http.ResponseWriter, err error) {
 	default:
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	glog.Info(err)
 }
 
 func newBaseHandler(s *server.Server) *baseHandler {
