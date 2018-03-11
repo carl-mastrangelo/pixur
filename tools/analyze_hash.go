@@ -2,17 +2,20 @@ package main
 
 import (
 	"container/heap"
-	"database/sql"
+	"context"
 	"encoding/binary"
 	"encoding/csv"
+	"flag"
 	"log"
 	"os"
 	"sort"
 	"strconv"
 
-	"pixur.org/pixur/imaging"
-	"pixur.org/pixur/schema"
-	"pixur.org/pixur/tools/batch"
+	"pixur.org/pixur/be/imaging"
+	"pixur.org/pixur/be/schema"
+	sdb "pixur.org/pixur/be/schema/db"
+	tab "pixur.org/pixur/be/schema/tables"
+	"pixur.org/pixur/be/server/config"
 )
 
 var allMedians = []float32{
@@ -62,10 +65,11 @@ func (id *imgDiffs) Pop() interface{} {
 }
 
 func run() error {
-	db, err := getDB()
+	db, err := sdb.Open(config.Conf.DbName, config.Conf.DbConfig)
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	pis, err := getIdents(db)
 	if err != nil {
@@ -265,32 +269,14 @@ func hashBitHistogram(pis []*schema.PicIdent) ([]int, map[int]int) {
 	return hist, histCount
 }
 
-func getDB() (*sql.DB, error) {
-	var db *sql.DB
-	err := batch.ForEachPic(func(p *schema.Pic, sc *batch.ServerConfig, err error) error {
-		if err != nil {
-			return err
-		}
-		if db != nil {
-			return nil
-		}
-		db = sc.DB
-		return nil
-	})
+func getIdents(db sdb.DB) ([]*schema.PicIdent, error) {
+	j, err := tab.NewJob(context.Background(), db)
 	if err != nil {
 		return nil, err
 	}
-	return db, nil
-}
+	defer j.Rollback()
 
-func getIdents(db *sql.DB) ([]*schema.PicIdent, error) {
-	stmt, err := schema.PicIdentPrepare("SELECT * FROM_ WHERE %s = ? ORDER BY %s;",
-		db, schema.PicIdentColType, schema.PicIdentColPicId)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-	pis, err := schema.FindPicIdents(stmt, schema.PicIdent_DCT_0)
+	pis, err := j.FindPicIdents(sdb.Opts{})
 	if err != nil {
 		return nil, err
 	}
@@ -298,6 +284,7 @@ func getIdents(db *sql.DB) ([]*schema.PicIdent, error) {
 }
 
 func main() {
+	flag.Parse()
 	if err := run(); err != nil {
 		log.Println(err)
 	}

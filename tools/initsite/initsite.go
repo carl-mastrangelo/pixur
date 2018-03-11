@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"pixur.org/pixur/schema"
-	sdb "pixur.org/pixur/schema/db"
-	tab "pixur.org/pixur/schema/tables"
-	"pixur.org/pixur/server/config"
-	"pixur.org/pixur/tasks"
+	"pixur.org/pixur/be/schema"
+	sdb "pixur.org/pixur/be/schema/db"
+	tab "pixur.org/pixur/be/schema/tables"
+	"pixur.org/pixur/be/server/config"
+	"pixur.org/pixur/be/tasks"
 
 	"golang.org/x/crypto/ssh/terminal"
 )

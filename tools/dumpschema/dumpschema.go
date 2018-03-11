@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	tab "pixur.org/pixur/schema/tables"
-	"pixur.org/pixur/server/config"
+	tab "pixur.org/pixur/be/schema/tables"
+	"pixur.org/pixur/be/server/config"
 )
 
 func run() error {
