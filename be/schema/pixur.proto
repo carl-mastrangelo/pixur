@@ -218,6 +218,10 @@ message User {
     USER_CREATE = 4;
     // Can this user modify capabilities? 
     USER_UPDATE_CAPABILITY = 12;
+    // Can this user read information about themselves?
+    USER_READ_SELF = 13;
+    // Can this user read infortmation about others?
+    USER_READ_ALL = 14;
   }
 
   repeated Capability capability = 7;

@@ -105,7 +105,7 @@ func (s *serv) LookupPicDetails(ctx oldctx.Context, req *api.LookupPicDetailsReq
 }
 
 func (s *serv) LookupUser(ctx oldctx.Context, req *api.LookupUserRequest) (*api.LookupUserResponse, error) {
-	return nil, status.Unimplemented(nil, "Not implemented")
+	return s.handleLookupUser(ctx, req)
 }
 
 func (s *serv) PurgePic(ctx oldctx.Context, req *api.PurgePicRequest) (*api.PurgePicResponse, error) {

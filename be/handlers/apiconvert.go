@@ -68,3 +68,22 @@ func apiPicComment(src *schema.PicComment) *api.PicComment {
 		Version:         src.GetModifiedTime().UnixNano(),
 	}
 }
+
+func apiUser(src *schema.User) *api.User {
+	return &api.User{
+		UserId:       schema.Varint(src.UserId).Encode(),
+		Ident:        src.Ident,
+		CreatedTime:  src.CreatedTs,
+		ModifiedTime: src.ModifiedTs,
+		LastSeenTime: src.LastSeenTs,
+		Version:      src.Version(),
+		Capability:   apiCaps(nil, src.Capability),
+	}
+}
+
+func apiCaps(dst []api.Capability_Cap, srcs []schema.User_Capability) []api.Capability_Cap {
+	for _, src := range srcs {
+		dst = append(dst, schemaapicapmap[src])
+	}
+	return dst
+}
