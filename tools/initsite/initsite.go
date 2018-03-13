@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"syscall"
@@ -17,6 +16,7 @@ import (
 	"pixur.org/pixur/be/server/config"
 	"pixur.org/pixur/be/tasks"
 
+	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -26,7 +26,7 @@ var (
 )
 
 func run() error {
-	log.Println("Opening Database")
+	glog.Info("Opening Database")
 	db, err := sdb.Open(config.Conf.DbName, config.Conf.DbConfig)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func run() error {
 		var stmts []string
 		stmts = append(stmts, tab.SqlTables[db.Adapter().Name()]...)
 		stmts = append(stmts, tab.SqlInitTables[db.Adapter().Name()]...)
-		log.Println("Initializing tables")
+		glog.Info("Initializing tables")
 		if err := db.InitSchema(stmts); err != nil {
 			return err
 		}
@@ -77,16 +77,18 @@ func run() error {
 			return sts
 		}
 
-		log.Println("Created user")
+		glog.Info("Created user")
 	}
 
 	return nil
 }
 
 func main() {
-	flag.Parse()
+	args := []string{"-logtostderr"}
+	args = append(args, os.Args[1:]...)
+	flag.CommandLine.Parse(args)
 
 	if err := run(); err != nil {
-		log.Println(err)
+		glog.Error(err)
 	}
 }
