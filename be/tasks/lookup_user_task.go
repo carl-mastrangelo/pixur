@@ -61,6 +61,9 @@ func (t *LookupUserTask) Run() (errCap status.S) {
 		}
 		objectUser = objectUsers[0]
 	}
+	if err := j.Rollback(); err != nil {
+		return status.InternalError(err, "can't rollback")
+	}
 	t.User = objectUser
 	return nil
 }
