@@ -1,5 +1,14 @@
 package handlers
 
+import (
+	"errors"
+	"net/url"
+	"strconv"
+	"strings"
+
+	"pixur.org/pixur/api"
+)
+
 type params struct{}
 
 func (p params) Vote() string {
@@ -36,6 +45,10 @@ func (p params) CommentId() string {
 
 func (p params) CommentParentId() string {
 	return "comment_parent_id"
+}
+
+func (p params) UserId() string {
+	return "user_id"
 }
 
 func (p params) CommentText() string {
@@ -80,4 +93,55 @@ func (p params) DeletePicReason() string {
 
 func (p params) DeletePicDetails() string {
 	return "details"
+}
+
+func (p params) True() string {
+	return "t"
+}
+
+func (p params) False() string {
+	return "f"
+}
+
+func (p params) UserCapability(c api.Capability_Cap) string {
+	return "cap" + strconv.Itoa(int(c))
+}
+
+func (p params) OldUserCapability(c api.Capability_Cap) string {
+	return "oldcap" + strconv.Itoa(int(c))
+}
+
+func (p params) NewUserCapability(c api.Capability_Cap) string {
+	return "newcap" + strconv.Itoa(int(c))
+}
+
+func (p params) GetOldUserCapability(vals url.Values) (yes, no []api.Capability_Cap, e error) {
+	return p.parseCapsChange("oldcap", vals)
+}
+
+// TODO: test
+func (p params) parseCapsChange(prefix string, vals url.Values) (yes, no []api.Capability_Cap, e error) {
+	for k, v := range vals {
+		if strings.HasPrefix(k, prefix) {
+			num, err := strconv.ParseInt(k[:len(prefix)], 10, 32)
+			if err != nil {
+				return nil, nil, errors.New("can't parse " + k + "(" + err.Error() + ")")
+			}
+			if _, present := api.Capability_Cap_name[int32(num)]; !present {
+				return nil, nil, errors.New("unknown cap " + k)
+			}
+			if len(v) != 1 {
+				return nil, nil, errors.New("bad value(s) for " + k + ": (" + strings.Join(v, ", "))
+			}
+			switch v[0] {
+			case p.True():
+				yes = append(yes, api.Capability_Cap(num))
+			case p.False():
+				no = append(no, api.Capability_Cap(num))
+			default:
+				return nil, nil, errors.New("unknown value " + v[0] + " for " + k)
+			}
+		}
+	}
+	return yes, no, nil
 }

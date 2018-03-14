@@ -57,6 +57,10 @@ func (p paths) Logout() *url.URL {
 	return p.User().ResolveReference(&url.URL{Path: "logout"})
 }
 
+func (p paths) UserEdit() *url.URL {
+	return p.User().ResolveReference(&url.URL{Path: "edit"})
+}
+
 func (p paths) ActionDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "a/"})
 }

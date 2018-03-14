@@ -1,0 +1,54 @@
+{{- define "style" -}}
+<style>
+
+</style>
+{{- end -}}
+{{define "body"}}
+{{- $pt := .Paths -}}
+{{- $pr := .Params -}}
+<div>
+  <h1>User Edit</h1>
+  
+  <form>
+  <dl>
+    <dt>Ident</dt>
+    <dd>{{ .ObjectUser.Ident }}</dd>
+    <dt>Created</dt>
+    <dd>{{ .ObjectUser.CreatedTime }}</dd>
+    <fieldset>
+      <legend>Capabilities</legend>
+      <div style="display: table">
+      {{- $canedit := .CanEditCap -}}
+      {{ range .Cap }}
+        <input type="hidden" name="{{.Cap | $pr.OldUserCapability}}" value="{{if .Has}}true{{else}}false{{end}}">
+        <div style="display:table-row">
+          <div style="display:table-cell">{{.Cap}}</div>
+          <div style="display:table-cell">
+            <label for="{{.Cap | $pr.NewUserCapability}}-yes">Yes<label>
+            <input 
+                type="radio"
+                id="{{.Cap | $pr.NewUserCapability}}-yes" 
+                name="{{.Cap | $pr.NewUserCapability}}" 
+                value="true"
+                {{if not $canedit}}readonly{{end}}
+                {{if .Has}}checked{{end}}>
+          </div>
+          <div style="display:table-cell">
+            <label for="{{.Cap | $pr.NewUserCapability}}-no">No<label>
+              <input 
+                  type="radio" 
+                  id="{{.Cap | $pr.NewUserCapability}}-no" 
+                  name="{{.Cap | $pr.NewUserCapability}}" 
+                  value="false"
+                  {{if not $canedit}}readonly{{end}}
+                  {{if not .Has}}checked{{end}}>
+          </div>
+        </div>
+      {{ end }}
+      </div>
+    </fieldset>
+  </dl>
+  <input type="submit" {{if not $canedit}}disabled{{end}}>
+  </form>
+</div>
+{{end}}
