@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"time"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
@@ -55,6 +56,7 @@ func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest)
 
 	var task = &tasks.UpdateUserTask{
 		DB:              s.db,
+		Now:             time.Now,
 		ObjectUserID:    int64(objectUserID),
 		Version:         req.Version,
 		SetCapability:   newcaps,
