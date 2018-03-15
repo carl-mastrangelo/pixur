@@ -26,6 +26,9 @@ type UpdateUserTask struct {
 	ClearCapability []schema.User_Capability
 
 	Ctx context.Context
+
+	// Outputs
+	ObjectUser *schema.User
 }
 
 func (t *UpdateUserTask) Run() (errCap status.S) {
@@ -151,6 +154,7 @@ func (t *UpdateUserTask) Run() (errCap status.S) {
 			return status.InternalError(err, "can't rollback")
 		}
 	}
+	t.ObjectUser = objectUser
 
 	return nil
 }

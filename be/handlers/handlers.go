@@ -4,10 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"io"
-	"log"
-	"os"
 	"time"
 
+	"github.com/golang/glog"
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -45,6 +44,7 @@ func (si *serverInterceptor) intercept(
 	resp, err := handler(ctx, req)
 	if err != nil {
 		sts := err.(status.S)
+		glog.Info(sts.String())
 		err = gstatus.Error(sts.Code(), sts.Message())
 	}
 	return resp, err
@@ -163,5 +163,3 @@ func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 		})
 	}
 }
-
-var errorLog = log.New(os.Stderr, "", log.LstdFlags)

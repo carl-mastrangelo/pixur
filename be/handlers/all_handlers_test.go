@@ -35,8 +35,6 @@ func init() {
 		panic(err)
 	}
 	testAuthToken = string(authToken)
-
-	errorLog.SetOutput(ioutil.Discard)
 }
 
 var (

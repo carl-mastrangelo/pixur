@@ -66,7 +66,9 @@ func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest)
 		return nil, sts
 	}
 
-	return &api.UpdateUserResponse{}, nil
+	return &api.UpdateUserResponse{
+		User: apiUser(task.ObjectUser),
+	}, nil
 }
 
 // TODO: add tests

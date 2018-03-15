@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -45,6 +46,9 @@ func TestUpdateUserTaskDifferentUser(t *testing.T) {
 	if have, dontwant := ou.User.Version(), v1; have == dontwant {
 		t.Error("have", have, "dontwant", dontwant)
 	}
+	if !proto.Equal(ou.User, task.ObjectUser) {
+		t.Error("user doesn't match", ou.User, task.ObjectUser)
+	}
 }
 
 func TestUpdateUserTaskSameUserDefault(t *testing.T) {
@@ -73,6 +77,9 @@ func TestUpdateUserTaskSameUserDefault(t *testing.T) {
 	if len(u.User.Capability) != 2 {
 		t.Error("capability not updated", u.User.Capability)
 	}
+	if !proto.Equal(u.User, task.ObjectUser) {
+		t.Error("user doesn't match", u.User, task.ObjectUser)
+	}
 }
 
 func TestUpdateUserTaskSameUserID(t *testing.T) {
@@ -100,6 +107,9 @@ func TestUpdateUserTaskSameUserID(t *testing.T) {
 	u.Refresh()
 	if len(u.User.Capability) != 2 {
 		t.Error("capability not updated", u.User.Capability)
+	}
+	if !proto.Equal(u.User, task.ObjectUser) {
+		t.Error("user doesn't match", u.User, task.ObjectUser)
 	}
 }
 
