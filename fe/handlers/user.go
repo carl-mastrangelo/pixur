@@ -107,7 +107,7 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 		},
 		ObjectUser:  objectUser,
 		SubjectUser: subjectUser,
-		CanEditCap:  canedit || true,
+		CanEditCap:  canedit,
 		Cap:         caps,
 	}
 	if err := userEditTpl.Execute(w, data); err != nil {

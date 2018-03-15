@@ -11,7 +11,7 @@
   <form method="post" action="{{$pt.UpdateUserAction}}">
     <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}">
     <input type="hidden" name="{{$pr.UserId}}" value="{{.ObjectUser.UserId}}">
-     <input type="hidden" name="{{$pr.Version}}" value="{{.ObjectUser.Version}}">
+    <input type="hidden" name="{{$pr.Version}}" value="{{.ObjectUser.Version}}">
   <dl>
     <dt>Ident</dt>
     <dd>{{ .ObjectUser.Ident }}</dd>
@@ -54,7 +54,7 @@
       </div>
     </fieldset>
   </dl>
-  <input type="submit" {{if not $canedit}}{{end}}>
+  <input type="submit" {{if not $canedit}}disabled{{end}}>
   </form>
 </div>
 {{end}}
