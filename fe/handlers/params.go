@@ -123,7 +123,7 @@ func (p params) GetOldUserCapability(vals url.Values) (yes, no []api.Capability_
 func (p params) parseCapsChange(prefix string, vals url.Values) (yes, no []api.Capability_Cap, e error) {
 	for k, v := range vals {
 		if strings.HasPrefix(k, prefix) {
-			num, err := strconv.ParseInt(k[:len(prefix)], 10, 32)
+			num, err := strconv.ParseInt(k[len(prefix):], 10, 32)
 			if err != nil {
 				return nil, nil, errors.New("can't parse " + k + "(" + err.Error() + ")")
 			}
@@ -131,7 +131,7 @@ func (p params) parseCapsChange(prefix string, vals url.Values) (yes, no []api.C
 				return nil, nil, errors.New("unknown cap " + k)
 			}
 			if len(v) != 1 {
-				return nil, nil, errors.New("bad value(s) for " + k + ": (" + strings.Join(v, ", "))
+				return nil, nil, errors.New("bad value(s) for " + k + ": (" + strings.Join(v, ", ") + ")")
 			}
 			switch v[0] {
 			case p.True():
