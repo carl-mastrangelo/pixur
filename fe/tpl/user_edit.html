@@ -8,8 +8,10 @@
 {{- $pr := .Params -}}
 <div>
   <h1>User Edit</h1>
-  
-  <form>
+  <form method="post" action="{{$pt.UpdateUserAction}}">
+    <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}">
+    <input type="hidden" name="{{$pr.UserId}}" value="{{.ObjectUser.UserId}}">
+     <input type="hidden" name="{{$pr.Version}}" value="{{.ObjectUser.Version}}">
   <dl>
     <dt>Ident</dt>
     <dd>{{ .ObjectUser.Ident }}</dd>
@@ -20,7 +22,11 @@
       <div style="display: table">
       {{- $canedit := .CanEditCap -}}
       {{ range .Cap }}
-        <input type="hidden" name="{{.Cap | $pr.OldUserCapability}}" value="{{if .Has}}true{{else}}false{{end}}">
+        <input 
+            type="hidden" 
+            name="{{.Cap | $pr.OldUserCapability}}" 
+            value="{{if .Has}}{{$pr.True}}{{else}}{{$pr.False}}{{end}}"
+            {{if not $canedit}}disabled{{end}}>
         <div style="display:table-row">
           <div style="display:table-cell">{{.Cap}}</div>
           <div style="display:table-cell">
@@ -29,18 +35,18 @@
                 type="radio"
                 id="{{.Cap | $pr.NewUserCapability}}-yes" 
                 name="{{.Cap | $pr.NewUserCapability}}" 
-                value="true"
-                {{if not $canedit}}readonly{{end}}
+                value="{{$pr.True}}"
+                {{if not $canedit}}disabled{{end}}
                 {{if .Has}}checked{{end}}>
           </div>
           <div style="display:table-cell">
             <label for="{{.Cap | $pr.NewUserCapability}}-no">No<label>
               <input 
-                  type="radio" 
+                  type="radio"
                   id="{{.Cap | $pr.NewUserCapability}}-no" 
                   name="{{.Cap | $pr.NewUserCapability}}" 
-                  value="false"
-                  {{if not $canedit}}readonly{{end}}
+                  value="{{$pr.False}}"
+                  {{if not $canedit}}disabled{{end}}
                   {{if not .Has}}checked{{end}}>
           </div>
         </div>
@@ -48,7 +54,7 @@
       </div>
     </fieldset>
   </dl>
-  <input type="submit" {{if not $canedit}}disabled{{end}}>
+  <input type="submit" {{if not $canedit}}{{end}}>
   </form>
 </div>
 {{end}}

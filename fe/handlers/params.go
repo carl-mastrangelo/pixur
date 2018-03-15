@@ -51,6 +51,10 @@ func (p params) UserId() string {
 	return "user_id"
 }
 
+func (p params) Version() string {
+	return "version"
+}
+
 func (p params) CommentText() string {
 	return "text"
 }
@@ -119,7 +123,10 @@ func (p params) GetOldUserCapability(vals url.Values) (yes, no []api.Capability_
 	return p.parseCapsChange("oldcap", vals)
 }
 
-// TODO: test
+func (p params) GetNewUserCapability(vals url.Values) (yes, no []api.Capability_Cap, e error) {
+	return p.parseCapsChange("newcap", vals)
+}
+
 func (p params) parseCapsChange(prefix string, vals url.Values) (yes, no []api.Capability_Cap, e error) {
 	for k, v := range vals {
 		if strings.HasPrefix(k, prefix) {

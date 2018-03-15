@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"sort"
+	"strconv"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
@@ -106,13 +107,131 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 		},
 		ObjectUser:  objectUser,
 		SubjectUser: subjectUser,
-		CanEditCap:  canedit,
+		CanEditCap:  canedit || true,
 		Cap:         caps,
 	}
 	if err := userEditTpl.Execute(w, data); err != nil {
 		httpError(w, err)
 		return
 	}
+}
+
+func (h *userHandler) useredit(w http.ResponseWriter, r *http.Request) {
+	var pr params
+
+	var version int64
+	if rawversion := r.PostFormValue(pr.Version()); rawversion != "" {
+		i, err := strconv.ParseInt(rawversion, 10, 64)
+		if err != nil {
+			httpError(w, &HTTPErr{
+				Message: "can't parse version",
+				Code:    http.StatusBadRequest,
+			})
+			return
+		}
+		version = i
+	}
+
+	oldyes, oldno, err := pr.GetOldUserCapability(r.PostForm)
+	if err != nil {
+		httpError(w, &HTTPErr{
+			Message: "can't parse old cap: " + err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+	newyes, newno, err := pr.GetNewUserCapability(r.PostForm)
+	if err != nil {
+		httpError(w, &HTTPErr{
+			Message: "can't parse new cap: " + err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+	add, remove, err := h.diffcaps(oldyes, oldno, newyes, newno)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	req := &api.UpdateUserRequest{
+		UserId:  r.PostFormValue(pr.UserId()),
+		Version: version,
+	}
+	if len(add)+len(remove) > 0 {
+		req.Capability = &api.UpdateUserRequest_ChangeCapability{
+			SetCapability:   add,
+			ClearCapability: remove,
+		}
+	}
+
+	res, err := h.c.UpdateUser(r.Context(), req)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, h.pt.UserEdit(res.User.UserId).RequestURI(), http.StatusSeeOther)
+}
+
+// TODO: test
+func (h *userHandler) diffcaps(oldyes, oldno, newyes, newno []api.Capability_Cap) (
+	add, remove []api.Capability_Cap, e error) {
+	dupe := func(c api.Capability_Cap) error {
+		return &HTTPErr{
+			Message: "duplicate value " + c.String(),
+			Code:    http.StatusBadRequest,
+		}
+	}
+	oldmap := make(map[api.Capability_Cap]bool, len(oldyes)+len(oldno))
+	for _, c := range oldyes {
+		if _, present := oldmap[c]; present {
+			return nil, nil, dupe(c)
+		}
+		oldmap[c] = true
+	}
+	for _, c := range oldno {
+		if _, present := oldmap[c]; present {
+			return nil, nil, dupe(c)
+		}
+		oldmap[c] = false
+	}
+	newmap := make(map[api.Capability_Cap]bool, len(newyes)+len(newno))
+	for _, c := range newyes {
+		if _, present := newmap[c]; present {
+			return nil, nil, dupe(c)
+		}
+		newmap[c] = true
+	}
+	for _, c := range newno {
+		if _, present := newmap[c]; present {
+			return nil, nil, dupe(c)
+		}
+		newmap[c] = false
+	}
+
+	for newc, newenabled := range newmap {
+		oldenabled, oldpresent := oldmap[newc]
+		if !oldpresent {
+			return nil, nil, &HTTPErr{
+				Message: "new value not present in old set " + newc.String(),
+				Code:    http.StatusBadRequest,
+			}
+		}
+		delete(oldmap, newc)
+		if newenabled && !oldenabled {
+			add = append(add, newc)
+		} else if !newenabled && oldenabled {
+			remove = append(remove, newc)
+		}
+	}
+	if len(oldmap) != 0 {
+		return nil, nil, &HTTPErr{
+			Message: "leftover vals in old set " + strconv.Itoa(len(oldmap)),
+			Code:    http.StatusBadRequest,
+		}
+	}
+	return add, remove, nil
 }
 
 func init() {
@@ -122,7 +241,8 @@ func init() {
 			c:  s.Client,
 			pt: paths{r: s.HTTPRoot},
 		}
-		s.HTTPMux.Handle(h.pt.UserEdit().RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.UserEdit("").RequestURI(), bh.static(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.UpdateUserAction().RequestURI(), bh.action(http.HandlerFunc(h.useredit)))
 		return nil
 	})
 }

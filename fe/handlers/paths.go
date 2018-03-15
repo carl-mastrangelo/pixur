@@ -57,8 +57,14 @@ func (p paths) Logout() *url.URL {
 	return p.User().ResolveReference(&url.URL{Path: "logout"})
 }
 
-func (p paths) UserEdit() *url.URL {
-	return p.User().ResolveReference(&url.URL{Path: "edit"})
+func (p paths) UserEdit(userID string) *url.URL {
+	u := url.URL{Path: "edit"}
+	if userID != "" {
+		v := url.Values{}
+		v.Add(p.pr.UserId(), userID)
+		u.RawQuery = v.Encode()
+	}
+	return p.User().ResolveReference(&u)
 }
 
 func (p paths) ActionDir() *url.URL {
@@ -119,4 +125,8 @@ func (p paths) UpsertPicAction() *url.URL {
 
 func (p paths) SoftDeletePicAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "softDeletePic"})
+}
+
+func (p paths) UpdateUserAction() *url.URL {
+	return p.ActionDir().ResolveReference(&url.URL{Path: "updateUser"})
 }
