@@ -10,7 +10,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var userEditTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/user_edit.html"))
+var userEditTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/user_edit.html"))
 
 type userHandler struct {
 	pt paths
@@ -20,8 +20,7 @@ type userHandler struct {
 type userEditData struct {
 	baseData
 
-	SubjectUser *api.User
-	ObjectUser  *api.User
+	ObjectUser *api.User
 
 	CanEditCap bool
 
@@ -43,18 +42,13 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subjectresp, err := h.c.LookupUser(r.Context(), &api.LookupUserRequest{
-		UserId: "", // self
-	})
+	subjectUser, err := subjectUserFromCtx(r.Context())
 	if err != nil {
 		httpError(w, err)
 		return
 	}
 
-	var (
-		subjectUser *api.User = subjectresp.User
-		objectUser  *api.User
-	)
+	var objectUser *api.User
 	objectUserId := r.FormValue(h.pt.pr.UserId())
 	if objectUserId == "" || objectUserId == subjectUser.UserId {
 		objectUser = subjectUser
@@ -100,15 +94,15 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := userEditData{
 		baseData: baseData{
-			Title:     "User Edit",
-			Paths:     h.pt,
-			Params:    h.pt.pr,
-			XsrfToken: xsrfToken,
+			Title:       "User Edit",
+			Paths:       h.pt,
+			Params:      h.pt.pr,
+			XsrfToken:   xsrfToken,
+			SubjectUser: subjectUser,
 		},
-		ObjectUser:  objectUser,
-		SubjectUser: subjectUser,
-		CanEditCap:  canedit,
-		Cap:         caps,
+		ObjectUser: objectUser,
+		CanEditCap: canedit,
+		Cap:        caps,
 	}
 	if err := userEditTpl.Execute(w, data); err != nil {
 		httpError(w, err)

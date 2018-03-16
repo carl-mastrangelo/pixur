@@ -15,7 +15,7 @@ type indexData struct {
 	NextID, PrevID string
 }
 
-var indexTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/index.html"))
+var indexTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/index.html"))
 
 type indexHandler struct {
 	c  api.PixurServiceClient
@@ -68,10 +68,11 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := indexData{
 		baseData: baseData{
-			Title:     "Index",
-			Paths:     h.pt,
-			Params:    h.pt.pr,
-			XsrfToken: xsrfToken,
+			Title:       "Index",
+			Paths:       h.pt,
+			Params:      h.pt.pr,
+			XsrfToken:   xsrfToken,
+			SubjectUser: subjectUserOrNilFromCtx(r.Context()),
 		},
 		Pic:    res.Pic,
 		NextID: nextID,

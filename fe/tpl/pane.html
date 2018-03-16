@@ -1,0 +1,41 @@
+{{block "basestyle" .}}
+<style>
+  .pane {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 950px;
+  }
+  .pane-header {
+    bacgkround-color: #CCCCCC;
+    text-align: center;
+  }
+  .pane-user-box {
+    background-color: white;
+    border: 1px solid black;
+    float: right;
+    padding: 4px;
+  }
+  .pane-user-box a {
+    text-decoration: none;
+  }
+</style>  
+{{block "panestyle" .}}{{end}}
+{{end}}
+{{define "body"}}
+{{- $pt := .Paths -}}
+{{- $pr := .Params -}}
+<div class="pane">
+  <div class="pane-header">
+    <div class="pane-user-box">
+      {{if .SubjectUser}}
+        <a href="{{"" | $pt.UserEdit}}">{{.SubjectUser.Ident}}</a>
+      {{else}}
+        <a href="{{$pt.Login}}">Login</a>
+      {{end}}
+    </div>
+    <h1>Site Name</h1>
+  </div> 
+  {{template "pane" .}}
+</div>
+{{end}}
+

@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
 )
 
@@ -28,10 +29,11 @@ func register(rf server.RegFunc) {
 }
 
 type baseData struct {
-	Title     string
-	XsrfToken string
-	Paths     paths
-	Params    params
+	Title       string
+	XsrfToken   string
+	Paths       paths
+	Params      params
+	SubjectUser *api.User
 }
 
 const (
@@ -116,6 +118,7 @@ func newBaseHandler(s *server.Server) *baseHandler {
 		random: s.Random,
 		secure: s.Secure,
 		pt:     paths{r: s.HTTPRoot},
+		c:      s.Client,
 	}
 }
 
@@ -124,6 +127,46 @@ type baseHandler struct {
 	random io.Reader
 	secure bool
 	pt     paths
+	c      api.PixurServiceClient
+}
+
+type subjectUserKey struct{}
+
+type subjectUserResult struct {
+	user *api.User
+	err  error
+	done chan struct{}
+}
+
+func ctxFromSubjectUserResult(ctx context.Context, sur *subjectUserResult) context.Context {
+	return context.WithValue(ctx, subjectUserKey{}, sur)
+}
+
+func subjectUserResultFromCtx(ctx context.Context) (*subjectUserResult, bool) {
+	sur, ok := ctx.Value(subjectUserKey{}).(*subjectUserResult)
+	return sur, ok
+}
+
+func subjectUserFromCtx(ctx context.Context) (*api.User, error) {
+	sur, ok := subjectUserResultFromCtx(ctx)
+	if !ok {
+		return nil, nil
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-sur.done:
+	}
+	return sur.user, sur.err
+}
+
+func subjectUserOrNilFromCtx(ctx context.Context) *api.User {
+	user, err := subjectUserFromCtx(ctx)
+	if err != nil {
+		glog.Info("can't lookup subject user ", err)
+		return nil
+	}
+	return user
 }
 
 func (h *baseHandler) static(next http.Handler) http.Handler {
@@ -140,6 +183,23 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		authToken, authTokenPresent := authTokenFromReq(r)
 		if authTokenPresent {
 			ctx = contextFromAuthToken(ctx, authToken)
+
+			sur := subjectUserResult{
+				done: make(chan struct{}),
+			}
+			ctx = ctxFromSubjectUserResult(ctx, &sur)
+			go func() {
+				defer close(sur.done)
+				resp, err := h.c.LookupUser(ctx, &api.LookupUserRequest{
+					UserId: "", // self
+				})
+
+				if err != nil {
+					sur.err = err
+				} else {
+					sur.user = resp.User
+				}
+			}()
 		}
 
 		theTime := h.now()

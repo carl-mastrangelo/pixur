@@ -13,7 +13,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var viewerTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/viewer.html", "fe/tpl/comment_reply.html"))
+var viewerTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/viewer.html", "fe/tpl/comment_reply.html"))
 
 type viewerHandler struct {
 	pt paths
@@ -52,9 +52,10 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 
 	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	bd := baseData{
-		Paths:     h.pt,
-		Params:    h.pt.pr,
-		XsrfToken: xsrfToken,
+		Paths:       h.pt,
+		Params:      h.pt.pr,
+		XsrfToken:   xsrfToken,
+		SubjectUser: subjectUserOrNilFromCtx(r.Context()),
 	}
 
 	root := &picComment{

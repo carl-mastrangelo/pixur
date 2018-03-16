@@ -8,7 +8,7 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-var commentTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/comment.html", "fe/tpl/comment_reply.html"))
+var commentTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/comment.html", "fe/tpl/comment_reply.html"))
 
 type commentHandler struct {
 	pt paths
@@ -35,8 +35,9 @@ func (h *commentHandler) static(w http.ResponseWriter, r *http.Request) {
 
 	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	bd := baseData{
-		Paths:     h.pt,
-		XsrfToken: xsrfToken,
+		Paths:       h.pt,
+		XsrfToken:   xsrfToken,
+		SubjectUser: subjectUserOrNilFromCtx(r.Context()),
 	}
 
 	var root *picComment

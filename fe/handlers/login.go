@@ -23,7 +23,7 @@ type loginData struct {
 	Next string
 }
 
-var loginTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/login.html"))
+var loginTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/login.html"))
 
 type loginHandler struct {
 	pt     paths
@@ -36,10 +36,11 @@ func (h *loginHandler) static(w http.ResponseWriter, r *http.Request) {
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := loginData{
 		baseData: baseData{
-			Title:     "Login",
-			XsrfToken: xsrfToken,
-			Paths:     h.pt,
-			Params:    h.pt.pr,
+			Title:       "Login",
+			XsrfToken:   xsrfToken,
+			Paths:       h.pt,
+			Params:      h.pt.pr,
+			SubjectUser: subjectUserOrNilFromCtx(r.Context()),
 		},
 	}
 	if err := loginTpl.Execute(w, data); err != nil {

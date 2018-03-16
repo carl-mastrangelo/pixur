@@ -10,6 +10,7 @@ import (
 )
 
 var rootTpl = template.Must(template.ParseFiles("fe/tpl/base.html")).Option("missingkey=error")
+var paneTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/pane.html"))
 
 type rootHandler struct {
 	pt            paths
