@@ -9,14 +9,23 @@
     bacgkround-color: #CCCCCC;
     text-align: center;
   }
+  .pane-header a {
+    text-decoration: none;
+  }
   .pane-user-box {
     background-color: white;
     border: 1px solid black;
     float: right;
     padding: 4px;
   }
-  .pane-user-box a {
-    text-decoration: none;
+  .pane-header .site-name a:link {
+    color: #000;
+  }
+  .pane-header .site-name a:visited {
+    color: #000;
+  }
+  .pane-header .site-name a:hover {
+    color: #000;
   }
 </style>  
 {{block "panestyle" .}}{{end}}
@@ -33,7 +42,9 @@
         <a href="{{$pt.Login}}">Login</a>
       {{end}}
     </div>
-    <h1>Site Name</h1>
+    <div class="site-name">
+      <a href="{{$pt.Root}}"><h1>Site Name</h1></a>
+    </div>
   </div> 
   {{template "pane" .}}
 </div>

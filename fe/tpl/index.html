@@ -51,19 +51,19 @@
   .index .nav-next {
     float: right;
   }
-  .index .nav-clear {
+  .index .nav:after {
     clear: both;
+    content: "";
+    display: block;
   }
 </style>
 {{end}}
 {{define "nav"}}
   {{- $pt := .Paths -}}
   {{- $pr := .Params -}}
-  <div>
-    <span class="nav-home"><a href="{{$pt.Root}}">Home</a></span>
+  <div class="nav">
     {{if .PrevID}}<span class="nav-prev"><a href="{{$pt.IndexPrev .PrevID}}">Previous</a></span>{{end}}
     {{if .NextID}}<span class="nav-next"><a href="{{$pt.Index .NextID}}">Next</a></span>{{end}}
-    <span class="nav-clear"></span>
   </div>
 {{end}}
 {{define "pane"}}
