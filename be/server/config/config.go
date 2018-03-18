@@ -11,8 +11,12 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+const (
+	DefaultConfigPath = ".configbe.pb.txt"
+)
+
 var (
-	defaultValues = &Config{
+	DefaultValues = &Config{
 		DbName:                "sqlite3",
 		DbConfig:              ":memory:",
 		ListenAddress:         ":8889",
@@ -22,11 +26,11 @@ var (
 		SessionPublicKeyPath:  "",
 		TokenSecret:           "",
 	}
-	Conf = mergeParseConfigFlag(defaultValues)
+	Conf = mergeParseConfigFlag(DefaultValues)
 )
 
 func init() {
-	_ = flag.String("configbe", ".configbe.pb.txt", "The default configuration file")
+	_ = flag.String("configbe", DefaultConfigPath, "The default configuration file")
 	flag.StringVar(&Conf.ListenAddress, "listen_address", Conf.ListenAddress, "Listening Address")
 	flag.StringVar(&Conf.ListenNetwork, "listen_network", Conf.ListenNetwork, "Listening Network")
 	flag.StringVar(&Conf.PixPath, "pix_path", Conf.PixPath, "Default picture storage directory")
@@ -47,7 +51,7 @@ func mergeParseConfigFlag(defaults *Config) *Config {
 func parseConfigFlag() (*Config, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(ioutil.Discard)
-	configPath := fs.String("configbe", envOrDefault("PIXUR_BE_CONFIG", ".configbe.pb.txt"), "")
+	configPath := fs.String("configbe", envOrDefault("PIXUR_BE_CONFIG", DefaultConfigPath), "")
 	if err := fs.Parse(os.Args[1:]); err != nil && err != flag.ErrHelp {
 		// ignore, the next parse call will find it.
 		glog.V(2).Info(err)

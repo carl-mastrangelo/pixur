@@ -10,18 +10,22 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+const (
+	DefaultConfigPath = ".configfe.pb.txt"
+)
+
 var (
-	defaultValues = &Config{
+	DefaultValues = &Config{
 		HttpSpec:  ":http",
 		PixurSpec: ":8888",
 		Insecure:  false,
 		HttpRoot:  "/",
 	}
-	Conf = mergeParseConfigFlag(defaultValues)
+	Conf = mergeParseConfigFlag(DefaultValues)
 )
 
 func init() {
-	_ = flag.String("configfe", ".configfe.pb.txt", "The default configuration file")
+	_ = flag.String("configfe", DefaultConfigPath, "The default configuration file")
 	flag.StringVar(&Conf.HttpSpec, "http_spec", Conf.HttpSpec, "Default HTTP port")
 	flag.StringVar(&Conf.PixurSpec, "pixur_spec", Conf.PixurSpec, "Pixur API server")
 	flag.BoolVar(&Conf.Insecure, "insecure", Conf.Insecure, "Http server is insecure")
@@ -41,7 +45,7 @@ func mergeParseConfigFlag(defaults *Config) *Config {
 func parseConfigFlag() (*Config, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(ioutil.Discard)
-	configPath := fs.String("configfe", defaultFromEnv("PIXUR_FE_CONFIG", ".configfe.pb.txt"), "")
+	configPath := fs.String("configfe", defaultFromEnv("PIXUR_FE_CONFIG", DefaultConfigPath), "")
 	if err := fs.Parse(os.Args[1:]); err != nil && err != flag.ErrHelp {
 		_ = err // ignore, the next parse call will find it.
 	}
