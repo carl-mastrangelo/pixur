@@ -104,6 +104,10 @@ func (s *serv) LookupPicDetails(ctx oldctx.Context, req *api.LookupPicDetailsReq
 	return s.handleLookupPicDetails(ctx, req)
 }
 
+func (s *serv) LookupPicVote(ctx oldctx.Context, req *api.LookupPicVoteRequest) (*api.LookupPicVoteResponse, error) {
+	return s.handleLookupPicVote(ctx, req)
+}
+
 func (s *serv) LookupUser(ctx oldctx.Context, req *api.LookupUserRequest) (*api.LookupUserResponse, error) {
 	return s.handleLookupUser(ctx, req)
 }

@@ -87,3 +87,14 @@ func apiCaps(dst []api.Capability_Cap, srcs []schema.User_Capability) []api.Capa
 	}
 	return dst
 }
+
+func apiPicVote(src *schema.PicVote) *api.PicVote {
+	return &api.PicVote{
+		PicId:        schema.Varint(src.PicId).Encode(),
+		UserId:       schema.Varint(src.UserId).Encode(),
+		Vote:         api.PicVote_Vote(src.Vote),
+		Version:      src.Version(),
+		CreatedTime:  src.CreatedTs,
+		ModifiedTime: src.ModifiedTs,
+	}
+}

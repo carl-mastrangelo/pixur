@@ -19,3 +19,7 @@ func (pv *PicVote) GetCreatedTime() time.Time {
 func (pv *PicVote) GetModifiedTime() time.Time {
 	return FromTs(pv.ModifiedTs)
 }
+
+func (pv *PicVote) Version() int64 {
+	return FromTs(pv.ModifiedTs).UnixNano()
+}

@@ -114,6 +114,25 @@ message PicComment {
   sfixed64 version = 6;
 }
 
+message PicVote {
+  string pic_id = 1;
+  string user_id = 2;
+
+  enum Vote {
+    UNKNOWN = 0;
+    UP = 1;
+    DOWN = 2;
+    NEUTRAL = 3;
+  }
+  
+  Vote vote = 3;
+  
+  sfixed64 version = 4;
+
+  google.protobuf.Timestamp created_time = 5;
+  google.protobuf.Timestamp modified_time = 6;
+}
+
 message User {
   string user_id = 1;
 
@@ -388,19 +407,25 @@ message DeleteTokenResponse {
 
 message UpsertPicVoteRequest {
   string pic_id = 1;
+  
+  // Optional.   Not necessary when creating for the first time.
+  sfixed64 version = 3;
 
-  enum Vote {
-    UNKNOWN = 0;
-    UP = 1;
-    DOWN = 2;
-    NEUTRAL = 3;
-  }
-
-  Vote vote = 2;
+  PicVote.Vote vote = 2;
 }
 
 message UpsertPicVoteResponse {
   // empty
+}
+
+message LookupPicVoteRequest {
+  string pic_id = 1;
+  // Optional.  Uses auth token if not specified.
+  string user_id = 2;
+}
+
+message LookupPicVoteResponse {
+  PicVote vote = 1;
 }
 
 message LookupPicFileRequest {
@@ -462,35 +487,57 @@ service PixurService {
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
   };
+  
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
+  
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
+  
   rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
+  
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
+  
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
+  
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
+  
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
   rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
   rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
+  rpc LookupPicVote(LookupPicVoteRequest) returns (LookupPicVoteResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
+  
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
+  
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
+  
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
 }
 
