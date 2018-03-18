@@ -17,7 +17,7 @@ package model
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "google/protobuf"
+import google_protobuf "github.com/golang/protobuf/protoc-gen-go/descriptor"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -26,7 +26,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type KeyType int32
 
@@ -65,6 +67,13 @@ func (m *TableOptions) String() string            { return proto.CompactTextStri
 func (*TableOptions) ProtoMessage()               {}
 func (*TableOptions) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *TableOptions) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 func (m *TableOptions) GetKey() []*TableOptions_Key {
 	if m != nil {
 		return m.Key
@@ -83,6 +92,27 @@ func (m *TableOptions_Key) String() string            { return proto.CompactText
 func (*TableOptions_Key) ProtoMessage()               {}
 func (*TableOptions_Key) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
+func (m *TableOptions_Key) GetCol() []string {
+	if m != nil {
+		return m.Col
+	}
+	return nil
+}
+
+func (m *TableOptions_Key) GetKeyType() KeyType {
+	if m != nil {
+		return m.KeyType
+	}
+	return KeyType_NONE
+}
+
+func (m *TableOptions_Key) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
 type FieldOptions struct {
 	ColFn string `protobuf:"bytes,1,opt,name=col_fn,json=colFn" json:"col_fn,omitempty"`
 }
@@ -92,12 +122,20 @@ func (m *FieldOptions) String() string            { return proto.CompactTextStri
 func (*FieldOptions) ProtoMessage()               {}
 func (*FieldOptions) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
+func (m *FieldOptions) GetColFn() string {
+	if m != nil {
+		return m.ColFn
+	}
+	return ""
+}
+
 var E_TabOpts = &proto.ExtensionDesc{
 	ExtendedType:  (*google_protobuf.MessageOptions)(nil),
 	ExtensionType: (*TableOptions)(nil),
 	Field:         65537,
 	Name:          "pixur.db.model.tab_opts",
 	Tag:           "bytes,65537,opt,name=tab_opts,json=tabOpts",
+	Filename:      "model.proto",
 }
 
 var E_FieldOpts = &proto.ExtensionDesc{
@@ -106,6 +144,7 @@ var E_FieldOpts = &proto.ExtensionDesc{
 	Field:         65537,
 	Name:          "pixur.db.model.field_opts",
 	Tag:           "bytes,65537,opt,name=field_opts,json=fieldOpts",
+	Filename:      "model.proto",
 }
 
 func init() {
@@ -117,9 +156,11 @@ func init() {
 	proto.RegisterExtension(E_FieldOpts)
 }
 
+func init() { proto.RegisterFile("model.proto", fileDescriptor0) }
+
 var fileDescriptor0 = []byte{
 	// 356 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x7c, 0x90, 0x4f, 0x6b, 0xea, 0x40,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x90, 0x4f, 0x6b, 0xea, 0x40,
 	0x14, 0xc5, 0x5f, 0x8c, 0x1a, 0x73, 0x23, 0x12, 0x06, 0x1e, 0x2f, 0xc8, 0x2b, 0x0d, 0x42, 0x21,
 	0x74, 0x31, 0x42, 0xba, 0x28, 0xb8, 0x6b, 0xa9, 0x82, 0x88, 0xb1, 0x1d, 0x14, 0x5a, 0x29, 0x84,
 	0xfc, 0x99, 0x48, 0x30, 0x66, 0x86, 0x64, 0x84, 0x66, 0xd7, 0x7e, 0xaa, 0x7e, 0xbd, 0x62, 0xa2,

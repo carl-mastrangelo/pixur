@@ -543,21 +543,13 @@ func (j *Job) FindPics(opts db.Opts) (rows []*schema.Pic, err error) {
 	return
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.Pic)(nil)
+var _ interface{ IdCol() int64 } = (*schema.Pic)(nil)
 
-var _ interface {
-	IndexOrderCol() int64
-} = (*schema.Pic)(nil)
+var _ interface{ IndexOrderCol() int64 } = (*schema.Pic)(nil)
 
-var _ interface {
-	LowerScoreBound() int32
-} = (*schema.Pic)(nil)
+var _ interface{ LowerScoreBound() int32 } = (*schema.Pic)(nil)
 
-var _ interface {
-	UpperScoreBound() int32
-} = (*schema.Pic)(nil)
+var _ interface{ UpperScoreBound() int32 } = (*schema.Pic)(nil)
 
 func (j *Job) InsertPic(pb *schema.Pic) error {
 	return j.InsertPicRow(&PicRow{
@@ -593,21 +585,13 @@ func (j *Job) InsertPicRow(row *PicRow) error {
 	return db.Insert(j.tx, "Pics", colsPics, vals, j.adap)
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.Pic)(nil)
+var _ interface{ IdCol() int64 } = (*schema.Pic)(nil)
 
-var _ interface {
-	IndexOrderCol() int64
-} = (*schema.Pic)(nil)
+var _ interface{ IndexOrderCol() int64 } = (*schema.Pic)(nil)
 
-var _ interface {
-	LowerScoreBound() int32
-} = (*schema.Pic)(nil)
+var _ interface{ LowerScoreBound() int32 } = (*schema.Pic)(nil)
 
-var _ interface {
-	UpperScoreBound() int32
-} = (*schema.Pic)(nil)
+var _ interface{ UpperScoreBound() int32 } = (*schema.Pic)(nil)
 
 func (j *Job) UpdatePic(pb *schema.Pic) error {
 	return j.UpdatePicRow(&PicRow{
@@ -731,13 +715,9 @@ func (j *Job) FindTags(opts db.Opts) (rows []*schema.Tag, err error) {
 	return
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.Tag)(nil)
+var _ interface{ IdCol() int64 } = (*schema.Tag)(nil)
 
-var _ interface {
-	NameCol() string
-} = (*schema.Tag)(nil)
+var _ interface{ NameCol() string } = (*schema.Tag)(nil)
 
 func (j *Job) InsertTag(pb *schema.Tag) error {
 	return j.InsertTagRow(&TagRow{
@@ -765,13 +745,9 @@ func (j *Job) InsertTagRow(row *TagRow) error {
 	return db.Insert(j.tx, "Tags", colsTags, vals, j.adap)
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.Tag)(nil)
+var _ interface{ IdCol() int64 } = (*schema.Tag)(nil)
 
-var _ interface {
-	NameCol() string
-} = (*schema.Tag)(nil)
+var _ interface{ NameCol() string } = (*schema.Tag)(nil)
 
 func (j *Job) UpdateTag(pb *schema.Tag) error {
 	return j.UpdateTagRow(&TagRow{
@@ -869,13 +845,9 @@ func (j *Job) FindPicTags(opts db.Opts) (rows []*schema.PicTag, err error) {
 	return
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicTag)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicTag)(nil)
 
-var _ interface {
-	TagIdCol() int64
-} = (*schema.PicTag)(nil)
+var _ interface{ TagIdCol() int64 } = (*schema.PicTag)(nil)
 
 func (j *Job) InsertPicTag(pb *schema.PicTag) error {
 	return j.InsertPicTagRow(&PicTagRow{
@@ -903,13 +875,9 @@ func (j *Job) InsertPicTagRow(row *PicTagRow) error {
 	return db.Insert(j.tx, "PicTags", colsPicTags, vals, j.adap)
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicTag)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicTag)(nil)
 
-var _ interface {
-	TagIdCol() int64
-} = (*schema.PicTag)(nil)
+var _ interface{ TagIdCol() int64 } = (*schema.PicTag)(nil)
 
 func (j *Job) UpdatePicTag(pb *schema.PicTag) error {
 	return j.UpdatePicTagRow(&PicTagRow{
@@ -1058,17 +1026,11 @@ func (j *Job) FindPicIdents(opts db.Opts) (rows []*schema.PicIdent, err error) {
 	return
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicIdent)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicIdent)(nil)
 
-var _ interface {
-	TypeCol() schema.PicIdent_Type
-} = (*schema.PicIdent)(nil)
+var _ interface{ TypeCol() schema.PicIdent_Type } = (*schema.PicIdent)(nil)
 
-var _ interface {
-	ValueCol() []byte
-} = (*schema.PicIdent)(nil)
+var _ interface{ ValueCol() []byte } = (*schema.PicIdent)(nil)
 
 func (j *Job) InsertPicIdent(pb *schema.PicIdent) error {
 	return j.InsertPicIdentRow(&PicIdentRow{
@@ -1100,17 +1062,11 @@ func (j *Job) InsertPicIdentRow(row *PicIdentRow) error {
 	return db.Insert(j.tx, "PicIdents", colsPicIdents, vals, j.adap)
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicIdent)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicIdent)(nil)
 
-var _ interface {
-	TypeCol() schema.PicIdent_Type
-} = (*schema.PicIdent)(nil)
+var _ interface{ TypeCol() schema.PicIdent_Type } = (*schema.PicIdent)(nil)
 
-var _ interface {
-	ValueCol() []byte
-} = (*schema.PicIdent)(nil)
+var _ interface{ ValueCol() []byte } = (*schema.PicIdent)(nil)
 
 func (j *Job) UpdatePicIdent(pb *schema.PicIdent) error {
 	return j.UpdatePicIdentRow(&PicIdentRow{
@@ -1245,13 +1201,9 @@ func (j *Job) FindPicComments(opts db.Opts) (rows []*schema.PicComment, err erro
 	return
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicComment)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicComment)(nil)
 
-var _ interface {
-	CommentIdCol() int64
-} = (*schema.PicComment)(nil)
+var _ interface{ CommentIdCol() int64 } = (*schema.PicComment)(nil)
 
 func (j *Job) InsertPicComment(pb *schema.PicComment) error {
 	return j.InsertPicCommentRow(&PicCommentRow{
@@ -1279,13 +1231,9 @@ func (j *Job) InsertPicCommentRow(row *PicCommentRow) error {
 	return db.Insert(j.tx, "PicComments", colsPicComments, vals, j.adap)
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicComment)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicComment)(nil)
 
-var _ interface {
-	CommentIdCol() int64
-} = (*schema.PicComment)(nil)
+var _ interface{ CommentIdCol() int64 } = (*schema.PicComment)(nil)
 
 func (j *Job) UpdatePicComment(pb *schema.PicComment) error {
 	return j.UpdatePicCommentRow(&PicCommentRow{
@@ -1385,13 +1333,9 @@ func (j *Job) FindPicVotes(opts db.Opts) (rows []*schema.PicVote, err error) {
 	return
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicVote)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicVote)(nil)
 
-var _ interface {
-	UserIdCol() int64
-} = (*schema.PicVote)(nil)
+var _ interface{ UserIdCol() int64 } = (*schema.PicVote)(nil)
 
 func (j *Job) InsertPicVote(pb *schema.PicVote) error {
 	return j.InsertPicVoteRow(&PicVoteRow{
@@ -1419,13 +1363,9 @@ func (j *Job) InsertPicVoteRow(row *PicVoteRow) error {
 	return db.Insert(j.tx, "PicVotes", colsPicVotes, vals, j.adap)
 }
 
-var _ interface {
-	PicIdCol() int64
-} = (*schema.PicVote)(nil)
+var _ interface{ PicIdCol() int64 } = (*schema.PicVote)(nil)
 
-var _ interface {
-	UserIdCol() int64
-} = (*schema.PicVote)(nil)
+var _ interface{ UserIdCol() int64 } = (*schema.PicVote)(nil)
 
 func (j *Job) UpdatePicVote(pb *schema.PicVote) error {
 	return j.UpdatePicVoteRow(&PicVoteRow{
@@ -1543,13 +1483,9 @@ func (j *Job) FindUsers(opts db.Opts) (rows []*schema.User, err error) {
 	return
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.User)(nil)
+var _ interface{ IdCol() int64 } = (*schema.User)(nil)
 
-var _ interface {
-	IdentCol() string
-} = (*schema.User)(nil)
+var _ interface{ IdentCol() string } = (*schema.User)(nil)
 
 func (j *Job) InsertUser(pb *schema.User) error {
 	return j.InsertUserRow(&UserRow{
@@ -1577,13 +1513,9 @@ func (j *Job) InsertUserRow(row *UserRow) error {
 	return db.Insert(j.tx, "Users", colsUsers, vals, j.adap)
 }
 
-var _ interface {
-	IdCol() int64
-} = (*schema.User)(nil)
+var _ interface{ IdCol() int64 } = (*schema.User)(nil)
 
-var _ interface {
-	IdentCol() string
-} = (*schema.User)(nil)
+var _ interface{ IdentCol() string } = (*schema.User)(nil)
 
 func (j *Job) UpdateUser(pb *schema.User) error {
 	return j.UpdateUserRow(&UserRow{

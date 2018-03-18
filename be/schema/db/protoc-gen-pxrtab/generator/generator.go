@@ -12,8 +12,8 @@ import (
 	"text/template"
 
 	"github.com/golang/protobuf/proto"
-	descriptor "google/protobuf"
-	plugin "google/protobuf/compiler"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 
 	"pixur.org/pixur/be/schema/db"
 	"pixur.org/pixur/be/schema/db/model"
