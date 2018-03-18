@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 )
@@ -53,7 +52,7 @@ func (_ *postgresqlAdapter) BlobType() string {
 	return "bytea"
 }
 
-func (_ *postgresqlAdapter) LockStmt(buf *bytes.Buffer, lock Lock) {
+func (_ *postgresqlAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	switch lock {
 	case LockNone:
 	case LockRead:

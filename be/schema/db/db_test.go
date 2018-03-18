@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -262,7 +263,7 @@ func TestScanStopEarly(t *testing.T) {
 func TestBuildScan(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		adap: testAdap,
 	}
 
@@ -280,7 +281,7 @@ func TestBuildScan(t *testing.T) {
 func TestBuildScanStart(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Start: &testIdx{
 				cols: []string{"bar"},
@@ -303,7 +304,7 @@ func TestBuildScanStart(t *testing.T) {
 func TestBuildScanStop(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Stop: &testIdx{
 				cols: []string{"bar"},
@@ -327,7 +328,7 @@ func TestBuildScanStop(t *testing.T) {
 func TestBuildScanStartStop(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Start: &testIdx{
 				cols: []string{"bar"},
@@ -355,7 +356,7 @@ func TestBuildScanStartStop(t *testing.T) {
 func TestBuildScanPrefix(t *testing.T) {
 	s := scanStmt{
 		name: "tab",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Prefix: &testIdx{
 				cols: []string{"foo", "bar", "baz", "qux"},
@@ -379,7 +380,7 @@ func TestBuildScanPrefix(t *testing.T) {
 func TestBuildScanPrefixNoVals(t *testing.T) {
 	s := scanStmt{
 		name: "tab",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Prefix: &testIdx{
 				cols: []string{"foo", "bar"},
@@ -402,7 +403,7 @@ func TestBuildScanPrefixNoVals(t *testing.T) {
 func TestBuildScanLimitReverseLock(t *testing.T) {
 	s := scanStmt{
 		name: "foo",
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		opts: Opts{
 			Start: &testIdx{
 				cols: []string{"bar"},
@@ -427,7 +428,7 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 
 func TestAppendPrefix(t *testing.T) {
 	s := scanStmt{
-		buf: new(bytes.Buffer),
+		buf: new(strings.Builder),
 		opts: Opts{
 			Prefix: &testIdx{
 				cols: []string{"foo", "bar"},
@@ -451,7 +452,7 @@ func TestAppendPrefix(t *testing.T) {
 
 func TestAppendPrefixAll(t *testing.T) {
 	s := scanStmt{
-		buf: new(bytes.Buffer),
+		buf: new(strings.Builder),
 		opts: Opts{
 			Prefix: &testIdx{
 				cols: []string{"foo", "bar"},
@@ -475,7 +476,7 @@ func TestAppendPrefixAll(t *testing.T) {
 
 func TestAppendOrder(t *testing.T) {
 	s := scanStmt{
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		adap: testAdap,
 	}
 	s.appendOrder([]string{"bar", "baz"})
@@ -488,7 +489,7 @@ func TestAppendOrder(t *testing.T) {
 
 func TestBuildOrderStmtReverse(t *testing.T) {
 	s := scanStmt{
-		buf: new(bytes.Buffer),
+		buf: new(strings.Builder),
 		opts: Opts{
 			Reverse: true,
 		},
@@ -848,7 +849,7 @@ func TestAppendLock(t *testing.T) {
 	}{{"", LockNone}, {" FOR SHARE", LockRead}, {" FOR UPDATE", LockWrite}}
 	for _, tuple := range expected {
 		s := scanStmt{
-			buf: new(bytes.Buffer),
+			buf: new(strings.Builder),
 			opts: Opts{
 				Lock: tuple.lock,
 			},
@@ -871,7 +872,7 @@ func TestAppendLockPanicsOnBad(t *testing.T) {
 		}
 	}()
 	s := scanStmt{
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		name: "foo",
 		opts: Opts{
 			Lock: 3,

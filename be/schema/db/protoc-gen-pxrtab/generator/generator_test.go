@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	plugin "google/protobuf/compiler"
+	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 )
 
 func TestReadRequest(t *testing.T) {

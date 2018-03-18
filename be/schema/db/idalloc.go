@@ -1,10 +1,10 @@
 package db
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"sync"
 )
 
@@ -19,7 +19,7 @@ const (
 	SequenceColName   = "the_sequence"
 )
 
-// defaultAllocatorGrab determines how many IDs will be grabbed at a time. If the number is too high
+// DefaultAllocatorGrab determines how many IDs will be grabbed at a time. If the number is too high
 // program restarts will waste ID space.  Additionally, IDs will become less monotonic if there are
 // multiple servers.  If the number is too low, it will make a lot more queries than necessary.
 const DefaultAllocatorGrab = 1
@@ -35,7 +35,7 @@ type querierExecutor interface {
 // the cached copy.
 func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (int64, error) {
 	tabname, colname := SequenceTableName, SequenceColName
-	var buf bytes.Buffer
+	var buf strings.Builder
 	buf.WriteString("SELECT " + adap.Quote(colname) + " FROM " + adap.Quote(tabname))
 	adap.LockStmt(&buf, LockWrite)
 	buf.WriteRune(';')

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -74,7 +73,7 @@ type DBAdapter interface {
 	Name() string
 	Quote(string) string
 	BlobIdxQuote(string) string
-	LockStmt(*bytes.Buffer, Lock)
+	LockStmt(*strings.Builder, Lock)
 	BoolType() string
 	IntType() string
 	BigIntType() string
@@ -140,7 +139,7 @@ type Rows interface {
 type scanStmt struct {
 	opts Opts
 	name string
-	buf  *bytes.Buffer
+	buf  *strings.Builder
 	args []interface{}
 	adap DBAdapter
 }
@@ -152,7 +151,7 @@ func Scan(
 	s := scanStmt{
 		opts: opts,
 		name: name,
-		buf:  new(bytes.Buffer),
+		buf:  new(strings.Builder),
 		adap: adap,
 	}
 

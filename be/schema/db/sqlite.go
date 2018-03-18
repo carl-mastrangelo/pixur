@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"io/ioutil"
@@ -109,7 +108,7 @@ func (_ *sqlite3Adapter) BlobType() string {
 	return "blob"
 }
 
-func (_ *sqlite3Adapter) LockStmt(buf *bytes.Buffer, lock Lock) {
+func (_ *sqlite3Adapter) LockStmt(buf *strings.Builder, lock Lock) {
 	switch lock {
 	case LockNone:
 	case LockRead:

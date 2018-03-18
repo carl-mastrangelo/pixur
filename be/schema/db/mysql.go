@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"log"
@@ -148,7 +147,7 @@ func (_ *mysqlAdapter) BlobType() string {
 	return "blob"
 }
 
-func (_ *mysqlAdapter) LockStmt(buf *bytes.Buffer, lock Lock) {
+func (_ *mysqlAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	switch lock {
 	case LockNone:
 	case LockRead:
