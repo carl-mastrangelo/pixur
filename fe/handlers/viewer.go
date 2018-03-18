@@ -35,6 +35,7 @@ type viewerData struct {
 	baseData
 	Pic            *api.Pic
 	PicComment     *picComment
+	PicVote        *api.PicVote
 	DeletionReason []viewerDataDeletionReason
 }
 
@@ -50,12 +51,25 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	u := subjectUserOrNilFromCtx(ctx)
+	var pv *api.PicVote
+	if u != nil {
+		resp, err := h.c.LookupPicVote(ctx, &api.LookupPicVoteRequest{
+			PicId: id,
+		})
+		if err != nil {
+			httpError(w, err)
+			return
+		}
+		pv = resp.Vote
+	}
+
 	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	bd := baseData{
 		Paths:       h.pt,
 		Params:      h.pt.pr,
 		XsrfToken:   xsrfToken,
-		SubjectUser: subjectUserOrNilFromCtx(r.Context()),
+		SubjectUser: subjectUserOrNilFromCtx(ctx),
 	}
 
 	root := &picComment{
@@ -80,6 +94,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		baseData:   bd,
 		Pic:        details.Pic,
 		PicComment: root,
+		PicVote:    pv,
 	}
 	for k, v := range api.DeletionReason_name {
 		if k == int32(api.DeletionReason_UNKNOWN) {
@@ -113,7 +128,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 
 func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
 	postedVote := r.PostFormValue(h.pt.pr.Vote())
-	mappedVote := api.UpsertPicVoteRequest_Vote(api.UpsertPicVoteRequest_Vote_value[postedVote])
+	mappedVote := api.PicVote_Vote(api.PicVote_Vote_value[postedVote])
 
 	next := r.PostFormValue(h.pt.pr.Next())
 	nextURL, err := url.Parse(next)

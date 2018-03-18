@@ -7,9 +7,66 @@
   }
   .viewer .votebutton {
     padding: 0 .5cm 0 .5cm;
+    border: none;
+    margin: 10px;
   }
+  .viewer .pic {
+    text-align: center;
+    max-height: 768px;
+     
+  }
+  
+  .viewer .pic img {
+    max-height: inherit;
+  }
+  
+    .viewer .pic video {
+    max-height: inherit;
+  }
+
+  .actions {
+    float: right;
+    display: inline;
+  }
+  
+  .votebar {
+    float: left;
+  }
+  .actionbar:after {
+    clear: both;
+    content: "";
+    display: block;
+  }
+  
   .votebar form {
     display: inline;
+  }
+  .votebar .up {
+    color: white;
+    background-color: hsl(120, 75%, 50%);
+  }
+  .votebar .down {
+    color: black;
+    background-color: hsl(0, 75%, 50%);
+  }
+  .votebar .neutral {
+    color: white;
+    background-color: hsl(0, 0%, 50%);
+  }
+  .votebar .up.unpicked {
+    color: white;
+    background-color: hsl(120, 25%, 75%);
+  }
+  .votebar .down.unpicked {
+    color: black;
+    background-color: hsl(0, 25%, 75%);
+  }
+  .votebar .neutral.unpicked {
+    color: white;
+    background-color: hsl(0, 0%, 75%);;
+  }
+  .votebutton.unvoted {
+    cursor: pointer;
   }
 </style>
 {{- end -}}
@@ -17,12 +74,9 @@
 {{- $pt := .Paths -}}
 {{- $pr := .Params -}}
 <div class="viewer">
-  <div>
+  <div class="pic">
     {{if ne .Pic.Type "WEBM"}}
-    <a href="{{$pt.Pic .Pic.RelativeUrl}}" target="_self">{{- /**/ -}}
-      <img class="thepic" src="{{$pt.Pic .Pic.RelativeUrl}}" />
-      {{- /**/ -}}
-    </a>
+    <img class="thepic" src="{{$pt.Pic .Pic.RelativeUrl}}" />
     {{else}}
     <video
         class="thevideo"
@@ -35,28 +89,63 @@
     </video>
     {{end}}
   </div>
-  <div class="votebar">
-    <form action="{{$pt.VoteAction}}" method="post">
-      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{$pr.Vote}}" value="DOWN" />
-      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
-      <input type="submit" value="▼" class="votebutton" />
-    </form>
-    <form action="{{$pt.VoteAction}}" method="post">
-      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{$pr.Vote}}" value="NEUTRAL" />
-      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
-      <input type="submit" value="meh" class="votebutton" />
-    </form>
-    <form action="{{$pt.VoteAction}}" method="post">
-      <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-      <input type="hidden" name="{{$pr.Vote}}" value="UP" />
-      <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
-      <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
-      <input type="submit" value="▲" class="votebutton" />
-    </form>
+  <div class="actionbar">
+    <div class="votebar">
+      <form action="{{$pt.VoteAction}}" method="post">
+        <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+        <input type="hidden" name="{{$pr.Vote}}" value="DOWN" />
+        <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+        <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
+        <input 
+            type="submit" 
+            value="▼" 
+            {{if .PicVote}}
+              class="votebutton down
+                {{- if ne .PicVote.Vote.String `DOWN`}} unpicked{{end}}"
+              disabled
+            {{else}}
+              class="votebutton down unvoted"
+            {{end}}
+        />
+      </form>
+      <form action="{{$pt.VoteAction}}" method="post">
+        <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+        <input type="hidden" name="{{$pr.Vote}}" value="NEUTRAL" />
+        <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+        <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
+        <input
+            type="submit" 
+            value="meh" 
+            {{if .PicVote}}
+              class="votebutton neutral
+                {{- if ne .PicVote.Vote.String `NEUTRAL`}} unpicked{{end}}"
+              disabled
+            {{else}}
+              class="votebutton neutral unvoted"
+            {{end}}
+        />
+      </form>
+      <form action="{{$pt.VoteAction}}" method="post">
+        <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+        <input type="hidden" name="{{$pr.Vote}}" value="UP" />
+        <input type="hidden" name="{{$pr.PicId}}" value="{{.Pic.Id}}" />
+        <input type="hidden" name="{{$pr.Next}}" value="{{$pt.Viewer .Pic.Id}}" />
+        <input 
+            type="submit" 
+            value="▲"
+            {{if .PicVote}}
+              class="votebutton up
+                {{- if ne .PicVote.Vote.String `UP`}} unpicked{{end}}"
+              disabled
+            {{else}}
+              class="votebutton up unvoted"
+            {{end}}
+        />
+      </form>
+    </div>
+    <div class="actions">
+      <a href="{{$pt.Pic .Pic.RelativeUrl}}">View Full</a>
+    </div>
   </div>
   {{ .Pic }}
   <br>
