@@ -20,7 +20,7 @@ func (rc *requestChecker) checkPixAuth() *api.PwtPayload {
 		return nil
 	}
 
-	c, err := rc.r.Cookie(pixPwtCookieName)
+	c, err := rc.r.Cookie(pixPwtHeaderKey)
 	if err != nil {
 		if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
 			rc.sts = status.Unauthenticated(err, "missing pix cookie")

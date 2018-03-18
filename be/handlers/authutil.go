@@ -12,7 +12,7 @@ import (
 )
 
 func authTokenFromMD(md metadata.MD) (string, bool) {
-	tokens, ok := md[authPwtCookieName]
+	tokens, ok := md[authPwtHeaderKey]
 	if !ok || len(tokens) != 1 {
 		return "", false
 	}

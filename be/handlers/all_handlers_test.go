@@ -71,7 +71,7 @@ func (c *testClient) Do(req *http.Request) (*http.Response, error) {
 			panic(err)
 		}
 		req.AddCookie(&http.Cookie{
-			Name:  authPwtCookieName,
+			Name:  authPwtHeaderKey,
 			Value: string(authToken),
 		})
 	}

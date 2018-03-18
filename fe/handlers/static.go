@@ -18,10 +18,6 @@ import (
 	"pixur.org/pixur/api"
 )
 
-const (
-	pixPwtDelegateCookieName = "pix_token"
-)
-
 type pixHandler struct {
 	ctx context.Context
 	c   api.PixurServiceClient
@@ -197,7 +193,7 @@ func (f *pixurFile) Readdir(count int) ([]os.FileInfo, error) {
 func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var md metadata.MD
 	if c, err := r.Cookie(pixPwtCookieName); err == nil {
-		md = metadata.Pairs(pixPwtDelegateCookieName, c.Value)
+		md = metadata.Pairs(pixPwtHeaderKey, c.Value)
 	}
 	ctx := metadata.NewOutgoingContext(r.Context(), md)
 

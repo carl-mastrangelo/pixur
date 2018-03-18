@@ -40,7 +40,7 @@ func TestServerInterceptorFailsOnBadAuth(t *testing.T) {
 		return nil, nil
 	})
 
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtCookieName, "bogus"))
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtHeaderKey, "bogus"))
 
 	_, err := si.intercept(ctx, req, nil, handler)
 
@@ -64,7 +64,7 @@ func TestServerInterceptorIgnoresOnAuthHandlers(t *testing.T) {
 		return nil, nil
 	})
 
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtCookieName, "bogus"))
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtHeaderKey, "bogus"))
 
 	for _, req := range []interface{}{&api.GetRefreshTokenRequest{}} {
 		_, err := si.intercept(ctx, req, nil, handler)
@@ -96,7 +96,7 @@ func TestServerInterceptor(t *testing.T) {
 		return nil, status.Unimplemented(nil, "no go")
 	})
 
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtCookieName, testAuthToken))
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(authPwtHeaderKey, testAuthToken))
 
 	_, err := si.intercept(ctx, req, nil, handler)
 

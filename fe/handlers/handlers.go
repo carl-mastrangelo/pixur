@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/descriptor"
+	"github.com/golang/protobuf/proto"
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -36,9 +38,24 @@ type baseData struct {
 	SubjectUser *api.User
 }
 
-const (
-	authPwtHeaderName = "auth_token"
+var (
+	authPwtHeaderKey string
+	pixPwtHeaderKey  string
 )
+
+func init() {
+	fd, _ := descriptor.ForMessage(&api.GetRefreshTokenRequest{})
+	if len(fd.Service) != 1 {
+		panic("unexpected number of services " + fd.String())
+	}
+	ext, err := proto.GetExtension(fd.Service[0].Options, api.E_PixurServiceOpts)
+	if err != nil {
+		panic("missing service extension " + err.Error())
+	}
+	opts := ext.(*api.ServiceOpts)
+	authPwtHeaderKey = opts.AuthTokenHeaderKey
+	pixPwtHeaderKey = opts.PixTokenHeaderKey
+}
 
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
 
@@ -46,7 +63,7 @@ func cookieToGRPCAuthInterceptor(
 	ctx oldctx.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	if token, present := authTokenFromContext(ctx); present {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderName, token))
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderKey, token))
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
 }

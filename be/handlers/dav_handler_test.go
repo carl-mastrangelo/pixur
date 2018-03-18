@@ -59,7 +59,7 @@ func TestDavHandlerFailsOnInvalidToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.AddCookie(&http.Cookie{
-		Name:  pixPwtCookieName,
+		Name:  pixPwtHeaderKey,
 		Value: string(pixToken),
 	})
 
@@ -104,7 +104,7 @@ func TestDavHandlerFailsOnHardExpiredToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.AddCookie(&http.Cookie{
-		Name:  pixPwtCookieName,
+		Name:  pixPwtHeaderKey,
 		Value: string(pixToken),
 	})
 
@@ -153,7 +153,7 @@ func TestDavHandlerSucceedsOnSoftExpiredToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.AddCookie(&http.Cookie{
-		Name:  pixPwtCookieName,
+		Name:  pixPwtHeaderKey,
 		Value: string(pixToken),
 	})
 

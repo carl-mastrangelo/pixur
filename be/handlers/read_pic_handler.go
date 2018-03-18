@@ -66,7 +66,7 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 
 func authReadPicRequest(ctx context.Context) status.S {
 	if md, present := metadata.FromIncomingContext(ctx); present {
-		if tokens, ok := md[pixPwtCookieName]; !ok || len(tokens) == 0 {
+		if tokens, ok := md[pixPwtHeaderKey]; !ok || len(tokens) == 0 {
 			if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
 				return status.Unauthenticated(nil, "missing pix token")
 			}
