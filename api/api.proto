@@ -8,6 +8,7 @@ option java_string_check_utf8 = true;
 option java_multiple_files = true;
 option optimize_for = CODE_SIZE;
 
+import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -26,7 +27,7 @@ message Pic {
   google.protobuf.Timestamp created_time = 14;
   // modified_time is when the pic was last modified.
   google.protobuf.Timestamp modified_time = 15;
-  
+
   // relative_url is the location of the pic file relative to the root dir.
   string relative_url = 6 [deprecated = true];
   // thumbnail_relative_url is the location of the the pic thumbnail
@@ -42,7 +43,7 @@ message Pic {
   // duration is present if the image is animated (GIF or WEBM).  Note that
   // GIFs duration is not well defined and is subject to reinterpretation.
   google.protobuf.Duration duration = 11 [deprecated = true];
-  
+
   // The estimated lower bound of the pic score
   double score_lo = 12;
   // The estimated upper bound of the pic score
@@ -63,14 +64,14 @@ message PicFile {
 
   int32 width = 3;
   int32 height = 4;
-  
+
   // duration is present if the image is animated (GIF or WEBM).  Note that
   // GIFs duration is not well defined and is subject to reinterpretation.
   google.protobuf.Duration duration = 5;
-  
+
   // Is this pic considered a thumbnail
   bool thumbnail = 6;
-  
+
   // created_time is when the PicFile was created.
   google.protobuf.Timestamp created_time = 7;
   // modified_time is when the PicFile was last modified.
@@ -102,9 +103,9 @@ message PicComment {
   string comment_id = 2;
   // comment_parent_id is the unique identifier for the parent comment, in varint form
   string comment_parent_id = 3;
-  
+
   string text = 7;
-  
+
   // created_time is when the tag was created.
   google.protobuf.Timestamp created_time = 4;
   // modified_time is when the tag was last modified.
@@ -115,9 +116,9 @@ message PicComment {
 
 message User {
   string user_id = 1;
-  
+
   string ident = 2;
-  
+
   // created_time is when the user was created.
   google.protobuf.Timestamp created_time = 3;
   // modified_time is when the user was last modified.
@@ -126,7 +127,7 @@ message User {
   google.protobuf.Timestamp last_seen_time = 5;
   // version is the version of the user.  It is used when updating the user.
   sfixed64 version = 6;
-  
+
   repeated Capability.Cap capability = 7;
 }
 
@@ -155,7 +156,7 @@ message Capability {
     PIC_VOTE_CREATE = 11;
     // Can this user create other users?
     USER_CREATE = 4;
-    // Can this user modify capabilities? 
+    // Can this user modify capabilities?
     USER_UPDATE_CAPABILITY = 12;
     // Can this user read information about themselves?
     USER_READ_SELF = 13;
@@ -181,17 +182,17 @@ message UpdateUserRequest {
     string ident = 1;
   }
   ChangeIdent ident = 3;
-  
+
   message ChangeSecret {
     string secret = 1;
   }
   ChangeSecret secret = 4;
-  
+
   message ChangeCapability {
     repeated Capability.Cap set_capability = 1;
     repeated Capability.Cap clear_capability = 2;
   }
-  ChangeCapability capability = 5; 
+  ChangeCapability capability = 5;
 }
 
 message UpdateUserResponse {
@@ -199,8 +200,8 @@ message UpdateUserResponse {
 }
 
 message PicCommentTree {
-	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested 
-	// messages well.  
+	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested
+	// messages well.
 	repeated PicComment comment = 1;
 }
 
@@ -387,21 +388,20 @@ message DeleteTokenResponse {
 
 message UpsertPicVoteRequest {
   string pic_id = 1;
-  
+
   enum Vote {
     UNKNOWN = 0;
     UP = 1;
     DOWN = 2;
     NEUTRAL = 3;
   }
-  
+
   Vote vote = 2;
 }
 
 message UpsertPicVoteResponse {
   // empty
 }
-
 
 message LookupPicFileRequest {
   string pic_file_id = 1;
@@ -415,7 +415,7 @@ message LookupPicFileResponse {
 message ReadPicFileRequest {
   string pic_file_id = 1;
   PicFile.Format format = 2;
-  
+
   // The offset into the file to start reading at.  Required
   int64 offset = 3;
   // The maximum number of bytes to read.   Maybe be 0.
@@ -429,20 +429,63 @@ message ReadPicFileResponse {
   bool eof = 2;
 }
 
+extend google.protobuf.ServiceOptions {
+  ServiceOpts pixur_service_opts = 65537;
+}
+
+message ServiceOpts {
+  // a vaguely defined, but monotonically increasing "version".
+  int64 api_version = 1;
+
+  // The header key used to when using an auth token.
+  string auth_token_header_key = 2;
+
+  // The header key used to when using a pix token.
+  string pix_token_header_key = 3;
+
+  // Used in responses (e.g. ReadPicFile) to indicate suggested http headers.
+  // See pixur.api.HttpHeader
+  string http_header_key = 4;
+}
+
+// HttpHeader is a message included as a header on some responses.  It is only a suggestion.
+// See pixur.api.ServiceOpts.http_header_key
+message HttpHeader {
+  string key = 1;
+  string value = 2;
+}
+
 service PixurService {
-  rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
+  option (pixur.api.pixur_service_opts) = {
+    api_version: 20180317 // AUTO UPDATED BY generate.go
+    auth_token_header_key: "Pixur-Auth-Token"
+    pix_token_header_key: "Pixur-Pix-Token"
+    http_header_key: "Pixur-HTTP-Header"
+  };
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
   rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
-  rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse);
-  rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse);
+  rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
-  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse);
-  rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse);
-  rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse);
-  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse);
+  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
