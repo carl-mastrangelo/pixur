@@ -1,4 +1,4 @@
-package handlers
+package handlers // import "pixur.org/pixur/be/handlers"
 
 import (
 	"crypto/rand"

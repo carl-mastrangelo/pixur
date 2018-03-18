@@ -1,4 +1,4 @@
-package status
+package status // import "pixur.org/pixur/be/status"
 
 import (
 	"bytes"

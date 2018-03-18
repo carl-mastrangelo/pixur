@@ -1,4 +1,4 @@
-package imaging
+package imaging // import "pixur.org/pixur/be/imaging"
 
 import (
 	"encoding/json"

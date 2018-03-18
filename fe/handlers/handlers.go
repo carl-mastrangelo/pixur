@@ -1,4 +1,4 @@
-package handlers
+package handlers // import "pixur.org/fe/handlers"
 
 import (
 	"compress/gzip"

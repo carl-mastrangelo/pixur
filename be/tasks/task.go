@@ -1,4 +1,4 @@
-package tasks
+package tasks // import "pixur.org/pixur/be/tasks"
 
 import (
 	"log"

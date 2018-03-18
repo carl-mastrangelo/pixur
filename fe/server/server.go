@@ -1,4 +1,4 @@
-package server
+package server // import "pixur.org/pixur/fe/server"
 
 import (
 	"context"

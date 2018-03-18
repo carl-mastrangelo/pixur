@@ -1,4 +1,4 @@
-package generator
+package generator // import "pixur.org/pixur/be/schema/db/protoc-gen-pxrtab/generator"
 
 import (
 	"bytes"

@@ -1,5 +1,5 @@
 //go:generate protoc config.proto --go_out=.
-package config
+package config // import "pixur.org/pixur/be/server/config"
 
 import (
 	"flag"

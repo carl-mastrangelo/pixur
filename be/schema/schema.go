@@ -1,6 +1,6 @@
 //go:generate protoc pixur.proto --go_out=.
 
-package schema
+package schema // import "pixur.org/pixur/be/schema"
 
 import (
 	"time"

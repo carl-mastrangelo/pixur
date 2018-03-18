@@ -1,4 +1,4 @@
-package db
+package db // import "pixur.org/pixur/be/schema/db"
 
 import (
 	"context"

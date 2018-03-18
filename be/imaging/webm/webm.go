@@ -1,4 +1,4 @@
-package webm
+package webm // import "pixur.org/pixur/be/imaging/webm"
 
 import (
 	"bytes"
