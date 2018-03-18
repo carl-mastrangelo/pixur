@@ -462,6 +462,7 @@ service PixurService {
     pix_token_header_key: "Pixur-Pix-Token"
     http_header_key: "Pixur-HTTP-Header"
   };
+  rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
   rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
