@@ -4,7 +4,10 @@ import (
 	"context"
 	"io"
 	"os"
+	"strconv"
+	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/metadata"
 
@@ -12,6 +15,8 @@ import (
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/status"
 )
+
+var picCacheTimeSeconds = 7 * 24 * time.Hour / time.Second
 
 func apiFormatToSchemaMime(format api.PicFile_Format) (schema.Pic_Mime, status.S) {
 	apiName, present := api.PicFile_Format_name[int32(format)]
@@ -87,6 +92,32 @@ func authReadPicRequest(ctx context.Context) status.S {
 	return nil
 }
 
+func addReadPicHeaders(rps api.PixurService_ReadPicFileServer) status.S {
+	h1 := &api.HttpHeader{
+		Key: "Cache-Control",
+	}
+	if schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
+		h1.Value = "public"
+	} else {
+		h1.Value = "private"
+	}
+	h1data, err := proto.Marshal(h1)
+	if err != nil {
+		return status.InternalError(err, "can't encode headers")
+	}
+	h2 := &api.HttpHeader{
+		Key:   "Cache-Control",
+		Value: "max-age=" + strconv.Itoa(int(picCacheTimeSeconds)),
+	}
+	h2data, err := proto.Marshal(h2)
+	if err != nil {
+		return status.InternalError(err, "can't encode headers")
+	}
+	md := metadata.Pairs(httpHeaderKey, string(h1data), httpHeaderKey, string(h2data))
+	rps.SetHeader(md)
+	return nil
+}
+
 // TODO: add tests
 func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.S {
 	if sts := authReadPicRequest(rps.Context()); sts != nil {
@@ -118,6 +149,9 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 				return status.NotFound(err, "can't open pic")
 			}
 			defer f.Close()
+			if sts := addReadPicHeaders(rps); sts != nil {
+				return sts
+			}
 		}
 
 		resp := &api.ReadPicFileResponse{}

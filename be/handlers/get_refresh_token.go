@@ -22,6 +22,7 @@ var (
 var (
 	authPwtHeaderKey string
 	pixPwtHeaderKey  string
+	httpHeaderKey    string
 )
 
 func init() {
@@ -36,6 +37,7 @@ func init() {
 	opts := ext.(*api.ServiceOpts)
 	authPwtHeaderKey = opts.AuthTokenHeaderKey
 	pixPwtHeaderKey = opts.PixTokenHeaderKey
+	httpHeaderKey = opts.HttpHeaderKey
 }
 
 func (s *serv) handleGetRefreshToken(

@@ -460,7 +460,7 @@ service PixurService {
     api_version: 20180317 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
-    http_header_key: "pixur-http-header"
+    http_header_key: "pixur-http-header-bin"
   };
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
