@@ -13,6 +13,8 @@ type indexData struct {
 	Pic []*api.Pic
 
 	NextID, PrevID string
+
+	CanUpload bool
 }
 
 var indexTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/index.html"))
@@ -65,6 +67,18 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 			res.Pic[i], res.Pic[len(res.Pic)-i-1] = res.Pic[len(res.Pic)-i-1], res.Pic[i]
 		}
 	}
+
+	var canupload bool
+	u := subjectUserOrNilFromCtx(r.Context())
+	if u != nil {
+		for _, c := range u.Capability {
+			if c == api.Capability_PIC_CREATE {
+				canupload = true
+				break
+			}
+		}
+	}
+
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := indexData{
 		baseData: baseData{
@@ -72,11 +86,12 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 			Paths:       h.pt,
 			Params:      h.pt.pr,
 			XsrfToken:   xsrfToken,
-			SubjectUser: subjectUserOrNilFromCtx(r.Context()),
+			SubjectUser: u,
 		},
-		Pic:    res.Pic,
-		NextID: nextID,
-		PrevID: prevID,
+		Pic:       res.Pic,
+		NextID:    nextID,
+		PrevID:    prevID,
+		CanUpload: canupload,
 	}
 	if err := indexTpl.Execute(w, data); err != nil {
 		httpError(w, err)
