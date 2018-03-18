@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"pixur.org/pixur/api"
@@ -56,6 +57,12 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 		return nil, status.InternalError(err, "bad ts")
 	}
 
+	md, sts := readPicHeaders()
+	if sts != nil {
+		return nil, sts
+	}
+	grpc.SendHeader(ctx, md)
+
 	return &api.LookupPicFileResponse{
 		PicFile: &api.PicFile{
 			Id:     req.PicFileId,
@@ -92,7 +99,7 @@ func authReadPicRequest(ctx context.Context) status.S {
 	return nil
 }
 
-func addReadPicHeaders(rps api.PixurService_ReadPicFileServer) status.S {
+func readPicHeaders() (metadata.MD, status.S) {
 	h1 := &api.HttpHeader{
 		Key: "Cache-Control",
 	}
@@ -103,7 +110,7 @@ func addReadPicHeaders(rps api.PixurService_ReadPicFileServer) status.S {
 	}
 	h1data, err := proto.Marshal(h1)
 	if err != nil {
-		return status.InternalError(err, "can't encode headers")
+		return nil, status.InternalError(err, "can't encode headers")
 	}
 	h2 := &api.HttpHeader{
 		Key:   "Cache-Control",
@@ -111,11 +118,9 @@ func addReadPicHeaders(rps api.PixurService_ReadPicFileServer) status.S {
 	}
 	h2data, err := proto.Marshal(h2)
 	if err != nil {
-		return status.InternalError(err, "can't encode headers")
+		return nil, status.InternalError(err, "can't encode headers")
 	}
-	md := metadata.Pairs(httpHeaderKey, string(h1data), httpHeaderKey, string(h2data))
-	rps.SetHeader(md)
-	return nil
+	return metadata.Pairs(httpHeaderKey, string(h1data), httpHeaderKey, string(h2data)), nil
 }
 
 // TODO: add tests
@@ -143,15 +148,11 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 			if sts != nil {
 				return sts
 			}
-
 			f, err = os.Open(path)
 			if err != nil {
 				return status.NotFound(err, "can't open pic")
 			}
 			defer f.Close()
-			if sts := addReadPicHeaders(rps); sts != nil {
-				return sts
-			}
 		}
 
 		resp := &api.ReadPicFileResponse{}

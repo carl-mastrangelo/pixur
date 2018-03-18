@@ -7,13 +7,12 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
 )
@@ -23,130 +22,19 @@ type pixHandler struct {
 	c   api.PixurServiceClient
 }
 
-var _ os.FileInfo = &pixurFI{}
-
-type pixurFI struct {
-	picFileID string
-	format    api.PicFile_Format
-	name      string
-	size      int64
-	modtime   time.Time
-}
-
-func (fi *pixurFI) Name() string {
-	return fi.name
-}
-
-func (fi *pixurFI) Size() int64 {
-	return fi.size
-}
-
-func (fi *pixurFI) Mode() os.FileMode {
-	return os.FileMode(0775)
-}
-
-func (fi *pixurFI) ModTime() time.Time {
-	return fi.modtime
-}
-
-func (fi *pixurFI) IsDir() bool {
-	return false
-}
-
-func (fi *pixurFI) Sys() interface{} {
-	return nil
-}
-
-var _ http.FileSystem = &pixurFS{}
-
-type pixurFS struct {
-	ctx context.Context
-	c   api.PixurServiceClient
-}
-
-func (fs *pixurFS) Open(name string) (http.File, error) {
-	p := path.Base(name)
-	picFileID := strings.TrimSuffix(p, path.Ext(p))
-
-	format := api.PicFile_UNKNOWN
-	switch path.Ext(p) {
-	case ".jpg":
-		format = api.PicFile_JPEG
-	case ".gif":
-		format = api.PicFile_GIF
-	case ".webm":
-		format = api.PicFile_WEBM
-	case ".png":
-		format = api.PicFile_PNG
-	}
-
-	resp, err := fs.c.LookupPicFile(fs.ctx, &api.LookupPicFileRequest{
-		PicFileId: picFileID,
-		Format:    format,
-	})
-	if err != nil {
-		glog.Info(err)
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			case codes.NotFound:
-				return nil, os.ErrNotExist
-			case codes.PermissionDenied:
-				return nil, os.ErrPermission
-			case codes.Unauthenticated:
-				return nil, os.ErrPermission
-			}
-		}
-
-		return nil, err
-	}
-
-	mtime, err := ptypes.Timestamp(resp.PicFile.ModifiedTime)
-	if err != nil {
-		glog.Info(err)
-		return nil, err
-	}
-
-	rpfc, err := fs.c.ReadPicFile(fs.ctx)
-	if err != nil {
-		glog.Info(err)
-		return nil, err
-	}
-
-	return &pixurFile{
-		rpfc: rpfc,
-		fi: &pixurFI{
-			picFileID: resp.PicFile.Id,
-			format:    resp.PicFile.Format,
-			name:      p,
-			size:      resp.PicFile.Size,
-			modtime:   mtime,
-		},
-	}, nil
-}
-
-var _ http.File = &pixurFile{}
+var _ io.ReadSeeker = &pixurFile{}
 
 type pixurFile struct {
-	rpfc   api.PixurService_ReadPicFileClient
-	offset int64
-	fi     *pixurFI
-}
+	rpfc api.PixurService_ReadPicFileClient
 
-func (f *pixurFile) Close() error {
-	if err := f.rpfc.CloseSend(); err != nil {
-		glog.Info(err)
-		return err
-	}
-	_, err := f.rpfc.Recv()
-	if err == nil || err == io.EOF {
-		return nil
-	}
-	glog.Info(err)
-	return err
-}
+	picFileID string
+	format    api.PicFile_Format
+	size      int64
 
-func (f *pixurFile) Stat() (os.FileInfo, error) {
-	return f.fi, nil
+	// state
+	head      http.Header
+	headadded bool
+	offset    int64
 }
 
 func (f *pixurFile) Seek(offset int64, whence int) (int64, error) {
@@ -155,7 +43,7 @@ func (f *pixurFile) Seek(offset int64, whence int) (int64, error) {
 	} else if whence == os.SEEK_CUR {
 		f.offset += offset
 	} else if whence == os.SEEK_END {
-		f.offset = offset + f.fi.Size()
+		f.offset = offset + f.size
 	} else {
 		return f.offset, os.ErrInvalid
 	}
@@ -164,8 +52,8 @@ func (f *pixurFile) Seek(offset int64, whence int) (int64, error) {
 
 func (f *pixurFile) Read(data []byte) (int, error) {
 	err := f.rpfc.Send(&api.ReadPicFileRequest{
-		PicFileId: f.fi.picFileID,
-		Format:    f.fi.format,
+		PicFileId: f.picFileID,
+		Format:    f.format,
 		Offset:    f.offset,
 		Limit:     int64(len(data)),
 	})
@@ -186,10 +74,6 @@ func (f *pixurFile) Read(data []byte) (int, error) {
 	return n, nil
 }
 
-func (f *pixurFile) Readdir(count int) ([]os.FileInfo, error) {
-	return nil, os.ErrInvalid
-}
-
 func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var md metadata.MD
 	if c, err := r.Cookie(pixPwtCookieName); err == nil {
@@ -197,8 +81,67 @@ func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := metadata.NewOutgoingContext(r.Context(), md)
 
-	http.FileServer(&pixurFS{
-		ctx: ctx,
-		c:   h.c,
-	}).ServeHTTP(w, r)
+	p := path.Base(r.URL.Path)
+	picFileID := strings.TrimSuffix(p, path.Ext(p))
+
+	format := api.PicFile_UNKNOWN
+	switch path.Ext(p) {
+	case ".jpg":
+		format = api.PicFile_JPEG
+	case ".gif":
+		format = api.PicFile_GIF
+	case ".webm":
+		format = api.PicFile_WEBM
+	case ".png":
+		format = api.PicFile_PNG
+	}
+
+	var header metadata.MD
+	resp, err := h.c.LookupPicFile(ctx, &api.LookupPicFileRequest{
+		PicFileId: picFileID,
+		Format:    format,
+	}, grpc.Header(&header))
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	if hdrs, ok := header[httpHeaderKey]; ok {
+		for _, h := range hdrs {
+			var hh api.HttpHeader
+			if err := proto.Unmarshal([]byte(h), &hh); err != nil {
+				httpError(w, err)
+				return
+			}
+			w.Header().Add(hh.Key, hh.Value)
+		}
+	}
+
+	mtime, err := ptypes.Timestamp(resp.PicFile.ModifiedTime)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	rpfc, err := h.c.ReadPicFile(ctx)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	defer func() {
+		rpfc.CloseSend()
+		if _, err := rpfc.Recv(); err != nil && err != io.EOF {
+			glog.Info(err)
+		}
+	}()
+
+	pf := &pixurFile{
+		rpfc: rpfc,
+
+		picFileID: resp.PicFile.Id,
+		format:    resp.PicFile.Format,
+		size:      resp.PicFile.Size,
+	}
+
+	http.ServeContent(w, r, p, mtime, pf)
+
 }
