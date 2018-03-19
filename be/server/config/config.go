@@ -18,8 +18,8 @@ const (
 var (
 	DefaultValues = &Config{
 		DbName:                "sqlite3",
-		DbConfig:              ":memory:",
-		ListenAddress:         ":8889",
+		DbConfig:              "tables.db",
+		ListenAddress:         ":8079",
 		ListenNetwork:         "tcp",
 		PixPath:               "pix",
 		SessionPrivateKeyPath: "",

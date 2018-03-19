@@ -16,9 +16,9 @@ const (
 
 var (
 	DefaultValues = &Config{
-		HttpSpec:  ":http",
-		PixurSpec: ":8888",
-		Insecure:  false,
+		HttpSpec:  ":8080",
+		PixurSpec: ":8079",
+		Insecure:  true,
 		HttpRoot:  "/",
 	}
 	Conf = mergeParseConfigFlag(DefaultValues)
