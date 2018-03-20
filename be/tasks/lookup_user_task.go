@@ -23,7 +23,6 @@ type LookupUserTask struct {
 	User *schema.User
 }
 
-// TODO: add tests
 func (t *LookupUserTask) Run() (errCap status.S) {
 	subjectUserID, ok := UserIDFromCtx(t.Ctx)
 	if !ok {
