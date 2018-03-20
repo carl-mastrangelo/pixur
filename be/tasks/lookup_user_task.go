@@ -57,7 +57,7 @@ func (t *LookupUserTask) Run() (errCap status.S) {
 			return status.InternalError(err, "can't lookup user")
 		}
 		if len(objectUsers) != 1 {
-			return status.Unauthenticated(nil, "can't lookup user")
+			return status.NotFound(nil, "can't lookup user")
 		}
 		objectUser = objectUsers[0]
 	}
