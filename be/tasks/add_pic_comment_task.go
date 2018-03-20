@@ -20,7 +20,6 @@ type AddPicCommentTask struct {
 	PicID           int64
 	CommentParentID int64
 	Text            string
-	Ctx             context.Context
 
 	// Outs
 	PicComment *schema.PicComment
@@ -31,7 +30,7 @@ const (
 	maxCommentLen = 16384
 )
 
-func (t *AddPicCommentTask) Run() (errCap status.S) {
+func (t *AddPicCommentTask) Run(ctx context.Context) (errCap status.S) {
 	if len(t.Text) < minCommentLen || len(t.Text) > maxCommentLen {
 		return status.InvalidArgument(nil, "invalid comment length")
 	}
@@ -41,13 +40,13 @@ func (t *AddPicCommentTask) Run() (errCap status.S) {
 		return status.InvalidArgument(nil, "Invalid comment test", t.Text)
 	}
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_COMMENT_CREATE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_COMMENT_CREATE)
 	if sts != nil {
 		return sts
 	}

@@ -19,7 +19,7 @@ import (
 
 func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.NewTokenID = 3
 		taskCap.User = &schema.User{
@@ -57,7 +57,7 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 
 func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.NewTokenID = 3
 		taskCap.User = &schema.User{
@@ -168,7 +168,7 @@ func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
 }
 
 func TestGetRefreshTokenFailsOnTaskError(t *testing.T) {
-	failureRunner := func(task tasks.Task) status.S {
+	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		return status.InternalError(nil, "bad")
 	}
 
@@ -190,7 +190,7 @@ func TestGetRefreshTokenFailsOnTaskError(t *testing.T) {
 
 func TestGetRefreshToken(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.User = &schema.User{
 			UserId:     2,
@@ -301,7 +301,7 @@ func TestGetRefreshToken(t *testing.T) {
 
 func TestGetRefreshTokenNoPix(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
 		taskCap.User = &schema.User{
 			UserId: 2,

@@ -20,7 +20,6 @@ type CreateUserTask struct {
 	// Inputs
 	Ident  string
 	Secret string
-	Ctx    context.Context
 	// Special input that overrides the defaults.   Used for site bootstrapping.
 	Capability []schema.User_Capability
 
@@ -56,15 +55,15 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 	return u, nil
 }
 
-func (t *CreateUserTask) Run() (errCap status.S) {
+func (t *CreateUserTask) Run(ctx context.Context) (errCap status.S) {
 	var err error
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_USER_CREATE); sts != nil {
+	if _, sts := requireCapability(ctx, j, schema.User_USER_CREATE); sts != nil {
 		return sts
 	}
 

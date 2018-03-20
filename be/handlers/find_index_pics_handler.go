@@ -22,10 +22,9 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 		DB:        s.db,
 		StartID:   int64(picID),
 		Ascending: req.Ascending,
-		Ctx:       ctx,
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

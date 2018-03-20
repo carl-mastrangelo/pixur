@@ -13,26 +13,6 @@ import (
 	"pixur.org/pixur/be/schema"
 )
 
-func TestAuthUserTaskFailsOnMissingContext(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
-
-	task := &AuthUserTask{
-		Ctx: nil,
-	}
-
-	sts := task.Run()
-	if sts == nil {
-		t.Error("expected non-nil status")
-	}
-	if have, want := sts.Code(), codes.Internal; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := sts.Message(), "missing context"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
-	}
-}
-
 func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
@@ -40,11 +20,10 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	db := c.DB()
 	db.Close()
 	task := &AuthUserTask{
-		Ctx: context.Background(),
-		DB:  db,
+		DB: db,
 	}
 
-	sts := task.Run()
+	sts := new(TaskRunner).Run(context.Background(), task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -61,12 +40,12 @@ func TestAuthUserTaskFailsOnNoIdentifier(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		Ctx: context.Background(),
 		DB:  c.DB(),
 		Now: time.Now,
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -85,13 +64,13 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 	id := c.ID()
 
 	task := &AuthUserTask{
-		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
 		UserID: id,
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -110,14 +89,14 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		Ctx:     context.Background(),
 		DB:      c.DB(),
 		Now:     time.Now,
 		UserID:  u.User.UserId,
 		TokenID: 0,
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -142,14 +121,14 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		Ctx:     context.Background(),
 		DB:      c.DB(),
 		Now:     time.Now,
 		UserID:  u.User.UserId,
 		TokenID: 1,
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
 	}
@@ -173,13 +152,13 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		Ctx:   context.Background(),
 		DB:    c.DB(),
 		Now:   time.Now,
 		Ident: "foo@bar.com",
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -198,14 +177,14 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
 		Ident:  u.User.Ident,
 		Secret: "bogus",
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -235,14 +214,14 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
 		Ident:  u.User.Ident,
 		Secret: "secret",
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
 	}
@@ -295,7 +274,6 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 	u2.Update()
 
 	task := &AuthUserTask{
-		Ctx:    context.Background(),
 		DB:     c.DB(),
 		Now:    time.Now,
 		Ident:  u1.User.Ident,
@@ -306,7 +284,8 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 		TokenID: u2.User.NextTokenId - 1,
 	}
 
-	sts := task.Run()
+	ctx := context.Background()
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal("expected nil status", sts)
 	}

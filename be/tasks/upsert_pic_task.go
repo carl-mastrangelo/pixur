@@ -41,7 +41,6 @@ type UpsertPicTask struct {
 
 	Header   FileHeader
 	TagNames []string
-	Ctx      context.Context
 
 	// TODO: eventually take the Referer[sic].  This is to pass to HTTPClient when retrieving the
 	// pic.
@@ -55,14 +54,14 @@ type FileHeader struct {
 	Size int64
 }
 
-func (t *UpsertPicTask) Run() (stsCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *UpsertPicTask) Run(ctx context.Context) (stsCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &stsCap)
 
-	if sts := t.runInternal(t.Ctx, j); sts != nil {
+	if sts := t.runInternal(ctx, j); sts != nil {
 		return sts
 	}
 
@@ -77,7 +76,7 @@ func (t *UpsertPicTask) Run() (stsCap status.S) {
 }
 
 func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		return sts
 	}
@@ -104,7 +103,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		}
 	}
 
-	f, fh, sts := t.prepareFile(t.File, t.Header, t.FileURL)
+	f, fh, sts := t.prepareFile(ctx, t.File, t.Header, t.FileURL)
 	if sts != nil {
 		return sts
 	}
@@ -466,7 +465,7 @@ func insertPerceptualHash(j *tab.Job, picID int64, im image.Image) status.S {
 }
 
 // prepareFile prepares the file for image processing.
-func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) (
+func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh FileHeader, u string) (
 	_ *os.File, _ *FileHeader, stsCap status.S) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
@@ -480,7 +479,7 @@ func (t *UpsertPicTask) prepareFile(fd multipart.File, fh FileHeader, u string) 
 
 	var h *FileHeader
 	if fd == nil {
-		if header, sts := t.downloadFile(f, u); sts != nil {
+		if header, sts := t.downloadFile(ctx, f, u); sts != nil {
 			return nil, nil, sts
 		} else {
 			h = header
@@ -535,7 +534,8 @@ func validateURL(rawurl string) (*url.URL, status.S) {
 	return u, nil
 }
 
-func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, status.S) {
+func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, rawurl string) (
+	*FileHeader, status.S) {
 	u, sts := validateURL(rawurl)
 	if sts != nil {
 		return nil, sts
@@ -547,7 +547,7 @@ func (t *UpsertPicTask) downloadFile(f *os.File, rawurl string) (*FileHeader, st
 		// if this fails, it's probably our fault
 		return nil, status.InternalError(err, "Can't create request")
 	}
-	req = req.WithContext(t.Ctx)
+	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
 		return nil, status.InvalidArgument(err, "Can't download ", rawurl)

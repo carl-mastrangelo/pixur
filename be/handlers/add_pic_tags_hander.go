@@ -24,9 +24,8 @@ func (s *serv) handleAddPicTags(ctx context.Context, req *api.AddPicTagsRequest)
 
 		PicID:    int64(vid),
 		TagNames: req.Tag,
-		Ctx:      ctx,
 	}
-	if err := s.runner.Run(task); err != nil {
+	if err := s.runner.Run(ctx, task); err != nil {
 		return nil, err
 	}
 

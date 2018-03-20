@@ -21,10 +21,9 @@ func (s *serv) handleCreatePic(ctx context.Context, req *api.CreatePicRequest) (
 		Filename: req.FileName,
 		FileURL:  req.FileUrl,
 		TagNames: req.Tag,
-		Ctx:      ctx,
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

@@ -32,10 +32,9 @@ func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRe
 
 		PicID: int64(picID),
 		Vote:  upsertPicVoteMap[req.Vote],
-		Ctx:   ctx,
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

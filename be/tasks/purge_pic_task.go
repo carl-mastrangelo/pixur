@@ -21,17 +21,16 @@ type PurgePicTask struct {
 
 	// input
 	PicID int64
-	Ctx   context.Context
 }
 
-func (t *PurgePicTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *PurgePicTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_PURGE); sts != nil {
+	if _, sts := requireCapability(ctx, j, schema.User_PIC_PURGE); sts != nil {
 		return sts
 	}
 

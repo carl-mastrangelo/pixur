@@ -28,7 +28,6 @@ type ReadIndexPicsTask struct {
 	MaxPics int
 	// Ascending determines the order of pics returned.
 	Ascending bool
-	Ctx       context.Context
 
 	// State
 
@@ -71,14 +70,14 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	return startPics[0], nil
 }
 
-func (t *ReadIndexPicsTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *ReadIndexPicsTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
 	defer cleanUp(j, &errCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_INDEX); sts != nil {
+	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
 		return sts
 	}
 

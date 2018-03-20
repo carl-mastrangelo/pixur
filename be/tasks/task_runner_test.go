@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"context"
 	"testing"
 
 	"pixur.org/pixur/be/status"
@@ -12,15 +13,15 @@ type fakeTask struct {
 	runCount     int
 	resetCount   int
 	cleanUpCount int
-	run          func() status.S
+	run          func(context.Context) status.S
 	reset        func()
 	cleanUp      func()
 }
 
-func (t *fakeTask) Run() status.S {
+func (t *fakeTask) Run(ctx context.Context) status.S {
 	t.runCount++
 	if t.run != nil {
-		return t.run()
+		return t.run(ctx)
 	}
 	return nil
 }
@@ -41,7 +42,7 @@ func (t *fakeTask) CleanUp() {
 
 func TestTaskRunnerNil(t *testing.T) {
 	var tr *TaskRunner
-	sts := tr.Run(new(fakeTask))
+	sts := tr.Run(context.Background(), new(fakeTask))
 	if sts != nil {
 		t.Error("error running task", sts)
 	}
@@ -50,7 +51,7 @@ func TestTaskRunnerNil(t *testing.T) {
 func TestTaskIsNotReset_success(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
-	sts := runner.Run(task)
+	sts := runner.Run(context.Background(), task)
 
 	if sts != nil {
 		t.Fatal(sts)
@@ -72,10 +73,10 @@ func TestTaskIsReset_failure(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 	expectedError := status.InternalError(nil, "Expected")
-	task.run = func() status.S {
+	task.run = func(_ context.Context) status.S {
 		return expectedError
 	}
-	sts := runner.Run(task)
+	sts := runner.Run(context.Background(), task)
 
 	if sts != expectedError {
 		t.Fatal("Expected different error", sts)
@@ -97,10 +98,10 @@ func TestTaskRetriesOnDeadlock(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 
-	task.run = func() status.S {
+	task.run = func(_ context.Context) status.S {
 		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber}, "")
 	}
-	sts := runner.Run(task)
+	sts := runner.Run(context.Background(), task)
 
 	if sts == nil {
 		t.Fatal("Expected error, but was nil")
@@ -122,10 +123,10 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 
-	task.run = func() status.S {
+	task.run = func(_ context.Context) status.S {
 		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber + 1}, "")
 	}
-	sts := runner.Run(task)
+	sts := runner.Run(context.Background(), task)
 
 	if sts == nil {
 		t.Fatal("Expected error, but was nil")

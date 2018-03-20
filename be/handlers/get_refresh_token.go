@@ -48,7 +48,6 @@ func (s *serv) handleGetRefreshToken(
 		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,
-		Ctx:    ctx,
 	}
 
 	if req.RefreshToken != "" {
@@ -68,7 +67,7 @@ func (s *serv) handleGetRefreshToken(
 		task.UserID = int64(vid)
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

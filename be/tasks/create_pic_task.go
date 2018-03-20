@@ -41,7 +41,6 @@ type CreatePicTask struct {
 	Filename string
 	FileData readAtSeeker
 	TagNames []string
-	Ctx      context.Context
 
 	// Alternatively, a url can be uploaded
 	FileURL string
@@ -71,7 +70,7 @@ func (t *CreatePicTask) reset() {
 	}
 }
 
-func (t *CreatePicTask) Run() (sCap status.S) {
+func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	var err error
 	var sts status.S
 	t.now = time.Now()
@@ -115,13 +114,13 @@ func (t *CreatePicTask) Run() (sCap status.S) {
 
 	thumbnail := imaging.MakeThumbnail(img)
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &sCap)
 
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_CREATE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		return sts
 	}

@@ -31,7 +31,9 @@ func TestFindIndexPicsFailsOnBadPicID(t *testing.T) {
 
 func TestFindIndexPics(t *testing.T) {
 	var taskCap *tasks.ReadIndexPicsTask
-	successRunner := func(task tasks.Task) status.S {
+	var ctxCap context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		ctxCap = ctx
 		taskCap = task.(*tasks.ReadIndexPicsTask)
 		taskCap.Pics = append(taskCap.Pics, &schema.Pic{})
 		return nil
@@ -55,7 +57,7 @@ func TestFindIndexPics(t *testing.T) {
 	if have, want := taskCap.Ascending, true; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if res == nil {

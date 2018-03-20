@@ -31,7 +31,9 @@ func TestFindSimilarPicsFailsOnBadPicID(t *testing.T) {
 
 func TestFindSimilarPics(t *testing.T) {
 	var taskCap *tasks.FindSimilarPicsTask
-	successRunner := func(task tasks.Task) status.S {
+	var ctxCap context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		ctxCap = ctx
 		taskCap = task.(*tasks.FindSimilarPicsTask)
 		taskCap.SimilarPicIDs = append(taskCap.SimilarPicIDs, 2)
 		return nil
@@ -51,7 +53,7 @@ func TestFindSimilarPics(t *testing.T) {
 	if have, want := taskCap.PicID, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := res, (&api.FindSimilarPicsResponse{PicId: []string{"2"}}); !proto.Equal(have, want) {

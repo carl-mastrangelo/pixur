@@ -40,9 +40,8 @@ func (s *serv) handleSoftDeletePic(
 		Details:             req.Details,
 		Reason:              schema.Pic_DeletionStatus_Reason(reason),
 		PendingDeletionTime: &deletionTime,
-		Ctx:                 ctx,
 	}
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

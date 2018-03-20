@@ -15,7 +15,7 @@ import (
 )
 
 func TestAddPicTagsFailsOnTaskFailure(t *testing.T) {
-	failureRunner := func(task tasks.Task) status.S {
+	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		return status.InternalError(nil, "bad things")
 	}
 	s := &serv{
@@ -38,7 +38,7 @@ func TestAddPicTagsFailsOnTaskFailure(t *testing.T) {
 
 func TestAddPicTags(t *testing.T) {
 	var taskCap *tasks.AddPicTagsTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AddPicTagsTask)
 		return nil
 	}

@@ -15,9 +15,8 @@ func (s *serv) handleCreateUser(ctx context.Context, req *api.CreateUserRequest)
 		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,
-		Ctx:    ctx,
 	}
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

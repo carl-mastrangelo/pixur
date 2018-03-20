@@ -23,9 +23,8 @@ func (s *serv) handleIncrementViewCount(
 		DB:    s.db,
 		Now:   s.now,
 		PicID: int64(picID),
-		Ctx:   ctx,
 	}
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

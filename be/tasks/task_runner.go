@@ -1,9 +1,11 @@
 package tasks
 
 import (
-	"pixur.org/pixur/be/status"
+	"context"
 
 	"github.com/go-sql-driver/mysql"
+
+	"pixur.org/pixur/be/status"
 )
 
 const (
@@ -12,29 +14,29 @@ const (
 )
 
 type TaskRunner struct {
-	run func(task Task) status.S
+	run func(context.Context, Task) status.S
 }
 
-func TestTaskRunner(run func(task Task) status.S) *TaskRunner {
+func TestTaskRunner(run func(context.Context, Task) status.S) *TaskRunner {
 	return &TaskRunner{
 		run: run,
 	}
 }
 
-func (r *TaskRunner) Run(task Task) status.S {
+func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 	if r != nil && r.run != nil {
-		return r.run(task)
+		return r.run(ctx, task)
 	}
-	return runTask(task)
+	return runTask(ctx, task)
 }
 
-func runTask(task Task) status.S {
+func runTask(ctx context.Context, task Task) status.S {
 	if messy, ok := task.(Messy); ok {
 		defer messy.CleanUp()
 	}
 	var sts status.S
 	for i := 0; i < maxTaskRetries; i++ {
-		sts = task.Run()
+		sts = task.Run(ctx)
 		if sts == nil {
 			return nil
 		}

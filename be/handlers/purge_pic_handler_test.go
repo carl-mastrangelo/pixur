@@ -30,7 +30,9 @@ func TestPurgePicFailsOnBadPicID(t *testing.T) {
 
 func TestPurgePic(t *testing.T) {
 	var taskCap *tasks.PurgePicTask
-	successRunner := func(task tasks.Task) status.S {
+	var ctxCap context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		ctxCap = ctx
 		taskCap = task.(*tasks.PurgePicTask)
 		return nil
 	}
@@ -49,7 +51,7 @@ func TestPurgePic(t *testing.T) {
 	if have, want := taskCap.PicID, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if res == nil {

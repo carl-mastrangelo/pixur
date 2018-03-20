@@ -1,6 +1,7 @@
 package tasks // import "pixur.org/pixur/be/tasks"
 
 import (
+	"context"
 	"log"
 
 	tab "pixur.org/pixur/be/schema/tables"
@@ -8,7 +9,7 @@ import (
 )
 
 type Task interface {
-	Run() status.S
+	Run(context.Context) status.S
 }
 
 // Tasks implement the Resettable interface if they want to run any sort of reset logic.

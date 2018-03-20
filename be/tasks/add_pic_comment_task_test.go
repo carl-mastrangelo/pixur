@@ -26,11 +26,10 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 		PicID: p.Pic.PicId,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 		Text:  "hi",
 	}
-	runner := new(TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
@@ -72,12 +71,11 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 		PicID:           p.Pic.PicId,
 		DB:              c.DB(),
 		Now:             time.Now,
-		Ctx:             CtxFromUserID(context.Background(), u.User.UserId),
 		Text:            "hi",
 		CommentParentID: parent.PicComment.CommentId,
 	}
-	runner := new(TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
@@ -118,10 +116,9 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 		PicID: 0,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -145,10 +142,9 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 		Text:  "hi",
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -184,10 +180,9 @@ func TestAddPicCommentTaskWork_CantCommentOnHardDeleted(t *testing.T) {
 		Text:  "hi",
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -209,11 +204,10 @@ func TestAddPicCommentTask_MissingComment(t *testing.T) {
 		Text:  "",
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   context.Background(),
 		PicID: p.Pic.PicId,
 	}
 
-	sts := task.Run()
+	sts := new(TaskRunner).Run(context.Background(), task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -233,10 +227,9 @@ func TestAddPicCommentTask_TooLongComment(t *testing.T) {
 		Text: strings.Repeat("a", maxCommentLen+1),
 		DB:   c.DB(),
 		Now:  time.Now,
-		Ctx:  context.Background(),
 	}
 
-	sts := task.Run()
+	sts := new(TaskRunner).Run(context.Background(), task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -266,10 +259,9 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 		CommentParentID: parent.PicComment.CommentId,
 		DB:              c.DB(),
 		Now:             time.Now,
-		Ctx:             CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}

@@ -17,22 +17,21 @@ type IncrementViewCountTask struct {
 
 	// Inputs
 	PicID int64
-	Ctx   context.Context
 }
 
-func (t *IncrementViewCountTask) Run() (errCap status.S) {
-	userID, ok := UserIDFromCtx(t.Ctx)
+func (t *IncrementViewCountTask) Run(ctx context.Context) (errCap status.S) {
+	userID, ok := UserIDFromCtx(ctx)
 	if !ok {
 		return status.Unauthenticated(nil, "no user provided")
 	}
 	_ = userID // TODO: use this
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_UPDATE_VIEW_COUNTER); sts != nil {
+	if _, sts := requireCapability(ctx, j, schema.User_PIC_UPDATE_VIEW_COUNTER); sts != nil {
 		return sts
 	}
 

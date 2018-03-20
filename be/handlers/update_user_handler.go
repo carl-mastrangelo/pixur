@@ -61,10 +61,9 @@ func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest)
 		Version:         req.Version,
 		SetCapability:   newcaps,
 		ClearCapability: oldcaps,
-		Ctx:             ctx,
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

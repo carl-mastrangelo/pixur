@@ -22,9 +22,8 @@ func (s *serv) handleLookupPicDetails(
 	var task = &tasks.LookupPicTask{
 		DB:    s.db,
 		PicID: int64(picID),
-		Ctx:   ctx,
 	}
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

@@ -28,8 +28,6 @@ type AuthUserTask struct {
 	UserID  int64
 	TokenID int64
 
-	Ctx context.Context
-
 	// Results
 	User       *schema.User
 	NewTokenID int64
@@ -39,12 +37,12 @@ const (
 	maxUserTokens = 10
 )
 
-func (t *AuthUserTask) Run() (sCap status.S) {
-	if t.Ctx == nil {
+func (t *AuthUserTask) Run(ctx context.Context) (sCap status.S) {
+	if ctx == nil {
 		return status.InternalError(nil, "missing context")
 	}
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}

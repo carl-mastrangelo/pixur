@@ -25,20 +25,18 @@ type UpdateUserTask struct {
 	// Capabilities to remove
 	ClearCapability []schema.User_Capability
 
-	Ctx context.Context
-
 	// Outputs
 	ObjectUser *schema.User
 }
 
-func (t *UpdateUserTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *UpdateUserTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
 	defer cleanUp(j, &errCap)
 
-	subjectUserID, ok := UserIDFromCtx(t.Ctx)
+	subjectUserID, ok := UserIDFromCtx(ctx)
 	if !ok {
 		return status.Unauthenticated(nil, "missing user")
 	}

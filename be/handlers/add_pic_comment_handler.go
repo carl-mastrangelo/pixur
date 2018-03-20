@@ -31,9 +31,8 @@ func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRe
 		PicID:           int64(picID),
 		CommentParentID: int64(commentParentID),
 		Text:            req.Text,
-		Ctx:             ctx,
 	}
-	if err := s.runner.Run(task); err != nil {
+	if err := s.runner.Run(ctx, task); err != nil {
 		return nil, err
 	}
 

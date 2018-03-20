@@ -32,7 +32,9 @@ func TestUpsertPicFailsOnBadMd5(t *testing.T) {
 
 func TestUpsertPic(t *testing.T) {
 	var taskCap *tasks.UpsertPicTask
-	successRunner := func(task tasks.Task) status.S {
+	var ctxCap context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		ctxCap = ctx
 		taskCap = task.(*tasks.UpsertPicTask)
 		taskCap.CreatedPic = new(schema.Pic)
 		return nil
@@ -67,7 +69,7 @@ func TestUpsertPic(t *testing.T) {
 	if len(taskCap.TagNames) != 1 || taskCap.TagNames[0] != "blah" {
 		t.Error("bad tag names", taskCap.TagNames)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if len(taskCap.Md5Hash) != 16 {

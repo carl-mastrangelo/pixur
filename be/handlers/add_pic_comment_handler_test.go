@@ -47,7 +47,9 @@ func TestAddPicCommentFailsOnBadCommentParentID(t *testing.T) {
 
 func TestAddPicComment(t *testing.T) {
 	var taskCap *tasks.AddPicCommentTask
-	successRunner := func(task tasks.Task) status.S {
+	var capCtx context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		capCtx = ctx
 		taskCap = task.(*tasks.AddPicCommentTask)
 		taskCap.PicComment = &schema.PicComment{}
 		return nil
@@ -71,7 +73,7 @@ func TestAddPicComment(t *testing.T) {
 	if have, want := taskCap.CommentParentID, int64(2); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := capCtx, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if res == nil {

@@ -18,20 +18,19 @@ type LookupPicVoteTask struct {
 	// Inputs
 	PicID        int64
 	ObjectUserID int64
-	Ctx          context.Context
 
 	// Results
 	PicVote *schema.PicVote
 }
 
-func (t *LookupPicVoteTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *LookupPicVoteTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	subjectUserId, _ := UserIDFromCtx(t.Ctx)
+	subjectUserId, _ := UserIDFromCtx(ctx)
 	var perm schema.User_Capability
 	var objectUserId int64
 	if t.ObjectUserID == 0 || t.ObjectUserID == subjectUserId {
@@ -40,7 +39,7 @@ func (t *LookupPicVoteTask) Run() (errCap status.S) {
 		perm = schema.User_USER_READ_ALL
 	}
 
-	u, sts := requireCapability(t.Ctx, j, perm)
+	u, sts := requireCapability(ctx, j, perm)
 	if sts != nil {
 		return sts
 	}

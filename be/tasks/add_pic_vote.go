@@ -18,24 +18,23 @@ type AddPicVoteTask struct {
 	// Inputs
 	PicID int64
 	Vote  schema.PicVote_Vote
-	Ctx   context.Context
 
 	// Outs
 	PicVote *schema.PicVote
 }
 
-func (t *AddPicVoteTask) Run() (errCap status.S) {
+func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 	if t.Vote != schema.PicVote_UP && t.Vote != schema.PicVote_DOWN && t.Vote != schema.PicVote_NEUTRAL {
 		return status.InvalidArgument(nil, "bad vote dir")
 	}
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_VOTE_CREATE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_VOTE_CREATE)
 	if sts != nil {
 		return sts
 	}

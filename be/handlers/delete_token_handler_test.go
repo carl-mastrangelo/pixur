@@ -32,7 +32,7 @@ func TestDeleteTokenFailsOnMissingAuth(t *testing.T) {
 }
 
 func TestDeleteTokenFailsOnTaskError(t *testing.T) {
-	failureRunner := func(task tasks.Task) status.S {
+	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		return status.InternalError(nil, "bad things")
 	}
 	s := &serv{
@@ -57,7 +57,7 @@ func TestDeleteTokenFailsOnTaskError(t *testing.T) {
 
 func TestDeleteTokenSucess(t *testing.T) {
 	var taskCap *tasks.UnauthUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.UnauthUserTask)
 		return nil
 	}

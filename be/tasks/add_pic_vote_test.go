@@ -27,10 +27,9 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 		PicID: p.Pic.PicId,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
@@ -80,15 +79,13 @@ func TestAddPicVoteTaskWork_NoDoubleVoting(t *testing.T) {
 		PicID: p.Pic.PicId,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	if sts := runner.Run(task); sts != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
-	runner = new(TaskRunner)
-	sts := runner.Run(task)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -119,10 +116,9 @@ func TestAddPicVoteTaskWork_MissingPic(t *testing.T) {
 		PicID: 0,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -158,10 +154,9 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 		PicID: p.Pic.PicId,
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	runner := new(TaskRunner)
-	sts := runner.Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -181,10 +176,9 @@ func TestAddPicVoteTask_BadVoteDir(t *testing.T) {
 		Vote: schema.PicVote_UNKNOWN,
 		DB:   c.DB(),
 		Now:  time.Now,
-		Ctx:  context.Background(),
 	}
 
-	sts := task.Run()
+	sts := new(TaskRunner).Run(context.Background(), task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}

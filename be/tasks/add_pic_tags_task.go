@@ -18,18 +18,17 @@ type AddPicTagsTask struct {
 	// Inputs
 	PicID    int64
 	TagNames []string
-	Ctx      context.Context
 }
 
 // TODO: add tests
-func (t *AddPicTagsTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *AddPicTagsTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_TAG_CREATE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_TAG_CREATE)
 	if sts != nil {
 		return sts
 	}

@@ -17,19 +17,18 @@ type LookupUserTask struct {
 
 	// Inputs
 	ObjectUserID int64
-	Ctx          context.Context
 
 	// Outs
 	User *schema.User
 }
 
-func (t *LookupUserTask) Run() (errCap status.S) {
-	subjectUserID, ok := UserIDFromCtx(t.Ctx)
+func (t *LookupUserTask) Run(ctx context.Context) (errCap status.S) {
+	subjectUserID, ok := UserIDFromCtx(ctx)
 	if !ok {
 		return status.Unauthenticated(nil, "missing user")
 	}
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
@@ -38,13 +37,13 @@ func (t *LookupUserTask) Run() (errCap status.S) {
 	var objectUser *schema.User
 	if subjectUserID == t.ObjectUserID || t.ObjectUserID == 0 {
 		// looking up self
-		su, sts := requireCapability(t.Ctx, j, schema.User_USER_READ_SELF)
+		su, sts := requireCapability(ctx, j, schema.User_USER_READ_SELF)
 		if sts != nil {
 			return sts
 		}
 		objectUser = su
 	} else {
-		_, sts := requireCapability(t.Ctx, j, schema.User_USER_READ_ALL)
+		_, sts := requireCapability(ctx, j, schema.User_USER_READ_ALL)
 		if sts != nil {
 			return sts
 		}

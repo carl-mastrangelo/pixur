@@ -18,20 +18,19 @@ type FindSimilarPicsTask struct {
 
 	// Inputs
 	PicID int64
-	Ctx   context.Context
 
 	// Results
 	SimilarPicIDs []int64
 }
 
-func (t *FindSimilarPicsTask) Run() (errCap status.S) {
-	j, err := tab.NewJob(t.Ctx, t.DB)
+func (t *FindSimilarPicsTask) Run(ctx context.Context) (errCap status.S) {
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create new job")
 	}
 	defer cleanUp(j, &errCap)
 
-	if _, sts := requireCapability(t.Ctx, j, schema.User_PIC_INDEX); sts != nil {
+	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
 		return sts
 	}
 

@@ -30,7 +30,9 @@ func TestIncrementViewCountFailsOnBadPicID(t *testing.T) {
 
 func TestIncrementViewCount(t *testing.T) {
 	var taskCap *tasks.IncrementViewCountTask
-	successRunner := func(task tasks.Task) status.S {
+	var ctxCap context.Context
+	successRunner := func(ctx context.Context, task tasks.Task) status.S {
+		ctxCap = ctx
 		taskCap = task.(*tasks.IncrementViewCountTask)
 		return nil
 	}
@@ -49,7 +51,7 @@ func TestIncrementViewCount(t *testing.T) {
 	if have, want := taskCap.PicID, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.Ctx, context.Background(); have != want {
+	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if res == nil {

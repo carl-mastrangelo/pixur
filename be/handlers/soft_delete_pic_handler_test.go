@@ -17,7 +17,7 @@ import (
 
 func TestSoftDeletePicWorkFlow(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return nil
 	}
@@ -56,7 +56,7 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 
 func TestSoftDeletePicBadPicId(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -84,7 +84,7 @@ func TestSoftDeletePicBadPicId(t *testing.T) {
 
 func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		// Not run, but we still need a placeholder
 		return nil
@@ -112,7 +112,7 @@ func TestSoftDeletePicBadDeletionTime(t *testing.T) {
 
 func TestSoftDeletePicDefaultsSet(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return nil
 	}
@@ -153,7 +153,7 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 
 func TestSoftDeletePicTaskError(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
-	failureRunner := func(task tasks.Task) status.S {
+	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
 		return status.InternalError(nil, "bad")
 	}

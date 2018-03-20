@@ -22,12 +22,11 @@ func TestLookupUserWorkflow(t *testing.T) {
 	task := &LookupUserTask{
 		DB:           c.DB(),
 		ObjectUserID: u.User.UserId,
-		Ctx:          CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if !proto.Equal(u.User, task.User) {
@@ -44,13 +43,12 @@ func TestLookupUserBlankID(t *testing.T) {
 	u.Update()
 
 	task := &LookupUserTask{
-		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), u.User.UserId),
+		DB: c.DB(),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if !proto.Equal(u.User, task.User) {
@@ -70,12 +68,11 @@ func TestLookupUserOther(t *testing.T) {
 	task := &LookupUserTask{
 		DB:           c.DB(),
 		ObjectUserID: u1.User.UserId,
-		Ctx:          CtxFromUserID(context.Background(), u2.User.UserId),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u2.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if !proto.Equal(u1.User, task.User) {
@@ -92,10 +89,10 @@ func TestLookupUserCantLookupSelf(t *testing.T) {
 	task := &LookupUserTask{
 		DB:           c.DB(),
 		ObjectUserID: u.User.UserId,
-		Ctx:          CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := new(TaskRunner).Run(task)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -118,10 +115,9 @@ func TestLookupUserCantLookupOther(t *testing.T) {
 	task := &LookupUserTask{
 		DB:           c.DB(),
 		ObjectUserID: u2.User.UserId,
-		Ctx:          CtxFromUserID(context.Background(), u1.User.UserId),
 	}
-
-	sts := new(TaskRunner).Run(task)
+	ctx := CtxFromUserID(context.Background(), u1.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -142,10 +138,10 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 	task := &LookupUserTask{
 		DB:           c.DB(),
 		ObjectUserID: -1,
-		Ctx:          CtxFromUserID(context.Background(), u1.User.UserId),
 	}
 
-	sts := new(TaskRunner).Run(task)
+	ctx := CtxFromUserID(context.Background(), u1.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
 	}

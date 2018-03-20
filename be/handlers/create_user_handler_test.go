@@ -15,7 +15,7 @@ import (
 )
 
 func TestCreateUserFailsOnTaskFailure(t *testing.T) {
-	failureRunner := func(task tasks.Task) status.S {
+	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		return status.InternalError(nil, "bad things")
 	}
 	s := &serv{
@@ -38,7 +38,7 @@ func TestCreateUserFailsOnTaskFailure(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	var taskCap *tasks.CreateUserTask
-	successRunner := func(task tasks.Task) status.S {
+	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.CreateUserTask)
 		return nil
 	}

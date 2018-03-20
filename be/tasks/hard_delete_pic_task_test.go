@@ -23,12 +23,10 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
-		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
-
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if _, err := os.Stat(p.Pic.Path(c.TempDir())); !os.IsNotExist(err) {
@@ -76,11 +74,10 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		DB:      c.DB(),
 		PicID:   p.Pic.PicId,
 		PixPath: c.TempDir(),
-		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
 

@@ -27,22 +27,20 @@ type SoftDeletePicTask struct {
 
 	// Can this picture ever be re uploaded?
 	Temporary bool
-
-	Ctx context.Context
 }
 
-func (t *SoftDeletePicTask) Run() (errCap status.S) {
+func (t *SoftDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
 	}
 
-	j, err := tab.NewJob(t.Ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
 	defer cleanUp(j, &errCap)
 
-	u, sts := requireCapability(t.Ctx, j, schema.User_PIC_SOFT_DELETE)
+	u, sts := requireCapability(ctx, j, schema.User_PIC_SOFT_DELETE)
 	if sts != nil {
 		return sts
 	}

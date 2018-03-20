@@ -26,10 +26,10 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Now:    func() time.Time { return now },
 		Ident:  "email",
 		Secret: "secret",
-		Ctx:    CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,12 +64,12 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 		Now:        func() time.Time { return now },
 		Ident:      "email",
 		Secret:     "secret",
-		Ctx:        CtxFromUserID(context.Background(), u.User.UserId),
 		Capability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 	expected := &schema.User{
 		UserId:     2,
@@ -95,10 +95,10 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 	task := &CreateUserTask{
 		DB:     c.DB(),
 		Secret: "secret",
-		Ctx:    CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "missing ident or secret")
 	compareStatus(t, sts, expected)
 }
@@ -114,10 +114,9 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	task := &CreateUserTask{
 		DB:    c.DB(),
 		Ident: "email",
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "missing ident or secret")
 	compareStatus(t, sts, expected)
 }
@@ -129,11 +128,10 @@ func TestCreateUserCantBegin(t *testing.T) {
 	db.Close()
 
 	task := &CreateUserTask{
-		DB:  db,
-		Ctx: CtxFromUserID(context.Background(), -1),
+		DB: db,
 	}
-
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), -1)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InternalError(nil, "can't create job")
 	compareStatus(t, sts, expected)
 }

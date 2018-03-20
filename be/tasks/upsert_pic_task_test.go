@@ -30,11 +30,11 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 	c.DB().Close()
 
 	task := &UpsertPicTask{
-		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), -1),
+		DB: c.DB(),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), -1)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InternalError(nil, "can't create job")
 	compareStatus(t, sts, expected)
 }
@@ -48,11 +48,11 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 	u.Update()
 
 	task := &UpsertPicTask{
-		DB:  c.DB(),
-		Ctx: CtxFromUserID(context.Background(), u.User.UserId),
+		DB: c.DB(),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "No pic specified")
 	compareStatus(t, sts, expected)
 }
@@ -73,10 +73,10 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 		Now:      time.Now,
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), -1),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), -1)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.Unauthenticated(nil, "can't lookup user")
 	compareStatus(t, sts, expected)
 }
@@ -99,10 +99,10 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 		Now:      time.Now,
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_CREATE")
 	compareStatus(t, sts, expected)
 }
@@ -130,11 +130,11 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	ts, pts := p.Tags()
@@ -179,10 +179,10 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
 
@@ -233,11 +233,11 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	p.Refresh()
@@ -294,10 +294,10 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		File:     f,
 		Md5Hash:  md5Hash,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Md5 hash mismatch")
 	compareStatus(t, sts, expected)
 
@@ -326,10 +326,10 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		// empty
 		File:     c.TempFile(),
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't decode image")
 	compareStatus(t, sts, expected)
 }
@@ -359,11 +359,11 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	ts, pts := p.Tags()
@@ -410,10 +410,10 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	sts := task.Run()
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
 
@@ -461,11 +461,11 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	p.Refresh()
@@ -515,11 +515,11 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 
 		File:     f,
 		TagNames: []string{"tag"},
-		Ctx:      CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	if err := task.Run(); err != nil {
-		t.Fatal(err)
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	p := task.CreatedPic
@@ -973,7 +973,7 @@ func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 		TempFile: tempFileFn,
 	}
 
-	_, _, sts := task.prepareFile(srcFile, FileHeader{}, "")
+	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, "")
 	expected := status.InternalError(nil, "Can't create tempfile")
 	compareStatus(t, sts, expected)
 }
@@ -993,7 +993,7 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 
 	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
-	_, _, sts := task.prepareFile(srcFile, FileHeader{}, "")
+	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, "")
 	expected := status.InternalError(nil, "Can't save file")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
@@ -1022,7 +1022,7 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	if _, err := srcFile.Seek(0, os.SEEK_SET); err != nil {
 		t.Fatal(err)
 	}
-	dstFile, fh, sts := task.prepareFile(srcFile, FileHeader{Name: "name"}, "url")
+	dstFile, fh, sts := task.prepareFile(context.Background(), srcFile, FileHeader{Name: "name"}, "url")
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -1061,7 +1061,7 @@ func TestPrepareFile_DownloadFileFails(t *testing.T) {
 	}
 
 	// Bogus url
-	_, _, sts := task.prepareFile(nil, FileHeader{}, "::")
+	_, _, sts := task.prepareFile(context.Background(), nil, FileHeader{}, "::")
 	expected := status.InvalidArgument(nil, "Can't parse")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
@@ -1305,7 +1305,7 @@ func TestDownloadFile_BadURL(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, sts := task.downloadFile(f, "::")
+	_, sts := task.downloadFile(context.Background(), f, "::")
 	expected := status.InvalidArgument(nil, "Can't parse ::")
 	compareStatus(t, sts, expected)
 }
@@ -1323,9 +1323,8 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
-		Ctx:        context.Background(),
 	}
-	_, sts := task.downloadFile(f, "http://")
+	_, sts := task.downloadFile(context.Background(), f, "http://")
 	expected := status.InvalidArgument(nil, "Can't download http://")
 	compareStatus(t, sts, expected)
 }
@@ -1350,9 +1349,8 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
-		Ctx:        context.Background(),
 	}
-	_, sts := task.downloadFile(f, serv.URL)
+	_, sts := task.downloadFile(context.Background(), f, serv.URL)
 	expected := status.InvalidArgumentf(nil,
 		"Can't download %s [%d]", serv.URL, http.StatusBadRequest)
 
@@ -1381,9 +1379,8 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
-		Ctx:        context.Background(),
 	}
-	_, sts := task.downloadFile(f, serv.URL)
+	_, sts := task.downloadFile(context.Background(), f, serv.URL)
 	expected := status.InvalidArgument(nil, "Can't copy downloaded file")
 
 	compareStatus(t, sts, expected)
@@ -1411,9 +1408,8 @@ func TestDownloadFile(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
-		Ctx:        context.Background(),
 	}
-	fh, err := task.downloadFile(f, serv.URL+"/foo/bar.jpg?ignore=true#content")
+	fh, err := task.downloadFile(context.Background(), f, serv.URL+"/foo/bar.jpg?ignore=true#content")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1458,9 +1454,8 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
-		Ctx:        context.Background(),
 	}
-	fh, err := task.downloadFile(f, serv.URL)
+	fh, err := task.downloadFile(context.Background(), f, serv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,10 +23,9 @@ func (s *serv) handleLookupUser(ctx context.Context, req *api.LookupUserRequest)
 	var task = &tasks.LookupUserTask{
 		DB:           s.db,
 		ObjectUserID: int64(objectUserID),
-		Ctx:          ctx,
 	}
 
-	if sts := s.runner.Run(task); sts != nil {
+	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 

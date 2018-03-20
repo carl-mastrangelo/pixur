@@ -38,11 +38,10 @@ func TestPurgeWorkflow(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
-		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -106,11 +105,10 @@ func TestPurge_TagsDecremented(t *testing.T) {
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
 		PicID:   p.Pic.PicId,
-		Ctx:     CtxFromUserID(context.Background(), u.User.UserId),
 	}
 
-	runner := new(TaskRunner)
-	if err := runner.Run(task); err != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
 

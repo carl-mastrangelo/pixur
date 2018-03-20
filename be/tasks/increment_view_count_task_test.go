@@ -21,13 +21,13 @@ func TestPicViewCountUpdated(t *testing.T) {
 	p := c.CreatePic()
 	oldTime := p.Pic.GetModifiedTime()
 
-	task := IncrementViewCountTask{
+	task := &IncrementViewCountTask{
 		DB:    c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 	}
-	if err := task.Run(); err != nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,13 +59,13 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 
 	p.Update()
 
-	task := IncrementViewCountTask{
+	task := &IncrementViewCountTask{
 		DB:    c.DB(),
 		Now:   time.Now,
-		Ctx:   CtxFromUserID(context.Background(), u.User.UserId),
 		PicID: p.Pic.PicId,
 	}
-	if sts := task.Run(); sts == nil {
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts == nil {
 		t.Fatal("Expected an error")
 	} else {
 		if sts.Code() != codes.InvalidArgument {
