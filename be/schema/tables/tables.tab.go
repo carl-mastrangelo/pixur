@@ -110,6 +110,8 @@ var SqlTables = map[string][]string{
 
 			"`data` blob NOT NULL, " +
 
+			"UNIQUE(`user_id`,`pic_id`), " +
+
 			"PRIMARY KEY(`pic_id`,`user_id`)" +
 
 			");",
@@ -219,6 +221,8 @@ var SqlTables = map[string][]string{
 
 			"\"data\" bytea NOT NULL, " +
 
+			"UNIQUE(\"user_id\",\"pic_id\"), " +
+
 			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
 
 			");",
@@ -327,6 +331,8 @@ var SqlTables = map[string][]string{
 			"\"user_id\" integer NOT NULL, " +
 
 			"\"data\" blob NOT NULL, " +
+
+			"UNIQUE(\"user_id\",\"pic_id\"), " +
 
 			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
 
@@ -1306,6 +1312,46 @@ func (idx PicVotesPrimary) Vals() (vals []interface{}) {
 			panic("Extra value UserId")
 		}
 		vals = append(vals, *idx.UserId)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+type PicVotesUserId struct {
+	UserId *int64
+
+	PicId *int64
+}
+
+func (_ PicVotesUserId) Unique() {}
+
+var _ db.UniqueIdx = PicVotesUserId{}
+
+var colsPicVotesUserId = []string{"user_id", "pic_id"}
+
+func (idx PicVotesUserId) Cols() []string {
+	return colsPicVotesUserId
+}
+
+func (idx PicVotesUserId) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.UserId != nil {
+		if done {
+			panic("Extra value UserId")
+		}
+		vals = append(vals, *idx.UserId)
+	} else {
+		done = true
+	}
+
+	if idx.PicId != nil {
+		if done {
+			panic("Extra value PicId")
+		}
+		vals = append(vals, *idx.PicId)
 	} else {
 		done = true
 	}

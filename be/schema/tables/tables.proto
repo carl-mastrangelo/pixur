@@ -137,6 +137,12 @@ message PicVoteRow {
       col: "pic_id"
       col: "user_id"
     }
+    key: {
+      name: "UserId"
+      key_type: UNIQUE
+      col: "user_id"
+      col: "pic_id"
+    }
   };
   
   int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
