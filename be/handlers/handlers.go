@@ -88,6 +88,10 @@ func (s *serv) FindIndexPics(ctx oldctx.Context, req *api.FindIndexPicsRequest) 
 	return s.handleFindIndexPics(ctx, req)
 }
 
+func (s *serv) FindSchedPics(ctx oldctx.Context, req *api.FindSchedPicsRequest) (*api.FindSchedPicsResponse, error) {
+	return s.handleFindSchedPics(ctx, req)
+}
+
 func (s *serv) FindSimilarPics(ctx oldctx.Context, req *api.FindSimilarPicsRequest) (*api.FindSimilarPicsResponse, error) {
 	return s.handleFindSimilarPics(ctx, req)
 }

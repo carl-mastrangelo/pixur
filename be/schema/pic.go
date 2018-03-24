@@ -101,17 +101,19 @@ func (p *Pic) HardDeleted() bool {
 }
 
 const (
-	Z_99 = 1.95996398612
+	Z_99        = 1.95996398612
+	PicScoreMin = 0
+	PicScoreMax = 1<<31 - 1
 )
 
 // TODO: test
 func (p *Pic) WilsonScoreInterval(z float64) (lo float64, hi float64) {
+	if p.HardDeleted() {
+		return 0, 0
+	}
 	n := float64(p.VoteDown + p.VoteUp)
 	if n == 0 {
 		return 0.025, 0.975 // Just return something
-	}
-	if p.HardDeleted() {
-		return 0, 0
 	}
 
 	phat := float64(p.VoteUp) / n
