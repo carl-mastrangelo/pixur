@@ -17,6 +17,8 @@ func main() {
 
 	s := new(server.Server)
 	handlers.RegisterAll(s)
-
-	glog.Fatal(s.Serve(context.Background(), config.Conf))
+	if err := s.Init(context.Background(), config.Conf); err != nil {
+		glog.Fatal(err)
+	}
+	glog.Fatal(s.ListenAndServe(context.Background(), nil))
 }

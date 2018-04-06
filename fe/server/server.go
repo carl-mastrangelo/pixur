@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -16,59 +17,58 @@ import (
 	"pixur.org/pixur/fe/server/config"
 )
 
+// Server is an HTTP server for Pixur
 type Server struct {
-	Client  api.PixurServiceClient
-	Now     func() time.Time
-	HTTPMux *http.ServeMux
-	Random  io.Reader
 
-	// static needs to know where to forward pix requests to
-	PixurSpec string
-
+	// readable fields
+	Client   api.PixurServiceClient
+	Now      func() time.Time
+	HTTPMux  *http.ServeMux
+	Random   io.Reader
 	Secure   bool
 	HTTPRoot *url.URL
 
+	httpSpec    string
+	lnAddr      net.Addr
+	channel     *grpc.ClientConn
 	regfuncs    []RegFunc
 	interceptor grpc.UnaryClientInterceptor
 }
 
+// RegFunc is a registration callback.  It will be invoked as part of Server.Init.
 type RegFunc func(s *Server) error
 
+// Register adds a callback to be invoked once the server is built, but not yet serving.
 func (s *Server) Register(rf RegFunc) {
 	s.regfuncs = append(s.regfuncs, rf)
 }
 
+// GetAndSetInterceptor gets the current gRPC Unary interceptor, and replaces it.
 func (s *Server) GetAndSetInterceptor(in grpc.UnaryClientInterceptor) grpc.UnaryClientInterceptor {
 	ret := s.interceptor
 	s.interceptor = in
 	return ret
 }
 
-func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
+// Init prepares a server for serving.
+func (s *Server) Init(ctx context.Context, c *config.Config) (errCap error) {
+	s.httpSpec = c.HttpSpec
 	if s.Client == nil {
-		var dos []grpc.DialOption
-		dos = append(dos, grpc.WithInsecure())
-		if s.interceptor != nil {
-			dos = append(dos, grpc.WithUnaryInterceptor(s.interceptor))
-		}
-
-		channel, err := grpc.DialContext(ctx, c.PixurSpec, dos...)
+		channel, err := newPixurChannel(ctx, s.interceptor, c.PixurSpec)
 		if err != nil {
 			return err
 		}
 		defer func() {
-			if err := channel.Close(); err != nil {
-				if errCap == nil {
-					errCap = err
-				} else if err != ctx.Err() {
+			if errCap != nil {
+				if err := channel.Close(); err != nil {
 					glog.Warning("Additional error closing channel", err)
 				}
+				s.channel = nil
+				s.Client = nil
 			}
 		}()
-		s.Client = api.NewPixurServiceClient(channel)
-	}
-	if s.PixurSpec == "" {
-		s.PixurSpec = c.PixurSpec
+		s.channel = channel
+		s.Client = api.NewPixurServiceClient(s.channel)
 	}
 	if s.Now == nil {
 		s.Now = time.Now
@@ -80,11 +80,11 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 		s.Random = rand.Reader
 	}
 	if s.HTTPRoot == nil {
-		var err error
-		s.HTTPRoot, err = url.Parse(c.HttpRoot)
+		root, err := url.Parse(c.HttpRoot)
 		if err != nil {
 			return err
 		}
+		s.HTTPRoot = root
 	}
 	s.Secure = !c.Insecure
 	// Server has all values initialized, notify registrants.
@@ -93,14 +93,40 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 			return err
 		}
 	}
+	return nil
+}
 
+func newPixurChannel(ctx context.Context, interceptor grpc.UnaryClientInterceptor, spec string) (*grpc.ClientConn, error) {
+	var dos []grpc.DialOption
+	dos = append(dos, grpc.WithInsecure())
+	if interceptor != nil {
+		dos = append(dos, grpc.WithUnaryInterceptor(interceptor))
+	}
+	return grpc.DialContext(ctx, spec, dos...)
+}
+
+func (s *Server) Shutdown() error {
+	if s.channel != nil {
+		if err := s.channel.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Server) Addr() net.Addr {
+	return s.lnAddr
+}
+
+func (s *Server) ListenAndServe(ctx context.Context, lnReady chan<- struct{}) error {
 	// TODO: Forward error logs?
 	hs := &http.Server{
-		Addr:    c.HttpSpec,
+		Addr:    s.httpSpec,
 		Handler: s.HTTPMux,
 	}
 
-	h2c.AttachClearTextHandler(nil /* default http2 server */, hs)
+	h2c.AttachClearTextHandler( /* default http2 server */ nil, hs)
 
 	watcher := make(chan error)
 	go func() {
@@ -111,8 +137,17 @@ func (s *Server) Serve(ctx context.Context, c *config.Config) (errCap error) {
 		close(watcher)
 	}()
 
-	if err := hs.ListenAndServe(); err != nil {
+	ln, err := net.Listen("tcp", s.httpSpec)
+	if err != nil {
 		return err
 	}
-	return nil
+	s.lnAddr = ln.Addr()
+	if lnReady != nil {
+		close(lnReady)
+	}
+
+	if err := hs.Serve(ln); err != nil {
+		return err
+	}
+	return <-watcher
 }

@@ -27,8 +27,11 @@ func main() {
 	go func() {
 		s := new(feserver.Server)
 		fehandlers.RegisterAll(s)
-		errs <- s.Serve(context.Background(), feconfig.Conf)
-		glog.Fatal()
+		if err := s.Init(context.Background(), feconfig.Conf); err != nil {
+			errs <- err
+			return
+		}
+		errs <- s.ListenAndServe(context.Background(), nil)
 	}()
 
 	glog.Fatal(<-errs)
