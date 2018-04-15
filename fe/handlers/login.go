@@ -11,12 +11,6 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
-const (
-	refreshPwtCookieName = "rt"
-	authPwtCookieName    = "at"
-	pixPwtCookieName     = "pt"
-)
-
 type loginData struct {
 	baseData
 

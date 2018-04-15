@@ -68,16 +68,8 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var canupload bool
 	u := subjectUserOrNilFromCtx(r.Context())
-	if u != nil {
-		for _, c := range u.Capability {
-			if c == api.Capability_PIC_CREATE {
-				canupload = true
-				break
-			}
-		}
-	}
+	canupload := hasCap(u, api.Capability_PIC_CREATE)
 
 	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := indexData{

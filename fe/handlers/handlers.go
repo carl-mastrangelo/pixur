@@ -2,7 +2,6 @@ package handlers // import "pixur.org/pixur/fe/handlers"
 
 import (
 	"compress/gzip"
-	"context"
 	"io"
 	"net/http"
 	"strconv"
@@ -10,8 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/descriptor"
-	"github.com/golang/protobuf/proto"
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,33 +35,12 @@ type baseData struct {
 	SubjectUser *api.User
 }
 
-var (
-	authPwtHeaderKey string
-	pixPwtHeaderKey  string
-	httpHeaderKey    string
-)
-
-func init() {
-	fd, _ := descriptor.ForMessage(&api.GetRefreshTokenRequest{})
-	if len(fd.Service) != 1 {
-		panic("unexpected number of services " + fd.String())
-	}
-	ext, err := proto.GetExtension(fd.Service[0].Options, api.E_PixurServiceOpts)
-	if err != nil {
-		panic("missing service extension " + err.Error())
-	}
-	opts := ext.(*api.ServiceOpts)
-	authPwtHeaderKey = opts.AuthTokenHeaderKey
-	pixPwtHeaderKey = opts.PixTokenHeaderKey
-	httpHeaderKey = opts.HttpHeaderKey
-}
-
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
 
 func cookieToGRPCAuthInterceptor(
 	ctx oldctx.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	if token, present := authTokenFromContext(ctx); present {
+	if token, present := authTokenFromCtx(ctx); present {
 		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderKey, token))
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
@@ -149,45 +125,6 @@ type baseHandler struct {
 	c      api.PixurServiceClient
 }
 
-type subjectUserKey struct{}
-
-type subjectUserResult struct {
-	user *api.User
-	err  error
-	done chan struct{}
-}
-
-func ctxFromSubjectUserResult(ctx context.Context, sur *subjectUserResult) context.Context {
-	return context.WithValue(ctx, subjectUserKey{}, sur)
-}
-
-func subjectUserResultFromCtx(ctx context.Context) (*subjectUserResult, bool) {
-	sur, ok := ctx.Value(subjectUserKey{}).(*subjectUserResult)
-	return sur, ok
-}
-
-func subjectUserFromCtx(ctx context.Context) (*api.User, error) {
-	sur, ok := subjectUserResultFromCtx(ctx)
-	if !ok {
-		return nil, nil
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-sur.done:
-	}
-	return sur.user, sur.err
-}
-
-func subjectUserOrNilFromCtx(ctx context.Context) *api.User {
-	user, err := subjectUserFromCtx(ctx)
-	if err != nil {
-		glog.Info("can't lookup subject user ", err)
-		return nil
-	}
-	return user
-}
-
 func (h *baseHandler) static(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -201,22 +138,22 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		ctx := r.Context()
 		authToken, authTokenPresent := authTokenFromReq(r)
 		if authTokenPresent {
-			ctx = contextFromAuthToken(ctx, authToken)
+			ctx = ctxFromAuthToken(ctx, authToken)
 
 			sur := subjectUserResult{
-				done: make(chan struct{}),
+				Done: make(chan struct{}),
 			}
 			ctx = ctxFromSubjectUserResult(ctx, &sur)
 			go func() {
-				defer close(sur.done)
+				defer close(sur.Done)
 				resp, err := h.c.LookupUser(ctx, &api.LookupUserRequest{
 					UserId: "", // self
 				})
 
 				if err != nil {
-					sur.err = err
+					sur.Err = err
 				} else {
-					sur.user = resp.User
+					sur.User = resp.User
 				}
 			}()
 		}
@@ -277,7 +214,7 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 		}
 		ctx := r.Context()
 		if authToken, present := authTokenFromReq(r); present {
-			ctx = contextFromAuthToken(ctx, authToken)
+			ctx = ctxFromAuthToken(ctx, authToken)
 		}
 
 		r = r.WithContext(ctx)
@@ -366,37 +303,4 @@ func (rw *compressingResponseWriter) Write(data []byte) (int, error) {
 		rw.WriteHeader(http.StatusOK)
 	}
 	return rw.writer.Write(data)
-}
-
-func hasCap(u *api.User, c api.Capability_Cap) bool {
-	if u == nil {
-		return false
-	}
-	for _, uc := range u.Capability {
-		if c == uc {
-			return true
-		}
-	}
-	return false
-}
-
-type authContextKey struct{}
-
-func contextFromAuthToken(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, authContextKey{}, token)
-}
-
-func authTokenFromContext(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(authContextKey{}).(string)
-	return token, ok
-}
-
-func authTokenFromReq(req *http.Request) (token string, present bool) {
-	c, err := req.Cookie(authPwtCookieName)
-	if err == http.ErrNoCookie {
-		return "", false
-	} else if err != nil {
-		panic(err) // docs say should never happen
-	}
-	return c.Value, true
 }
