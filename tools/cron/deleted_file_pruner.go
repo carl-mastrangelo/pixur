@@ -62,10 +62,10 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 		DB:      db,
 		PixPath: pixPath,
 		PicID:   p.PicId,
-		Ctx:     tasks.CtxFromUserID(context.TODO(), -12345), // TODO: use real userid
 	}
 	runner := new(tasks.TaskRunner)
-	if err := runner.Run(task); err != nil {
+	// TODO: use real userid
+	if err := runner.Run(tasks.CtxFromUserID(context.TODO(), -12345), task); err != nil {
 		return err
 	}
 

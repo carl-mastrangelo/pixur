@@ -247,7 +247,6 @@ func run(args []string) error {
 
 			Ident:  ident,
 			Secret: string(secret),
-			Ctx:    context.Background(),
 			Capability: append(schema.UserNewCap,
 				schema.User_PIC_SOFT_DELETE,
 				schema.User_USER_UPDATE_CAPABILITY),
@@ -257,7 +256,7 @@ func run(args []string) error {
 		// on the anonymous user.
 		oldcap := schema.AnonymousUser.Capability
 		schema.AnonymousUser.Capability = []schema.User_Capability{schema.User_USER_CREATE}
-		sts := new(tasks.TaskRunner).Run(task)
+		sts := new(tasks.TaskRunner).Run(context.Background(), task)
 		schema.AnonymousUser.Capability = oldcap
 		if sts != nil {
 			return sts
