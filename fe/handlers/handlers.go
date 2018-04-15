@@ -368,6 +368,18 @@ func (rw *compressingResponseWriter) Write(data []byte) (int, error) {
 	return rw.writer.Write(data)
 }
 
+func hasCap(u *api.User, c api.Capability_Cap) bool {
+	if u == nil {
+		return false
+	}
+	for _, uc := range u.Capability {
+		if c == uc {
+			return true
+		}
+	}
+	return false
+}
+
 type authContextKey struct{}
 
 func contextFromAuthToken(ctx context.Context, token string) context.Context {
