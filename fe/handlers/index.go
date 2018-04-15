@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"pixur.org/pixur/api"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
 type indexData struct {
@@ -17,7 +18,7 @@ type indexData struct {
 	CanUpload bool
 }
 
-var indexTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/index.html"))
+var indexTpl = template.Must(template.Must(paneTpl.Clone()).New("Index").Parse(ptpl.Index))
 
 type indexHandler struct {
 	c  api.PixurServiceClient

@@ -9,6 +9,7 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
 type loginData struct {
@@ -17,7 +18,7 @@ type loginData struct {
 	Next string
 }
 
-var loginTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/login.html"))
+var loginTpl = template.Must(template.Must(paneTpl.Clone()).New("Login").Parse(ptpl.Login))
 
 type loginHandler struct {
 	pt     paths

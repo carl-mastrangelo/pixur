@@ -11,9 +11,17 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var viewerTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/viewer.html", "fe/tpl/comment_reply.html"))
+var viewerTpl *template.Template
+
+func init() {
+	paneClone := template.Must(paneTpl.Clone())
+	viewerTpl = paneClone.New("Viewer")
+	viewerTpl = template.Must(viewerTpl.Parse(ptpl.Viewer))
+	viewerTpl = template.Must(viewerTpl.Parse(ptpl.CommentReply))
+}
 
 type viewerHandler struct {
 	pt paths

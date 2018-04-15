@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var rootTpl = template.Must(template.ParseFiles("fe/tpl/base.html")).Option("missingkey=error")
-var paneTpl = template.Must(template.Must(rootTpl.Clone()).ParseFiles("fe/tpl/pane.html"))
+var rootTpl = template.Must(template.New("Base").Parse(ptpl.Base)).Option("missingkey=error")
+var paneTpl = template.Must(template.Must(rootTpl.Clone()).New("Pane").Parse(ptpl.Pane))
 
 type rootHandler struct {
 	pt            paths

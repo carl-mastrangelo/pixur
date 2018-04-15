@@ -8,9 +8,10 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var userEditTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/user_edit.html"))
+var userEditTpl = template.Must(template.Must(paneTpl.Clone()).New("UserEdit").Parse(ptpl.UserEdit))
 
 type userHandler struct {
 	pt paths

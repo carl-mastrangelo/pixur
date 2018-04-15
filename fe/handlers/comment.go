@@ -6,9 +6,17 @@ import (
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var commentTpl = template.Must(template.Must(paneTpl.Clone()).ParseFiles("fe/tpl/comment.html", "fe/tpl/comment_reply.html"))
+var commentTpl *template.Template
+
+func init() {
+	paneClone := template.Must(paneTpl.Clone())
+	commentTpl = paneClone.New("Comment")
+	commentTpl = template.Must(commentTpl.Parse(ptpl.Comment))
+	commentTpl = template.Must(commentTpl.Parse(ptpl.CommentReply))
+}
 
 type commentHandler struct {
 	pt paths
