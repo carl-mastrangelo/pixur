@@ -14,21 +14,19 @@ type compressionHandler struct {
 }
 
 func (h *compressionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var gw io.Writer
 	for _, enc := range strings.Split(r.Header.Get("Accept-Encoding"), ",") {
 		if strings.TrimSpace(enc) == "gzip" {
-			var err error
-			gw, err = gzip.NewWriterLevel(w, gzip.BestSpeed)
-			if err != nil {
+			if gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed); err != nil {
 				httpError(w, err)
-				return
+			} else {
+				crw := &compressingResponseWriter{delegate: w, writer: gw}
+				defer crw.Close()
+				h.next.ServeHTTP(crw, r)
 			}
-			break
+			return
 		}
 	}
-	crw := &compressingResponseWriter{delegate: w, writer: gw}
-	defer crw.Close()
-	h.next.ServeHTTP(crw, r)
+	h.next.ServeHTTP(w, r)
 }
 
 var _ http.ResponseWriter = &compressingResponseWriter{}
@@ -51,13 +49,6 @@ func (rw *compressingResponseWriter) Write(data []byte) (int, error) {
 	}
 	return rw.writer.Write(data)
 }
-
-/*
-
-	if header.Get("Content-Type") == "" {
-		header.Set("Content-Type", "text/html; charset=utf-8")
-	}
-*/
 
 func (rw *compressingResponseWriter) WriteHeader(code int) {
 	if !rw.whcalled {

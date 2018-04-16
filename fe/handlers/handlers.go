@@ -209,6 +209,13 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 	})
 }
 
+/*
+
+	if header.Get("Content-Type") == "" {
+		header.Set("Content-Type", "text/html; charset=utf-8")
+	}
+*/
+
 // check method
 // check xsrf
 // get auth token
