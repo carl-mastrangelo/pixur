@@ -1,11 +1,9 @@
 package handlers // import "pixur.org/pixur/fe/handlers"
 
 import (
-	"compress/gzip"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -125,6 +123,29 @@ type baseHandler struct {
 	c      api.PixurServiceClient
 }
 
+type methodHandler struct {
+	Get, Post http.Handler
+}
+
+func (h *methodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet && h.Get != nil {
+		h.Get.ServeHTTP(w, r)
+	} else if r.Method == http.MethodPost && h.Post != nil {
+		h.Post.ServeHTTP(w, r)
+	} else {
+		httpError(w, &HTTPErr{
+			Message: "Method not allowed",
+			Code:    http.StatusMethodNotAllowed,
+		})
+		return
+	}
+}
+
+// check method
+// get auth token -> get subject user
+// get / set xsrf cookie
+// compress response
+
 func (h *baseHandler) static(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -183,14 +204,39 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 			}
 		}
 		ctx = contextFromXsrfToken(ctx, c.Value)
-
 		r = r.WithContext(ctx)
-
-		cw := compressResponse(w, r)
-		defer cw.Close()
-
-		next.ServeHTTP(cw, r)
+		next.ServeHTTP(w, r)
 	})
+}
+
+// check method
+// check xsrf
+// get auth token
+// compress response
+
+var _ http.Handler = &actionHandler{}
+
+type actionHandler struct {
+	pr   params
+	next http.Handler
+}
+
+func (h *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	xsrfCookie, xsrfField, err := xsrfTokensFromRequest(r, h.pr)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	if err := checkXsrfTokens(xsrfCookie, xsrfField); err != nil {
+		httpError(w, err)
+		return
+	}
+	if authToken, present := authTokenFromReq(r); present {
+		ctx := r.Context()
+		ctx = ctxFromAuthToken(ctx, authToken)
+		r = r.WithContext(ctx)
+	}
+	h.next.ServeHTTP(w, r)
 }
 
 func (h *baseHandler) action(next http.Handler) http.Handler {
@@ -218,89 +264,6 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 		}
 
 		r = r.WithContext(ctx)
-		cw := compressResponse(w, r)
-		defer cw.Close()
-
-		next.ServeHTTP(cw, r)
+		next.ServeHTTP(w, r)
 	})
-}
-
-var _ http.ResponseWriter = &compressingResponseWriter{}
-var _ http.Flusher = &compressingResponseWriter{}
-var _ http.Pusher = &compressingResponseWriter{}
-
-type compressingResponseWriter struct {
-	delegate http.ResponseWriter
-	writer   io.Writer
-	whcalled bool
-}
-
-func compressResponse(w http.ResponseWriter, r *http.Request) *compressingResponseWriter {
-	if encs := r.Header.Get("Accept-Encoding"); encs != "" {
-		for _, enc := range strings.Split(encs, ",") {
-			if strings.TrimSpace(enc) == "gzip" {
-				if gw, err := gzip.NewWriterLevel(w, gzip.BestSpeed); err != nil {
-					panic(err)
-				} else {
-					return &compressingResponseWriter{delegate: w, writer: gw}
-				}
-			}
-		}
-	}
-	return &compressingResponseWriter{delegate: w}
-}
-
-func (rw *compressingResponseWriter) Close() error {
-	if closer, ok := rw.writer.(io.Closer); ok {
-		return closer.Close()
-	}
-	return nil
-}
-
-func (rw *compressingResponseWriter) Flush() {
-	if flusher, ok := rw.writer.(interface {
-		Flush() error
-	}); ok {
-		if err := flusher.Flush(); err != nil {
-			httpError(rw, err)
-			return
-		}
-	} else if flusher, ok := rw.delegate.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-func (rw *compressingResponseWriter) Push(target string, opts *http.PushOptions) error {
-	if pusher, ok := rw.delegate.(http.Pusher); ok {
-		return pusher.Push(target, opts)
-	}
-	return http.ErrNotSupported
-}
-
-func (rw *compressingResponseWriter) Header() http.Header {
-	return rw.delegate.Header()
-}
-
-func (rw *compressingResponseWriter) WriteHeader(code int) {
-	if !rw.whcalled {
-		header := rw.Header()
-		if header.Get("Content-Type") == "" {
-			header.Set("Content-Type", "text/html; charset=utf-8")
-		}
-		if header.Get("Content-Encoding") == "" && rw.writer != nil {
-			header.Set("Content-Encoding", "gzip")
-		} else {
-			rw.writer = rw.delegate
-
-		}
-		rw.whcalled = true
-	}
-	rw.delegate.WriteHeader(code)
-}
-
-func (rw *compressingResponseWriter) Write(data []byte) (int, error) {
-	if !rw.whcalled {
-		rw.WriteHeader(http.StatusOK)
-	}
-	return rw.writer.Write(data)
 }
