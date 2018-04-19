@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,14 +13,7 @@ import (
 	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var viewerTpl *template.Template
-
-func init() {
-	paneClone := template.Must(paneTpl.Clone())
-	viewerTpl = paneClone.New("Viewer")
-	viewerTpl = template.Must(viewerTpl.Parse(ptpl.Viewer))
-	viewerTpl = template.Must(viewerTpl.Parse(ptpl.CommentReply))
-}
+var viewerTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Viewer, ptpl.CommentReply)
 
 type viewerHandler struct {
 	pt paths
@@ -72,11 +64,10 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		pv = resp.Vote
 	}
 
-	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	bd := baseData{
 		Paths:       h.pt,
 		Params:      h.pt.pr,
-		XsrfToken:   xsrfToken,
+		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 		SubjectUser: subjectUserOrNilFromCtx(ctx),
 	}
 
@@ -197,14 +188,13 @@ func (h *viewerHandler) softdelete(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		bh := newBaseHandler(s)
 		h := viewerHandler{
 			c:  s.Client,
 			pt: paths{r: s.HTTPRoot},
 		}
-		s.HTTPMux.Handle(h.pt.VoteAction().RequestURI(), bh.action(http.HandlerFunc(h.vote)))
+		s.HTTPMux.Handle(h.pt.VoteAction().RequestURI(), newActionHandler(s, http.HandlerFunc(h.vote)))
 		// static is initialized in root.go
-		s.HTTPMux.Handle(h.pt.SoftDeletePicAction().RequestURI(), bh.action(http.HandlerFunc(h.softdelete)))
+		s.HTTPMux.Handle(h.pt.SoftDeletePicAction().RequestURI(), newActionHandler(s, http.HandlerFunc(h.softdelete)))
 		return nil
 	})
 }

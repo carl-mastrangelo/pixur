@@ -77,13 +77,12 @@ func (h *upsertPicHandler) upsert(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		bh := newBaseHandler(s)
 		h := upsertPicHandler{
 			c:  s.Client,
 			pt: paths{r: s.HTTPRoot},
 		}
 
-		s.HTTPMux.Handle(h.pt.UpsertPicAction().RequestURI(), bh.action(http.HandlerFunc(h.upsert)))
+		s.HTTPMux.Handle(h.pt.UpsertPicAction().Path, newActionHandler(s, http.HandlerFunc(h.upsert)))
 		return nil
 	})
 }

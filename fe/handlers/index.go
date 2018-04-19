@@ -18,7 +18,15 @@ type indexData struct {
 	CanUpload bool
 }
 
-var indexTpl = template.Must(template.Must(paneTpl.Clone()).New("Index").Parse(ptpl.Index))
+var indexTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Index)
+
+func parseTpl(tpls ...string) *template.Template {
+	t := template.New("NamesAreADumbIdeaForTemplates").Option("missingkey=error")
+	for i := len(tpls) - 1; i >= 0; i-- {
+		template.Must(t.Parse(tpls[i]))
+	}
+	return t
+}
 
 type indexHandler struct {
 	c  api.PixurServiceClient
@@ -33,6 +41,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	ctx := r.Context()
 	id := r.FormValue(h.pt.pr.IndexPic())
 	_, isPrev := r.Form[h.pt.pr.IndexPrev()]
 	req := &api.FindIndexPicsRequest{
@@ -40,7 +49,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		Ascending:  isPrev,
 	}
 
-	res, err := h.c.FindIndexPics(r.Context(), req)
+	res, err := h.c.FindIndexPics(ctx, req)
 	if err != nil {
 		httpError(w, err)
 		return
@@ -69,16 +78,15 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	u := subjectUserOrNilFromCtx(r.Context())
+	u := subjectUserOrNilFromCtx(ctx)
 	canupload := hasCap(u, api.Capability_PIC_CREATE)
 
-	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := indexData{
 		baseData: baseData{
 			Title:       "Index",
 			Paths:       h.pt,
 			Params:      h.pt.pr,
-			XsrfToken:   xsrfToken,
+			XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 			SubjectUser: u,
 		},
 		Pic:       res.Pic,

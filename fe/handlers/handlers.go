@@ -56,6 +56,7 @@ var _ error = &HTTPErr{}
 type HTTPErr struct {
 	Message string
 	Code    int
+	Cause   error
 }
 
 func (err *HTTPErr) Error() string {
@@ -105,28 +106,13 @@ func httpError(w http.ResponseWriter, err error) {
 	glog.Info(err)
 }
 
-func newBaseHandler(s *server.Server) *baseHandler {
-	return &baseHandler{
-		now:    s.Now,
-		random: s.Random,
-		secure: s.Secure,
-		pt:     paths{r: s.HTTPRoot},
-		c:      s.Client,
-	}
-}
-
-type baseHandler struct {
-	now    func() time.Time
-	random io.Reader
-	secure bool
-	pt     paths
-	c      api.PixurServiceClient
-}
+var _ http.Handler = &methodHandler{}
 
 type methodHandler struct {
 	Get, Post http.Handler
 }
 
+// TODO: test
 func (h *methodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet && h.Get != nil {
 		h.Get.ServeHTTP(w, r)
@@ -146,39 +132,58 @@ func (h *methodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // get / set xsrf cookie
 // compress response
 
-func (h *baseHandler) static(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			httpError(w, &HTTPErr{
-				Message: "Method not allowed",
-				Code:    http.StatusMethodNotAllowed,
-			})
-			return
-		}
+func newReadHandler(s *server.Server, next http.Handler) http.Handler {
+	return &readHandler{
+		now:    s.Now,
+		random: s.Random,
+		secure: s.Secure,
+		pt:     paths{r: s.HTTPRoot},
+		c:      s.Client,
+		next:   next,
+	}
+}
 
-		ctx := r.Context()
-		authToken, authTokenPresent := authTokenFromReq(r)
+var _ http.Handler = &readHandler{}
+
+type readHandler struct {
+	now    func() time.Time
+	random io.Reader
+	secure bool
+	pt     paths
+	c      api.PixurServiceClient
+	next   http.Handler
+}
+
+// TODO: test
+func (h *readHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authToken, authTokenPresent := authTokenFromCtx(ctx)
+	if !authTokenPresent {
+		authToken, authTokenPresent = authTokenFromReq(r)
 		if authTokenPresent {
 			ctx = ctxFromAuthToken(ctx, authToken)
-
-			sur := subjectUserResult{
-				Done: make(chan struct{}),
-			}
-			ctx = ctxFromSubjectUserResult(ctx, &sur)
-			go func() {
-				defer close(sur.Done)
-				resp, err := h.c.LookupUser(ctx, &api.LookupUserRequest{
-					UserId: "", // self
-				})
-
-				if err != nil {
-					sur.Err = err
-				} else {
-					sur.User = resp.User
-				}
-			}()
 		}
+	}
+	if _, surPresent := subjectUserResultFromCtx(ctx); authTokenPresent && !surPresent {
+		sur := &subjectUserResult{
+			Done: make(chan struct{}),
+		}
+		ctx = ctxFromSubjectUserResult(ctx, sur)
+		go func() {
+			defer close(sur.Done)
+			resp, err := h.c.LookupUser(ctx, &api.LookupUserRequest{
+				UserId: "", // self
+			})
 
+			if err != nil {
+				sur.Err = err
+			} else {
+				sur.User = resp.User
+			}
+		}()
+	}
+	outgoingXsrfToken, outgoingXsrfTokenPresent := outgoingXsrfTokenFromCtx(ctx)
+	if !outgoingXsrfTokenPresent {
 		theTime := h.now()
 		now := func() time.Time {
 			return theTime
@@ -195,31 +200,84 @@ func (h *baseHandler) static(next http.Handler) http.Handler {
 		} else if err != nil {
 			httpError(w, err)
 			return
-		} else {
+		} else if err := checkXsrfTokens(c.Value, c.Value); err != nil {
 			// use the same value twice to get length checking
-			if err := checkXsrfTokens(c.Value, c.Value); err != nil {
-				// TODO: maybe destroy the bad cookie
-				httpError(w, err)
-				return
-			}
+			// TODO: maybe destroy the bad cookie
+			httpError(w, err)
+			return
 		}
-		ctx = contextFromXsrfToken(ctx, c.Value)
-		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
-	})
+		outgoingXsrfToken, outgoingXsrfTokenPresent = c.Value, true
+		ctx = ctxFromOutgoingXsrfToken(ctx, outgoingXsrfToken)
+	}
+
+	r = r.WithContext(ctx)
+	h.next.ServeHTTP(w, r)
 }
 
-/*
+var _ http.Handler = &htmlHandler{}
 
-	if header.Get("Content-Type") == "" {
-		header.Set("Content-Type", "text/html; charset=utf-8")
+type htmlHandler struct {
+	next http.Handler
+}
+
+func (h *htmlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: parse Accept?
+	h.next.ServeHTTP(&htmlResponseWriter{delegate: w}, r)
+}
+
+var _ http.ResponseWriter = &htmlResponseWriter{}
+var _ http.Flusher = &htmlResponseWriter{}
+var _ http.Pusher = &htmlResponseWriter{}
+
+type htmlResponseWriter struct {
+	delegate http.ResponseWriter
+	whcalled bool
+}
+
+func (w *htmlResponseWriter) Header() http.Header {
+	return w.delegate.Header()
+}
+
+func (w *htmlResponseWriter) Write(data []byte) (int, error) {
+	if !w.whcalled {
+		w.WriteHeader(http.StatusOK)
 	}
-*/
+	return w.delegate.Write(data)
+}
 
-// check method
-// check xsrf
-// get auth token
-// compress response
+func (w *htmlResponseWriter) WriteHeader(code int) {
+	if !w.whcalled {
+		w.whcalled = true
+		header := w.Header()
+		if header.Get("Content-Type") == "" {
+			header.Set("Content-Type", "text/html; charset=utf-8")
+		}
+	}
+	w.delegate.WriteHeader(code)
+}
+
+func (w *htmlResponseWriter) Flush() {
+	switch f := w.delegate.(type) {
+	case http.Flusher:
+		f.Flush()
+	}
+	// maybe log this?
+}
+
+func (w *htmlResponseWriter) Push(target string, opts *http.PushOptions) error {
+	if pusher, ok := w.delegate.(http.Pusher); ok {
+		return pusher.Push(target, opts)
+	}
+	return http.ErrNotSupported
+}
+
+func newActionHandler(s *server.Server, next http.Handler) http.Handler {
+	pt := paths{r: s.HTTPRoot}
+	return &actionHandler{
+		pr:   pt.pr,
+		next: next,
+	}
+}
 
 var _ http.Handler = &actionHandler{}
 
@@ -228,35 +286,12 @@ type actionHandler struct {
 	next http.Handler
 }
 
+// TODO: test
 func (h *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	xsrfCookie, xsrfField, err := xsrfTokensFromRequest(r, h.pr)
-	if err != nil {
-		httpError(w, err)
-		return
-	}
-	if err := checkXsrfTokens(xsrfCookie, xsrfField); err != nil {
-		httpError(w, err)
-		return
-	}
-	if authToken, present := authTokenFromReq(r); present {
-		ctx := r.Context()
-		ctx = ctxFromAuthToken(ctx, authToken)
-		r = r.WithContext(ctx)
-	}
-	h.next.ServeHTTP(w, r)
-}
-
-func (h *baseHandler) action(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			httpError(w, &HTTPErr{
-				Message: "Method not allowed",
-				Code:    http.StatusMethodNotAllowed,
-			})
-			return
-		}
-
-		xsrfCookie, xsrfField, err := xsrfTokensFromRequest(r, h.pt.pr)
+	ctx := r.Context()
+	incomingXsrfToken, ok := incomingXsrfTokenFromCtx(ctx)
+	if !ok {
+		xsrfCookie, xsrfField, err := incomingXsrfTokensFromReq(r, h.pr)
 		if err != nil {
 			httpError(w, err)
 			return
@@ -265,12 +300,21 @@ func (h *baseHandler) action(next http.Handler) http.Handler {
 			httpError(w, err)
 			return
 		}
-		ctx := r.Context()
-		if authToken, present := authTokenFromReq(r); present {
+		incomingXsrfToken = xsrfCookie
+	}
+
+	if _, ok := outgoingXsrfTokenFromCtx(ctx); !ok {
+		ctx = ctxFromOutgoingXsrfToken(ctx, incomingXsrfToken)
+	}
+
+	authToken, ok := authTokenFromCtx(ctx)
+	if !ok {
+		authToken, ok = authTokenFromReq(r)
+		if ok {
 			ctx = ctxFromAuthToken(ctx, authToken)
 		}
 
-		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
-	})
+	}
+	r = r.WithContext(ctx)
+	h.next.ServeHTTP(w, r)
 }

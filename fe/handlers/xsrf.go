@@ -23,15 +23,33 @@ var (
 	b64XsrfTokenLength = b64XsrfEnc.EncodedLen(xsrfTokenLength)
 )
 
-type xsrfContextKey struct{}
+type incomingXsrfTokenKey struct{}
 
-func contextFromXsrfToken(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, xsrfContextKey{}, token)
+type outgoingXsrfTokenKey struct{}
+
+func ctxFromIncomingXsrfToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, incomingXsrfTokenKey{}, token)
 }
 
-func xsrfTokenFromContext(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(xsrfContextKey{}).(string)
+func incomingXsrfTokenFromCtx(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(incomingXsrfTokenKey{}).(string)
 	return token, ok
+}
+
+func ctxFromOutgoingXsrfToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, outgoingXsrfTokenKey{}, token)
+}
+
+func outgoingXsrfTokenFromCtx(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(outgoingXsrfTokenKey{}).(string)
+	return token, ok
+}
+
+func outgoingXsrfTokenOrEmptyFromCtx(ctx context.Context) string {
+	if token, ok := outgoingXsrfTokenFromCtx(ctx); ok {
+		return token
+	}
+	return ""
 }
 
 func newXsrfToken(random io.Reader, now func() time.Time) (string, error) {
@@ -59,26 +77,28 @@ func newXsrfCookie(token string, now func() time.Time, pt paths, secure bool) *h
 	return &http.Cookie{
 		Name:     pt.pr.XsrfCookie(),
 		Value:    token,
-		Path:     pt.Root().RequestURI(), // Has to be accessible from root, reset from previous
+		Path:     pt.Root().EscapedPath(), // Has to be accessible from root, reset from previous
 		Expires:  now().Add(xsrfTokenLifetime),
 		Secure:   secure,
 		HttpOnly: true,
 	}
 }
 
-// xsrfTokensFromRequest extracts the cookie and header xsrf tokens from r
-func xsrfTokensFromRequest(r *http.Request, pr params) (string, string, *HTTPErr) {
+// incomingXsrfTokensFromReq extracts the cookie and header xsrf tokens from r
+func incomingXsrfTokensFromReq(r *http.Request, pr params) (string, string, error) {
 	c, err := r.Cookie(pr.XsrfCookie())
 	if err == http.ErrNoCookie {
 		return "", "", &HTTPErr{
 			Code:    http.StatusUnauthorized,
 			Message: "missing xsrf cookie",
+			Cause:   err,
 		}
 	} else if err != nil {
 		// this can't happen according to the http docs
 		return "", "", &HTTPErr{
 			Code:    http.StatusInternalServerError,
 			Message: "can't get xsrf token from cookie",
+			Cause:   err,
 		}
 	}
 	f := r.PostFormValue(pr.Xsrf())
@@ -86,7 +106,7 @@ func xsrfTokensFromRequest(r *http.Request, pr params) (string, string, *HTTPErr
 }
 
 // checkXsrfTokens extracts the xsrf tokens and make sure they match
-func checkXsrfTokens(cookie, header string) *HTTPErr {
+func checkXsrfTokens(cookie, header string) error {
 	// check the encoded length, not the binary length
 	if len(cookie) != b64XsrfTokenLength {
 		return &HTTPErr{

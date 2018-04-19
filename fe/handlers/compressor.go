@@ -77,6 +77,7 @@ func (rw *compressingResponseWriter) Flush() {
 			return
 		}
 	}
+	// maybe log this?
 }
 
 func (rw *compressingResponseWriter) Push(target string, opts *http.PushOptions) error {

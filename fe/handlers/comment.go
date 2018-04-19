@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"html/template"
 	"net/http"
 
 	"pixur.org/pixur/api"
@@ -9,14 +8,7 @@ import (
 	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var commentTpl *template.Template
-
-func init() {
-	paneClone := template.Must(paneTpl.Clone())
-	commentTpl = paneClone.New("Comment")
-	commentTpl = template.Must(commentTpl.Parse(ptpl.Comment))
-	commentTpl = template.Must(commentTpl.Parse(ptpl.CommentReply))
-}
+var commentTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Comment, ptpl.CommentReply)
 
 type commentHandler struct {
 	pt paths
@@ -29,10 +21,11 @@ type commentData struct {
 	PicComment *picComment
 }
 
-func (h *commentHandler) static(w http.ResponseWriter, r *http.Request) {
+func (h *commentHandler) get(w http.ResponseWriter, r *http.Request) {
 	commentParentId := r.FormValue(h.pt.pr.CommentParentId())
+	picId := r.FormValue(h.pt.pr.PicId())
 	req := &api.LookupPicDetailsRequest{
-		PicId: r.FormValue(h.pt.pr.PicId()),
+		PicId: picId,
 	}
 	ctx := r.Context()
 	details, err := h.c.LookupPicDetails(ctx, req)
@@ -41,11 +34,10 @@ func (h *commentHandler) static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	xsrfToken, _ := xsrfTokenFromContext(ctx)
 	bd := baseData{
 		Paths:       h.pt,
-		XsrfToken:   xsrfToken,
-		SubjectUser: subjectUserOrNilFromCtx(r.Context()),
+		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
+		SubjectUser: subjectUserOrNilFromCtx(ctx),
 	}
 
 	var root *picComment
@@ -83,13 +75,17 @@ func (h *commentHandler) static(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *commentHandler) comment(w http.ResponseWriter, r *http.Request) {
-	var pr params
+type addPicCommentHandler struct {
+	pt          paths
+	c           api.PixurServiceClient
+	readHandler http.Handler
+}
 
+func (h *commentHandler) comment(w http.ResponseWriter, r *http.Request) {
 	req := &api.AddPicCommentRequest{
-		PicId:           r.PostFormValue(pr.PicId()),
-		CommentParentId: r.PostFormValue(pr.CommentParentId()),
-		Text:            r.PostFormValue(pr.CommentText()),
+		PicId:           r.PostFormValue(h.pt.pr.PicId()),
+		CommentParentId: r.PostFormValue(h.pt.pr.CommentParentId()),
+		Text:            r.PostFormValue(h.pt.pr.CommentText()),
 	}
 
 	res, err := h.c.AddPicComment(r.Context(), req)
@@ -103,14 +99,24 @@ func (h *commentHandler) comment(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		bh := newBaseHandler(s)
-		h := commentHandler{
+		ch := &commentHandler{
 			c:  s.Client,
 			pt: paths{r: s.HTTPRoot},
 		}
-		s.HTTPMux.Handle(h.pt.Comment().RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.pt.CommentAction().RequestURI(), bh.action(http.HandlerFunc(h.comment)))
-		// static is initialized in root.go
+		get := newReadHandler(s, http.HandlerFunc(ch.get))
+		post := newActionHandler(s, http.HandlerFunc(ch.comment))
+
+		// todo: remove CommentAction
+		h := &compressionHandler{
+			next: &htmlHandler{
+				next: &methodHandler{
+					Get:  get,
+					Post: post,
+				},
+			},
+		}
+		s.HTTPMux.Handle(ch.pt.Comment().Path, h)
+
 		return nil
 	})
 }

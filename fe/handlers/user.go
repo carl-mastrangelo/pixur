@@ -11,11 +11,10 @@ import (
 	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var userEditTpl = template.Must(template.Must(paneTpl.Clone()).New("UserEdit").Parse(ptpl.UserEdit))
-
 type userHandler struct {
-	pt paths
-	c  api.PixurServiceClient
+	pt          paths
+	c           api.PixurServiceClient
+	userEditTpl *template.Template
 }
 
 type userEditData struct {
@@ -42,8 +41,9 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	ctx := r.Context()
 
-	subjectUser, err := subjectUserFromCtx(r.Context())
+	subjectUser, err := subjectUserFromCtx(ctx)
 	if err != nil {
 		httpError(w, err)
 		return
@@ -54,7 +54,7 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 	if objectUserId == "" || objectUserId == subjectUser.UserId {
 		objectUser = subjectUser
 	} else {
-		resp, err := h.c.LookupUser(r.Context(), &api.LookupUserRequest{
+		resp, err := h.c.LookupUser(ctx, &api.LookupUserRequest{
 			UserId: objectUserId,
 		})
 		if err != nil {
@@ -92,20 +92,19 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 		return caps[i].Cap.String() < caps[k].Cap.String()
 	})
 
-	xsrfToken, _ := xsrfTokenFromContext(r.Context())
 	data := userEditData{
 		baseData: baseData{
 			Title:       "User Edit",
 			Paths:       h.pt,
 			Params:      h.pt.pr,
-			XsrfToken:   xsrfToken,
+			XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 			SubjectUser: subjectUser,
 		},
 		ObjectUser: objectUser,
 		CanEditCap: canedit,
 		Cap:        caps,
 	}
-	if err := userEditTpl.Execute(w, data); err != nil {
+	if err := h.userEditTpl.Execute(w, data); err != nil {
 		httpError(w, err)
 		return
 	}
@@ -231,13 +230,14 @@ func (h *userHandler) diffcaps(oldyes, oldno, newyes, newno []api.Capability_Cap
 
 func init() {
 	register(func(s *server.Server) error {
-		bh := newBaseHandler(s)
 		h := userHandler{
-			c:  s.Client,
-			pt: paths{r: s.HTTPRoot},
+			c:           s.Client,
+			pt:          paths{r: s.HTTPRoot},
+			userEditTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
 		}
-		s.HTTPMux.Handle(h.pt.UserEdit("").RequestURI(), bh.static(http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.pt.UpdateUserAction().RequestURI(), bh.action(http.HandlerFunc(h.useredit)))
+
+		s.HTTPMux.Handle(h.pt.UserEdit("").Path, newReadHandler(s, http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.UpdateUserAction().Path, newActionHandler(s, http.HandlerFunc(h.useredit)))
 		return nil
 	})
 }

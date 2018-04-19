@@ -1,17 +1,12 @@
 package handlers
 
 import (
-	"html/template"
 	"net/http"
 	"path"
 	"strings"
 
 	"pixur.org/pixur/fe/server"
-	ptpl "pixur.org/pixur/fe/tpl"
 )
-
-var rootTpl = template.Must(template.New("Base").Parse(ptpl.Base)).Option("missingkey=error")
-var paneTpl = template.Must(template.Must(rootTpl.Clone()).New("Pane").Parse(ptpl.Pane))
 
 type rootHandler struct {
 	pt            paths
@@ -54,15 +49,14 @@ func init() {
 		ph := &pixHandler{
 			c: s.Client,
 		}
-		bh := newBaseHandler(s)
 		rh := rootHandler{
 			pt:            pt,
-			indexHandler:  bh.static(http.HandlerFunc(ih.static)),
-			viewerHandler: bh.static(http.HandlerFunc(vh.static)),
+			indexHandler:  newReadHandler(s, http.HandlerFunc(ih.static)),
+			viewerHandler: newReadHandler(s, http.HandlerFunc(vh.static)),
 			pixHandler:    ph,
 		}
 
-		s.HTTPMux.Handle(pt.Root().RequestURI(), http.HandlerFunc(rh.static))
+		s.HTTPMux.Handle(pt.Root().Path, http.HandlerFunc(rh.static))
 		return nil
 	})
 }
