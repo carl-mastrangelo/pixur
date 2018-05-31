@@ -51,8 +51,8 @@ func init() {
 		}
 		rh := rootHandler{
 			pt:            pt,
-			indexHandler:  newReadHandler(s, http.HandlerFunc(ih.static)),
-			viewerHandler: newReadHandler(s, http.HandlerFunc(vh.static)),
+			indexHandler:  readWrapper(s)(http.HandlerFunc(ih.static)),
+			viewerHandler: readWrapper(s)(http.HandlerFunc(vh.static)),
 			pixHandler:    ph,
 		}
 

@@ -3,15 +3,11 @@ package handlers // import "pixur.org/pixur/fe/handlers"
 import (
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/golang/glog"
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
@@ -51,61 +47,6 @@ func RegisterAll(s *server.Server) {
 	}
 }
 
-var _ error = &HTTPErr{}
-
-type HTTPErr struct {
-	Message string
-	Code    int
-	Cause   error
-}
-
-func (err *HTTPErr) Error() string {
-	return strconv.Itoa(err.Code) + ": " + err.Message
-}
-
-var (
-	_codeHttpMapping = map[codes.Code]int{
-		codes.OK:                 http.StatusOK,
-		codes.Canceled:           499, // Client Closed Request
-		codes.Unknown:            http.StatusInternalServerError,
-		codes.InvalidArgument:    http.StatusBadRequest,
-		codes.DeadlineExceeded:   http.StatusGatewayTimeout,
-		codes.NotFound:           http.StatusNotFound,
-		codes.AlreadyExists:      http.StatusConflict,
-		codes.PermissionDenied:   http.StatusForbidden,
-		codes.Unauthenticated:    http.StatusUnauthorized,
-		codes.ResourceExhausted:  http.StatusTooManyRequests,
-		codes.FailedPrecondition: http.StatusPreconditionFailed, // not 400, as code.proto suggests
-		codes.Aborted:            http.StatusConflict,
-		codes.OutOfRange:         http.StatusRequestedRangeNotSatisfiable, // not 400, as code.proto suggests
-		codes.Unimplemented:      http.StatusNotImplemented,
-		codes.Internal:           http.StatusInternalServerError,
-		codes.Unavailable:        http.StatusServiceUnavailable,
-		codes.DataLoss:           http.StatusInternalServerError,
-	}
-)
-
-func httpError(w http.ResponseWriter, err error) {
-	if err == nil {
-		return
-	}
-	if sts, ok := status.FromError(err); ok {
-		if sts.Code() == codes.OK {
-			return
-		}
-		glog.Info(sts.Code(), ": ", sts.Message())
-		http.Error(w, sts.Message(), _codeHttpMapping[sts.Code()])
-		return
-	}
-	switch err := err.(type) {
-	case *HTTPErr:
-		http.Error(w, err.Message, err.Code)
-	default:
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	glog.Info(err)
-}
-
 var _ http.Handler = &methodHandler{}
 
 type methodHandler struct {
@@ -127,21 +68,25 @@ func (h *methodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// check method
-// get auth token -> get subject user
-// get / set xsrf cookie
-// compress response
-
-func newReadHandler(s *server.Server, next http.Handler) http.Handler {
-	return &readHandler{
+func readWrapper(s *server.Server) func(http.Handler) http.Handler {
+	readTpl := readHandler{
 		now:    s.Now,
 		random: s.Random,
 		secure: s.Secure,
 		pt:     paths{r: s.HTTPRoot},
 		c:      s.Client,
-		next:   next,
+	}
+	return func(next http.Handler) http.Handler {
+		h := readTpl
+		h.next = next
+		return &h
 	}
 }
+
+// check method
+// get auth token -> get subject user
+// get / set xsrf cookie
+// compress response
 
 var _ http.Handler = &readHandler{}
 
@@ -269,6 +214,18 @@ func (w *htmlResponseWriter) Push(target string, opts *http.PushOptions) error {
 		return pusher.Push(target, opts)
 	}
 	return http.ErrNotSupported
+}
+
+func writeWrapper(s *server.Server) func(http.Handler) http.Handler {
+	pt := &paths{r: s.HTTPRoot}
+	writeTpl := actionHandler{
+		pr: pt.pr,
+	}
+	return func(next http.Handler) http.Handler {
+		h := writeTpl
+		h.next = next
+		return &h
+	}
 }
 
 func newActionHandler(s *server.Server, next http.Handler) http.Handler {

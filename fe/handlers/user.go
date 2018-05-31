@@ -236,8 +236,8 @@ func init() {
 			userEditTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
 		}
 
-		s.HTTPMux.Handle(h.pt.UserEdit("").Path, newReadHandler(s, http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.pt.UpdateUserAction().Path, newActionHandler(s, http.HandlerFunc(h.useredit)))
+		s.HTTPMux.Handle(h.pt.UserEdit("").Path, readWrapper(s)(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.UpdateUserAction().Path, writeWrapper(s)(http.HandlerFunc(h.useredit)))
 		return nil
 	})
 }

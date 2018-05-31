@@ -199,11 +199,11 @@ func init() {
 		//EscapedPath()
 
 		// TODO: maybe consolidate these?
-		s.HTTPMux.Handle(h.pt.Login().Path, newReadHandler(s, http.HandlerFunc(h.static)))
-		s.HTTPMux.Handle(h.pt.Logout().Path, newReadHandler(s, http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.Login().Path, readWrapper(s)(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(h.pt.Logout().Path, readWrapper(s)(http.HandlerFunc(h.static)))
 		// handles both login  and log out
-		s.HTTPMux.Handle(h.pt.LoginAction().Path, newActionHandler(s, http.HandlerFunc(h.login)))
-		s.HTTPMux.Handle(h.pt.CreateUserAction().Path, newActionHandler(s, http.HandlerFunc(h.createUser)))
+		s.HTTPMux.Handle(h.pt.LoginAction().Path, writeWrapper(s)(http.HandlerFunc(h.login)))
+		s.HTTPMux.Handle(h.pt.CreateUserAction().Path, writeWrapper(s)(http.HandlerFunc(h.createUser)))
 		return nil
 	})
 }

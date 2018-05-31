@@ -8,20 +8,15 @@ import (
 	ptpl "pixur.org/pixur/fe/tpl"
 )
 
-var commentTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Comment, ptpl.CommentReply)
+var commentDisplayTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Comment, ptpl.CommentReply)
 
-type commentHandler struct {
-	pt paths
+type commentDisplayHandler struct {
+	pt *paths
 	c  api.PixurServiceClient
 }
 
-type commentData struct {
-	baseData
-	Pic        *api.Pic
-	PicComment *picComment
-}
-
-func (h *commentHandler) get(w http.ResponseWriter, r *http.Request) {
+// TODO: add in error display and text repeat
+func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	commentParentId := r.FormValue(h.pt.pr.CommentParentId())
 	picId := r.FormValue(h.pt.pr.PicId())
 	req := &api.LookupPicDetailsRequest{
@@ -34,8 +29,8 @@ func (h *commentHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bd := baseData{
-		Paths:       h.pt,
+	bd := &baseData{
+		Paths:       *h.pt,
 		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 		SubjectUser: subjectUserOrNilFromCtx(ctx),
 	}
@@ -64,33 +59,43 @@ func (h *commentHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := commentData{
+	data := commentDisplayData{
 		baseData:   bd,
 		Pic:        details.Pic,
 		PicComment: root,
 	}
-	if err := commentTpl.Execute(w, data); err != nil {
+	if err := commentDisplayTpl.Execute(w, data); err != nil {
 		httpError(w, err)
 		return
 	}
 }
 
-type addPicCommentHandler struct {
-	pt          paths
-	c           api.PixurServiceClient
-	readHandler http.Handler
+type commentDisplayData struct {
+	*baseData
+	Pic        *api.Pic
+	PicComment *picComment
 }
 
-func (h *commentHandler) comment(w http.ResponseWriter, r *http.Request) {
+type addPicCommentHandler struct {
+	pt      *paths
+	c       api.PixurServiceClient
+	display http.Handler
+}
+
+func (h *addPicCommentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req := &api.AddPicCommentRequest{
 		PicId:           r.PostFormValue(h.pt.pr.PicId()),
 		CommentParentId: r.PostFormValue(h.pt.pr.CommentParentId()),
 		Text:            r.PostFormValue(h.pt.pr.CommentText()),
 	}
+	ctx := r.Context()
 
-	res, err := h.c.AddPicComment(r.Context(), req)
+	res, err := h.c.AddPicComment(ctx, req)
 	if err != nil {
-		httpError(w, err)
+		httpWriteError(w, err)
+		ctx = ctxFromWriteErr(ctx, err)
+		r = r.WithContext(ctx)
+		h.display.ServeHTTP(w, r)
 		return
 	}
 
@@ -99,23 +104,25 @@ func (h *commentHandler) comment(w http.ResponseWriter, r *http.Request) {
 
 func init() {
 	register(func(s *server.Server) error {
-		ch := &commentHandler{
+		pt := &paths{r: s.HTTPRoot}
+		cdh := readWrapper(s)(&commentDisplayHandler{
 			c:  s.Client,
-			pt: paths{r: s.HTTPRoot},
-		}
-		get := newReadHandler(s, http.HandlerFunc(ch.get))
-		post := newActionHandler(s, http.HandlerFunc(ch.comment))
-
-		// todo: remove CommentAction
+			pt: pt,
+		})
+		apch := writeWrapper(s)(&addPicCommentHandler{
+			c:       s.Client,
+			pt:      pt,
+			display: cdh,
+		})
 		h := &compressionHandler{
 			next: &htmlHandler{
 				next: &methodHandler{
-					Get:  get,
-					Post: post,
+					Get:  cdh,
+					Post: apch,
 				},
 			},
 		}
-		s.HTTPMux.Handle(ch.pt.Comment().Path, h)
+		s.HTTPMux.Handle(pt.Comment().Path, h)
 
 		return nil
 	})

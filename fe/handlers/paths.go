@@ -115,10 +115,6 @@ func (p paths) CommentReply(picID, commentID string) *url.URL {
 	return p.Comment().ResolveReference(&url.URL{RawQuery: v.Encode()})
 }
 
-func (p paths) CommentAction() *url.URL {
-	return p.ActionDir().ResolveReference(&url.URL{Path: "comment"})
-}
-
 func (p paths) UpsertPicAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "upsertPic"})
 }
