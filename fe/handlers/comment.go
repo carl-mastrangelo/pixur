@@ -103,7 +103,7 @@ func (h *addPicCommentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	http.Redirect(w, r, h.pt.ViewerComment(res.Comment.PicId, res.Comment.CommentId).RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.ViewerComment(res.Comment.PicId, res.Comment.CommentId).String(), http.StatusSeeOther)
 }
 
 func init() {
