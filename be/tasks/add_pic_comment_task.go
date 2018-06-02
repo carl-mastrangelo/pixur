@@ -31,13 +31,15 @@ const (
 )
 
 func (t *AddPicCommentTask) Run(ctx context.Context) (errCap status.S) {
-	if len(t.Text) < minCommentLen || len(t.Text) > maxCommentLen {
-		return status.InvalidArgument(nil, "invalid comment length")
+	if len(t.Text) < minCommentLen {
+		return status.InvalidArgument(nil, "comment too short")
+	} else if len(t.Text) > maxCommentLen {
+		return status.InvalidArgument(nil, "comment too long")
 	}
 
 	// TODO: more validation
 	if !utf8.ValidString(t.Text) {
-		return status.InvalidArgument(nil, "Invalid comment test", t.Text)
+		return status.InvalidArgument(nil, "invalid comment text", t.Text)
 	}
 
 	j, err := tab.NewJob(ctx, t.DB)

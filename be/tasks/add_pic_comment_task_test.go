@@ -214,7 +214,7 @@ func TestAddPicCommentTask_MissingComment(t *testing.T) {
 	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := sts.Message(), "invalid comment length"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "comment too short"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
@@ -236,7 +236,7 @@ func TestAddPicCommentTask_TooLongComment(t *testing.T) {
 	if have, want := sts.Code(), codes.InvalidArgument; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := sts.Message(), "invalid comment length"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "comment too long"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
