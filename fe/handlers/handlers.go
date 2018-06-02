@@ -27,6 +27,8 @@ type baseData struct {
 	Paths       paths
 	Params      params
 	SubjectUser *api.User
+	// Err is a user visible error set after a failed write
+	Err error
 }
 
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor

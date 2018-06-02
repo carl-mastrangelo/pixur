@@ -7,7 +7,7 @@
 {{$pt := .Paths}}
 {{$pr := .Params}}
 <form action="{{$pt.CommentReply .PicComment.PicId .PicComment.CommentId}}" method="post">
-  <textarea name="{{$pr.CommentText}}"></textarea>
+  <textarea name="{{$pr.CommentText}}">{{.CommentText}}</textarea>
   <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
   <input type="hidden" name="{{$pr.PicId}}" value="{{.PicComment.PicId}}" />
   <input type="hidden" name="{{$pr.CommentParentId}}" value="{{.PicComment.CommentId}}" />

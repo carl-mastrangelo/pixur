@@ -24,6 +24,8 @@ type picComment struct {
 	*api.PicComment
 	Child []*picComment
 	*baseData
+	// CommentText is the initial comment after a failed write
+	CommentText string
 }
 
 type viewerDataDeletionReason struct {

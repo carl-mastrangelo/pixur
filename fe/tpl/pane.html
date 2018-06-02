@@ -27,6 +27,11 @@
   .pane-header .site-name a:hover {
     color: #000;
   }
+  .pane .error {
+    color: red;
+    margin: 1em;
+    text-align: center;
+  }
 </style>  
 {{block "panestyle" .}}{{end}}
 {{end}}
@@ -45,8 +50,16 @@
     <div class="site-name">
       <a href="{{$pt.Root}}"><h1>Site Name</h1></a>
     </div>
-  </div> 
+  </div>
+  {{if .Err}}
+    {{- template "error" . -}}
+  {{end}}
   {{template "pane" .}}
+</div>
+{{end}}
+{{define "error"}}
+<div class="error">
+  <strong style="">{{.Err.Error}}</strong>
 </div>
 {{end}}
 

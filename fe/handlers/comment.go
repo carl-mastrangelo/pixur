@@ -10,19 +10,27 @@ import (
 
 var commentDisplayTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Comment, ptpl.CommentReply)
 
+type commentDisplayData struct {
+	*baseData
+	Pic        *api.Pic
+	PicComment *picComment
+	// CommentText is the initial comment after a failed write
+	CommentText string
+}
+
 type commentDisplayHandler struct {
 	pt *paths
 	c  api.PixurServiceClient
 }
 
-// TODO: add in error display and text repeat
 func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	commentParentId := r.FormValue(h.pt.pr.CommentParentId())
 	picId := r.FormValue(h.pt.pr.PicId())
 	req := &api.LookupPicDetailsRequest{
 		PicId: picId,
 	}
-	ctx := r.Context()
+
 	details, err := h.c.LookupPicDetails(ctx, req)
 	if err != nil {
 		httpError(w, err)
@@ -33,6 +41,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		Paths:       *h.pt,
 		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 		SubjectUser: subjectUserOrNilFromCtx(ctx),
+		Err:         writeErrOrNilFromCtx(ctx),
 	}
 
 	var root *picComment
@@ -60,20 +69,15 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	data := commentDisplayData{
-		baseData:   bd,
-		Pic:        details.Pic,
-		PicComment: root,
+		baseData:    bd,
+		Pic:         details.Pic,
+		PicComment:  root,
+		CommentText: r.PostFormValue(h.pt.pr.CommentText()),
 	}
 	if err := commentDisplayTpl.Execute(w, data); err != nil {
 		httpError(w, err)
 		return
 	}
-}
-
-type commentDisplayData struct {
-	*baseData
-	Pic        *api.Pic
-	PicComment *picComment
 }
 
 type addPicCommentHandler struct {
