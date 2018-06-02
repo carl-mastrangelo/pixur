@@ -8,6 +8,9 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"pixur.org/pixur/fe/server"
+	ptpl "pixur.org/pixur/fe/tpl"
 )
 
 var _ error = &HTTPErr{}
@@ -62,10 +65,42 @@ func writeErrOrNilFromCtx(ctx context.Context) error {
 	return nil
 }
 
+// httpWriteError is a non-terminal error.  It is expected that the read handler will continue on.
 func httpWriteError(w http.ResponseWriter, err error) {
 	if err == nil {
 		panic("non nil error")
 	}
+	httpErrorHeaderAndLog(w, err)
+}
+
+var readErrorTpl = parseTpl(ptpl.Base, ptpl.Pane, `{{define "pane"}}{{end}}`)
+var readErrorBaseData func(context.Context, error) *baseData
+
+// httpReadError is a terminal error.   It is not expected to continue on after
+func httpReadError(ctx context.Context, w http.ResponseWriter, err error) {
+	if err == nil {
+		panic("non nil error")
+	}
+	bd := readErrorBaseData(ctx, err)
+	defer func() {
+		if writeErr := readErrorTpl.Execute(w, bd); writeErr != nil {
+			glog.Warningln("Error", "Can't execute error template", writeErr)
+			return
+		}
+	}()
+	httpErrorHeaderAndLog(w, err)
+}
+
+// httpCleanupError is for cleaning up after having possibly already written a (partial) response.
+func httpCleanupError(w http.ResponseWriter, err error) {
+	if err == nil {
+		panic("non nil error")
+	}
+	httpErrorHeaderAndLog(w, err)
+}
+
+// httpErrorHeaderAndLog should not be used outside this file.  It assumes err is not nil
+func httpErrorHeaderAndLog(w http.ResponseWriter, err error) {
 	if sts, ok := status.FromError(err); ok {
 		if sts.Code() == codes.OK {
 			glog.Warningln("Error", "got OK error code with message:", sts)
@@ -105,4 +140,19 @@ func httpError(w http.ResponseWriter, err error) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	glog.Info(err)
+}
+
+func init() {
+	register(func(s *server.Server) error {
+		pt := &paths{r: s.HTTPRoot}
+		readErrorBaseData = func(ctx context.Context, readErr error) *baseData {
+			return &baseData{
+				Paths:       *pt,
+				XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
+				SubjectUser: subjectUserOrNilFromCtx(ctx),
+				Err:         readErr,
+			}
+		}
+		return nil
+	})
 }

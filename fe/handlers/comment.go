@@ -33,7 +33,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	details, err := h.c.LookupPicDetails(ctx, req)
 	if err != nil {
-		httpError(w, err)
+		httpReadError(ctx, w, err)
 		return
 	}
 
@@ -61,7 +61,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 	}
 	if root == nil {
-		httpError(w, &HTTPErr{
+		httpReadError(ctx, w, &HTTPErr{
 			Message: "Can't find comment id",
 			Code:    http.StatusBadRequest,
 		})
@@ -75,7 +75,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		CommentText: r.PostFormValue(h.pt.pr.CommentText()),
 	}
 	if err := commentDisplayTpl.Execute(w, data); err != nil {
-		httpError(w, err)
+		httpCleanupError(w, err)
 		return
 	}
 }
