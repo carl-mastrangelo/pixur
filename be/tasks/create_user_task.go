@@ -50,7 +50,7 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 	for _, c := range caps {
 		if !schema.UserHasPerm(u, c) {
 			if !userIDPresent {
-				return nil, status.Unauthenticated(nil, "unauthenticated user missing cap %v", c)
+				return nil, status.Unauthenticatedf(nil, "unauthenticated user missing cap %v", c)
 			}
 			return u, status.PermissionDeniedf(nil, "missing cap %v", c)
 		}
