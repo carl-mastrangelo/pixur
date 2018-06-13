@@ -30,7 +30,8 @@ type CreateUserTask struct {
 func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
 	*schema.User, status.S) {
 	var u *schema.User
-	if userID, ok := UserIDFromCtx(ctx); ok {
+	userID, userIDPresent := UserIDFromCtx(ctx)
+	if userIDPresent {
 		users, err := j.FindUsers(db.Opts{
 			Prefix: tab.UsersPrimary{&userID},
 			Lock:   db.LockNone,
@@ -48,6 +49,9 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 	// TODO: make sure sorted.
 	for _, c := range caps {
 		if !schema.UserHasPerm(u, c) {
+			if !userIDPresent {
+				return nil, status.Unauthenticated(nil, "unauthenticated user missing cap %v", c)
+			}
 			return u, status.PermissionDeniedf(nil, "missing cap %v", c)
 		}
 	}
