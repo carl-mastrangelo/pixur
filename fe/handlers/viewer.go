@@ -49,7 +49,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	details, err := h.c.LookupPicDetails(ctx, req)
 	if err != nil {
-		httpError(w, err)
+		httpReadError(ctx, w, err)
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 			PicId: id,
 		})
 		if err != nil {
-			httpError(w, err)
+			httpReadError(ctx, w, err)
 			return
 		}
 		pv = resp.Vote
@@ -107,7 +107,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	if err := viewerTpl.Execute(w, data); err != nil {
-		httpError(w, err)
+		httpCleanupError(w, err)
 		return
 	}
 	if f, ok := w.(http.Flusher); ok {
@@ -122,7 +122,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if err := eg.Wait(); err != nil {
-		httpError(w, err)
+		httpCleanupError(w, err)
 		return
 	}
 }

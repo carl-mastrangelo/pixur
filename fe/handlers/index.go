@@ -34,14 +34,15 @@ type indexHandler struct {
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if err := r.ParseForm(); err != nil {
-		httpError(w, &HTTPErr{
+		httpReadError(ctx, w, &HTTPErr{
 			Message: err.Error(),
 			Code:    http.StatusBadRequest,
 		})
 		return
 	}
-	ctx := r.Context()
+
 	id := r.FormValue(h.pt.pr.IndexPic())
 	_, isPrev := r.Form[h.pt.pr.IndexPrev()]
 	req := &api.FindIndexPicsRequest{
@@ -95,7 +96,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		CanUpload: canupload,
 	}
 	if err := indexTpl.Execute(w, data); err != nil {
-		httpError(w, err)
+		httpCleanupError(w, err)
 		return
 	}
 }
