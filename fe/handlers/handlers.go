@@ -62,7 +62,7 @@ func (h *methodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost && h.Post != nil {
 		h.Post.ServeHTTP(w, r)
 	} else {
-		httpError(w, &HTTPErr{
+		httpCleanupError(w, &HTTPErr{
 			Message: "Method not allowed",
 			Code:    http.StatusMethodNotAllowed,
 		})

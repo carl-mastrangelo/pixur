@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"os"
@@ -18,8 +17,7 @@ import (
 )
 
 type pixHandler struct {
-	ctx context.Context
-	c   api.PixurServiceClient
+	c api.PixurServiceClient
 }
 
 var _ io.ReadSeeker = &pixurFile{}

@@ -30,7 +30,7 @@ func parseTpl(tpls ...string) *template.Template {
 
 type indexHandler struct {
 	c  api.PixurServiceClient
-	pt paths
+	pt *paths
 }
 
 func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	data := indexData{
 		baseData: baseData{
 			Title:       "Index",
-			Paths:       h.pt,
+			Paths:       *h.pt,
 			Params:      h.pt.pr,
 			XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 			SubjectUser: u,

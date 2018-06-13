@@ -16,7 +16,7 @@ import (
 var viewerTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Viewer, ptpl.CommentReply)
 
 type viewerHandler struct {
-	pt paths
+	pt *paths
 	c  api.PixurServiceClient
 }
 
@@ -67,7 +67,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bd := baseData{
-		Paths:       h.pt,
+		Paths:       *h.pt,
 		Params:      h.pt.pr,
 		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 		SubjectUser: subjectUserOrNilFromCtx(ctx),
@@ -192,7 +192,7 @@ func init() {
 	register(func(s *server.Server) error {
 		h := viewerHandler{
 			c:  s.Client,
-			pt: paths{r: s.HTTPRoot},
+			pt: &paths{r: s.HTTPRoot},
 		}
 		s.HTTPMux.Handle(h.pt.VoteAction().RequestURI(), newActionHandler(s, http.HandlerFunc(h.vote)))
 		// static is initialized in root.go
