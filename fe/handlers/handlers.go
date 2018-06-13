@@ -7,7 +7,9 @@ import (
 
 	oldctx "golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
@@ -29,6 +31,15 @@ type baseData struct {
 	SubjectUser *api.User
 	// Err is a user visible error set after a failed write
 	Err error
+}
+
+func (bd *baseData) ErrShouldLogin() bool {
+	if sts, ok := status.FromError(bd.Err); ok {
+		if sts.Code() == codes.Unauthenticated {
+			return true
+		}
+	}
+	return false
 }
 
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor

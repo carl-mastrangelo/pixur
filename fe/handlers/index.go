@@ -51,7 +51,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.c.FindIndexPics(ctx, req)
 	if err != nil {
-		httpError(w, err)
+		httpReadError(ctx, w, err)
 		return
 	}
 	var prevID string

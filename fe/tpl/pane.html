@@ -59,7 +59,7 @@
 {{end}}
 {{define "error"}}
 <div class="error">
-  <strong style="">{{.Err.Error}}</strong>
+  <strong style="">{{.Err.Error}}{{if .ErrShouldLogin}} - <a href="{{.Paths.Login}}">Login</a>?{{end}}</strong>
 </div>
 {{end}}
 
