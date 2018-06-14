@@ -1,6 +1,6 @@
 {{define "pane"}}
 {{ $pt := .Paths}}
-{{ $pr := .Params}}
+{{ $pr := $pt.Params}}
 <form action="{{$pt.LoginAction}}" method="post">
   <input type="text" name="{{$pr.Ident}}" placeholder="Ident" /><br />
   <input type="password" name="{{$pr.Secret}}" /><br />

@@ -1,6 +1,7 @@
 package handlers // import "pixur.org/pixur/fe/handlers"
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"time"
@@ -23,23 +24,38 @@ func register(rf server.RegFunc) {
 	regfuncs = append(regfuncs, rf)
 }
 
-type baseData struct {
-	Title       string
+type paneData struct {
+	*baseData
 	XsrfToken   string
-	Paths       paths
-	Params      params
 	SubjectUser *api.User
 	// Err is a user visible error set after a failed write
 	Err error
 }
 
-func (bd *baseData) ErrShouldLogin() bool {
-	if sts, ok := status.FromError(bd.Err); ok {
+type baseData struct {
+	Title string
+	Paths *paths
+}
+
+func (pd *paneData) ErrShouldLogin() bool {
+	if sts, ok := status.FromError(pd.Err); ok {
 		if sts.Code() == codes.Unauthenticated {
 			return true
 		}
 	}
 	return false
+}
+
+func newPaneData(ctx context.Context, title string, pt *paths) *paneData {
+	return &paneData{
+		baseData: &baseData{
+			Title: title,
+			Paths: pt,
+		},
+		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
+		SubjectUser: subjectUserOrNilFromCtx(ctx),
+		Err:         writeErrOrNilFromCtx(ctx),
+	}
 }
 
 var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
@@ -170,6 +186,14 @@ func (h *readHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	r = r.WithContext(ctx)
 	h.next.ServeHTTP(w, r)
+}
+
+func compressHtmlHandler(mh *methodHandler) http.Handler {
+	return &compressionHandler{
+		next: &htmlHandler{
+			next: mh,
+		},
+	}
 }
 
 var _ http.Handler = &htmlHandler{}

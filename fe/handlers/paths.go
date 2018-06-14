@@ -10,6 +10,10 @@ type paths struct {
 	pr params
 }
 
+func (p paths) Params() params {
+	return p.pr
+}
+
 func (p paths) Root() *url.URL {
 	if p.r != nil {
 		return &*p.r

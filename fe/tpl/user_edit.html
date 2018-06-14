@@ -5,7 +5,7 @@
 {{- end -}}
 {{define "pane"}}
 {{- $pt := .Paths -}}
-{{- $pr := .Params -}}
+{{- $pr := $pt.Params -}}
 <div>
   <h1>User Edit</h1>
   <form method="post" action="{{$pt.UpdateUserAction}}">

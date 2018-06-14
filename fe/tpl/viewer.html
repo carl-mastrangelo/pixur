@@ -72,7 +72,7 @@
 {{- end -}}
 {{define "pane"}}
 {{- $pt := .Paths -}}
-{{- $pr := .Params -}}
+{{- $pr := $pt.Params -}}
 <div class="viewer">
   <div class="pic">
     {{if ne .Pic.Type "WEBM"}}
@@ -180,7 +180,7 @@
   <ul>
 	    {{- range . -}}
 	    {{- $pt := .Paths -}}
-	    {{- $pr := .Params -}}
+	    {{- $pr := $pt.Params -}}
 	    <li>
 	      <div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
 	      	{{.CommentId}}: {{.Text}}

@@ -60,7 +60,7 @@
 {{end}}
 {{define "nav"}}
   {{- $pt := .Paths -}}
-  {{- $pr := .Params -}}
+  {{- $pr := $pt.Params -}}
   <div class="nav">
     {{if .PrevID}}<span class="nav-prev"><a href="{{$pt.IndexPrev .PrevID}}">Previous</a></span>{{end}}
     {{if .NextID}}<span class="nav-next"><a href="{{$pt.Index .NextID}}">Next</a></span>{{end}}
@@ -69,7 +69,7 @@
 {{define "pane"}}
 <div class="index">
   {{ $pt := .Paths}}
-  {{- $pr := .Params -}}
+  {{- $pr := $pt.Params -}}
   {{- template "nav" . -}}
   {{if .Pic}}
   <ul class="thumbnail-list">

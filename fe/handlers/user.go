@@ -12,13 +12,13 @@ import (
 )
 
 type userHandler struct {
-	pt          paths
+	pt          *paths
 	c           api.PixurServiceClient
 	userEditTpl *template.Template
 }
 
 type userEditData struct {
-	baseData
+	*paneData
 
 	ObjectUser *api.User
 
@@ -93,13 +93,7 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 	})
 
 	data := userEditData{
-		baseData: baseData{
-			Title:       "User Edit",
-			Paths:       h.pt,
-			Params:      h.pt.pr,
-			XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
-			SubjectUser: subjectUser,
-		},
+		paneData:   newPaneData(ctx, "User Edit", h.pt),
 		ObjectUser: objectUser,
 		CanEditCap: canedit,
 		Cap:        caps,
@@ -232,7 +226,7 @@ func init() {
 	register(func(s *server.Server) error {
 		h := userHandler{
 			c:           s.Client,
-			pt:          paths{r: s.HTTPRoot},
+			pt:          &paths{r: s.HTTPRoot},
 			userEditTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
 		}
 

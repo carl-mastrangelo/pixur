@@ -11,7 +11,7 @@ import (
 var commentDisplayTpl = parseTpl(ptpl.Base, ptpl.Pane, ptpl.Comment, ptpl.CommentReply)
 
 type commentDisplayData struct {
-	*baseData
+	*paneData
 	Pic        *api.Pic
 	PicComment *picComment
 	// CommentText is the initial comment after a failed write
@@ -37,12 +37,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	bd := &baseData{
-		Paths:       *h.pt,
-		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
-		SubjectUser: subjectUserOrNilFromCtx(ctx),
-		Err:         writeErrOrNilFromCtx(ctx),
-	}
+	pd := newPaneData(ctx, "Add Comment", h.pt)
 
 	var root *picComment
 	if details.PicCommentTree != nil && len(details.PicCommentTree.Comment) > 0 {
@@ -51,7 +46,8 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			pc := &picComment{
 				PicComment: c,
 				Child:      m[c.CommentId],
-				baseData:   bd,
+				Paths:      pd.Paths,
+				XsrfToken:  pd.XsrfToken,
 			}
 			if pc.CommentId == commentParentId {
 				root = pc
@@ -69,7 +65,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	data := commentDisplayData{
-		baseData:    bd,
+		paneData:    pd,
 		Pic:         details.Pic,
 		PicComment:  root,
 		CommentText: r.PostFormValue(h.pt.pr.CommentText()),

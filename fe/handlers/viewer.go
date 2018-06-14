@@ -22,8 +22,9 @@ type viewerHandler struct {
 
 type picComment struct {
 	*api.PicComment
-	Child []*picComment
-	*baseData
+	Child     []*picComment
+	Paths     *paths
+	XsrfToken string
 	// CommentText is the initial comment after a failed write
 	CommentText string
 }
@@ -34,7 +35,7 @@ type viewerDataDeletionReason struct {
 }
 
 type viewerData struct {
-	*baseData
+	*paneData
 	Pic            *api.Pic
 	PicComment     *picComment
 	PicVote        *api.PicVote
@@ -65,16 +66,11 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		}
 		pv = resp.Vote
 	}
-
-	bd := baseData{
-		Paths:       *h.pt,
-		Params:      h.pt.pr,
-		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
-		SubjectUser: subjectUserOrNilFromCtx(ctx),
-	}
+	pd := newPaneData(ctx, "Viewer", h.pt)
 
 	root := &picComment{
-		baseData: &bd,
+		XsrfToken: pd.XsrfToken,
+		Paths:     pd.Paths,
 		PicComment: &api.PicComment{
 			PicId: id,
 		},
@@ -85,14 +81,15 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 			m[c.CommentParentId] = append(m[c.CommentParentId], &picComment{
 				PicComment: c,
 				Child:      m[c.CommentId],
-				baseData:   &bd,
+				XsrfToken:  pd.XsrfToken,
+				Paths:      pd.Paths,
 			})
 		}
 		root.Child = m["0"]
 	}
 
 	data := viewerData{
-		baseData:   &bd,
+		paneData:   pd,
 		Pic:        details.Pic,
 		PicComment: root,
 		PicVote:    pv,

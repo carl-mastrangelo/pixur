@@ -5,7 +5,7 @@
 </div>
 {{end}}
 {{$pt := .Paths}}
-{{$pr := .Params}}
+{{$pr := $pt.Params}}
 <form action="{{$pt.CommentReply .PicComment.PicId .PicComment.CommentId}}" method="post">
   <textarea name="{{$pr.CommentText}}">{{.CommentText}}</textarea>
   <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />

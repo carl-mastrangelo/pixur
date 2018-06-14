@@ -9,7 +9,7 @@ import (
 )
 
 type indexData struct {
-	baseData
+	*paneData
 
 	Pic []*api.Pic
 
@@ -83,13 +83,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	canupload := hasCap(u, api.Capability_PIC_CREATE)
 
 	data := indexData{
-		baseData: baseData{
-			Title:       "Index",
-			Paths:       *h.pt,
-			Params:      h.pt.pr,
-			XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
-			SubjectUser: u,
-		},
+		paneData:  newPaneData(ctx, "Index", h.pt),
 		Pic:       res.Pic,
 		NextID:    nextID,
 		PrevID:    prevID,

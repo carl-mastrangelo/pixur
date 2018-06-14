@@ -37,7 +37,7 @@
 {{end}}
 {{define "body"}}
 {{- $pt := .Paths -}}
-{{- $pr := .Params -}}
+{{- $pr := $pt.Params -}}
 <div class="pane">
   <div class="pane-header">
     <div class="pane-user-box">

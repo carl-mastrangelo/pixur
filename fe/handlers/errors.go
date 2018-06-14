@@ -74,16 +74,22 @@ func httpWriteError(w http.ResponseWriter, err error) {
 }
 
 var readErrorTpl = parseTpl(ptpl.Base, ptpl.Pane, `{{define "pane"}}{{end}}`)
-var readErrorBaseData func(context.Context, error) *baseData
+var readErrorPaneData func(context.Context, error) *paneData
 
-// httpReadError is a terminal error.   It is not expected to continue on after
+// httpReadError is a terminal error.   It is not expected to continue on after. This should be used
+// when the read handler cannot display a recoverable error.  Normally, the error should be
+// displayed with some of the original page, rather than using this function.
+//
+// TODO: maybe pass in the paneData directly.  Right now, the Title of the original page is lost,
+// and a Write error previously being displayed will be lost in favor of the pass in `err`.  The
+// original write error should take precedence.
 func httpReadError(ctx context.Context, w http.ResponseWriter, err error) {
 	if err == nil {
 		panic("non nil error")
 	}
-	bd := readErrorBaseData(ctx, err)
+	pd := readErrorPaneData(ctx, err)
 	defer func() {
-		if writeErr := readErrorTpl.Execute(w, bd); writeErr != nil {
+		if writeErr := readErrorTpl.Execute(w, pd); writeErr != nil {
 			glog.Warningln("Error", "Can't execute error template", writeErr)
 			return
 		}
@@ -145,9 +151,12 @@ func httpError(w http.ResponseWriter, err error) {
 func init() {
 	register(func(s *server.Server) error {
 		pt := &paths{r: s.HTTPRoot}
-		readErrorBaseData = func(ctx context.Context, readErr error) *baseData {
-			return &baseData{
-				Paths:       *pt,
+		readErrorPaneData = func(ctx context.Context, readErr error) *paneData {
+			return &paneData{
+				baseData: &baseData{
+					Title: "Error",
+					Paths: pt,
+				},
 				XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 				SubjectUser: subjectUserOrNilFromCtx(ctx),
 				Err:         readErr,
