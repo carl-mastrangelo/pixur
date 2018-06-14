@@ -73,13 +73,10 @@ func init() {
 		}
 
 		eh := rw(&rootErrorHandler{})
-		ehh := &compressionHandler{
-			next: &htmlHandler{
-				// no method checking for error handler
-				next: eh,
-			},
-		}
-
+		ehh := compressHtmlHandler(&methodHandler{
+			Get:  eh,
+			Post: eh,
+		})
 		rh := &rootHandler{
 			pt:            pt,
 			indexHandler:  ihh,
