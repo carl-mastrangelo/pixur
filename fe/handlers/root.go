@@ -53,25 +53,17 @@ func init() {
 			c:  s.Client,
 			pt: pt,
 		}).static))
-		ihh := &compressionHandler{
-			next: &htmlHandler{
-				next: &methodHandler{
-					Get: ih,
-				},
-			},
-		}
+		ihh := compressHtmlHandler(&methodHandler{
+			Get: ih,
+		})
 
 		vh := rw(http.HandlerFunc((&viewerHandler{
 			c:  s.Client,
 			pt: pt,
 		}).static))
-		vhh := &compressionHandler{
-			next: &htmlHandler{
-				next: &methodHandler{
-					Get: vh,
-				},
-			},
-		}
+		vhh := compressHtmlHandler(&methodHandler{
+			Get: vh,
+		})
 
 		ph := &pixHandler{
 			c: s.Client,

@@ -114,14 +114,10 @@ func init() {
 			pt:      pt,
 			display: cdh,
 		})
-		h := &compressionHandler{
-			next: &htmlHandler{
-				next: &methodHandler{
-					Get:  cdh,
-					Post: apch,
-				},
-			},
-		}
+		h := compressHtmlHandler(&methodHandler{
+			Get:  cdh,
+			Post: apch,
+		})
 		s.HTTPMux.Handle(pt.Comment().Path, h)
 
 		return nil
