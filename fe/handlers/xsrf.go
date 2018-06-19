@@ -73,7 +73,7 @@ func newXsrfToken(random io.Reader, now func() time.Time) (string, error) {
 	return string(b64XsrfToken), nil
 }
 
-func newXsrfCookie(token string, now func() time.Time, pt paths, secure bool) *http.Cookie {
+func newXsrfCookie(token string, now func() time.Time, pt *paths, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     pt.pr.XsrfCookie(),
 		Value:    token,

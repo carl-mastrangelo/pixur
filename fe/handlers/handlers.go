@@ -102,7 +102,7 @@ func readWrapper(s *server.Server) func(http.Handler) http.Handler {
 		now:    s.Now,
 		random: s.Random,
 		secure: s.Secure,
-		pt:     paths{r: s.HTTPRoot},
+		pt:     &paths{r: s.HTTPRoot},
 		c:      s.Client,
 	}
 	return func(next http.Handler) http.Handler {
@@ -123,7 +123,7 @@ type readHandler struct {
 	now    func() time.Time
 	random io.Reader
 	secure bool
-	pt     paths
+	pt     *paths
 	c      api.PixurServiceClient
 	next   http.Handler
 }
@@ -266,7 +266,7 @@ func writeWrapper(s *server.Server) func(http.Handler) http.Handler {
 }
 
 func newActionHandler(s *server.Server, next http.Handler) http.Handler {
-	pt := paths{r: s.HTTPRoot}
+	pt := &paths{r: s.HTTPRoot}
 	return &actionHandler{
 		pr:   pt.pr,
 		next: next,

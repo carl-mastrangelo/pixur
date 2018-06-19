@@ -12,7 +12,7 @@ import (
 
 type upsertPicHandler struct {
 	c  api.PixurServiceClient
-	pt paths
+	pt *paths
 }
 
 func (h *upsertPicHandler) upsert(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,7 @@ func init() {
 	register(func(s *server.Server) error {
 		h := upsertPicHandler{
 			c:  s.Client,
-			pt: paths{r: s.HTTPRoot},
+			pt: &paths{r: s.HTTPRoot},
 		}
 
 		s.HTTPMux.Handle(h.pt.UpsertPicAction().Path, newActionHandler(s, http.HandlerFunc(h.upsert)))
