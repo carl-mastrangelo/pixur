@@ -159,7 +159,7 @@ func (h *userHandler) useredit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, h.pt.UserEdit(res.User.UserId).RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.UserEdit(res.User.UserId).String(), http.StatusSeeOther)
 }
 
 // TODO: test

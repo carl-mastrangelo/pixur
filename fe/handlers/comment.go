@@ -64,7 +64,7 @@ func (h *commentDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data := commentDisplayData{
+	data := &commentDisplayData{
 		paneData:    pd,
 		Pic:         details.Pic,
 		PicComment:  root,

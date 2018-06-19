@@ -72,7 +72,7 @@ func (h *upsertPicHandler) upsert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, h.pt.Viewer(resp.Pic.Id).RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Viewer(resp.Pic.Id).String(), http.StatusSeeOther)
 }
 
 func init() {

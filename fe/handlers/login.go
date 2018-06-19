@@ -168,7 +168,7 @@ func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, c)
 	}
 
-	http.Redirect(w, r, h.pt.Root().RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
 }
 
 func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +217,7 @@ func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	http.Redirect(w, r, h.pt.Logout().RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Logout().String(), http.StatusSeeOther)
 }
 
 func init() {

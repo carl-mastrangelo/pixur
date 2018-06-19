@@ -43,7 +43,7 @@ type viewerData struct {
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, h.pt.ViewerDir().RequestURI())
+	id := strings.TrimPrefix(r.URL.Path, h.pt.ViewerDir().Path)
 	req := &api.LookupPicDetailsRequest{
 		PicId: id,
 	}
@@ -148,7 +148,7 @@ func (h *viewerHandler) vote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, nextURL.RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, nextURL.String(), http.StatusSeeOther)
 }
 
 // stored here until there is some sort of admin panel
@@ -182,7 +182,7 @@ func (h *viewerHandler) softdelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, h.pt.Viewer(req.PicId).RequestURI(), http.StatusSeeOther)
+	http.Redirect(w, r, h.pt.Viewer(req.PicId).String(), http.StatusSeeOther)
 }
 
 func init() {
@@ -191,9 +191,9 @@ func init() {
 			c:  s.Client,
 			pt: &paths{r: s.HTTPRoot},
 		}
-		s.HTTPMux.Handle(h.pt.VoteAction().RequestURI(), newActionHandler(s, http.HandlerFunc(h.vote)))
+		s.HTTPMux.Handle(h.pt.VoteAction().Path, newActionHandler(s, http.HandlerFunc(h.vote)))
 		// static is initialized in root.go
-		s.HTTPMux.Handle(h.pt.SoftDeletePicAction().RequestURI(), newActionHandler(s, http.HandlerFunc(h.softdelete)))
+		s.HTTPMux.Handle(h.pt.SoftDeletePicAction().Path, newActionHandler(s, http.HandlerFunc(h.softdelete)))
 		return nil
 	})
 }
