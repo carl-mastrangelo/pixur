@@ -105,6 +105,8 @@ func incomingXsrfTokensFromReq(r *http.Request, pr params) (string, string, erro
 	return c.Value, f, nil
 }
 
+// TODO: check the expiration time of the token
+
 // checkXsrfTokens extracts the xsrf tokens and make sure they match
 func checkXsrfTokens(cookie, header string) error {
 	// check the encoded length, not the binary length
