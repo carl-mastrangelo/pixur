@@ -133,7 +133,7 @@ var SqlTables = map[string][]string{
 		"CREATE TABLE `_SequenceTable` (`the_sequence` bigint(20) NOT NULL);",
 	},
 
-	"postgresql": {
+	"postgres": {
 
 		"CREATE TABLE \"Pics\" (" +
 
@@ -362,7 +362,7 @@ var SqlInitTables = map[string][]string{
 		"INSERT INTO `_SequenceTable` (`the_sequence`) VALUES (1);",
 	},
 
-	"postgresql": {
+	"postgres": {
 		"INSERT INTO \"_SequenceTable\" (\"the_sequence\") VALUES (1);",
 	},
 

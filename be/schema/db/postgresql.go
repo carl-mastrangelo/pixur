@@ -1,16 +1,39 @@
 package db
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"log"
+	"strconv"
 	"strings"
+
+	_ "github.com/lib/pq"
 )
 
 var _ DBAdapter = &postgresqlAdapter{}
 
 type postgresqlAdapter struct{}
 
-func (_ *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
-	panic("not implemented")
+func (a *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
+	db, err := sql.Open(a.Name(), dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		if err2 := db.Close(); err2 != nil {
+			log.Println(err2)
+		}
+		return nil, err
+	}
+	// TODO: make this configurable
+	db.SetMaxOpenConns(20)
+	return postgresDbWrapper{
+		dbWrapper: dbWrapper{
+			db:   db,
+			adap: a,
+		},
+	}, nil
 }
 
 func (_ *postgresqlAdapter) OpenForTest() (DB, error) {
@@ -18,7 +41,7 @@ func (_ *postgresqlAdapter) OpenForTest() (DB, error) {
 }
 
 func (_ *postgresqlAdapter) Name() string {
-	return "postgresql"
+	return "postgres"
 }
 
 func (_ *postgresqlAdapter) SingleTx() bool {
@@ -62,6 +85,54 @@ func (_ *postgresqlAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	default:
 		panic(fmt.Errorf("Unknown lock %v", lock))
 	}
+}
+
+type postgresDbWrapper struct {
+	dbWrapper
+}
+
+func (p postgresDbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) {
+	qec, err := p.dbWrapper.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return postgresTxWrapper{qec: qec}, nil
+}
+
+type postgresTxWrapper struct {
+	qec QuerierExecutorCommitter
+}
+
+func (w postgresTxWrapper) Exec(query string, args ...interface{}) (Result, error) {
+	newquery := fixLibPqQuery(query)
+	res, err := w.qec.Exec(newquery, args...)
+	return res, err
+}
+
+func (w postgresTxWrapper) Query(query string, args ...interface{}) (Rows, error) {
+	newquery := fixLibPqQuery(query)
+	rows, err := w.qec.Query(newquery, args...)
+	return rows, err
+}
+
+func (w postgresTxWrapper) Commit() error {
+	return w.qec.Commit()
+}
+
+func (w postgresTxWrapper) Rollback() error {
+	return w.qec.Rollback()
+}
+
+func fixLibPqQuery(query string) string {
+	parts := strings.Split(query, "?")
+	var b strings.Builder
+	b.WriteString(parts[0])
+	for i := 1; i < len(parts); i++ {
+		b.WriteRune('$')
+		b.WriteString(strconv.Itoa(i))
+		b.WriteString(parts[i])
+	}
+	return b.String()
 }
 
 func init() {
