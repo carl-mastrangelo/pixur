@@ -52,5 +52,5 @@ func runTask(ctx context.Context, task Task) status.S {
 		}
 		return sts
 	}
-	return status.InternalErrorf(sts, "Failed to complete task %s after %s tries", task, maxTaskRetries)
+	return status.InternalErrorf(sts, "Failed to complete task %s after %d tries", task, maxTaskRetries)
 }
