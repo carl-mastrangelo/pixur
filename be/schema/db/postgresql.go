@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "github.com/lib/pq"
 )
@@ -36,8 +37,95 @@ func (a *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
 	}, nil
 }
 
-func (_ *postgresqlAdapter) OpenForTest() (DB, error) {
-	panic("not implemented")
+var (
+	cockroachTestServ                               *testCockroachPostgresServer
+	cockroachTestServLock                           = new(sync.Mutex)
+	cockroachTestServActive, cockroachTestServTotal int
+)
+
+func (a *postgresqlAdapter) OpenForTest() (DB, error) {
+	cockroachTestServLock.Lock()
+	defer cockroachTestServLock.Unlock()
+
+	if cockroachTestServ == nil {
+		cockroachTestServ = new(testCockroachPostgresServer)
+		if err := cockroachTestServ.start(context.Background()); err != nil {
+			return nil, err
+		}
+		defer func() {
+			if cockroachTestServActive == 0 {
+				if err := cockroachTestServ.stop(); err != nil {
+					log.Println("failed to close down server", err)
+				}
+				cockroachTestServ = nil
+			}
+		}()
+	}
+	dsn := "user=" + cockroachTestServ.user + " host=" + cockroachTestServ.host + " port=" + cockroachTestServ.port
+	dsn += " sslmode=disable"
+	rawdb, err := sql.Open(a.Name(), dsn)
+	if err != nil {
+		return nil, err
+	}
+	dbName := fmt.Sprintf("testpixurdb%d", cockroachTestServTotal)
+	if _, err := rawdb.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", dbName)); err != nil {
+		return nil, err
+	}
+	cockroachTestServTotal++
+	if err := rawdb.Close(); err != nil {
+		return nil, err
+	}
+
+	dsn += " dbname=" + dbName
+	db, err := a.Open(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	cockroachTestServActive++
+	return &cockroachTestDB{DB: db}, nil
+}
+
+type cockroachTestDB struct {
+	DB
+	closed bool
+}
+
+func (a *cockroachTestDB) Close() error {
+	err := a.DB.Close()
+	if !a.closed {
+		a.closed = true
+		cockroachTestServLock.Lock()
+		defer cockroachTestServLock.Unlock()
+		cockroachTestServActive--
+		if cockroachTestServActive == 0 {
+			if err := cockroachTestServ.stop(); err != nil {
+				log.Println("failed to close down server", err)
+			}
+			cockroachTestServ = nil
+		}
+	}
+	return err
+}
+
+func (a *cockroachTestDB) Adapter() DBAdapter {
+	return cockroachTestDBAdapter{DBAdapter: a.DB.Adapter()}
+}
+
+type cockroachTestDBAdapter struct {
+	DBAdapter
+}
+
+// Do nothing, because cockroach doesn't support lock statements.  They aren't really needed in
+// cockroach's case, but it still returns an error if they are present.
+func (_ cockroachTestDBAdapter) LockStmt(buf *strings.Builder, lock Lock) {
+	switch lock {
+	case LockNone:
+	case LockRead:
+	case LockWrite:
+	default:
+		panic(fmt.Errorf("Unknown lock %v", lock))
+	}
 }
 
 func (_ *postgresqlAdapter) Name() string {
@@ -106,6 +194,7 @@ type postgresTxWrapper struct {
 func (w postgresTxWrapper) Exec(query string, args ...interface{}) (Result, error) {
 	newquery := fixLibPqQuery(query)
 	res, err := w.qec.Exec(newquery, args...)
+
 	return res, err
 }
 

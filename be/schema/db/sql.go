@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"log"
+	"time"
 )
 
 type dbWrapper struct {
@@ -29,9 +31,12 @@ func (w dbWrapper) Close() error {
 func (w dbWrapper) InitSchema(tables []string) error {
 	// also includes initial data
 	for _, table := range tables {
+		sta := time.Now()
 		if _, err := w.db.Exec(table); err != nil {
 			return err
 		}
+		fin := time.Now()
+		log.Println(fin.Sub(sta), table)
 	}
 
 	return nil
