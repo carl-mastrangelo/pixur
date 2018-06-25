@@ -25,7 +25,7 @@ import (
 	tab "pixur.org/pixur/be/schema/tables"
 )
 
-var sqlAdapterName = "sqlite3"
+var sqlAdapterName = "postgres"
 
 type TestContainer struct {
 	T       testing.TB
@@ -36,6 +36,11 @@ type TestContainer struct {
 func Container(t testing.TB) *TestContainer {
 	return &TestContainer{
 		T: t,
+	}
+}
+func init() {
+	for _, t := range tab.SqlTables["postgres"] {
+		fmt.Println(t)
 	}
 }
 
