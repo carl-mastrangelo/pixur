@@ -10,11 +10,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var _ DBAdapter = &postgresqlAdapter{}
+var _ DBAdapter = &postgresAdapter{}
 
-type postgresqlAdapter struct{}
+type postgresAdapter struct{}
 
-func (a *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
+func (a *postgresAdapter) Open(dataSourceName string) (DB, error) {
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
 		return nil, err
@@ -34,46 +34,46 @@ func (a *postgresqlAdapter) Open(dataSourceName string) (DB, error) {
 	}, nil
 }
 
-func (a *postgresqlAdapter) OpenForTest() (DB, error) {
+func (a *postgresAdapter) OpenForTest() (DB, error) {
 	panic("no implemented")
 }
 
-func (_ *postgresqlAdapter) Name() string {
+func (_ *postgresAdapter) Name() string {
 	return "postgres"
 }
 
-func (_ *postgresqlAdapter) SingleTx() bool {
+func (_ *postgresAdapter) SingleTx() bool {
 	return false
 }
 
-func (_ *postgresqlAdapter) Quote(ident string) string {
+func (_ *postgresAdapter) Quote(ident string) string {
 	if strings.ContainsAny(ident, "\"\x00") {
 		panic(fmt.Sprintf("Invalid identifier %#v", ident))
 	}
 	return `"` + ident + `"`
 }
 
-func (a *postgresqlAdapter) BlobIdxQuote(ident string) string {
+func (a *postgresAdapter) BlobIdxQuote(ident string) string {
 	return a.Quote(ident)
 }
 
-func (_ *postgresqlAdapter) BoolType() string {
+func (_ *postgresAdapter) BoolType() string {
 	return "bool"
 }
 
-func (_ *postgresqlAdapter) IntType() string {
+func (_ *postgresAdapter) IntType() string {
 	return "integer"
 }
 
-func (_ *postgresqlAdapter) BigIntType() string {
+func (_ *postgresAdapter) BigIntType() string {
 	return "bigint"
 }
 
-func (_ *postgresqlAdapter) BlobType() string {
+func (_ *postgresAdapter) BlobType() string {
 	return "bytea"
 }
 
-func (_ *postgresqlAdapter) LockStmt(buf *strings.Builder, lock Lock) {
+func (_ *postgresAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	switch lock {
 	case LockNone:
 	case LockRead:
@@ -98,5 +98,5 @@ func fixLibPqQuery(query string) string {
 }
 
 func init() {
-	RegisterAdapter(new(postgresqlAdapter))
+	RegisterAdapter(new(postgresAdapter))
 }
