@@ -87,7 +87,7 @@ type DBAdapter interface {
 
 type Lock int
 
-var (
+const (
 	LockNone  Lock = -1
 	LockRead  Lock = 0
 	LockWrite Lock = 1
