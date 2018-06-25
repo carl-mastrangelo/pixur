@@ -22,6 +22,117 @@ var (
 
 var SqlTables = map[string][]string{
 
+	"cockroach": {
+
+		"CREATE TABLE \"Pics\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"index_order\" bigint NOT NULL, " +
+
+			"\"score_order\" integer NOT NULL, " +
+
+			"\"sched_order\" integer NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
+
+		"CREATE TABLE \"Tags\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"name\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"name\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicTags\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"tag_id\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"tag_id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicIdents\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"type\" integer NOT NULL, " +
+
+			"\"value\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"pic_id\",\"type\",\"value\")" +
+
+			");",
+
+		"CREATE INDEX \"PicIdentsIdent\" ON \"PicIdents\" (\"type\",\"value\");",
+
+		"CREATE TABLE \"PicComments\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"comment_id\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"comment_id\"), " +
+
+			"PRIMARY KEY(\"pic_id\",\"comment_id\")" +
+
+			");",
+
+		"CREATE TABLE \"PicVotes\" (" +
+
+			"\"pic_id\" bigint NOT NULL, " +
+
+			"\"user_id\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"user_id\",\"pic_id\"), " +
+
+			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
+
+			");",
+
+		"CREATE TABLE \"Users\" (" +
+
+			"\"id\" bigint NOT NULL, " +
+
+			"\"ident\" bytea NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"UNIQUE(\"ident\"), " +
+
+			"PRIMARY KEY(\"id\")" +
+
+			");",
+
+		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
+	},
+
 	"mysql": {
 
 		"CREATE TABLE `Pics` (" +
@@ -357,6 +468,10 @@ var SqlTables = map[string][]string{
 }
 
 var SqlInitTables = map[string][]string{
+
+	"cockroach": {
+		"INSERT INTO \"_SequenceTable\" (\"the_sequence\") VALUES (1);",
+	},
 
 	"mysql": {
 		"INSERT INTO `_SequenceTable` (`the_sequence`) VALUES (1);",

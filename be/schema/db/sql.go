@@ -5,9 +5,14 @@ import (
 	"database/sql"
 )
 
+type sqlpreprocessor func(string) string
+
 type dbWrapper struct {
 	adap DBAdapter
 	db   *sql.DB
+	// sqlpreprocessor modifies the sql strings just before they are passed to database/sql
+	// may be nil
+	pp sqlpreprocessor
 }
 
 func (w dbWrapper) Adapter() DBAdapter {
@@ -19,6 +24,7 @@ func (w dbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) 
 	return txWrapper{
 		tx:  tx,
 		ctx: ctx,
+		pp:  w.pp,
 	}, err
 }
 
@@ -40,14 +46,21 @@ func (w dbWrapper) InitSchema(tables []string) error {
 type txWrapper struct {
 	ctx context.Context
 	tx  *sql.Tx
+	pp  sqlpreprocessor
 }
 
 func (w txWrapper) Exec(query string, args ...interface{}) (Result, error) {
+	if w.pp != nil {
+		query = w.pp(query)
+	}
 	res, err := w.tx.ExecContext(w.ctx, query, args...)
 	return Result(res), err
 }
 
 func (w txWrapper) Query(query string, args ...interface{}) (Rows, error) {
+	if w.pp != nil {
+		query = w.pp(query)
+	}
 	rows, err := w.tx.QueryContext(w.ctx, query, args...)
 	return Rows(rows), err
 }
