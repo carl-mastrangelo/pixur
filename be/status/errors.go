@@ -1,20 +1,20 @@
 package status // import "pixur.org/pixur/be/status"
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 )
 
 type S interface {
 	error
+	fmt.Stringer
 	Code() codes.Code
 	Message() string
 	Cause() error
 	Stack() []uintptr
-	String() string
 	dontImplementMe()
 }
 
@@ -24,7 +24,9 @@ func From(err error) S {
 	}
 	return &status{
 		code:  codes.Unknown,
+		msg:   err.Error(),
 		cause: err,
+		stack: getStack(),
 	}
 }
 
@@ -58,7 +60,7 @@ func (s *status) Error() string {
 }
 
 func (s *status) String() string {
-	var b bytes.Buffer
+	var b strings.Builder
 	s.stringer(&b)
 	return b.String()
 }
@@ -66,18 +68,16 @@ func (s *status) String() string {
 func (s *status) dontImplementMe() {
 }
 
-func (s *status) stringer(buf *bytes.Buffer) {
+func (s *status) stringer(buf *strings.Builder) {
 	buf.WriteString(s.Error())
 	if len(s.stack) != 0 {
-		buf.WriteRune('\n')
 		frames := runtime.CallersFrames(s.stack)
 		for {
 			f, more := frames.Next()
-			fmt.Fprintf(buf, "\t%s (%s:%d)", f.Function, f.File, f.Line)
+			fmt.Fprintf(buf, "\n\t%s (%s:%d)", f.Function, f.File, f.Line)
 			if !more {
 				break
 			}
-			buf.WriteRune('\n')
 		}
 	}
 	if s.cause == nil {
@@ -99,7 +99,7 @@ func getStack() []uintptr {
 func InvalidArgument(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.InvalidArgument,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -117,7 +117,7 @@ func InvalidArgumentf(e error, format string, v ...interface{}) S {
 func InternalError(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Internal,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -135,7 +135,7 @@ func InternalErrorf(e error, format string, v ...interface{}) S {
 func NotFound(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.NotFound,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -153,7 +153,7 @@ func NotFoundf(e error, format string, v ...interface{}) S {
 func AlreadyExists(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.AlreadyExists,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -171,7 +171,7 @@ func AlreadyExistsf(e error, format string, v ...interface{}) S {
 func Unauthenticated(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Unauthenticated,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -189,7 +189,7 @@ func Unauthenticatedf(e error, format string, v ...interface{}) S {
 func PermissionDenied(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.PermissionDenied,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -207,7 +207,7 @@ func PermissionDeniedf(e error, format string, v ...interface{}) S {
 func Aborted(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Aborted,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -225,7 +225,7 @@ func Abortedf(e error, format string, v ...interface{}) S {
 func Unimplemented(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Unimplemented,
-		msg:   fmt.Sprint(v...),
+		msg:   fmt.Sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
