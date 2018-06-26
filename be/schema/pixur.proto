@@ -77,14 +77,20 @@ message Pic {
   repeated FileSource source = 15;
 
   repeated string file_name = 16;
-  
+
   // The denormalized sum of upvotes for this pic
   int64 vote_up = 17;
   // The denormalized sum of downvotes for this pic
   int64 vote_down = 18;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 19;
+  // Extra information that may not fit into the schema. Information placed here may be
+  // automatically exposed on the API surface
+  repeated google.protobuf.Any public_ext = 20;
+
+  // Optional, indicates what user uploaded the picture
+  int64 user_id = 21;
 }
 
 // A picture identifier
@@ -104,7 +110,7 @@ message PicIdent {
 
   // dct0 are the upper 8x8 corner of the 32x32 dct of the image
   repeated float dct0_values = 4 [packed=true];
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 5;
 }
@@ -121,7 +127,7 @@ message Tag {
   int64 usage_count = 3;
   google.protobuf.Timestamp created_ts = 6;
   google.protobuf.Timestamp modified_ts = 7;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 8;
 }
@@ -130,14 +136,17 @@ message PicTag {
   int64 pic_id = 1;
   int64 tag_id = 2;
   string name = 3;
-  
+
   // The user who originally created this tag.  optional.
   int64 user_id = 8;
   google.protobuf.Timestamp created_ts = 6;
   google.protobuf.Timestamp modified_ts = 7;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 9;
+  // Extra information that may not fit into the schema. Information placed here may be
+  // automatically exposed on the API surface
+  repeated google.protobuf.Any public_ext = 10;
 }
 
 message PicComment {
@@ -154,9 +163,12 @@ message PicComment {
 
   google.protobuf.Timestamp created_ts = 5;
   google.protobuf.Timestamp modified_ts = 6;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 8;
+  // Extra information that may not fit into the schema. Information placed here may be
+  // automatically exposed on the API surface
+  repeated google.protobuf.Any public_ext = 9;
 }
 
 message PicVote {
@@ -169,14 +181,17 @@ message PicVote {
     DOWN = 2;
     NEUTRAL = 3;
   }
-  
+
   Vote vote = 3;
 
   google.protobuf.Timestamp created_ts = 4;
   google.protobuf.Timestamp modified_ts = 5;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 6;
+  // Extra information that may not fit into the schema. Information placed here may be
+  // automatically exposed on the API surface
+  repeated google.protobuf.Any public_ext = 7;
 }
 
 message User {
@@ -216,7 +231,7 @@ message User {
     PIC_VOTE_CREATE = 11;
     // Can this user create other users?
     USER_CREATE = 4;
-    // Can this user modify capabilities? 
+    // Can this user modify capabilities?
     USER_UPDATE_CAPABILITY = 12;
     // Can this user read information about themselves?
     USER_READ_SELF = 13;
@@ -225,17 +240,20 @@ message User {
   }
 
   repeated Capability capability = 7;
-  
+
   // Always increment-then-get
   int64 next_token_id = 8;
   repeated UserToken user_token = 9;
-  
+
   // Extra information that may not fit into the schema
   repeated google.protobuf.Any ext = 10;
+  // Extra information that may not fit into the schema. Information placed here may be
+  // automatically exposed on the API surface
+  repeated google.protobuf.Any public_ext = 11;
 }
 
-// Represent the valid auth tokens.  When a user logs out, these will be 
-// deleted.  
+// Represent the valid auth tokens.  When a user logs out, these will be
+// deleted.
 message UserToken {
 	int64 token_id = 1;
 	google.protobuf.Timestamp created_ts = 2;
