@@ -51,7 +51,7 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 		return nil
 	}
 
-	pendingTime := schema.FromTs(p.DeletionStatus.PendingDeletedTs)
+	pendingTime := schema.ToTime(p.DeletionStatus.PendingDeletedTs)
 	// It is pending deletion, just not yet.
 	if !now.After(pendingTime) {
 		return nil
