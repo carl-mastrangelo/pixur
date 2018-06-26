@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 
@@ -52,6 +53,9 @@ func TestAddPicComment(t *testing.T) {
 		capCtx = ctx
 		taskCap = task.(*tasks.AddPicCommentTask)
 		taskCap.PicComment = &schema.PicComment{}
+		now := time.Now()
+		taskCap.PicComment.SetCreatedTime(now)
+		taskCap.PicComment.SetModifiedTime(now)
 		return nil
 	}
 	s := &serv{

@@ -99,7 +99,7 @@ func getStack() []uintptr {
 func InvalidArgument(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.InvalidArgument,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -117,7 +117,7 @@ func InvalidArgumentf(e error, format string, v ...interface{}) S {
 func InternalError(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Internal,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -135,7 +135,7 @@ func InternalErrorf(e error, format string, v ...interface{}) S {
 func NotFound(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.NotFound,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -153,7 +153,7 @@ func NotFoundf(e error, format string, v ...interface{}) S {
 func AlreadyExists(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.AlreadyExists,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -171,7 +171,7 @@ func AlreadyExistsf(e error, format string, v ...interface{}) S {
 func Unauthenticated(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Unauthenticated,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -189,7 +189,7 @@ func Unauthenticatedf(e error, format string, v ...interface{}) S {
 func PermissionDenied(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.PermissionDenied,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -207,7 +207,7 @@ func PermissionDeniedf(e error, format string, v ...interface{}) S {
 func Aborted(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Aborted,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -225,7 +225,7 @@ func Abortedf(e error, format string, v ...interface{}) S {
 func Unimplemented(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Unimplemented,
-		msg:   fmt.Sprintln(v...),
+		msg:   sprintln(v...),
 		cause: e,
 		stack: getStack(),
 	}
@@ -238,4 +238,9 @@ func Unimplementedf(e error, format string, v ...interface{}) S {
 		cause: e,
 		stack: getStack(),
 	}
+}
+
+func sprintln(args ...interface{}) string {
+	msg := fmt.Sprintln(args...)
+	return msg[:len(msg)-1]
 }

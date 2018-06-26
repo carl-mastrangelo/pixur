@@ -31,12 +31,15 @@ func TestUpsertPicFailsOnBadMd5(t *testing.T) {
 }
 
 func TestUpsertPic(t *testing.T) {
+	now := time.Now()
 	var taskCap *tasks.UpsertPicTask
 	var ctxCap context.Context
 	successRunner := func(ctx context.Context, task tasks.Task) status.S {
 		ctxCap = ctx
 		taskCap = task.(*tasks.UpsertPicTask)
 		taskCap.CreatedPic = new(schema.Pic)
+		taskCap.CreatedPic.SetCreatedTime(now)
+		taskCap.CreatedPic.SetModifiedTime(now)
 		return nil
 	}
 	s := &serv{

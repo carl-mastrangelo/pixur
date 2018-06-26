@@ -95,7 +95,7 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 		}
 		p.Source = []*schema.Pic_FileSource{{
 			Url:       t.FileURL,
-			CreatedTs: schema.ToTs(t.now),
+			CreatedTs: schema.ToTspb(t.now),
 		}}
 	} else {
 		return status.InvalidArgument(nil, "No file uploaded")

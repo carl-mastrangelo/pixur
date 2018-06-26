@@ -76,8 +76,8 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 
 	p := c.CreatePic()
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		MarkedDeletedTs:  schema.ToTs(then),
-		PendingDeletedTs: schema.ToTs(then),
+		MarkedDeletedTs:  schema.ToTspb(then),
+		PendingDeletedTs: schema.ToTspb(then),
 	}
 	p.Update()
 
@@ -94,11 +94,11 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 
 	p.Refresh()
 
-	if schema.FromTs(p.Pic.DeletionStatus.MarkedDeletedTs) != then {
+	if !schema.ToTime(p.Pic.DeletionStatus.MarkedDeletedTs).Equal(then) {
 		t.Fatal("Marked deleted timestamp not preserved", p, then)
 	}
 
-	if schema.FromTs(p.Pic.DeletionStatus.PendingDeletedTs) != now {
+	if !schema.ToTime(p.Pic.DeletionStatus.PendingDeletedTs).Equal(now) {
 		t.Fatal("Pending deleted timestamp not incremented", p, then)
 	}
 }
@@ -115,8 +115,8 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 
 	p := c.CreatePic()
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		MarkedDeletedTs: schema.ToTs(now),
-		ActualDeletedTs: schema.ToTs(now),
+		MarkedDeletedTs: schema.ToTspb(now),
+		ActualDeletedTs: schema.ToTspb(now),
 	}
 	p.Update()
 

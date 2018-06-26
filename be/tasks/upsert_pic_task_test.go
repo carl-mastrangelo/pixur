@@ -166,7 +166,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 		Temporary:       false,
 	}
 	p.Update()
@@ -215,7 +215,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -275,7 +275,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -395,7 +395,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 		Temporary:       false,
 	}
 	p.Update()
@@ -446,7 +446,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	defer f.Close()
 
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 		Temporary:       true,
 	}
 	p.Update()
@@ -579,8 +579,8 @@ func TestMerge(t *testing.T) {
 	}
 
 	p.Refresh()
-	if !now.Equal(schema.FromTs(p.Pic.ModifiedTs)) {
-		t.Fatal("Modified time not updated", now, schema.FromTs(p.Pic.ModifiedTs))
+	if !now.Equal(schema.ToTime(p.Pic.ModifiedTs)) {
+		t.Fatal("Modified time not updated", now, schema.ToTime(p.Pic.ModifiedTs))
 	}
 	ts, pts := p.Tags()
 	if len(ts) != 2 || len(pts) != 2 {
@@ -687,13 +687,13 @@ func TestCreatePicTags(t *testing.T) {
 	}
 
 	expectedPicTag := &schema.PicTag{
-		PicId:      pic.Pic.PicId,
-		TagId:      tag.Tag.TagId,
-		Name:       tag.Tag.Name,
-		UserId:     -1,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		PicId:  pic.Pic.PicId,
+		TagId:  tag.Tag.TagId,
+		Name:   tag.Tag.Name,
+		UserId: -1,
 	}
+	expectedPicTag.SetCreatedTime(now)
+	expectedPicTag.SetModifiedTime(now)
 
 	if len(picTags) != 1 || !proto.Equal(picTags[0], expectedPicTag) {
 		t.Fatal("Pic tags mismatch", picTags, expectedPicTag)
@@ -737,10 +737,10 @@ func TestCreateNewTags(t *testing.T) {
 	expectedTag := &schema.Tag{
 		TagId:      newTags[0].TagId,
 		Name:       "a",
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
 		UsageCount: 1,
 	}
+	expectedTag.SetCreatedTime(now)
+	expectedTag.SetModifiedTime(now)
 	if !proto.Equal(newTags[0], expectedTag) {
 		t.Fatal("tag not expected", newTags[0], expectedTag)
 	}
@@ -1547,6 +1547,7 @@ func TestValidateURL_RemoveFragment(t *testing.T) {
 }
 
 func compareStatus(t *testing.T, actual, expected status.S) {
+	t.Helper()
 	if actual.Code() != expected.Code() {
 		t.Fatal("Code mismatch", actual.Code(), expected.Code())
 	}

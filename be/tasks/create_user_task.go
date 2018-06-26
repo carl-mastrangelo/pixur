@@ -20,7 +20,7 @@ type CreateUserTask struct {
 	// Inputs
 	Ident  string
 	Secret string
-	// Special input that overrides the defaults.   Used for site bootstrapping.
+	// Special input that overrides the defaults.  Used for site bootstrapping.
 	Capability []schema.User_Capability
 
 	// Results
@@ -95,14 +95,14 @@ func (t *CreateUserTask) Run(ctx context.Context) (errCap status.S) {
 
 	now := t.Now()
 	user := &schema.User{
-		UserId:     userID,
-		Secret:     hashed,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		UserId: userID,
+		Secret: hashed,
 		// Don't set last seen.
 		Ident:      t.Ident,
 		Capability: newcap,
 	}
+	user.SetCreatedTime(now)
+	user.SetModifiedTime(now)
 
 	if err := j.InsertUser(user); err != nil {
 		return status.InternalError(err, "can't create user")

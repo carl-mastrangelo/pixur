@@ -138,7 +138,7 @@ func (t *UpdateUserTask) Run(ctx context.Context) (errCap status.S) {
 
 	if changed {
 		now := t.Now()
-		objectUser.ModifiedTs = schema.ToTs(now)
+		objectUser.ModifiedTs = schema.ToTspb(now)
 
 		if err := j.UpdateUser(objectUser); err != nil {
 			return status.InternalError(err, "can't update user")

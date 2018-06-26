@@ -92,9 +92,9 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (errCap status.S) {
 		CommentParentId: t.CommentParentID,
 		Text:            t.Text,
 		UserId:          u.UserId,
-		CreatedTs:       schema.ToTs(now),
-		ModifiedTs:      schema.ToTs(now),
 	}
+	pc.SetCreatedTime(now)
+	pc.SetModifiedTime(now)
 
 	if err := j.InsertPicComment(pc); err != nil {
 		return status.InternalError(err, "can't insert comment")

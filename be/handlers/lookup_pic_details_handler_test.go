@@ -18,6 +18,7 @@ import (
 )
 
 func TestLookupPicWorkFlow(t *testing.T) {
+	now := time.Now()
 	var taskCap *tasks.LookupPicTask
 	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
@@ -25,10 +26,14 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		taskCap.Pic = &schema.Pic{
 			PicId: 1,
 		}
+		taskCap.Pic.SetCreatedTime(now)
+		taskCap.Pic.SetModifiedTime(now)
 		taskCap.PicTags = []*schema.PicTag{{
 			PicId: 1,
 			TagId: 2,
 		}}
+		taskCap.PicTags[0].SetCreatedTime(now)
+		taskCap.PicTags[0].SetModifiedTime(now)
 		taskCap.PicCommentTree = &tasks.PicCommentTree{
 			PicComment: &schema.PicComment{
 				PicId:     0,
@@ -42,7 +47,10 @@ func TestLookupPicWorkFlow(t *testing.T) {
 				},
 			}},
 		}
-
+		taskCap.PicCommentTree.PicComment.SetCreatedTime(now)
+		taskCap.PicCommentTree.PicComment.SetModifiedTime(now)
+		taskCap.PicCommentTree.Children[0].PicComment.SetCreatedTime(now)
+		taskCap.PicCommentTree.Children[0].PicComment.SetModifiedTime(now)
 		return nil
 	}
 	s := &serv{
@@ -88,6 +96,7 @@ func TestLookupPicWorkFlow(t *testing.T) {
 }
 
 func TestLookupPicParsePicId(t *testing.T) {
+	now := time.Now()
 	var taskCap *tasks.LookupPicTask
 	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
@@ -95,6 +104,8 @@ func TestLookupPicParsePicId(t *testing.T) {
 		taskCap.Pic = &schema.Pic{
 			PicId: 1,
 		}
+		taskCap.Pic.SetCreatedTime(now)
+		taskCap.Pic.SetModifiedTime(now)
 		return nil
 	}
 	s := &serv{

@@ -126,11 +126,11 @@ func (c *TestContainer) AutoJob(cb func(j *tab.Job) error) {
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
-		PicId:      c.ID(),
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
-		Mime:       schema.Pic_PNG,
+		PicId: c.ID(),
+		Mime:  schema.Pic_PNG,
 	}
+	p.SetCreatedTime(now)
+	p.SetModifiedTime(now)
 
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPic(p)
@@ -332,11 +332,11 @@ func (c *TestContainer) CreateTag() *TestTag {
 	id := c.ID()
 
 	t := &schema.Tag{
-		TagId:      id,
-		Name:       "tag" + strconv.FormatInt(id, 10),
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		TagId: id,
+		Name:  "tag" + strconv.FormatInt(id, 10),
 	}
+	t.SetCreatedTime(now)
+	t.SetModifiedTime(now)
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertTag(t)
 	})
@@ -375,17 +375,17 @@ func (t *TestTag) Refresh() (exists bool) {
 func (c *TestContainer) CreatePicTag(p *TestPic, t *TestTag) *TestPicTag {
 	now := time.Now()
 	pt := &schema.PicTag{
-		PicId:      p.Pic.PicId,
-		TagId:      t.Tag.TagId,
-		Name:       t.Tag.Name,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		PicId: p.Pic.PicId,
+		TagId: t.Tag.TagId,
+		Name:  t.Tag.Name,
 	}
+	pt.SetCreatedTime(now)
+	pt.SetModifiedTime(now)
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicTag(pt)
 	})
 	t.Tag.UsageCount++
-	t.Tag.ModifiedTs = schema.ToTs(now)
+	t.Tag.SetModifiedTime(now)
 	t.Update()
 	return &TestPicTag{
 		TestPic: p,
@@ -436,9 +436,9 @@ func (c *TestContainer) createPicComment(picID, commentParentID int64) *TestPicC
 		PicId:           picID,
 		CommentParentId: commentParentID,
 		CommentId:       id,
-		CreatedTs:       schema.ToTs(now),
-		ModifiedTs:      schema.ToTs(now),
 	}
+	pc.SetCreatedTime(now)
+	pc.SetModifiedTime(now)
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicComment(pc)
 	})
@@ -489,12 +489,12 @@ func (c *TestContainer) CreateUser() *TestUser {
 	}
 
 	u := &schema.User{
-		UserId:     id,
-		Secret:     hashed,
-		Ident:      fmt.Sprintf("%d@example.com", id),
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		UserId: id,
+		Secret: hashed,
+		Ident:  fmt.Sprintf("%d@example.com", id),
 	}
+	u.SetCreatedTime(now)
+	u.SetModifiedTime(now)
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertUser(u)
 	})
@@ -538,12 +538,12 @@ type TestPicVote struct {
 func (c *TestContainer) CreatePicVote(p *TestPic, u *TestUser) *TestPicVote {
 	now := time.Now()
 	pv := &schema.PicVote{
-		PicId:      p.Pic.PicId,
-		UserId:     u.User.UserId,
-		Vote:       schema.PicVote_NEUTRAL,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		PicId:  p.Pic.PicId,
+		UserId: u.User.UserId,
+		Vote:   schema.PicVote_NEUTRAL,
 	}
+	pv.SetCreatedTime(now)
+	pv.SetModifiedTime(now)
 
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPicVote(pv)

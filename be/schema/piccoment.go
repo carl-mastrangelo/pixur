@@ -12,10 +12,22 @@ func (pc *PicComment) CommentIdCol() int64 {
 	return pc.CommentId
 }
 
+func (pc *PicComment) SetCreatedTime(now time.Time) {
+	pc.CreatedTs = ToTspb(now)
+}
+
+func (pc *PicComment) SetModifiedTime(now time.Time) {
+	pc.ModifiedTs = ToTspb(now)
+}
+
 func (pc *PicComment) GetCreatedTime() time.Time {
-	return FromTs(pc.CreatedTs)
+	return ToTime(pc.CreatedTs)
 }
 
 func (pc *PicComment) GetModifiedTime() time.Time {
-	return FromTs(pc.ModifiedTs)
+	return ToTime(pc.ModifiedTs)
+}
+
+func (pc *PicComment) Version() int64 {
+	return ToTime(pc.ModifiedTs).UnixNano()
 }

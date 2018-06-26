@@ -1,5 +1,9 @@
 package schema
 
+import (
+	"time"
+)
+
 func (u *User) IdCol() int64 {
 	return u.UserId
 }
@@ -8,8 +12,24 @@ func (u *User) IdentCol() string {
 	return u.Ident
 }
 
+func (u *User) SetCreatedTime(now time.Time) {
+	u.CreatedTs = ToTspb(now)
+}
+
+func (u *User) SetModifiedTime(now time.Time) {
+	u.ModifiedTs = ToTspb(now)
+}
+
+func (u *User) GetCreatedTime() time.Time {
+	return ToTime(u.CreatedTs)
+}
+
+func (u *User) GetModifiedTime() time.Time {
+	return ToTime(u.ModifiedTs)
+}
+
 func (u *User) Version() int64 {
-	return FromTs(u.ModifiedTs).UnixNano()
+	return ToTime(u.ModifiedTs).UnixNano()
 }
 
 func UserHasPerm(u *User, uc User_Capability) bool {

@@ -33,13 +33,13 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	then := schema.FromTs(p.Pic.ModifiedTs)
+	then := schema.ToTime(p.Pic.ModifiedTs)
 	p.Refresh()
 
 	if p.Pic.VoteUp != 1 || p.Pic.VoteDown != 0 {
 		t.Error("wrong vote count", p.Pic)
 	}
-	if schema.FromTs(p.Pic.ModifiedTs).Before(then) {
+	if schema.ToTime(p.Pic.ModifiedTs).Before(then) {
 		t.Error("modified time not updated")
 	}
 
@@ -140,7 +140,7 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 
 	p := c.CreatePic()
 
-	nowTs := schema.ToTs(time.Now())
+	nowTs := schema.ToTspb(time.Now())
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
 		MarkedDeletedTs:  nowTs,
 		PendingDeletedTs: nowTs,

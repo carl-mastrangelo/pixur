@@ -72,12 +72,12 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 
 	now := t.Now()
 	pv := &schema.PicVote{
-		PicId:      p.PicId,
-		UserId:     u.UserId,
-		Vote:       t.Vote,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
+		PicId:  p.PicId,
+		UserId: u.UserId,
+		Vote:   t.Vote,
 	}
+	pv.SetCreatedTime(now)
+	pv.SetModifiedTime(now)
 
 	if err := j.InsertPicVote(pv); err != nil {
 		return status.InternalError(err, "can't insert vote")
@@ -92,7 +92,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 		pic_updated = true
 	}
 	if pic_updated {
-		p.ModifiedTs = schema.ToTs(now)
+		p.SetModifiedTime(now)
 		if err := j.UpdatePic(p); err != nil {
 			return status.InternalError(err, "can't update pic")
 		}

@@ -102,7 +102,7 @@ func TestScanQueryFails(t *testing.T) {
 	}
 }
 
-var testAdap DBAdapter = &postgresqlAdapter{}
+var testAdap DBAdapter = &postgresAdapter{}
 
 func TestScanQueryEmpty(t *testing.T) {
 	exec := &execCap{

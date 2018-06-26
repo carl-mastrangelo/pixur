@@ -13,17 +13,21 @@ func (pt *PicTag) TagIdCol() int64 {
 }
 
 func (pt *PicTag) SetCreatedTime(now time.Time) {
-	pt.CreatedTs = ToTs(now)
+	pt.CreatedTs = ToTspb(now)
 }
 
 func (pt *PicTag) SetModifiedTime(now time.Time) {
-	pt.ModifiedTs = ToTs(now)
+	pt.ModifiedTs = ToTspb(now)
 }
 
 func (pt *PicTag) GetCreatedTime() time.Time {
-	return FromTs(pt.CreatedTs)
+	return ToTime(pt.CreatedTs)
 }
 
 func (pt *PicTag) GetModifiedTime() time.Time {
-	return FromTs(pt.ModifiedTs)
+	return ToTime(pt.ModifiedTs)
+}
+
+func (pt *PicTag) Version() int64 {
+	return ToTime(pt.ModifiedTs).UnixNano()
 }

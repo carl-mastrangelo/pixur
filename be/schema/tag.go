@@ -13,17 +13,21 @@ func (t *Tag) NameCol() string {
 }
 
 func (t *Tag) SetCreatedTime(now time.Time) {
-	t.CreatedTs = ToTs(now)
+	t.CreatedTs = ToTspb(now)
 }
 
 func (t *Tag) SetModifiedTime(now time.Time) {
-	t.ModifiedTs = ToTs(now)
+	t.ModifiedTs = ToTspb(now)
 }
 
 func (t *Tag) GetCreatedTime() time.Time {
-	return FromTs(t.CreatedTs)
+	return ToTime(t.CreatedTs)
 }
 
 func (t *Tag) GetModifiedTime() time.Time {
-	return FromTs(t.ModifiedTs)
+	return ToTime(t.ModifiedTs)
+}
+
+func (t *Tag) Version() int64 {
+	return ToTime(t.ModifiedTs).UnixNano()
 }

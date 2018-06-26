@@ -50,11 +50,12 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 	p := pics[0]
 
 	now := time.Now()
+	nowpb := schema.ToTspb(now)
 
 	if p.DeletionStatus == nil {
 		p.DeletionStatus = &schema.Pic_DeletionStatus{
-			MarkedDeletedTs:  schema.ToTs(now),
-			PendingDeletedTs: schema.ToTs(now),
+			MarkedDeletedTs:  nowpb,
+			PendingDeletedTs: nowpb,
 			Reason:           schema.Pic_DeletionStatus_NONE,
 		}
 	}
@@ -63,7 +64,7 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 		return status.InvalidArgument(nil, "pic already hard deleted")
 	}
 
-	p.DeletionStatus.ActualDeletedTs = schema.ToTs(now)
+	p.DeletionStatus.ActualDeletedTs = nowpb
 
 	p.SetModifiedTime(now)
 	if err := j.UpdatePic(p); err != nil {

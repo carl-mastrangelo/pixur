@@ -59,8 +59,9 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_HARD_DELETE)
 	u.Update()
 
-	nowTs := schema.ToTs(time.Now())
-	laterTs := schema.ToTs(time.Now().AddDate(0, 0, 7))
+	now := time.Now()
+	nowTs := schema.ToTspb(now)
+	laterTs := schema.ToTspb(now.AddDate(0, 0, 7))
 
 	p := c.CreatePic()
 	p.Pic.DeletionStatus = &schema.Pic_DeletionStatus{

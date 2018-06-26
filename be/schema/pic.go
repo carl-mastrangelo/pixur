@@ -8,19 +8,23 @@ import (
 )
 
 func (p *Pic) SetCreatedTime(now time.Time) {
-	p.CreatedTs = ToTs(now)
+	p.CreatedTs = ToTspb(now)
 }
 
 func (p *Pic) SetModifiedTime(now time.Time) {
-	p.ModifiedTs = ToTs(now)
+	p.ModifiedTs = ToTspb(now)
 }
 
 func (p *Pic) GetCreatedTime() time.Time {
-	return FromTs(p.CreatedTs)
+	return ToTime(p.CreatedTs)
 }
 
 func (p *Pic) GetModifiedTime() time.Time {
-	return FromTs(p.ModifiedTs)
+	return ToTime(p.ModifiedTs)
+}
+
+func (p *Pic) Version() int64 {
+	return ToTime(p.ModifiedTs).UnixNano()
 }
 
 func (p *Pic) NonHiddenIndexOrder() int64 {

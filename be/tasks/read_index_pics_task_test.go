@@ -127,7 +127,7 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	p3 := c.CreatePic()
 	// A hard deletion
 	p3.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
-		ActualDeletedTs: schema.ToTs(time.Now()),
+		ActualDeletedTs: schema.ToTspb(time.Now()),
 	}
 	p3.Update()
 

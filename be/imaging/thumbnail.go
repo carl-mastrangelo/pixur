@@ -15,7 +15,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes"
+	durpb "github.com/golang/protobuf/ptypes/duration"
 	"github.com/nfnt/resize"
 
 	"pixur.org/pixur/be/imaging/webm"
@@ -69,15 +70,19 @@ func ReadImage(r *io.SectionReader) (*PixurImage, error) {
 		}
 		// Ignore gifs that have only one frame
 		if len(g.Delay) > 1 {
+			dur, err := GetGifDuration(g)
+			if err != nil {
+				return nil, err
+			}
 			pi.AnimationInfo = &schema.AnimationInfo{
-				Duration: GetGifDuration(g),
+				Duration: dur,
 			}
 			// TODO: maybe skip the first second of frames like webm
 		}
 	} else if name == "webm" {
 		wim := im.(*webm.WebmImage)
 		pi.AnimationInfo = &schema.AnimationInfo{
-			Duration: schema.FromDuration(wim.Duration),
+			Duration: ptypes.DurationProto(wim.Duration),
 		}
 		pi.Tags = wim.Tags
 	}
@@ -118,8 +123,12 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 		}
 		// Ignore gifs that have only one frame
 		if len(GIF.Delay) > 1 {
+			dur, err := GetGifDuration(GIF)
+			if err != nil {
+				return nil, err
+			}
 			p.AnimationInfo = &schema.AnimationInfo{
-				Duration: GetGifDuration(GIF),
+				Duration: dur,
 			}
 			// TODO: maybe skip the first second of frames like webm
 		}
@@ -136,15 +145,24 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 // short delay frames (from 0-5 hundredths) and allow the browser js to
 // reinterpret the duration.
 // TODO: add tests for this
-func GetGifDuration(g *gif.GIF) *duration.Duration {
+func GetGifDuration(g *gif.GIF) (*durpb.Duration, error) {
+	const maxFrameHundredths = 1 << 32
 	var dur time.Duration
-	// TODO: check for overflow
 	// each delay unit is 1/100 of a second
 	for _, frameHundredths := range g.Delay {
-		dur += time.Millisecond * time.Duration(10*frameHundredths)
+		fh64 := int64(frameHundredths)
+		if fh64 > maxFrameHundredths || fh64 < 0 {
+			return nil, fmt.Errorf("GIF frame length exceeds max %v", frameHundredths)
+		}
+		// can't overflow
+		framedur := 10 * time.Millisecond * time.Duration(fh64)
+		if dur+framedur < 0 {
+			return nil, fmt.Errorf("GIF length exceeds max %v+%v", dur, framedur)
+		}
+		dur += framedur
 	}
 
-	return schema.FromDuration(dur)
+	return ptypes.DurationProto(dur), nil
 }
 
 type SubImager interface {
@@ -261,7 +279,7 @@ func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, err
 	if dur, success := ConvertFloatDuration(config.Format.Duration); success {
 		if dur >= time.Nanosecond {
 			p.AnimationInfo = &schema.AnimationInfo{
-				Duration: schema.FromDuration(dur),
+				Duration: ptypes.DurationProto(dur),
 			}
 		}
 	} else {

@@ -40,11 +40,11 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	expected := &schema.User{
 		UserId:     2,
 		Secret:     task.CreatedUser.Secret,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
 		Ident:      "email",
 		Capability: schema.UserNewCap,
 	}
+	expected.SetCreatedTime(now)
+	expected.SetModifiedTime(now)
 	if !proto.Equal(expected, task.CreatedUser) {
 		t.Fatal("not equal", expected, task.CreatedUser)
 	}
@@ -74,11 +74,11 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 	expected := &schema.User{
 		UserId:     2,
 		Secret:     task.CreatedUser.Secret,
-		CreatedTs:  schema.ToTs(now),
-		ModifiedTs: schema.ToTs(now),
 		Ident:      "email",
 		Capability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
+	expected.SetCreatedTime(now)
+	expected.SetModifiedTime(now)
 	if !proto.Equal(expected, task.CreatedUser) {
 		t.Fatal("not equal", expected, task.CreatedUser)
 	}

@@ -152,9 +152,9 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			Width:         int64(im.Bounds().Dx()),
 			Height:        int64(im.Bounds().Dy()),
 			AnimationInfo: im.AnimationInfo,
-			CreatedTs:     schema.ToTs(now),
 			// ModifiedTime is set in mergePic
 		}
+		p.SetCreatedTime(now)
 
 		if err := j.InsertPic(p); err != nil {
 			return status.InternalError(err, "Can't insert")
@@ -225,7 +225,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL s
 		}
 		p.Source = append(p.Source, &schema.Pic_FileSource{
 			Url:       u.String(),
-			CreatedTs: schema.ToTs(now),
+			CreatedTs: schema.ToTspb(now),
 		})
 	}
 	if fh.Name != "" {
@@ -361,9 +361,9 @@ func createNewTags(j *tab.Job, tagNames []string, now time.Time) ([]*schema.Tag,
 			TagId:      tagID,
 			Name:       name,
 			UsageCount: 1,
-			ModifiedTs: schema.ToTs(now),
-			CreatedTs:  schema.ToTs(now),
 		}
+		tag.SetCreatedTime(now)
+		tag.SetModifiedTime(now)
 		if err := j.InsertTag(tag); err != nil {
 			return nil, status.InternalError(err, "can't create tag")
 		}
@@ -377,13 +377,13 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, u
 	var picTags []*schema.PicTag
 	for _, tag := range tags {
 		pt := &schema.PicTag{
-			PicId:      picID,
-			TagId:      tag.TagId,
-			Name:       tag.Name,
-			UserId:     userID,
-			ModifiedTs: schema.ToTs(now),
-			CreatedTs:  schema.ToTs(now),
+			PicId:  picID,
+			TagId:  tag.TagId,
+			Name:   tag.Name,
+			UserId: userID,
 		}
+		pt.SetCreatedTime(now)
+		pt.SetModifiedTime(now)
 		if err := j.InsertPicTag(pt); err != nil {
 			return nil, status.InternalError(err, "can't create pic tag")
 		}
@@ -521,7 +521,7 @@ func validateURL(rawurl string) (*url.URL, status.S) {
 	}
 	u, err := url.Parse(rawurl)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't parse ", rawurl)
+		return nil, status.InvalidArgument(err, "Can't parse", rawurl)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, status.InvalidArgument(nil, "Can't use non HTTP")
@@ -550,7 +550,7 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, rawurl str
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't download ", rawurl)
+		return nil, status.InvalidArgument(err, "Can't download", rawurl)
 	}
 	defer resp.Body.Close()
 

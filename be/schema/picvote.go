@@ -12,14 +12,22 @@ func (pv *PicVote) UserIdCol() int64 {
 	return pv.UserId
 }
 
+func (pv *PicVote) SetCreatedTime(now time.Time) {
+	pv.CreatedTs = ToTspb(now)
+}
+
+func (pv *PicVote) SetModifiedTime(now time.Time) {
+	pv.ModifiedTs = ToTspb(now)
+}
+
 func (pv *PicVote) GetCreatedTime() time.Time {
-	return FromTs(pv.CreatedTs)
+	return ToTime(pv.CreatedTs)
 }
 
 func (pv *PicVote) GetModifiedTime() time.Time {
-	return FromTs(pv.ModifiedTs)
+	return ToTime(pv.ModifiedTs)
 }
 
 func (pv *PicVote) Version() int64 {
-	return FromTs(pv.ModifiedTs).UnixNano()
+	return ToTime(pv.ModifiedTs).UnixNano()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 
@@ -32,10 +33,14 @@ func TestFindIndexPicsFailsOnBadPicID(t *testing.T) {
 func TestFindIndexPics(t *testing.T) {
 	var taskCap *tasks.ReadIndexPicsTask
 	var ctxCap context.Context
+	now := time.Now()
 	successRunner := func(ctx context.Context, task tasks.Task) status.S {
 		ctxCap = ctx
 		taskCap = task.(*tasks.ReadIndexPicsTask)
-		taskCap.Pics = append(taskCap.Pics, &schema.Pic{})
+		p := &schema.Pic{}
+		p.SetModifiedTime(now)
+		p.SetCreatedTime(now)
+		taskCap.Pics = append(taskCap.Pics, p)
 		return nil
 	}
 	s := &serv{
