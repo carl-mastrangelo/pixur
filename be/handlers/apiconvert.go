@@ -18,7 +18,7 @@ func apiPic(src *schema.Pic) *api.Pic {
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
 		Height:               int32(src.Height),
-		Version:              src.GetModifiedTime().UnixNano(),
+		Version:              src.Version(),
 		Type:                 src.Mime.String(),
 		RelativeUrl:          src.RelativeURL(),
 		ThumbnailRelativeUrl: src.ThumbnailRelativeURL(),
@@ -44,7 +44,7 @@ func apiPicTag(src *schema.PicTag) *api.PicTag {
 		Name:         src.Name,
 		CreatedTime:  src.CreatedTs,
 		ModifiedTime: src.ModifiedTs,
-		Version:      src.GetModifiedTime().UnixNano(),
+		Version:      src.Version(),
 	}
 }
 
@@ -65,7 +65,7 @@ func apiPicComment(src *schema.PicComment) *api.PicComment {
 		Text:            src.Text,
 		CreatedTime:     src.CreatedTs,
 		ModifiedTime:    src.ModifiedTs,
-		Version:         src.GetModifiedTime().UnixNano(),
+		Version:         src.Version(),
 	}
 }
 
