@@ -153,6 +153,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			Height:        int64(im.Bounds().Dy()),
 			AnimationInfo: im.AnimationInfo,
 			// ModifiedTime is set in mergePic
+			// UserId is set in mergePic
 		}
 		p.SetCreatedTime(now)
 
@@ -231,7 +232,10 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL s
 	if fh.Name != "" {
 		p.FileName = append(p.FileName, fh.Name)
 	}
-
+	// If this user is the first to create the pic, they get credit for uploading it.
+	if p.UserId == schema.AnonymousUserID {
+		p.UserId = userID
+	}
 	if err := j.UpdatePic(p); err != nil {
 		return status.InternalError(err, "can't update pic")
 	}

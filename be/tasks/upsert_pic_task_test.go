@@ -558,6 +558,8 @@ func TestMerge(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
+	p.Pic.UserId = schema.AnonymousUserID
+	p.Update()
 	now := time.Now()
 	fh := FileHeader{}
 	fu := "http://url"
@@ -569,7 +571,9 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, fh, fu, tagNames, -1)
+	userID := int64(-1)
+
+	err = mergePic(j, p.Pic, now, fh, fu, tagNames, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,6 +589,9 @@ func TestMerge(t *testing.T) {
 	ts, pts := p.Tags()
 	if len(ts) != 2 || len(pts) != 2 {
 		t.Fatal("Tags not made", ts, pts)
+	}
+	if p.Pic.UserId != userID {
+		t.Error("UserId mismatch have", p.Pic.UserId, "want", userID)
 	}
 }
 
@@ -639,6 +646,32 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	p.Refresh()
 	if p.Pic.GetDeletionStatus() == nil {
 		t.Fatal("shouldn't have cleared deletion status")
+	}
+}
+
+func TestMergeLeavesExistingUser(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	oldUserID := p.Pic.UserId
+
+	j := c.Job()
+	defer j.Rollback()
+
+	newUserID := int64(-1)
+	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, newUserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := j.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if p.Pic.UserId != oldUserID {
+		t.Error("old user ID overwritten", p.Pic.UserId, "!=", oldUserID)
 	}
 }
 

@@ -124,6 +124,7 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	if sts != nil {
 		return sts
 	}
+	p.UserId = u.UserId
 
 	identities, sts := generatePicIdentities(wf)
 	if sts != nil {

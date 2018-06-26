@@ -65,6 +65,7 @@ func TestWorkflowFileUpload(t *testing.T) {
 		Mime:     schema.Pic_PNG,
 		Width:    int64(img.Bounds().Dx()),
 		Height:   int64(img.Bounds().Dy()),
+		UserId:   u.User.UserId,
 	}
 	actual := *task.CreatedPic
 

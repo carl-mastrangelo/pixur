@@ -132,6 +132,9 @@ func (c *TestContainer) CreatePic() *TestPic {
 	p.SetCreatedTime(now)
 	p.SetModifiedTime(now)
 
+	u := c.CreateUser()
+	p.UserId = u.User.UserId
+
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPic(p)
 	})
