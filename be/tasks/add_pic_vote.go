@@ -25,7 +25,7 @@ type AddPicVoteTask struct {
 
 func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 	if t.Vote != schema.PicVote_UP && t.Vote != schema.PicVote_DOWN && t.Vote != schema.PicVote_NEUTRAL {
-		return status.InvalidArgument(nil, "bad vote dir")
+		return status.InvalidArgument(nil, "bad vote dir", t.Vote)
 	}
 
 	j, err := tab.NewJob(ctx, t.DB)
@@ -44,15 +44,15 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.InternalError(err, "can't lookup pic", t.PicID)
 	}
 	if len(pics) != 1 {
-		return status.NotFound(err, "can't find pic")
+		return status.NotFound(err, "can't find pic", t.PicID)
 	}
 	p := pics[0]
 
 	if p.HardDeleted() {
-		return status.InvalidArgument(nil, "can't vote on deleted pic")
+		return status.InvalidArgument(nil, "can't vote on deleted pic", t.PicID)
 	}
 
 	pvs, err := j.FindPicVotes(db.Opts{
@@ -65,7 +65,6 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (errCap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't find pic votes")
 	}
-
 	if len(pvs) != 0 {
 		return status.AlreadyExists(nil, "can't double vote")
 	}
