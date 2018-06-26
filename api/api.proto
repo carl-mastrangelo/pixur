@@ -8,6 +8,7 @@ option java_string_check_utf8 = true;
 option java_multiple_files = true;
 option optimize_for = CODE_SIZE;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
@@ -461,6 +462,14 @@ message ReadPicFileResponse {
   bool eof = 2;
 }
 
+message LookupPicExtensionRequest {
+  string pic_id = 1;
+}
+
+message LookupPicExtensionResponse {
+  map<string, google.protobuf.Any> ext = 1;
+}
+
 extend google.protobuf.ServiceOptions {
   ServiceOpts pixur_service_opts = 65537;
 }
@@ -489,7 +498,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20180623 // AUTO UPDATED BY generate.go
+    api_version: 20180626 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
@@ -522,6 +531,10 @@ service PixurService {
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
   
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  
+  rpc LookupPicExtension(LookupPicExtensionRequest) returns (LookupPicExtensionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
   
