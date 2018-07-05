@@ -21,8 +21,7 @@ Features:
 
 1.  Get the main Pixur server, and site initializer.
 ```
-go get -u pixur.org/pixur pixur.org/pixur/tools/initsite
-go run $GOPATH/src/pixur.org/pixur/tools/initsite/initsite.go
+go get -u pixur.org/pixur{,/tools/initsite}
 ```
 
 2.  Create initial configuration files.  The `initsite` tool 
@@ -42,8 +41,6 @@ go run $GOPATH/src/pixur.org/pixur/pixur.go
 ## Requirements
 
 * [ffmpeg](https://www.ffmpeg.org/) is needed to handle WEBM content.
-* One of MySQL, SQLite3, or PostgreSQL is needed for data storage
+* One of MySQL, SQLite3, PostgreSQL, or CockroachDB is needed for data storage
  
-
-
 
