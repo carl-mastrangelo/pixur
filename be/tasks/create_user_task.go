@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	any "github.com/golang/protobuf/ptypes/any"
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
@@ -22,6 +23,9 @@ type CreateUserTask struct {
 	Secret string
 	// Special input that overrides the defaults.  Used for site bootstrapping.
 	Capability []schema.User_Capability
+
+	// Ext is additional extra data associated with this user.
+	Ext map[string]*any.Any
 
 	// Results
 	CreatedUser *schema.User
@@ -102,6 +106,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (errCap status.S) {
 		// Don't set last seen.
 		Ident:      t.Ident,
 		Capability: newcap,
+		Ext:        t.Ext,
 	}
 	user.SetCreatedTime(now)
 	user.SetModifiedTime(now)

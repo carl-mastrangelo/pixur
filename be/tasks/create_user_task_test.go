@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	any "github.com/golang/protobuf/ptypes/any"
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
@@ -21,11 +23,18 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	// just pick some valid message
+	userExt, err := ptypes.MarshalAny(u.User)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	task := &CreateUserTask{
 		DB:     c.DB(),
 		Now:    func() time.Time { return now },
 		Ident:  "email",
 		Secret: "secret",
+		Ext:    map[string]*any.Any{"key": userExt},
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -42,6 +51,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Secret:     task.CreatedUser.Secret,
 		Ident:      "email",
 		Capability: schema.UserNewCap,
+		Ext:        map[string]*any.Any{"key": userExt},
 	}
 	expected.SetCreatedTime(now)
 	expected.SetModifiedTime(now)
