@@ -87,7 +87,9 @@ func (t *CreateUserTask) Run(ctx context.Context) (errCap status.S) {
 	}
 
 	var newcap []schema.User_Capability
-	if len(t.Capability) != 0 {
+	// don't use len() == 0, because it may explicitly empty
+	if t.Capability != nil {
+		// TODO: check there are no UNKNOWN capabilities
 		newcap = t.Capability
 	} else {
 		newcap = schema.UserNewCap
