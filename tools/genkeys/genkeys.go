@@ -1,4 +1,4 @@
-package main
+package main // import "pixur.org/pixur/tools/genkeys"
 
 import (
 	"crypto/rand"

@@ -1,4 +1,4 @@
-package main
+package main // import "pixur.org/pixur/tools/analyze_hash"
 
 import (
 	"container/heap"
