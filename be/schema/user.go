@@ -20,12 +20,24 @@ func (u *User) SetModifiedTime(now time.Time) {
 	u.ModifiedTs = ToTspb(now)
 }
 
+func (u *User) SetLastSeenTime(now time.Time) {
+	u.LastSeenTs = ToTspb(now)
+}
+
 func (u *User) GetCreatedTime() time.Time {
 	return ToTime(u.CreatedTs)
 }
 
 func (u *User) GetModifiedTime() time.Time {
 	return ToTime(u.ModifiedTs)
+}
+
+func (u *User) GetLastSeenTime() *time.Time {
+	if u.LastSeenTs == nil {
+		return nil
+	}
+	t := ToTime(u.LastSeenTs)
+	return &t
 }
 
 func (u *User) Version() int64 {
