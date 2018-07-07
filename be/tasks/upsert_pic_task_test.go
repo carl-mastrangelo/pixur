@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	any "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/imaging"
@@ -525,14 +527,14 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 
 	p := task.CreatedPic
 	if p.Mime != schema.Pic_GIF {
-		t.Fatal("Mime not set")
+		t.Error("Mime not set", p.Mime)
 	}
 	if p.Width != 8 || p.Height != 10 {
-		t.Fatal("Dimensions wrong", p)
+		t.Error("Dimensions wrong", p)
 	}
 
 	if !p.GetModifiedTime().Equal(time.Unix(100, 0)) {
-		t.Fatal("Should be updated")
+		t.Error("Should be updated")
 	}
 	if f, err := os.Open(p.Path(c.TempDir())); err != nil {
 		t.Fatal("Pic not uploaded")
@@ -569,6 +571,11 @@ func TestMerge(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 	tagNames := []string{"a", "b"}
+	a, err := ptypes.MarshalAny(pfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := map[string]*any.Any{"foo": a}
 
 	j, err := tab.NewJob(context.Background(), c.DB())
 	if err != nil {
@@ -576,7 +583,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, pfs, tagNames, userID)
+	err = mergePic(j, p.Pic, now, pfs, ext, tagNames, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,6 +603,48 @@ func TestMerge(t *testing.T) {
 	if !proto.Equal(pfs, p.Pic.Source[1]) {
 		t.Error("sources don't match", p.Pic.Source, "want", pfs)
 	}
+	if aa, present := p.Pic.Ext["foo"]; !present || !proto.Equal(aa, a) {
+		t.Error("extension missing", p.Pic)
+	}
+}
+
+func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+	p.Update()
+	now := time.Now()
+	userID := int64(-1)
+	pfs := &schema.Pic_FileSource{
+		Url:       "http://url",
+		UserId:    userID,
+		Name:      "Name",
+		CreatedTs: schema.ToTspb(now),
+	}
+	tagNames := []string{"a", "b"}
+	a, err := ptypes.MarshalAny(pfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := map[string]*any.Any{"foo": a}
+
+	p.Pic.Ext = ext
+	p.Update()
+
+	j, err := tab.NewJob(context.Background(), c.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Rollback()
+
+	sts := mergePic(j, p.Pic, now, pfs, ext, tagNames, userID)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+
+	expected := status.InvalidArgument(nil, "duplicate key")
+	compareStatus(t, sts, expected)
 }
 
 func TestMergeClearsTempDeletionStatus(t *testing.T) {
@@ -611,7 +660,7 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -637,7 +686,7 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -669,7 +718,7 @@ func TestMergeAddsSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +750,7 @@ func TestMergeIgnoresDuplicateSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, userID)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -733,7 +782,7 @@ func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, userID)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -765,7 +814,7 @@ func TestMergeIgnoresEmptySource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -799,7 +848,7 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	p.Pic.Source = nil
 	p.Update()
 
-	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
 	if err != nil {
 		t.Fatal(err)
 	}

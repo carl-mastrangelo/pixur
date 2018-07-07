@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"time"
 
+	any "github.com/golang/protobuf/ptypes/any"
+
 	"pixur.org/pixur/be/imaging"
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -23,6 +25,7 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
+// UpsertPicTask inserts or updates a pic with the provided information.
 type UpsertPicTask struct {
 	// Deps
 	PixPath    string
@@ -39,8 +42,14 @@ type UpsertPicTask struct {
 	File    multipart.File
 	Md5Hash []byte
 
+	// Header is the name (and size) of the file.  Currently only the Name is used.  If the name is
+	// absent, UpsertPicTask will try to derive a name automatically from the FileURL.
 	Header   FileHeader
 	TagNames []string
+
+	// Ext is additional extra data associated with this pic.  If a key is present in both the
+	// new pic and the existing pic, Upsert will fail.
+	Ext map[string]*any.Any
 
 	// TODO: eventually take the Referer[sic].  This is to pass to HTTPClient when retrieving the
 	// pic.
@@ -119,7 +128,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, pfs, t.TagNames, u.UserId)
+				return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId)
 			}
 		}
 	}
@@ -161,7 +170,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, pfs, t.TagNames, u.UserId)
+			return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -200,7 +209,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 
-	if err := mergePic(j, p, now, pfs, t.TagNames, u.UserId); err != nil {
+	if err := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId); err != nil {
 		return err
 	}
 
@@ -227,7 +236,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 }
 
 func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource,
-	tagNames []string, userID int64) status.S {
+	ext map[string]*any.Any, tagNames []string, userID int64) status.S {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
 		if ds.Temporary {
@@ -257,6 +266,15 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 			// Ignore pfs.Name and pfs.Referrer as those aren't sources.
 			p.Source = append(p.Source, pfs)
 		}
+	}
+	if len(ext) != 0 && len(p.Ext) == 0 {
+		p.Ext = make(map[string]*any.Any)
+	}
+	for k, v := range ext {
+		if _, present := p.Ext[k]; present {
+			return status.InvalidArgumentf(nil, "duplicate key %v in extension map", k)
+		}
+		p.Ext[k] = v
 	}
 
 	if err := j.UpdatePic(p); err != nil {
