@@ -142,9 +142,9 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return status.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
-	im, err := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Size))
-	if err != nil {
-		return status.InvalidArgument(err, "Can't decode image")
+	im, sts := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Size))
+	if sts != nil {
+		return sts
 	}
 
 	// Still double check that the sha1 hash is not in use, even if the md5 one was
@@ -196,8 +196,8 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 	defer os.Remove(ft.Name())
 	defer ft.Close()
-	if err := imaging.OutputThumbnail(im, p.Mime, ft); err != nil {
-		return status.InternalError(err, "Can't save thumbnail")
+	if sts := imaging.OutputThumbnail(im, p.Mime, ft); sts != nil {
+		return sts
 	}
 
 	if err := mergePic(j, p, now, pfs, t.TagNames, u.UserId); err != nil {

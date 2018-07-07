@@ -331,7 +331,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "Can't decode image")
+	expected := status.InvalidArgument(nil, "decode image")
 	compareStatus(t, sts, expected)
 }
 

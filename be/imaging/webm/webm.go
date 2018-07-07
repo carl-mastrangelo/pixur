@@ -30,7 +30,7 @@ type WebmImage struct {
 }
 
 func (e *WebmErr) Error() string {
-	return e.Err.Error()
+	return e.Err.Error() + "\n" + e.DebugInfo
 }
 
 // copy of imaging.SubImager, to avoid a dependency loop

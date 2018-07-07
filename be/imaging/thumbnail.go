@@ -2,7 +2,6 @@ package imaging // import "pixur.org/pixur/be/imaging"
 
 import (
 	"encoding/json"
-	"fmt"
 	"image"
 	"image/draw"
 	"image/gif"
@@ -21,6 +20,7 @@ import (
 
 	"pixur.org/pixur/be/imaging/webm"
 	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/status"
 )
 
 var (
@@ -35,6 +35,7 @@ const (
 	maxWebmDuration = 60*2 + 1 // Two minutes, with 1 second of leeway
 )
 
+// TODO: delete this type
 type BadWebmFormatErr struct {
 	error
 }
@@ -47,32 +48,32 @@ type PixurImage struct {
 	Tags map[string]string
 }
 
-func ReadImage(r *io.SectionReader) (*PixurImage, error) {
+func ReadImage(r *io.SectionReader) (*PixurImage, status.S) {
 	im, name, err := image.Decode(r)
 	if err != nil {
-		return nil, err
+		return nil, status.InvalidArgument(err, "unable to decode image")
 	}
 	pi := PixurImage{
 		SubImager: im.(SubImager),
 	}
 	if mime, err := schema.FromImageFormat(name); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "Unknown format name", name)
 	} else {
 		pi.Mime = mime
 	}
 	if name == "gif" {
 		if _, err := r.Seek(0, os.SEEK_SET); err != nil {
-			return nil, err
+			return nil, status.InternalError(err, "unable to seek file")
 		}
 		g, err := gif.DecodeAll(r)
 		if err != nil {
-			return nil, err
+			return nil, status.InvalidArgument(err, "unable to decode gif")
 		}
 		// Ignore gifs that have only one frame
 		if len(g.Delay) > 1 {
-			dur, err := GetGifDuration(g)
+			dur, sts := GetGifDuration(g)
 			if err != nil {
-				return nil, err
+				return nil, sts
 			}
 			pi.AnimationInfo = &schema.AnimationInfo{
 				Duration: dur,
@@ -90,21 +91,22 @@ func ReadImage(r *io.SectionReader) (*PixurImage, error) {
 	return &pi, nil
 }
 
-func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
+func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, status.S) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to seek file")
 	}
 	defer f.Seek(0, os.SEEK_SET)
 
 	im, imgType, err := image.Decode(f)
 	if err == image.ErrFormat {
 		// Try Webm
-		im, err = fillImageConfigFromWebm(f, p)
-		if err != nil {
-			return nil, err
+		im, sts := fillImageConfigFromWebm(f, p)
+		if sts != nil {
+			return nil, sts
 		}
+		return im, nil
 	} else if err != nil {
-		return nil, err
+		return nil, status.InvalidArgument(err, "unable to decode image")
 	} else {
 		// TODO: handle this error
 		p.Mime, _ = schema.FromImageFormat(imgType)
@@ -114,18 +116,18 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 
 	if p.Mime == schema.Pic_GIF {
 		if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-			return nil, err
+			return nil, status.InternalError(err, "unable to seek file")
 		}
 
 		GIF, err := gif.DecodeAll(f)
 		if err != nil {
-			return nil, err
+			return nil, status.InvalidArgument(err, "unable to decode gif")
 		}
 		// Ignore gifs that have only one frame
 		if len(GIF.Delay) > 1 {
-			dur, err := GetGifDuration(GIF)
-			if err != nil {
-				return nil, err
+			dur, sts := GetGifDuration(GIF)
+			if sts != nil {
+				return nil, sts
 			}
 			p.AnimationInfo = &schema.AnimationInfo{
 				Duration: dur,
@@ -145,19 +147,19 @@ func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, error) {
 // short delay frames (from 0-5 hundredths) and allow the browser js to
 // reinterpret the duration.
 // TODO: add tests for this
-func GetGifDuration(g *gif.GIF) (*durpb.Duration, error) {
+func GetGifDuration(g *gif.GIF) (*durpb.Duration, status.S) {
 	const maxFrameHundredths = 1 << 32
 	var dur time.Duration
 	// each delay unit is 1/100 of a second
 	for _, frameHundredths := range g.Delay {
 		fh64 := int64(frameHundredths)
 		if fh64 > maxFrameHundredths || fh64 < 0 {
-			return nil, fmt.Errorf("GIF frame length exceeds max %v", frameHundredths)
+			return nil, status.InvalidArgumentf(nil, "GIF frame length exceeds max %v", frameHundredths)
 		}
 		// can't overflow
 		framedur := 10 * time.Millisecond * time.Duration(fh64)
 		if dur+framedur < 0 {
-			return nil, fmt.Errorf("GIF length exceeds max %v+%v", dur, framedur)
+			return nil, status.InvalidArgumentf(nil, "GIF length exceeds max %v+%v", dur, framedur)
 		}
 		dur += framedur
 	}
@@ -190,29 +192,41 @@ func MakeThumbnail(img image.Image) image.Image {
 		resize.Lanczos2)
 }
 
-func OutputThumbnail(im image.Image, mime schema.Pic_Mime, f *os.File) error {
+func OutputThumbnail(im image.Image, mime schema.Pic_Mime, f *os.File) status.S {
 	thumb := MakeThumbnail(im)
 	switch mime {
 	case schema.Pic_JPEG:
-		return jpeg.Encode(f, thumb, nil)
+		if err := jpeg.Encode(f, thumb, nil); err != nil {
+			return status.InternalError(err, "can't encode jpeg thumbnail")
+		}
 	case schema.Pic_GIF:
-		return png.Encode(f, thumb)
+		if err := png.Encode(f, thumb); err != nil {
+			return status.InternalError(err, "can't encode png thumbnail for gif")
+		}
 	case schema.Pic_PNG:
-		return png.Encode(f, thumb)
+		if err := png.Encode(f, thumb); err != nil {
+			return status.InternalError(err, "can't encode png thumbnail")
+		}
 	case schema.Pic_WEBM:
-		return jpeg.Encode(f, thumb, nil)
+		if err := jpeg.Encode(f, thumb, nil); err != nil {
+			return status.InternalError(err, "can't encode jpg thumbnail for webm")
+		}
 	default:
-		return fmt.Errorf("Unknown mime type %v", mime)
+		return status.InternalErrorf(nil, "Unknown mime type %v", mime)
 	}
+	return nil
 }
 
-func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) error {
+func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) status.S {
 	f, err := os.Create(p.ThumbnailPath(pixPath))
 	if err != nil {
-		return err
+		return status.InternalError(err, "unable to create thumbnail")
 	}
 	defer f.Close()
-	return jpeg.Encode(f, im, nil)
+	if err := jpeg.Encode(f, im, nil); err != nil {
+		return status.InternalError(err, "unable to save jpg thumbnail")
+	}
+	return nil
 }
 
 func findMaxSquare(bounds image.Rectangle) image.Rectangle {
@@ -263,7 +277,7 @@ type FFprobeStream struct {
 	Height    int64  `json:"height"`
 }
 
-func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, error) {
+func fillImageConfigFromWebm(tempFile *os.File, p *schema.Pic) (image.Image, status.S) {
 	config, err := GetWebmConfig(tempFile.Name())
 	if err != nil {
 		return nil, err
@@ -299,7 +313,7 @@ func ConvertFloatDuration(seconds float64) (time.Duration, bool) {
 	return time.Duration(seconds * 1e9), true
 }
 
-func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
+func GetWebmConfig(filepath string) (*FFprobeConfig, status.S) {
 	cmd := exec.Command("ffprobe",
 		"-print_format", "json",
 		"-v", "quiet", // disable version info
@@ -308,27 +322,27 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 		filepath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to get stdout pipe")
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to start ffprobe")
 	}
 	config := new(FFprobeConfig)
 	if err := json.NewDecoder(stdout).Decode(config); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to decode ffprobe json")
 	}
 	if err := cmd.Wait(); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "failed waiting for ffprobe to finish")
 	}
 
 	if config.Format.FormatName != "matroska,webm" {
-		return nil, fmt.Errorf("Only webm supported: %v", config)
+		return nil, status.InvalidArgument(nil, "Only webm supported", config)
 	}
 	if config.Format.StreamCount == 0 {
-		return nil, fmt.Errorf("No Streams found: %v", config)
+		return nil, status.InvalidArgument(nil, "No Streams found", config)
 	}
 	if config.Format.Duration < 0 || config.Format.Duration > maxWebmDuration {
-		return nil, fmt.Errorf("Invalid Duration %v", config)
+		return nil, status.InvalidArgument(nil, "Invalid Duration", config)
 	}
 
 	var videoFound bool
@@ -343,7 +357,7 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 	}
 
 	if !videoFound {
-		return nil, &BadWebmFormatErr{fmt.Errorf("Bad Video %v", config)}
+		return nil, status.InvalidArgument(nil, "Bad Video", config)
 	}
 
 	return config, nil
@@ -366,7 +380,7 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, error) {
 // 1 second will produce *something*, and videos longer than 1 don't need to
 // be completely parsed.
 // TODO: This is pretty slow, find a faster way.
-func getFirstWebmFrame(filepath string) (image.Image, error) {
+func getFirstWebmFrame(filepath string) (image.Image, status.S) {
 	cmd := exec.Command("ffmpeg",
 		"-i", filepath,
 		"-v", "quiet", // disable version info
@@ -379,22 +393,22 @@ func getFirstWebmFrame(filepath string) (image.Image, error) {
 	// PNG data comes across stdout
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to create stdout pipe")
 	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to start ffmpeg")
 	}
 	defer cmd.Process.Kill()
 
-	im, err := keepLastImage(stdout)
-	if err != nil {
-		return nil, err
+	im, sts := keepLastImage(stdout)
+	if sts != nil {
+		return nil, sts
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "unable to wait on ffmpeg")
 	}
 
 	return im, nil
@@ -403,7 +417,7 @@ func getFirstWebmFrame(filepath string) (image.Image, error) {
 // Reads in a concatenated set of images and returns the last one.
 // An error is returned if no images could be read, or the there was a
 // decode error.
-func keepLastImage(r io.Reader) (image.Image, error) {
+func keepLastImage(r io.Reader) (image.Image, status.S) {
 	maxFrames := 120
 	var im image.Image
 	for i := 0; i < maxFrames; i++ {
@@ -413,13 +427,13 @@ func keepLastImage(r io.Reader) (image.Image, error) {
 		if err == io.ErrUnexpectedEOF {
 			break
 		} else if err != nil {
-			return nil, err
+			return nil, status.InvalidArgument(err, "unable to decode png image")
 		}
 		im = lastIm
 	}
 
 	if im == nil {
-		return nil, &BadWebmFormatErr{fmt.Errorf("No frames in webm")}
+		return nil, status.InvalidArgument(nil, "No frames in webm")
 	}
 
 	return im, nil
