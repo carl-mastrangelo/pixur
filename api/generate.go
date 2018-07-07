@@ -1,4 +1,4 @@
-//go:generate /bin/sh -e -c "tail -n +5 ./generate.go | /bin/sh -e"
+//go:generate /bin/sh -e -c "tail -n +7 ./generate.go | /bin/sh -e"
 
 // Package api contains the Protobuf message used to communicate with the backend server.
 package api // import "pixur.org/pixur/api"

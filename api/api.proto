@@ -324,15 +324,31 @@ enum DeletionReason {
   RULE_VIOLATION = 2;
 }
 
+// UpsertPicRequest is a request to upload and possibly merge with another 
+// picture.
 message UpsertPicRequest {
+  // url is an optional field for the Pixur backend to download the pic from.
+  // Either url and/or data must be set.   If the data field is set along 
+  // with the URL, the url is treated as regular metadata and not fetched.  
 	string url = 1;
+	// name is an optional field indicating a reasonable file name for the pic.
+	// If name and url are set, the name field will override the name 
+	// automatically derived from the URL.
 	string name = 2;
+	// data is the file contents of the upload.  It must contain a valid pic
+	// if present.  It may be left absent if there is a valid url instead.  This
+	// field takes precedence over the url field if both are specified.
 	bytes data = 3;
+	// md5_hash is the hash of the pic contents.  It is used to verify the pic
+	// is valid when downloading from url, or when set in data.  If the Pixur
+	// backend already has a pic with a matching md5_hash, it may not use
+	// either data or url (at least one must still be specified, though).
 	bytes md5_hash = 4;
 	repeated string tag = 5;
 }
 
 message UpsertPicResponse {
+  // pic is the newly created or updated picture.  
   Pic pic = 1;
 }
 
@@ -498,7 +514,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20180626 // AUTO UPDATED BY generate.go
+    api_version: 20180707 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
