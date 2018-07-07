@@ -84,10 +84,6 @@ message Pic {
    }
 
   repeated FileSource source = 15;
-
-  // file_name is deprecated, use source instead.
-  repeated string file_name = 16 [deprecated = true];
-
   // The denormalized sum of upvotes for this pic
   int64 vote_up = 17;
   // The denormalized sum of downvotes for this pic
@@ -95,8 +91,7 @@ message Pic {
 
   // Extra information that may not fit into the schema
   map<string, google.protobuf.Any> ext = 19;
-  // user_id is deprecated, use source instead.
-  int64 user_id = 20 [deprecated = true];
+  reserved 16, 20;
 }
 
 // A picture identifier
