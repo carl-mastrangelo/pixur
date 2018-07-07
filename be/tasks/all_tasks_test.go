@@ -133,7 +133,10 @@ func (c *TestContainer) CreatePic() *TestPic {
 	p.SetModifiedTime(now)
 
 	u := c.CreateUser()
-	p.UserId = u.User.UserId
+	p.Source = []*schema.Pic_FileSource{{
+		UserId:    u.User.UserId,
+		CreatedTs: p.CreatedTs,
+	}}
 
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertPic(p)

@@ -81,10 +81,31 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 
-	if t.File == nil && t.FileURL == "" {
+	var furl *url.URL
+	if t.FileURL != "" {
+		fu, sts := validateURL(t.FileURL)
+		if sts != nil {
+			return sts
+		}
+		furl = fu
+	} else if t.File == nil {
 		return status.InvalidArgument(nil, "No pic specified")
 	}
 	now := t.Now()
+	// TODO: test this
+	if len(t.Header.Name) > 1024 {
+		return status.InvalidArgument(nil, "filename is too long")
+	}
+
+	pfs := &schema.Pic_FileSource{
+		CreatedTs: schema.ToTspb(now),
+		UserId:    u.UserId,
+		Name:      t.Header.Name,
+	}
+	if furl != nil {
+		pfs.Url = furl.String()
+	}
+
 	if len(t.Md5Hash) != 0 {
 		p, sts := findExistingPic(j, schema.PicIdent_MD5, t.Md5Hash)
 		if sts != nil {
@@ -98,15 +119,17 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, t.Header, t.FileURL, t.TagNames, u.UserId)
+				return mergePic(j, p, now, pfs, t.TagNames, u.UserId)
 			}
 		}
 	}
 
-	f, fh, sts := t.prepareFile(ctx, t.File, t.Header, t.FileURL)
+	f, fh, sts := t.prepareFile(ctx, t.File, t.Header, furl)
 	if sts != nil {
 		return sts
 	}
+	// after preparing the file, fh, is authoritative.
+	pfs.Name = fh.Name
 	// on success, the name of f will change and it won't be removed.
 	defer os.Remove(f.Name())
 	defer f.Close()
@@ -138,7 +161,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, *fh, t.FileURL, t.TagNames, u.UserId)
+			return mergePic(j, p, now, pfs, t.TagNames, u.UserId)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -153,7 +176,6 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			Height:        int64(im.Bounds().Dy()),
 			AnimationInfo: im.AnimationInfo,
 			// ModifiedTime is set in mergePic
-			// UserId is set in mergePic
 		}
 		p.SetCreatedTime(now)
 
@@ -178,7 +200,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return status.InternalError(err, "Can't save thumbnail")
 	}
 
-	if err := mergePic(j, p, now, *fh, t.FileURL, t.TagNames, u.UserId); err != nil {
+	if err := mergePic(j, p, now, pfs, t.TagNames, u.UserId); err != nil {
 		return err
 	}
 
@@ -204,7 +226,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	return nil
 }
 
-func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL string,
+func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource,
 	tagNames []string, userID int64) status.S {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
@@ -218,24 +240,25 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, fh FileHeader, fileURL s
 		return err
 	}
 
-	if fileURL != "" {
-		// If filedata was provided, still check that the url is valid.  Also strips fragment
-		u, sts := validateURL(fileURL)
-		if sts != nil {
-			return sts
+	// ignore sources from the same user after the first one
+	userFirstSource := true
+	if userID != schema.AnonymousUserID {
+		for _, s := range p.Source {
+			if s.UserId == userID {
+				userFirstSource = false
+				break
+			}
 		}
-		p.Source = append(p.Source, &schema.Pic_FileSource{
-			Url:       u.String(),
-			CreatedTs: schema.ToTspb(now),
-		})
 	}
-	if fh.Name != "" {
-		p.FileName = append(p.FileName, fh.Name)
+	if userFirstSource {
+		// Okay, it's their first time uploading, let's consider adding it.
+		if pfs.Url != "" || len(p.Source) == 0 {
+			// Only accept the source if new information is being added, or there isn't any already.
+			// Ignore pfs.Name and pfs.Referrer as those aren't sources.
+			p.Source = append(p.Source, pfs)
+		}
 	}
-	// If this user is the first to create the pic, they get credit for uploading it.
-	if p.UserId == schema.AnonymousUserID {
-		p.UserId = userID
-	}
+
 	if err := j.UpdatePic(p); err != nil {
 		return status.InternalError(err, "can't update pic")
 	}
@@ -469,7 +492,7 @@ func insertPerceptualHash(j *tab.Job, picID int64, im image.Image) status.S {
 }
 
 // prepareFile prepares the file for image processing.
-func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh FileHeader, u string) (
+func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh FileHeader, u *url.URL) (
 	_ *os.File, _ *FileHeader, stsCap status.S) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
@@ -497,10 +520,13 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 			return nil, nil, status.InternalError(err, "Can't save file")
 		} else {
 			h = &FileHeader{
-				Name: fh.Name,
 				Size: n,
 			}
 		}
+	}
+	// Provided header name takes precedence
+	if fh.Name != "" {
+		h.Name = fh.Name
 	}
 
 	// The file is now local.  Sync it, since external programs might read it.
@@ -538,15 +564,14 @@ func validateURL(rawurl string) (*url.URL, status.S) {
 	return u, nil
 }
 
-func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, rawurl string) (
+func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL) (
 	*FileHeader, status.S) {
-	u, sts := validateURL(rawurl)
-	if sts != nil {
-		return nil, sts
+	if u == nil {
+		return nil, status.InvalidArgument(nil, "Missing URL")
 	}
 
 	// TODO: make sure this isn't reading from ourself
-	req, err := http.NewRequest(http.MethodGet, rawurl, nil)
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
 		// if this fails, it's probably our fault
 		return nil, status.InternalError(err, "Can't create request")
@@ -554,13 +579,13 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, rawurl str
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't download", rawurl)
+		return nil, status.InvalidArgument(err, "Can't download", u)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		// todo: log the response and headers
-		return nil, status.InvalidArgumentf(nil, "Can't download %s [%d]", rawurl, resp.StatusCode)
+		return nil, status.InvalidArgumentf(nil, "Can't download %s [%d]", u, resp.StatusCode)
 	}
 
 	bytesRead, err := io.Copy(f, resp.Body)

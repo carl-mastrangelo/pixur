@@ -60,14 +60,18 @@ func TestWorkflowFileUpload(t *testing.T) {
 		t.Fatal(sts)
 	}
 
+	actual := *task.CreatedPic
+
 	expected := schema.Pic{
 		FileSize: imgDataSize,
 		Mime:     schema.Pic_PNG,
 		Width:    int64(img.Bounds().Dx()),
 		Height:   int64(img.Bounds().Dy()),
-		UserId:   u.User.UserId,
+		Source: []*schema.Pic_FileSource{{
+			UserId:    u.User.UserId,
+			CreatedTs: actual.CreatedTs,
+		}},
 	}
-	actual := *task.CreatedPic
 
 	if _, err := os.Stat(actual.Path(c.TempDir())); err != nil {
 		t.Fatal("Image was not moved:", err)

@@ -85,6 +85,10 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	p.SetCreatedTime(t.now)
 	p.SetModifiedTime(t.now)
 
+	pfs := &schema.Pic_FileSource{
+		CreatedTs: schema.ToTspb(t.now),
+	}
+	p.Source = []*schema.Pic_FileSource{pfs}
 	if t.FileData != nil {
 		if err := t.moveUploadedFile(wf, p); err != nil {
 			return err
@@ -93,16 +97,12 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 		if err := t.downloadFile(wf, p); err != nil {
 			return err
 		}
-		p.Source = []*schema.Pic_FileSource{{
-			Url:       t.FileURL,
-			CreatedTs: schema.ToTspb(t.now),
-		}}
+		pfs.Url = t.FileURL
 	} else {
 		return status.InvalidArgument(nil, "No file uploaded")
 	}
-	if t.Filename != "" {
-		p.FileName = []string{t.Filename}
-	}
+	// TODO: this could be derived from the downloaded file.
+	pfs.Name = t.Filename
 
 	img, err := imaging.FillImageConfig(wf, p)
 	if err != nil {
@@ -124,7 +124,7 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	if sts != nil {
 		return sts
 	}
-	p.UserId = u.UserId
+	pfs.UserId = u.UserId
 
 	identities, sts := generatePicIdentities(wf)
 	if sts != nil {

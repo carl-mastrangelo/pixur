@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -558,11 +559,15 @@ func TestMerge(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
-	p.Pic.UserId = schema.AnonymousUserID
 	p.Update()
 	now := time.Now()
-	fh := FileHeader{}
-	fu := "http://url"
+	userID := int64(-1)
+	pfs := &schema.Pic_FileSource{
+		Url:       "http://url",
+		UserId:    userID,
+		Name:      "Name",
+		CreatedTs: schema.ToTspb(now),
+	}
 	tagNames := []string{"a", "b"}
 
 	j, err := tab.NewJob(context.Background(), c.DB())
@@ -571,9 +576,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	userID := int64(-1)
-
-	err = mergePic(j, p.Pic, now, fh, fu, tagNames, userID)
+	err = mergePic(j, p.Pic, now, pfs, tagNames, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -590,8 +593,8 @@ func TestMerge(t *testing.T) {
 	if len(ts) != 2 || len(pts) != 2 {
 		t.Fatal("Tags not made", ts, pts)
 	}
-	if p.Pic.UserId != userID {
-		t.Error("UserId mismatch have", p.Pic.UserId, "want", userID)
+	if !proto.Equal(pfs, p.Pic.Source[1]) {
+		t.Error("sources don't match", p.Pic.Source, "want", pfs)
 	}
 }
 
@@ -608,7 +611,7 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -634,7 +637,7 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -649,18 +652,24 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	}
 }
 
-func TestMergeLeavesExistingUser(t *testing.T) {
+func TestMergeAddsSource(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
 	p := c.CreatePic()
-	oldUserID := p.Pic.UserId
 
 	j := c.Job()
 	defer j.Rollback()
 
-	newUserID := int64(-1)
-	err := mergePic(j, p.Pic, time.Now(), FileHeader{}, "", nil, newUserID)
+	now := time.Now()
+	u := c.CreateUser()
+	pfs := &schema.Pic_FileSource{
+		Url:       "http://foo/",
+		UserId:    u.User.UserId,
+		CreatedTs: schema.ToTspb(now),
+	}
+
+	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,8 +679,138 @@ func TestMergeLeavesExistingUser(t *testing.T) {
 	}
 
 	p.Refresh()
-	if p.Pic.UserId != oldUserID {
-		t.Error("old user ID overwritten", p.Pic.UserId, "!=", oldUserID)
+	if len(p.Pic.Source) < 2 || !proto.Equal(p.Pic.Source[1], pfs) {
+		t.Error("missing extra source", p.Pic.Source, "!=", pfs)
+	}
+}
+
+func TestMergeIgnoresDuplicateSource(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	j := c.Job()
+	defer j.Rollback()
+
+	now := time.Now()
+	userID := p.Pic.Source[0].UserId
+	pfs := &schema.Pic_FileSource{
+		Url:       "http://foo/bar/unique",
+		UserId:    userID,
+		CreatedTs: schema.ToTspb(now),
+	}
+
+	err := mergePic(j, p.Pic, now, pfs, nil, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := j.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if len(p.Pic.Source) != 1 {
+		t.Error("extra source", p.Pic.Source)
+	}
+}
+
+func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	j := c.Job()
+	defer j.Rollback()
+
+	now := time.Now()
+	userID := schema.AnonymousUserID
+	pfs := &schema.Pic_FileSource{
+		Url:       "http://foo/bar/unique",
+		UserId:    userID,
+		CreatedTs: schema.ToTspb(now),
+	}
+
+	err := mergePic(j, p.Pic, now, pfs, nil, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := j.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if len(p.Pic.Source) != 2 {
+		t.Error("missing extra source", p.Pic.Source)
+	}
+}
+
+func TestMergeIgnoresEmptySource(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	j := c.Job()
+	defer j.Rollback()
+
+	now := time.Now()
+	u := c.CreateUser()
+	pfs := &schema.Pic_FileSource{
+		Url:       "",
+		UserId:    u.User.UserId,
+		CreatedTs: schema.ToTspb(now),
+	}
+
+	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := j.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if len(p.Pic.Source) != 1 {
+		t.Error("extra source", p.Pic.Source)
+	}
+}
+
+func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	j := c.Job()
+	defer j.Rollback()
+
+	now := time.Now()
+	u := c.CreateUser()
+	pfs := &schema.Pic_FileSource{
+		Url:       "",
+		UserId:    u.User.UserId,
+		CreatedTs: schema.ToTspb(now),
+	}
+	p.Pic.Source = nil
+	p.Update()
+
+	err := mergePic(j, p.Pic, now, pfs, nil, u.User.UserId)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := j.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	p.Refresh()
+	if len(p.Pic.Source) != 1 || !proto.Equal(p.Pic.Source[0], pfs) {
+		t.Error("bad source", p.Pic.Source, pfs)
 	}
 }
 
@@ -1006,7 +1145,7 @@ func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 		TempFile: tempFileFn,
 	}
 
-	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, "")
+	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, nil)
 	expected := status.InternalError(nil, "Can't create tempfile")
 	compareStatus(t, sts, expected)
 }
@@ -1026,7 +1165,7 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 
 	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
-	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, "")
+	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, nil)
 	expected := status.InternalError(nil, "Can't save file")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
@@ -1055,7 +1194,7 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	if _, err := srcFile.Seek(0, os.SEEK_SET); err != nil {
 		t.Fatal(err)
 	}
-	dstFile, fh, sts := task.prepareFile(context.Background(), srcFile, FileHeader{Name: "name"}, "url")
+	dstFile, fh, sts := task.prepareFile(context.Background(), srcFile, FileHeader{Name: "name"}, nil)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -1078,6 +1217,12 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	}
 }
 
+type badRoundTripper struct{}
+
+func (rt *badRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, fmt.Errorf("bad!!")
+}
+
 // TODO: maybe add a DownloadFileSucceeds case.
 
 func TestPrepareFile_DownloadFileFails(t *testing.T) {
@@ -1093,9 +1238,14 @@ func TestPrepareFile_DownloadFileFails(t *testing.T) {
 		TempFile: tempFileFn,
 	}
 
+	uu, _ := url.Parse("http://foo/")
+	task.HTTPClient = &http.Client{
+		Transport: new(badRoundTripper),
+	}
+
 	// Bogus url
-	_, _, sts := task.prepareFile(context.Background(), nil, FileHeader{}, "::")
-	expected := status.InvalidArgument(nil, "Can't parse")
+	_, _, sts := task.prepareFile(context.Background(), nil, FileHeader{}, uu)
+	expected := status.InvalidArgument(nil, "Can't download")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
 		if err != nil {
@@ -1338,8 +1488,8 @@ func TestDownloadFile_BadURL(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, sts := task.downloadFile(context.Background(), f, "::")
-	expected := status.InvalidArgument(nil, "Can't parse ::")
+	_, sts := task.downloadFile(context.Background(), f, nil)
+	expected := status.InvalidArgument(nil, "Missing URL")
 	compareStatus(t, sts, expected)
 }
 
@@ -1357,8 +1507,9 @@ func TestDownloadFile_BadAddress(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, sts := task.downloadFile(context.Background(), f, "http://")
-	expected := status.InvalidArgument(nil, "Can't download http://")
+	uu, _ := url.Parse("http://")
+	_, sts := task.downloadFile(context.Background(), f, uu)
+	expected := status.InvalidArgument(nil, "Can't download http:")
 	compareStatus(t, sts, expected)
 }
 
@@ -1383,7 +1534,8 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, sts := task.downloadFile(context.Background(), f, serv.URL)
+	uu, _ := url.Parse(serv.URL)
+	_, sts := task.downloadFile(context.Background(), f, uu)
 	expected := status.InvalidArgumentf(nil,
 		"Can't download %s [%d]", serv.URL, http.StatusBadRequest)
 
@@ -1413,7 +1565,8 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	_, sts := task.downloadFile(context.Background(), f, serv.URL)
+	uu, _ := url.Parse(serv.URL)
+	_, sts := task.downloadFile(context.Background(), f, uu)
 	expected := status.InvalidArgument(nil, "Can't copy downloaded file")
 
 	compareStatus(t, sts, expected)
@@ -1442,7 +1595,8 @@ func TestDownloadFile(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	fh, err := task.downloadFile(context.Background(), f, serv.URL+"/foo/bar.jpg?ignore=true#content")
+	uu, _ := url.Parse(serv.URL + "/foo/bar.jpg?ignore=true#content")
+	fh, err := task.downloadFile(context.Background(), f, uu)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1488,7 +1642,8 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
 	}
-	fh, err := task.downloadFile(context.Background(), f, serv.URL)
+	uu, _ := url.Parse(serv.URL)
+	fh, err := task.downloadFile(context.Background(), f, uu)
 	if err != nil {
 		t.Fatal(err)
 	}
