@@ -59,6 +59,15 @@ func (s *status) Error() string {
 	return fmt.Sprintf("%s: %s", s.code, s.msg)
 }
 
+func (s *status) Format(f fmt.State, r rune) {
+	switch r {
+	case 'v':
+		f.Write([]byte(s.String()))
+	default:
+		f.Write([]byte("%!" + string(r) + "(bad fmt for " + s.Error() + ")"))
+	}
+}
+
 func (s *status) String() string {
 	var b strings.Builder
 	s.stringer(&b)
@@ -92,8 +101,8 @@ func (s *status) stringer(buf *strings.Builder) {
 }
 
 func getStack() []uintptr {
-	pc := make([]uintptr, 32)
-	return pc[:runtime.Callers(2, pc)]
+	pc := make([]uintptr, 64)
+	return pc[:runtime.Callers(3, pc)]
 }
 
 func InvalidArgument(e error, v ...interface{}) S {
