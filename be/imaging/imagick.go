@@ -16,9 +16,18 @@ import (
 )
 
 const (
+	// WEBM magic header
+	ebmlHeader = "\x1a\x45\xdf\xa3"
+)
+
+const (
 	DefaultGifFormat  ImageFormat = "GIF"
 	DefaultJpegFormat ImageFormat = "JPEG"
 	DefaultPngFormat  ImageFormat = "PNG"
+)
+
+const (
+	thumbnailSquareSize = 160
 )
 
 const gifTicksPerSecond = 100
@@ -33,14 +42,17 @@ func init() {
 // ImageFormat is the string format of the image
 type ImageFormat string
 
+// IsGif returns true if the type of this image is a GIF.
 func (f ImageFormat) IsGif() bool {
 	return f == "GIF" || f == "GIF87"
 }
 
+// IsJpeg returns true if the type of this image is a JPEG.
 func (f ImageFormat) IsJpeg() bool {
 	return f == "JPE" || f == "JPEG" || f == "JPG"
 }
 
+// IsPng returns true if the type of this image is a PNG.
 func (f ImageFormat) IsPng() bool {
 	// These are the types imagick says it supports: PNG PNG00 PNG24 PNG32 PNG48 PNG64 PNG8.  I am
 	// only including the ones I know.
@@ -49,12 +61,12 @@ func (f ImageFormat) IsPng() bool {
 
 type PixurImage2 interface {
 	Format() ImageFormat
-	Dimensions() (width, height int64, sts status.S)
+	Dimensions() (width, height uint, sts status.S)
 	// In the future, this could also include a histogram
 	Duration() (*time.Duration, status.S)
-	
-	Thumbnail(width, height int64, format ImageFormat) (PixurImage2, status.S)
-	
+
+	Thumbnail() (PixurImage2, status.S)
+
 	Write(io.Writer) status.S
 
 	Close()
@@ -66,29 +78,125 @@ type pixurImage2 struct {
 	mw *imagick.MagickWand
 }
 
-func (pi *pixurImage2) Write(io.Writer) status.S {
-  return nil
+func (pi *pixurImage2) Write(w io.Writer) status.S {
+
+	switch w := w.(type) {
+	case *os.File:
+		if err := pi.mw.WriteImageFile(w); err != nil {
+			return status.InternalError(err, "can't write image file")
+		}
+	default:
+		panic("uh oh")
+	}
+
+	return nil
 }
 
-func (pi *pixurImage2) Thumbnail(width, height int64, format ImageFormat) (PixurImage2, status.S) {
-  newmw := pi.mw.Clone()
-  // TODO: crop, set colorspace, trim profiles, optimize
-  newpi := &pixurImage2{
-    mw: newmw,
-  }
-  return newpi, nil
+func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
+	w, h, sts := pi.Dimensions()
+	if sts != nil {
+		return nil, sts
+	}
+	var neww, newh uint
+	var x, y int
+	if w > h {
+		neww = h
+		newh = h
+		x = int((w - neww) / 2)
+		y = 0
+	} else {
+		neww = w
+		newh = h
+		x = 0
+		y = int((h - newh) / 2)
+	}
+	newmw := pi.mw.Clone()
+	newmw.ResetIterator()
+	destroy := true
+	defer func() {
+		if destroy {
+			newmw.Destroy()
+		}
+	}()
+
+	if err := newmw.CropImage(newh, neww, x, y); err != nil {
+		return nil, status.InternalError(err, "unable to crop thumbnail")
+	}
+
+	side := uint(thumbnailSquareSize)
+	newmw.TransformImageColorspace(imagick.COLORSPACE_LAB)
+	if err := newmw.ResizeImage(side, side, imagick.FILTER_LANCZOS2_SHARP, 1); err != nil {
+		return nil, status.InternalError(err, "unable to resize thumbnail")
+	}
+	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
+
+	for _, p := range newmw.GetImageProfiles("*") {
+		switch p {
+		case "icc":
+			fallthrough // usually big
+		default:
+			newmw.RemoveImageProfile(p)
+		}
+	}
+
+	for _, p := range newmw.GetImageProperties("*") {
+		// I found these by looking through all properties of images I had and seeing which ones
+		// ImageMagick reads (rather than informitively sets)
+		switch p {
+		case "png:bit-depth-written":
+		case "png:IHDR.color-type-orig":
+		case "png:IHDR.bit-depth-orig":
+
+		case "jpeg:colorspace":
+			fallthrough // we only want srgb
+		case "jpeg:sampling-factor":
+			fallthrough // we set this later
+		case "date:modify":
+			fallthrough // don't care
+		case "png:tIME":
+			fallthrough // don't care
+		default:
+			if err := newmw.DeleteImageProperty(p); err != nil {
+				return nil, status.InternalError(err, "unable to delete property ", p)
+			}
+		}
+	}
+
+	format := pi.Format()
+	switch {
+	case format.IsGif():
+	case format.IsPng():
+
+	default:
+		if err := newmw.SetImageFormat(string(DefaultJpegFormat)); err != nil {
+			return nil, status.InternalError(err, "unable to set format")
+		}
+		fallthrough
+	case format.IsJpeg():
+		newmw.SetImageCompressionQuality(90)
+		if err := newmw.SetOption("jpeg:sampling-factor", "1x1,1x1,1x1"); err != nil {
+			return nil, status.InternalError(err, "unable to set sampling factor")
+		}
+	}
+
+	// TODO:trim profiles (keep colorspace?), apply orientation,
+	newpi := &pixurImage2{
+		mw: newmw,
+	}
+	destroy = false
+	return newpi, nil
 }
 
 func (pi *pixurImage2) Format() ImageFormat {
 	return ImageFormat(pi.mw.GetImageFormat())
 }
 
-func (pi *pixurImage2) Dimensions() (int64, int64, status.S) {
+func (pi *pixurImage2) Dimensions() (uint, uint, status.S) {
 	w, h, _, _, err := pi.mw.GetImagePage()
 	if err != nil {
 		return 0, 0, status.InternalError(err, "unable to get image dimensions")
 	}
-	return int64(w), int64(h), nil
+	return w, h, nil
 }
 
 func (pi *pixurImage2) Duration() (*time.Duration, status.S) {
