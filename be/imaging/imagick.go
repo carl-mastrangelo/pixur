@@ -106,12 +106,17 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 		y = 0
 	} else {
 		neww = w
-		newh = h
+		newh = w
 		x = 0
 		y = int((h - newh) / 2)
 	}
 	newmw := pi.mw.Clone()
 	newmw.ResetIterator()
+	// Some PNGs have an `oFFs` section that messes with the crop
+	if err := newmw.SetImagePage(w, h, 0, 0); err != nil {
+		return nil, status.InternalError(err, "unable to repage image")
+	}
+
 	destroy := true
 	defer func() {
 		if destroy {
@@ -119,7 +124,7 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 		}
 	}()
 
-	if err := newmw.CropImage(newh, neww, x, y); err != nil {
+	if err := newmw.CropImage(neww, newh, x, y); err != nil {
 		return nil, status.InternalError(err, "unable to crop thumbnail")
 	}
 
@@ -133,7 +138,7 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 	for _, p := range newmw.GetImageProfiles("*") {
 		switch p {
 		case "icc":
-			fallthrough // usually big
+			fallthrough // usually big, and we always convert to srgb
 		default:
 			newmw.RemoveImageProfile(p)
 		}
@@ -141,7 +146,7 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 
 	for _, p := range newmw.GetImageProperties("*") {
 		// I found these by looking through all properties of images I had and seeing which ones
-		// ImageMagick reads (rather than informitively sets)
+		// ImageMagick reads (rather than informatively sets)
 		switch p {
 		case "png:bit-depth-written":
 		case "png:IHDR.color-type-orig":
@@ -162,10 +167,30 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 		}
 	}
 
+	// None of the images I found had options, but delete them anyways
+	for _, o := range newmw.GetOptions("*") {
+		if err := newmw.DeleteOption(o); err != nil {
+			return nil, status.InternalError(err, "unable to delete option ", o)
+		}
+	}
+
+	for _, a := range newmw.GetImageArtifacts("*") {
+		if err := newmw.DeleteImageArtifact(a); err != nil {
+			return nil, status.InternalError(err, "unable to delete artifact ", a)
+		}
+	}
+
 	format := pi.Format()
 	switch {
 	case format.IsGif():
 	case format.IsPng():
+		if err := newmw.SetOption("png:exclude-chunks", "all"); err != nil {
+			return nil, status.InternalError(err, "unable to exclude png chunks")
+		}
+		// TODO: maybe do this for JPEG?
+		if err := newmw.SetOption("png:bit-depth", "8"); err != nil {
+			return nil, status.InternalError(err, "unable to set png bit depth")
+		}
 
 	default:
 		if err := newmw.SetImageFormat(string(DefaultJpegFormat)); err != nil {
@@ -192,11 +217,13 @@ func (pi *pixurImage2) Format() ImageFormat {
 }
 
 func (pi *pixurImage2) Dimensions() (uint, uint, status.S) {
-	w, h, _, _, err := pi.mw.GetImagePage()
-	if err != nil {
-		return 0, 0, status.InternalError(err, "unable to get image dimensions")
-	}
-	return w, h, nil
+	/*
+		w, h, _, _, err := pi.mw.GetImagePage()
+		if err != nil {
+			return 0, 0, status.InternalError(err, "unable to get image dimensions")
+		}*/
+
+	return pi.mw.GetImageWidth(), pi.mw.GetImageHeight(), nil
 }
 
 func (pi *pixurImage2) Duration() (*time.Duration, status.S) {
