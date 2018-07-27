@@ -61,7 +61,7 @@ func (f ImageFormat) IsPng() bool {
 
 type PixurImage2 interface {
 	Format() ImageFormat
-	Dimensions() (width, height uint, sts status.S)
+	Dimensions() (width, height uint)
 	// In the future, this could also include a histogram
 	Duration() (*time.Duration, status.S)
 
@@ -79,13 +79,18 @@ type pixurImage2 struct {
 }
 
 func (pi *pixurImage2) Write(w io.Writer) status.S {
-
+	// TODO: maybe make this work with GIF?  I don't think there is a case that Pixur wants to write
+	// back out a non-thumbnail.  All thumbnails are single image.
 	switch w := w.(type) {
 	case *os.File:
 		if err := pi.mw.WriteImageFile(w); err != nil {
 			return status.InternalError(err, "can't write image file")
 		}
 	default:
+		pi.mw.ResetIterator()
+		if _, err := w.Write(pi.mw.GetImageBlob()); err != nil {
+			return status.InternalError(err, "can't write image")
+		}
 		panic("uh oh")
 	}
 
@@ -93,10 +98,7 @@ func (pi *pixurImage2) Write(w io.Writer) status.S {
 }
 
 func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
-	w, h, sts := pi.Dimensions()
-	if sts != nil {
-		return nil, sts
-	}
+	w, h := pi.Dimensions()
 	var neww, newh uint
 	var x, y int
 	if w > h {
@@ -129,8 +131,8 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 	}
 
 	side := uint(thumbnailSquareSize)
-	newmw.TransformImageColorspace(imagick.COLORSPACE_LAB)
-	if err := newmw.ResizeImage(side, side, imagick.FILTER_LANCZOS2_SHARP, 1); err != nil {
+	newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
+	if err := newmw.ResizeImage(side, side, imagick.FILTER_CATROM, 1); err != nil {
 		return nil, status.InternalError(err, "unable to resize thumbnail")
 	}
 	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
@@ -216,14 +218,8 @@ func (pi *pixurImage2) Format() ImageFormat {
 	return ImageFormat(pi.mw.GetImageFormat())
 }
 
-func (pi *pixurImage2) Dimensions() (uint, uint, status.S) {
-	/*
-		w, h, _, _, err := pi.mw.GetImagePage()
-		if err != nil {
-			return 0, 0, status.InternalError(err, "unable to get image dimensions")
-		}*/
-
-	return pi.mw.GetImageWidth(), pi.mw.GetImageHeight(), nil
+func (pi *pixurImage2) Dimensions() (w uint, h uint) {
+	return pi.mw.GetImageWidth(), pi.mw.GetImageHeight()
 }
 
 func (pi *pixurImage2) Duration() (*time.Duration, status.S) {
