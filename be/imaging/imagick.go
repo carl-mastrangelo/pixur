@@ -2,6 +2,7 @@ package imaging
 
 import (
 	"bytes"
+	"encoding/binary"
 	"io"
 	"math"
 	"os"
@@ -67,6 +68,8 @@ type PixurImage2 interface {
 
 	Thumbnail() (PixurImage2, status.S)
 
+	PerceptualHash0() ([]byte, []float32, status.S)
+
 	Write(io.Writer) status.S
 
 	Close()
@@ -76,6 +79,43 @@ var _ PixurImage2 = (*pixurImage2)(nil)
 
 type pixurImage2 struct {
 	mw *imagick.MagickWand
+}
+
+func (pi *pixurImage2) PerceptualHash0() ([]byte, []float32, status.S) {
+	newmw := pi.mw.Clone()
+	defer newmw.Destroy()
+	newmw.ResetIterator()
+
+	newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
+	if err := newmw.ResizeImage(dctSize, dctSize, imagick.FILTER_CATROM, 1); err != nil {
+		return nil, nil, status.InternalError(err, "can't resize")
+	}
+	// TODO: maybe do this in LAB?  Just using GRAY 'cuz that's how it was before.
+	newmw.TransformImageColorspace(imagick.COLORSPACE_GRAY)
+
+	it := newmw.NewPixelIterator()
+	defer it.Destroy()
+	var grays [][]float64 = make([][]float64, int(newmw.GetImageHeight()))
+	for y := 0; y < len(grays); y++ {
+		row := it.GetNextIteratorRow()
+		if len(row) != dctSize {
+			panic(len(row))
+		}
+		for _, pix := range row {
+			g := (255 * pix.GetGreen()) - 128 // [-128.0 - 127.0]
+			grays[y] = append(grays[y], g)
+		}
+	}
+	dcts := dct2d(grays)
+	hash, inputs := phash0(dcts)
+	outputs := make([]float32, len(inputs))
+	for i, input := range inputs {
+		outputs[i] = float32(input)
+	}
+	hashBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(hashBytes, hash)
+
+	return hashBytes, outputs, nil
 }
 
 func (pi *pixurImage2) Write(w io.Writer) status.S {
@@ -91,7 +131,6 @@ func (pi *pixurImage2) Write(w io.Writer) status.S {
 		if _, err := w.Write(pi.mw.GetImageBlob()); err != nil {
 			return status.InternalError(err, "can't write image")
 		}
-		panic("uh oh")
 	}
 
 	return nil
@@ -113,18 +152,18 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 		y = int((h - newh) / 2)
 	}
 	newmw := pi.mw.Clone()
-	newmw.ResetIterator()
-	// Some PNGs have an `oFFs` section that messes with the crop
-	if err := newmw.SetImagePage(w, h, 0, 0); err != nil {
-		return nil, status.InternalError(err, "unable to repage image")
-	}
-
 	destroy := true
 	defer func() {
 		if destroy {
 			newmw.Destroy()
 		}
 	}()
+
+	newmw.ResetIterator()
+	// Some PNGs have an `oFFs` section that messes with the crop
+	if err := newmw.SetImagePage(w, h, 0, 0); err != nil {
+		return nil, status.InternalError(err, "unable to repage image")
+	}
 
 	if err := newmw.CropImage(neww, newh, x, y); err != nil {
 		return nil, status.InternalError(err, "unable to crop thumbnail")
