@@ -75,13 +75,13 @@ type PixurImage2 interface {
 	Close()
 }
 
-var _ PixurImage2 = (*pixurImage2)(nil)
+var _ PixurImage2 = (*imagickImage)(nil)
 
-type pixurImage2 struct {
+type imagickImage struct {
 	mw *imagick.MagickWand
 }
 
-func (pi *pixurImage2) PerceptualHash0() ([]byte, []float32, status.S) {
+func (pi *imagickImage) PerceptualHash0() ([]byte, []float32, status.S) {
 	newmw := pi.mw.Clone()
 	defer newmw.Destroy()
 	newmw.ResetIterator()
@@ -118,7 +118,7 @@ func (pi *pixurImage2) PerceptualHash0() ([]byte, []float32, status.S) {
 	return hashBytes, outputs, nil
 }
 
-func (pi *pixurImage2) Write(w io.Writer) status.S {
+func (pi *imagickImage) Write(w io.Writer) status.S {
 	// TODO: maybe make this work with GIF?  I don't think there is a case that Pixur wants to write
 	// back out a non-thumbnail.  All thumbnails are single image.
 	switch w := w.(type) {
@@ -136,7 +136,7 @@ func (pi *pixurImage2) Write(w io.Writer) status.S {
 	return nil
 }
 
-func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
+func (pi *imagickImage) Thumbnail() (PixurImage2, status.S) {
 	w, h := pi.Dimensions()
 	var neww, newh uint
 	var x, y int
@@ -246,22 +246,22 @@ func (pi *pixurImage2) Thumbnail() (PixurImage2, status.S) {
 	}
 
 	// TODO:trim profiles (keep colorspace?), apply orientation,
-	newpi := &pixurImage2{
+	newpi := &imagickImage{
 		mw: newmw,
 	}
 	destroy = false
 	return newpi, nil
 }
 
-func (pi *pixurImage2) Format() ImageFormat {
+func (pi *imagickImage) Format() ImageFormat {
 	return ImageFormat(pi.mw.GetImageFormat())
 }
 
-func (pi *pixurImage2) Dimensions() (w uint, h uint) {
+func (pi *imagickImage) Dimensions() (w uint, h uint) {
 	return pi.mw.GetImageWidth(), pi.mw.GetImageHeight()
 }
 
-func (pi *pixurImage2) Duration() (*time.Duration, status.S) {
+func (pi *imagickImage) Duration() (*time.Duration, status.S) {
 	if !pi.Format().IsGif() {
 		return nil, nil
 	}
@@ -297,7 +297,7 @@ func (pi *pixurImage2) Duration() (*time.Duration, status.S) {
 	return &d, nil
 }
 
-func (pi *pixurImage2) Close() {
+func (pi *imagickImage) Close() {
 	if pi.mw != nil {
 		pi.mw.Destroy()
 		pi.mw = nil
@@ -326,7 +326,7 @@ func ReadImage2(r io.Reader) (PixurImage2, status.S) {
 			return nil, status.InvalidArgument(err, "unable to decode image")
 		}
 	}
-	pi := &pixurImage2{mw: mw}
+	pi := &imagickImage{mw: mw}
 	destroy = false
 	return pi, nil
 }
