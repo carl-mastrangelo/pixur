@@ -86,10 +86,15 @@ func (pi *imagickImage) PerceptualHash0() ([]byte, []float32, status.S) {
 	defer newmw.Destroy()
 	newmw.ResetIterator()
 
-	newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
-	if err := newmw.ResizeImage(dctSize, dctSize, imagick.FILTER_CATROM, 1); err != nil {
+	// Intuitively it seems this transform is needed.  (it's needed for the normal thumbnail tansform
+	// however, some random tests I did show it makes the results worse.  Also this matches the prev
+	// algorithm
+	//newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
+	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
+	if err := newmw.ResizeImage(dctSize, dctSize, imagick.FILTER_LANCZOS2_SHARP, 1); err != nil {
 		return nil, nil, status.InternalError(err, "can't resize")
 	}
+
 	// TODO: maybe do this in LAB?  Just using GRAY 'cuz that's how it was before.
 	newmw.TransformImageColorspace(imagick.COLORSPACE_GRAY)
 
