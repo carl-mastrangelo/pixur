@@ -18,13 +18,8 @@ import (
 	durpb "github.com/golang/protobuf/ptypes/duration"
 	"github.com/nfnt/resize"
 
-	"pixur.org/pixur/be/imaging/webm"
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/status"
-)
-
-var (
-	_ SubImager = &webm.WebmImage{}
 )
 
 // TODO: maybe make this into it's own package
@@ -32,7 +27,7 @@ const (
 	DefaultThumbnailWidth  = 160
 	DefaultThumbnailHeight = 160
 
-	maxWebmDuration = 60*2 + 1 // Two minutes, with 1 second of leeway
+	maxWebmDuration = time.Second * time.Duration(60*2+1) // Two minutes, with 1 second of leeway
 )
 
 // TODO: delete this type
@@ -80,12 +75,6 @@ func ReadImage(r *io.SectionReader) (*PixurImage, status.S) {
 			}
 			// TODO: maybe skip the first second of frames like webm
 		}
-	} else if name == "webm" {
-		wim := im.(*webm.WebmImage)
-		pi.AnimationInfo = &schema.AnimationInfo{
-			Duration: ptypes.DurationProto(wim.Duration),
-		}
-		pi.Tags = wim.Tags
 	}
 
 	return &pi, nil
@@ -341,9 +330,10 @@ func GetWebmConfig(filepath string) (*FFprobeConfig, status.S) {
 	if config.Format.StreamCount == 0 {
 		return nil, status.InvalidArgument(nil, "No Streams found", config)
 	}
-	if config.Format.Duration < 0 || config.Format.Duration > maxWebmDuration {
-		return nil, status.InvalidArgument(nil, "Invalid Duration", config)
-	}
+	// TODO: delete this whoel function, I don't care about it with ffmpeg.go in the picture.
+	//if config.Format.Duration < 0 || config.Format.Duration > maxWebmDuration {
+	//	return nil, status.InvalidArgument(nil, "Invalid Duration", config)
+	//}
 
 	var videoFound bool
 	// Only check for a video stream, since we will just mute it on output.

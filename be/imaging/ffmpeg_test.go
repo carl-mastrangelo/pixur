@@ -1,4 +1,4 @@
-package webm
+package imaging
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ func TestCheckValidWebm_BadFormat(t *testing.T) {
 			FormatName: "mp4",
 		},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -23,7 +23,7 @@ func TestCheckValidWebm_BadStreamCount(t *testing.T) {
 			StreamCount: 0,
 		},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -36,7 +36,7 @@ func TestCheckValidWebm_BadDuration(t *testing.T) {
 			Duration:    "",
 		},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -49,7 +49,7 @@ func TestCheckValidWebm_LongDuration(t *testing.T) {
 			Duration:    "1000.0",
 		},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -66,7 +66,7 @@ func TestCheckValidWebm_BadVideoStream(t *testing.T) {
 			CodecName: "h264",
 		}},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -83,7 +83,7 @@ func TestCheckValidWebm_BadAudioStream(t *testing.T) {
 			CodecName: "mp3",
 		}},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -100,7 +100,7 @@ func TestCheckValidWebm_NoVideoStream(t *testing.T) {
 			CodecName: "vorbis",
 		}},
 	}
-	if err := checkValidWebm(resp); err == nil {
+	if err := checkValidWebm(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -120,7 +120,7 @@ func TestCheckValidWebm_MultipleVideoStream(t *testing.T) {
 			CodecName: "vp9",
 		}},
 	}
-	if err := checkValidWebm(resp); err != nil {
+	if err := checkValidWebm(&resp); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -140,35 +140,39 @@ func TestCheckValidWebm_VideoAndAudio(t *testing.T) {
 			CodecName: "opus",
 		}},
 	}
-	if err := checkValidWebm(resp); err != nil {
+	if err := checkValidWebm(&resp); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestParseDuration(t *testing.T) {
-	if d, err := parseDuration("1.1.1"); err == nil {
+	if d, err := parseFfmpegDuration("1.1.1"); err == nil {
 		t.Fatal("Expected failure, but parsed", d)
 	}
-	if d, err := parseDuration("1"); err == nil {
+	if d, err := parseFfmpegDuration("1"); err == nil {
 		t.Fatal("Expected failure, but parsed", d)
 	}
-	if d, err := parseDuration(".1"); err == nil {
+	if d, err := parseFfmpegDuration(".1"); err == nil {
 		t.Fatal("Expected failure, but parsed", d)
 	}
-	if d, err := parseDuration("1."); err == nil {
+	if d, err := parseFfmpegDuration("1.9e8"); err == nil {
 		t.Fatal("Expected failure, but parsed", d)
 	}
-	if d, err := parseDuration("1.9e8"); err == nil {
+	if d, err := parseFfmpegDuration("A.8"); err == nil {
 		t.Fatal("Expected failure, but parsed", d)
 	}
-	if d, err := parseDuration("A.8"); err == nil {
-		t.Fatal("Expected failure, but parsed", d)
-	}
-	d, err := parseDuration("123.456789")
+	d, err := parseFfmpegDuration("123.456789")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if d != time.Duration(123456789000) {
 		t.Fatal("time mismatch", d, time.Duration(123456789000))
+	}
+	d, err = parseFfmpegDuration("123.123456789999999")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expected := time.Duration(123123456789); d != expected {
+		t.Fatal("time mismatch", d, expected)
 	}
 }

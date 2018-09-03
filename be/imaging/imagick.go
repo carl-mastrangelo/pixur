@@ -17,14 +17,10 @@ import (
 )
 
 const (
-	// WEBM magic header
-	ebmlHeader = "\x1a\x45\xdf\xa3"
-)
-
-const (
 	DefaultGifFormat  ImageFormat = "GIF"
 	DefaultJpegFormat ImageFormat = "JPEG"
 	DefaultPngFormat  ImageFormat = "PNG"
+	DefaultWebmFormat ImageFormat = "WEBM"
 )
 
 const (
