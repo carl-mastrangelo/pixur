@@ -56,13 +56,19 @@ func (f ImageFormat) IsPng() bool {
 	return f == "PNG" || f == "PNG24" || f == "PNG32" || f == "PNG8"
 }
 
-type PixurImage2 interface {
+// IsJpeg returns true if the type of this image is a WEBM.
+func (f ImageFormat) IsWebm() bool {
+	return f == "WEBM"
+}
+
+type PixurImage interface {
 	Format() ImageFormat
 	Dimensions() (width, height uint)
-	// In the future, this could also include a histogram
+	// Duration returns how long the image is animated for, or nil if the image is not animated.
+	// It may return 0s.  In the future, this could also include a histogram
 	Duration() (*time.Duration, status.S)
 
-	Thumbnail() (PixurImage2, status.S)
+	Thumbnail() (PixurImage, status.S)
 
 	PerceptualHash0() ([]byte, []float32, status.S)
 
@@ -71,7 +77,7 @@ type PixurImage2 interface {
 	Close()
 }
 
-var _ PixurImage2 = (*imagickImage)(nil)
+var _ PixurImage = (*imagickImage)(nil)
 
 type imagickImage struct {
 	mw *imagick.MagickWand
@@ -137,7 +143,7 @@ func (pi *imagickImage) Write(w io.Writer) status.S {
 	return nil
 }
 
-func (pi *imagickImage) Thumbnail() (PixurImage2, status.S) {
+func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 	w, h := pi.Dimensions()
 	var neww, newh uint
 	var x, y int
@@ -305,7 +311,7 @@ func (pi *imagickImage) Close() {
 	}
 }
 
-func ReadImage2(r io.Reader) (PixurImage2, status.S) {
+func ReadImage(r io.Reader) (PixurImage, status.S) {
 	mw := imagick.NewMagickWand()
 	destroy := true
 	defer func() {

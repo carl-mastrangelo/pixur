@@ -13,9 +13,9 @@ import (
 	"gopkg.in/gographics/imagick.v1/imagick"
 )
 
-func TestReadImage2_noImage(t *testing.T) {
+func TestReadImage_noImage(t *testing.T) {
 	var b bytes.Buffer
-	pi, sts := ReadImage2(&b)
+	pi, sts := ReadImage(&b)
 	if sts == nil {
 		pi.Close()
 		t.Fatal("expected an error")
@@ -28,7 +28,7 @@ func TestReadImage2_noImage(t *testing.T) {
 	}
 }
 
-func TestReadImage2_partialImage(t *testing.T) {
+func TestReadImage_partialImage(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -51,7 +51,7 @@ func TestReadImage2_partialImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts == nil {
 		pi.Close()
 		t.Fatal("expected an error")
@@ -64,7 +64,7 @@ func TestReadImage2_partialImage(t *testing.T) {
 	}
 }
 
-func TestReadImage2_jpeg(t *testing.T) {
+func TestReadImage_jpeg(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -85,7 +85,7 @@ func TestReadImage2_jpeg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -109,7 +109,7 @@ func TestReadImage2_jpeg(t *testing.T) {
 	}
 }
 
-func TestReadImage2_png(t *testing.T) {
+func TestReadImage_png(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -130,7 +130,7 @@ func TestReadImage2_png(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -182,7 +182,7 @@ func TestThumbnail_png_offset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -221,7 +221,7 @@ func TestWriteThumbnail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -246,7 +246,7 @@ func TestWriteThumbnail(t *testing.T) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		t.Fatal(err)
 	}
-	thumb2, sts := ReadImage2(f)
+	thumb2, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -258,7 +258,7 @@ func TestWriteThumbnail(t *testing.T) {
 	// I have experimentally confirmed there is no offset in the thumbnail.
 }
 
-func TestReadImage2_gif_singleframe(t *testing.T) {
+func TestReadImage_gif_singleframe(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -279,7 +279,7 @@ func TestReadImage2_gif_singleframe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -303,7 +303,7 @@ func TestReadImage2_gif_singleframe(t *testing.T) {
 	}
 }
 
-func TestReadImage2_gif_singleframe_duration(t *testing.T) {
+func TestReadImage_gif_singleframe_duration(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -325,7 +325,7 @@ func TestReadImage2_gif_singleframe_duration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -349,7 +349,7 @@ func TestReadImage2_gif_singleframe_duration(t *testing.T) {
 	}
 }
 
-func TestReadImage2_gif_multiframe(t *testing.T) {
+func TestReadImage_gif_multiframe(t *testing.T) {
 	mw := imagick.NewMagickWand()
 	defer mw.Destroy()
 	pw := imagick.NewPixelWand()
@@ -378,7 +378,7 @@ func TestReadImage2_gif_multiframe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage2(f)
+	pi, sts := ReadImage(f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -410,6 +410,6 @@ func TestReadImage2_gif_multiframe(t *testing.T) {
 // int64 time.Duration, it would need about 1.5 million frames, but the test runs out of memory.
 // Trying to use MP4 or another container which can have longer frames is not proving easy, so I'm
 // going to just leave it alone.
-func TestReadImage2_gif_failsOnExcessDelay(t *testing.T) {
+func TestReadImage_gif_failsOnExcessDelay(t *testing.T) {
 	// Get out of jail free
 }

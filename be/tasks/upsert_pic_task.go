@@ -6,7 +6,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"image"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	any "github.com/golang/protobuf/ptypes/any"
 
 	"pixur.org/pixur/be/imaging"
@@ -137,7 +137,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if sts != nil {
 		return sts
 	}
-	// after preparing the file, fh, is authoritative.
+	// after preparing the f, fh, is authoritative.
 	pfs.Name = fh.Name
 	// on success, the name of f will change and it won't be removed.
 	defer os.Remove(f.Name())
@@ -154,6 +154,29 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	im, sts := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Size))
 	if sts != nil {
 		return sts
+	}
+	defer im.Close()
+	var immime schema.Pic_Mime
+	imf := im.Format()
+	switch {
+	case imf.IsJpeg():
+		immime = schema.Pic_JPEG
+	case imf.IsGif():
+		immime = schema.Pic_GIF
+	case imf.IsPng():
+		immime = schema.Pic_PNG
+	case imf.IsWebm():
+		immime = schema.Pic_WEBM
+	default:
+		return status.InvalidArgument(nil, "Unknown image type", imf)
+	}
+	var imanim *schema.AnimationInfo
+	if dur, sts := im.Duration(); sts != nil {
+		return sts
+	} else if dur != nil {
+		imanim = &schema.AnimationInfo{
+			Duration: ptypes.DurationProto(*dur),
+		}
 	}
 
 	// Still double check that the sha1 hash is not in use, even if the md5 one was
@@ -177,13 +200,15 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		if err != nil {
 			return status.InternalError(err, "can't allocate id")
 		}
+
+		width, height := im.Dimensions()
 		p = &schema.Pic{
 			PicId:         picID,
 			FileSize:      fh.Size,
-			Mime:          im.Mime,
-			Width:         int64(im.Bounds().Dx()),
-			Height:        int64(im.Bounds().Dy()),
-			AnimationInfo: im.AnimationInfo,
+			Mime:          immime,
+			Width:         int64(width),
+			Height:        int64(height),
+			AnimationInfo: imanim,
 			// ModifiedTime is set in mergePic
 		}
 		p.SetCreatedTime(now)
@@ -205,7 +230,12 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 	defer os.Remove(ft.Name())
 	defer ft.Close()
-	if sts := imaging.OutputThumbnail(im, p.Mime, ft); sts != nil {
+
+	thumb, sts := im.Thumbnail()
+	if sts != nil {
+		return sts
+	}
+	if sts := thumb.Write(ft); sts != nil {
 		return sts
 	}
 
@@ -225,6 +255,8 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if err := ft.Close(); err != nil {
 		return status.InternalErrorf(err, "Can't close %v", ft.Name())
 	}
+	// TODO: by luck the format created by imaging and the mime type decided by thumbnail are the
+	// same.  Thumbnails should be made into proper rows with their own mime type.
 	if err := t.Rename(ft.Name(), p.ThumbnailPath(t.PixPath)); err != nil {
 		os.Remove(p.Path(t.PixPath))
 		return status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), p.ThumbnailPath(t.PixPath))
@@ -495,8 +527,11 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []by
 	return nil
 }
 
-func insertPerceptualHash(j *tab.Job, picID int64, im image.Image) status.S {
-	hash, inputs := imaging.PerceptualHash0(im)
+func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status.S {
+	hash, inputs, sts := im.PerceptualHash0()
+	if sts != nil {
+		return sts
+	}
 	dct0Ident := &schema.PicIdent{
 		PicId:      picID,
 		Type:       schema.PicIdent_DCT_0,

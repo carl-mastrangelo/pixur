@@ -35,7 +35,7 @@ type BadWebmFormatErr struct {
 	error
 }
 
-type PixurImage struct {
+type PixurImageOld struct {
 	SubImager
 	Mime          schema.Pic_Mime
 	AnimationInfo *schema.AnimationInfo
@@ -43,12 +43,12 @@ type PixurImage struct {
 	Tags map[string]string
 }
 
-func ReadImage(r *io.SectionReader) (*PixurImage, status.S) {
+func ReadImageOld(r *io.SectionReader) (*PixurImageOld, status.S) {
 	im, name, err := image.Decode(r)
 	if err != nil {
 		return nil, status.InvalidArgument(err, "unable to decode image")
 	}
-	pi := PixurImage{
+	pi := PixurImageOld{
 		SubImager: im.(SubImager),
 	}
 	if mime, err := schema.FromImageFormat(name); err != nil {

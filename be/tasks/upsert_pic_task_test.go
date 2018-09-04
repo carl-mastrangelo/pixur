@@ -1475,7 +1475,19 @@ func TestInsertPerceptualHash(t *testing.T) {
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
-	hash, inputs := imaging.PerceptualHash0(img)
+	var buf bytes.Buffer
+	if err := gif.Encode(&buf, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	im, sts := imaging.ReadImage(bytes.NewReader(buf.Bytes()))
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer im.Close()
+	hash, inputs, sts := im.PerceptualHash0()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	dct0Ident := &schema.PicIdent{
 		PicId:      1234,
 		Type:       schema.PicIdent_DCT_0,
@@ -1483,7 +1495,7 @@ func TestInsertPerceptualHash(t *testing.T) {
 		Dct0Values: inputs,
 	}
 
-	if err := insertPerceptualHash(j, 1234, img); err != nil {
+	if err := insertPerceptualHash(j, 1234, im); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1508,7 +1520,16 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 
 	bounds := image.Rect(0, 0, 5, 10)
 	img := image.NewGray(bounds)
-	sts := insertPerceptualHash(j, 1234, img)
+	var buf bytes.Buffer
+	if err := gif.Encode(&buf, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	im, sts := imaging.ReadImage(bytes.NewReader(buf.Bytes()))
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer im.Close()
+	sts = insertPerceptualHash(j, 1234, im)
 	expected := status.InternalError(nil, "can't create dct0")
 	compareStatus(t, sts, expected)
 

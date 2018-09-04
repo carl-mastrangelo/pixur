@@ -104,12 +104,9 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	// TODO: this could be derived from the downloaded file.
 	pfs.Name = t.Filename
 
-	img, err := imaging.FillImageConfig(wf, p)
-	if err != nil {
-		if err, ok := err.(*imaging.BadWebmFormatErr); ok {
-			return status.InvalidArgument(err, "Bad Web Fmt")
-		}
-		return status.InvalidArgument(err, "Bad Image")
+	img, sts := imaging.FillImageConfig(wf, p)
+	if sts != nil {
+		return sts
 	}
 
 	thumbnail := imaging.MakeThumbnail(img)

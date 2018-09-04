@@ -22,28 +22,11 @@ const (
 	ebmlHeader = "\x1a\x45\xdf\xa3"
 )
 
-/*
-type PixurImage2 interface {
-	Format() ImageFormat
-	Dimensions() (width, height uint)
-	// In the future, this could also include a histogram
-	Duration() (*time.Duration, status.S)
-
-	Thumbnail() (PixurImage2, status.S)
-
-	PerceptualHash0() ([]byte, []float32, status.S)
-
-	Write(io.Writer) status.S
-
-	Close()
-}
-*/
-
-var _ PixurImage2 = (*ffmpegImage)(nil)
+var _ PixurImage = (*ffmpegImage)(nil)
 
 type ffmpegImage struct {
 	videoFrame       image.Image
-	cachedVideoFrame PixurImage2
+	cachedVideoFrame PixurImage
 	probeResponse    *probeResponse
 	duration         time.Duration
 }
@@ -72,14 +55,14 @@ func (im *ffmpegImage) Duration() (*time.Duration, status.S) {
 	return &tim, nil
 }
 
-func (im *ffmpegImage) videoFrameImage() (PixurImage2, status.S) {
+func (im *ffmpegImage) videoFrameImage() (PixurImage, status.S) {
 	if im.cachedVideoFrame == nil {
 		var buf bytes.Buffer
 		enc := png.Encoder{CompressionLevel: png.NoCompression}
 		if err := enc.Encode(&buf, im.videoFrame); err != nil {
 			return nil, status.InternalError(err, "unable to encode video frame")
 		}
-		im2, sts := ReadImage2(bytes.NewReader(buf.Bytes()))
+		im2, sts := ReadImage(bytes.NewReader(buf.Bytes()))
 		if sts != nil {
 			return nil, sts
 		}
@@ -96,7 +79,7 @@ func (im *ffmpegImage) PerceptualHash0() ([]byte, []float32, status.S) {
 	return im2.PerceptualHash0()
 }
 
-func (im *ffmpegImage) Thumbnail() (PixurImage2, status.S) {
+func (im *ffmpegImage) Thumbnail() (PixurImage, status.S) {
 	im2, sts := im.videoFrameImage()
 	if sts != nil {
 		return nil, sts
