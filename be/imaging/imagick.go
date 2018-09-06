@@ -183,6 +183,13 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 	}
 	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
 
+	// Reset the image page geometry back after thumbnailing, or else it can get preserved. This
+	// converts an image identified as
+	// img.gif GIF 160x160 160x663+0+251 8-bit sRGB 256c 6539B 0.000u 0:00.000
+	// to
+	// img.gif GIF 160x160 160x160+0+0 8-bit sRGB 256c 6539B 0.000u 0:00.000
+	newmw.SetImagePage(side, side, 0, 0)
+
 	for _, p := range newmw.GetImageProfiles("*") {
 		switch p {
 		case "icc":
@@ -228,28 +235,30 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 		}
 	}
 
-	format := pi.Format()
-	switch {
-	case format.IsGif():
-	case format.IsPng():
-		if err := newmw.SetOption("png:exclude-chunks", "all"); err != nil {
-			return nil, status.InternalError(err, "unable to exclude png chunks")
-		}
-		// TODO: maybe do this for JPEG?
-		if err := newmw.SetOption("png:bit-depth", "8"); err != nil {
-			return nil, status.InternalError(err, "unable to set png bit depth")
-		}
-
+	switch format := pi.Format(); {
+	case format.IsJpeg():
+		newmw.SetImageCompressionQuality(90)
 	default:
+		pw := imagick.NewPixelWand()
+		defer pw.Destroy()
+		if !pw.SetColor("white") {
+			return nil, status.InternalError(nil, "unable to find background color white")
+		}
+		if err := newmw.SetImageBackgroundColor(pw); err != nil {
+			return nil, status.InternalError(err, "unable to set background color")
+		}
+		if err := newmw.SetImageAlphaChannel(imagick.ALPHA_CHANNEL_REMOVE); err != nil {
+			return nil, status.InternalError(err, "unable to remove alpha channel")
+		}
 		if err := newmw.SetImageFormat(string(DefaultJpegFormat)); err != nil {
 			return nil, status.InternalError(err, "unable to set format")
 		}
-		fallthrough
-	case format.IsJpeg():
-		newmw.SetImageCompressionQuality(90)
-		if err := newmw.SetOption("jpeg:sampling-factor", "1x1,1x1,1x1"); err != nil {
-			return nil, status.InternalError(err, "unable to set sampling factor")
-		}
+		// png, gif, and (webm via png) always get full quality.   This is not so big for thumbnails
+		// and the decode speed of jpeg is fast.
+		newmw.SetImageCompressionQuality(100)
+	}
+	if err := newmw.SetOption("jpeg:sampling-factor", "1x1,1x1,1x1"); err != nil {
+		return nil, status.InternalError(err, "unable to set sampling factor")
 	}
 
 	// TODO:trim profiles (keep colorspace?), apply orientation,
