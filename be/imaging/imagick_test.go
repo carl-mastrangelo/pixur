@@ -357,10 +357,9 @@ func TestReadImage_gif_multiframe(t *testing.T) {
 
 	mw.NewImage(1, 2, pw)
 	mw.SetImageFormat(string(DefaultGifFormat))
+	mw.SetImageDelay(gifTicksPerSecond)
 
 	tmp := mw.GetImage()
-	tmp.SetImageDelay(gifTicksPerSecond)
-	mw.AddImage(tmp)
 	tmp.SetImageDelay(gifTicksPerSecond / 2)
 	mw.AddImage(tmp)
 	tmp.Destroy()
@@ -395,13 +394,67 @@ func TestReadImage_gif_multiframe(t *testing.T) {
 		t.Fatal(sts)
 	}
 	if dur == nil {
-		t.Error("missing duration", dur)
+		t.Fatal("missing duration", dur)
 	}
-	if *dur != 3*time.Second/2 {
-		t.Error("wrong duration", *dur)
+	if have, want := *dur, 3*time.Second/2; have != want {
+		t.Error("wrong duration", have, want)
 	}
 	if x, y := pi.Dimensions(); x != 1 || y != 2 {
 		t.Error("bad dimensions", x, y)
+	}
+}
+
+func TestReadImage_gif_shortFrameLengthRoundsUp(t *testing.T) {
+	mw := imagick.NewMagickWand()
+	defer mw.Destroy()
+	pw := imagick.NewPixelWand()
+	defer pw.Destroy()
+
+	mw.NewImage(1, 2, pw)
+	mw.SetImageFormat(string(DefaultGifFormat))
+	mw.SetImageDelay(0) // should round to 10/100
+
+	tmp := mw.GetImage()
+	tmp.SetImageDelay(1) // also should round to 10/100
+	mw.AddImage(tmp)
+	tmp.Destroy()
+
+	tmp = mw.GetImage()
+	tmp.SetImageDelay(2) // no rounding
+	mw.AddImage(tmp)
+	tmp.Destroy()
+
+	f, err := ioutil.TempFile("", "pixurtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	defer f.Close()
+	if err := mw.WriteImagesFile(f); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+
+	pi, sts := ReadImage(f)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer pi.Close()
+
+	if !pi.Format().IsGif() {
+		t.Error("not a gif")
+	}
+	dur, sts := pi.Duration()
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if dur == nil {
+		t.Fatal("missing duration", dur)
+	}
+	if have, want := *dur, (100+100+20)*time.Millisecond; have != want {
+		t.Error("wrong duration", have, want)
 	}
 }
 

@@ -285,19 +285,27 @@ func (pi *imagickImage) Duration() (*time.Duration, status.S) {
 	pi.mw.ResetIterator()
 	const tickDuration = time.Second / gifTicksPerSecond
 	const delayTicksMax = math.MaxInt64 / int64(tickDuration)
-	for {
+	for pi.mw.NextImage() {
 		delayTicks := int64(pi.mw.GetImageDelay())
 		if delayTicks < 0 || delayTicks > delayTicksMax {
 			return nil, status.InvalidArgument(nil, "delayTicks would overflow", delayTicks)
 		}
+		// Browsers treat low tick count by rounding up tick count as described in
+		// http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser
+		// Prefer the Firefox / Chrome interpretation.
+		var roundedDelayTicks int64
+		switch delayTicks {
+		case 0:
+			roundedDelayTicks = 10
+		case 1:
+			roundedDelayTicks = 10
+		default:
+			roundedDelayTicks = delayTicks
+		}
 		// this should always be positive
-		delayTickDuration := time.Duration(delayTicks) * tickDuration
+		delayTickDuration := time.Duration(roundedDelayTicks) * tickDuration
 		if d += delayTickDuration; d < 0 {
 			return nil, status.InvalidArgument(nil, "duration overflow", d)
-		}
-
-		if !pi.mw.NextImage() {
-			break
 		}
 	}
 
