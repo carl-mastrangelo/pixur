@@ -493,7 +493,7 @@ func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema
 		return nil, status.InternalError(err, "can't find pics")
 	}
 	if len(pics) != 1 {
-		return nil, status.InternalError(err, "can't lookup pic")
+		return nil, status.InternalError(nil, "can't lookup pic")
 	}
 
 	return pics[0], nil
