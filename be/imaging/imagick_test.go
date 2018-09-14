@@ -466,3 +466,73 @@ func TestReadImage_gif_shortFrameLengthRoundsUp(t *testing.T) {
 func TestReadImage_gif_failsOnExcessDelay(t *testing.T) {
 	// Get out of jail free
 }
+
+func TestReadImage_gif_firstFrameSetsSize(t *testing.T) {
+	mw := imagick.NewMagickWand()
+	defer mw.Destroy()
+	pw := imagick.NewPixelWand()
+	defer pw.Destroy()
+	if !pw.SetColor("white") {
+		t.Fatal("can't set color")
+	}
+	pw2 := imagick.NewPixelWand()
+	defer pw2.Destroy()
+	if !pw2.SetColor("black") {
+		t.Fatal("can't set color")
+	}
+
+	mw.NewImage(400, 100, pw)
+	dw := imagick.NewDrawingWand()
+	defer dw.Destroy()
+	dw.SetStrokeOpacity(1)
+	dw.SetStrokeColor(pw2)
+	dw.SetStrokeWidth(4)
+	dw.SetStrokeAntialias(false)
+	dw.SetFillColor(pw2)
+	dw.Rectangle(0, 0, 100, 100)
+	mw.DrawImage(dw)
+
+	mw.SetImageFormat(string(DefaultGifFormat))
+
+	mw2 := imagick.NewMagickWand()
+	defer mw2.Destroy()
+	mw2.NewImage(200, 100, pw2)
+	mw2.SetImageFormat(string(DefaultGifFormat))
+	mw2.SetImagePage(200, 100, 200, 0)
+
+	mw.AddImage(mw2)
+
+	f, err := ioutil.TempFile("", "pixurtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	defer f.Close()
+	if err := mw.WriteImagesFile(f); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+
+	im, sts := ReadImage(f)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer im.Close()
+
+	if !im.Format().IsGif() {
+		t.Error("not a gif")
+	}
+
+	thumb, sts := im.Thumbnail()
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer thumb.Close()
+
+	pixel := thumb.(*imagickImage).mw.NewPixelIterator().GetCurrentIteratorRow()[0].GetGreen()
+	if pixel != 1.0 {
+		t.Error("expected a white pixel, but was not", pixel)
+	}
+}

@@ -126,6 +126,7 @@ func (pi *imagickImage) PerceptualHash0() ([]byte, []float32, status.S) {
 }
 
 func (pi *imagickImage) Write(w io.Writer) status.S {
+	defer pi.mw.ResetIterator()
 	// TODO: maybe make this work with GIF?  I don't think there is a case that Pixur wants to write
 	// back out a non-thumbnail.  All thumbnails are single image.
 	switch w := w.(type) {
@@ -134,7 +135,6 @@ func (pi *imagickImage) Write(w io.Writer) status.S {
 			return status.InternalError(err, "can't write image file")
 		}
 	default:
-		pi.mw.ResetIterator()
 		if _, err := w.Write(pi.mw.GetImageBlob()); err != nil {
 			return status.InternalError(err, "can't write image")
 		}
@@ -144,6 +144,7 @@ func (pi *imagickImage) Write(w io.Writer) status.S {
 }
 
 func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
+	defer pi.mw.ResetIterator()
 	w, h := pi.Dimensions()
 	var neww, newh uint
 	var x, y int
@@ -165,8 +166,8 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 			newmw.Destroy()
 		}
 	}()
+	defer newmw.ResetIterator()
 
-	newmw.ResetIterator()
 	// Some PNGs have an `oFFs` section that messes with the crop
 	if err := newmw.SetImagePage(w, h, 0, 0); err != nil {
 		return nil, status.InternalError(err, "unable to repage image")
@@ -291,7 +292,7 @@ func (pi *imagickImage) Duration() (*time.Duration, status.S) {
 		return nil, status.InvalidArgument(nil, "no images")
 	}
 	var d time.Duration
-	pi.mw.ResetIterator()
+	defer pi.mw.ResetIterator()
 	const tickDuration = time.Second / gifTicksPerSecond
 	const delayTicksMax = math.MaxInt64 / int64(tickDuration)
 	for pi.mw.NextImage() {
@@ -336,6 +337,7 @@ func ReadImage(r io.Reader) (PixurImage, status.S) {
 			mw.Destroy()
 		}
 	}()
+	defer mw.ResetIterator()
 	switch r := r.(type) {
 	case *os.File:
 		if err := mw.ReadImageFile(r); err != nil {
