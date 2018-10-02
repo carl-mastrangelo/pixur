@@ -254,9 +254,9 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 		if err := newmw.SetImageFormat(string(DefaultJpegFormat)); err != nil {
 			return nil, status.InternalError(err, "unable to set format")
 		}
-		// png, gif, and (webm via png) always get full quality.   This is not so big for thumbnails
+		// png, gif, and (webm via png) get high quality.   This is not so big for thumbnails
 		// and the decode speed of jpeg is fast.
-		newmw.SetImageCompressionQuality(100)
+		newmw.SetImageCompressionQuality(95)
 	}
 	if err := newmw.SetOption("jpeg:sampling-factor", "1x1,1x1,1x1"); err != nil {
 		return nil, status.InternalError(err, "unable to set sampling factor")
