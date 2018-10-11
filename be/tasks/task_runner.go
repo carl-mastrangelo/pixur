@@ -2,6 +2,8 @@ package tasks
 
 import (
 	"context"
+	"fmt"
+	"runtime/trace"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -24,6 +26,11 @@ func TestTaskRunner(run func(context.Context, Task) status.S) *TaskRunner {
 }
 
 func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
+	if trace.IsEnabled() {
+		var tracetask *trace.Task
+		ctx, tracetask = trace.NewTask(ctx, fmt.Sprintf("%T", task))
+		defer tracetask.End()
+	}
 	if r != nil && r.run != nil {
 		return r.run(ctx, task)
 	}
