@@ -26,7 +26,7 @@ type Beginner interface {
 type DB interface {
 	Beginner
 	Close() error
-	InitSchema([]string) error
+	InitSchema(context.Context, []string) error
 	Adapter() DBAdapter
 }
 

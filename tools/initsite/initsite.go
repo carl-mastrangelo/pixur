@@ -218,13 +218,14 @@ func run(args []string) error {
 	}
 	defer db.Close()
 
+	ctx := context.Background()
 	fmt.Println("Create initial tables? (default: y)")
 	if y := readbool(r, true); y {
 		var stmts []string
 		stmts = append(stmts, tab.SqlTables[db.Adapter().Name()]...)
 		stmts = append(stmts, tab.SqlInitTables[db.Adapter().Name()]...)
 		fmt.Println("Initializing tables")
-		if err := db.InitSchema(stmts); err != nil {
+		if err := db.InitSchema(ctx, stmts); err != nil {
 			return err
 		}
 		fmt.Println("Successfully initialized tables")
@@ -256,7 +257,7 @@ func run(args []string) error {
 		// on the anonymous user.
 		oldcap := schema.AnonymousUser.Capability
 		schema.AnonymousUser.Capability = []schema.User_Capability{schema.User_USER_CREATE}
-		sts := new(tasks.TaskRunner).Run(context.Background(), task)
+		sts := new(tasks.TaskRunner).Run(ctx, task)
 		schema.AnonymousUser.Capability = oldcap
 		if sts != nil {
 			return sts

@@ -35,13 +35,14 @@ func export() error {
 		return err
 	}
 	defer newdb.Close()
+	ctx := context.Background()
 	if *initDestTables {
-		if err := newdb.InitSchema(tab.SqlTables[*destDbName]); err != nil {
+		if err := newdb.InitSchema(ctx, tab.SqlTables[*destDbName]); err != nil {
 			return err
 		}
 	}
 
-	newj, err := tab.NewJob(context.Background(), newdb)
+	newj, err := tab.NewJob(ctx, newdb)
 	if err != nil {
 		return err
 	}

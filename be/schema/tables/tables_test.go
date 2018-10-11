@@ -39,7 +39,7 @@ func (db fakeDB) Rollback() error {
 	return nil
 }
 
-func (db fakeDB) InitSchema([]string) error {
+func (db fakeDB) InitSchema(context.Context, []string) error {
 	panic("not implemented")
 }
 

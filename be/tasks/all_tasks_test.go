@@ -51,7 +51,7 @@ func (c *TestContainer) DB() db.DB {
 		var stmts []string
 		stmts = append(stmts, tab.SqlTables[db.Adapter().Name()]...)
 		stmts = append(stmts, tab.SqlInitTables[db.Adapter().Name()]...)
-		if err := db.InitSchema(stmts); err != nil {
+		if err := db.InitSchema(context.TODO(), stmts); err != nil {
 			c.T.Fatal(err)
 		}
 		c.db = db
