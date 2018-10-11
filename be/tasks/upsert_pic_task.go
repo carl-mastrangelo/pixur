@@ -239,8 +239,8 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 
-	if err := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId); err != nil {
-		return err
+	if sts := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId); sts != nil {
+		return sts
 	}
 
 	if err := t.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
@@ -277,8 +277,8 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 		}
 	}
 
-	if err := upsertTags(j, tagNames, p.PicId, now, userID); err != nil {
-		return err
+	if sts := upsertTags(j, tagNames, p.PicId, now, userID); sts != nil {
+		return sts
 	}
 
 	// ignore sources from the same user after the first one
@@ -317,23 +317,23 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 }
 
 func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time, userID int64) status.S {
-	newTagNames, err := cleanTagNames(rawTags)
-	if err != nil {
-		return err
+	newTagNames, sts := cleanTagNames(rawTags)
+	if sts != nil {
+		return sts
 	}
 
-	attachedTags, _, err := findAttachedPicTags(j, picID)
-	if err != nil {
-		return err
+	attachedTags, _, sts := findAttachedPicTags(j, picID)
+	if sts != nil {
+		return sts
 	}
 
 	unattachedTagNames := findUnattachedTagNames(attachedTags, newTagNames)
-	existingTags, unknownNames, err := findExistingTagsByName(j, unattachedTagNames)
-	if err != nil {
-		return err
+	existingTags, unknownNames, sts := findExistingTagsByName(j, unattachedTagNames)
+	if sts != nil {
+		return sts
 	}
 
-	if sts := updateExistingTags(j, existingTags, now); err != nil {
+	if sts := updateExistingTags(j, existingTags, now); sts != nil {
 		return sts
 	}
 	newTags, sts := createNewTags(j, unknownNames, now)
@@ -342,8 +342,8 @@ func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time, userID
 	}
 
 	existingTags = append(existingTags, newTags...)
-	if _, err := createPicTags(j, existingTags, picID, now, userID); err != nil {
-		return err
+	if _, sts := createPicTags(j, existingTags, picID, now, userID); sts != nil {
+		return sts
 	}
 
 	return nil
@@ -370,7 +370,7 @@ func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicT
 			return nil, nil, status.InternalError(err, "can't find tags")
 		}
 		if len(ts) != 1 {
-			return nil, nil, status.InternalError(err, "can't lookup tag")
+			return nil, nil, status.InternalError(nil, "can't lookup tag", len(ts))
 		}
 		tags = append(tags, ts[0])
 	}
@@ -396,7 +396,7 @@ func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []
 }
 
 func findExistingTagsByName(j *tab.Job, names []string) (
-	tags []*schema.Tag, unknownNames []string, err status.S) {
+	tags []*schema.Tag, unknownNames []string, _ status.S) {
 	for _, name := range names {
 		ts, err := j.FindTags(db.Opts{
 			Prefix: tab.TagsName{&name},
