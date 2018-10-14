@@ -115,6 +115,11 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		pfs.Url = furl.String()
 	}
 
+	// TODO: change md5 hash to:
+	// Check if md5 is present, and return ALREADY_EXISTS or PERMISSION_DENIED if deleted
+	//   User is expected to call new method: add file_source / referrer, and add tags
+	// If present, verify md5 sum after download
+
 	if len(t.Md5Hash) != 0 {
 		p, sts := findExistingPic(j, schema.PicIdent_MD5, t.Md5Hash)
 		if sts != nil {
@@ -156,19 +161,10 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 	defer im.Close()
-	var immime schema.Pic_Mime
-	imf := im.Format()
-	switch {
-	case imf.IsJpeg():
-		immime = schema.Pic_JPEG
-	case imf.IsGif():
-		immime = schema.Pic_GIF
-	case imf.IsPng():
-		immime = schema.Pic_PNG
-	case imf.IsWebm():
-		immime = schema.Pic_WEBM
-	default:
-		return status.InvalidArgument(nil, "Unknown image type", imf)
+
+	immime, sts := imageFormatToMime(im.Format())
+	if sts != nil {
+		return sts
 	}
 	var imanim *schema.AnimationInfo
 	if dur, sts := im.Duration(); sts != nil {
@@ -205,13 +201,23 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		p = &schema.Pic{
 			PicId:         picID,
 			FileSize:      fh.Size,
-			Mime:          immime,
+			Mime:          schema.Pic_Mime(immime),
 			Width:         int64(width),
 			Height:        int64(height),
 			AnimationInfo: imanim,
+			File: &schema.Pic_File{
+				Index:         0, // always 0 for main pic
+				Size:          fh.Size,
+				Mime:          schema.Pic_File_Mime(immime),
+				Width:         int64(width),
+				Height:        int64(height),
+				AnimationInfo: imanim,
+			},
 			// ModifiedTime is set in mergePic
 		}
 		p.SetCreatedTime(now)
+		p.File.CreatedTs = p.CreatedTs
+		p.File.ModifiedTs = p.File.CreatedTs
 
 		if err := j.InsertPic(p); err != nil {
 			return status.InternalError(err, "Can't insert")
@@ -238,6 +244,31 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if sts := thumb.Write(ft); sts != nil {
 		return sts
 	}
+	thumbfi, err := ft.Stat()
+	if err != nil {
+		return status.InternalError(err, "unable to stat thumbnail")
+	}
+	imfmime, sts := imageFormatToMime(thumb.Format())
+	if sts != nil {
+		return sts
+	}
+	var imfanim *schema.AnimationInfo
+	if dur, sts := im.Duration(); sts != nil {
+		return sts
+	} else if dur != nil {
+		imfanim = &schema.AnimationInfo{
+			Duration: ptypes.DurationProto(*dur),
+		}
+	}
+	twidth, theight := im.Dimensions()
+	p.Thumbnail = append(p.Thumbnail, &schema.Pic_File{
+		Index:         nextThumbnailIndex(p.Thumbnail),
+		Size:          thumbfi.Size(),
+		Mime:          imfmime,
+		Width:         int64(twidth),
+		Height:        int64(theight),
+		AnimationInfo: imfanim,
+	})
 
 	if sts := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId); sts != nil {
 		return sts
@@ -265,6 +296,38 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	t.CreatedPic = p
 
 	return nil
+}
+
+// TODO: test
+func nextThumbnailIndex(pfs []*schema.Pic_File) int64 {
+	used := make(map[int64]bool)
+	for _, pf := range pfs {
+		if used[pf.Index] {
+			panic("Index already used")
+		}
+		used[pf.Index] = true
+	}
+	for i := int64(0); ; i++ {
+		if !used[i] {
+			return i
+		}
+	}
+}
+
+// TODO: test
+func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
+	switch {
+	case f.IsJpeg():
+		return schema.Pic_File_JPEG, nil
+	case f.IsGif():
+		return schema.Pic_File_GIF, nil
+	case f.IsPng():
+		return schema.Pic_File_PNG, nil
+	case f.IsWebm():
+		return schema.Pic_File_WEBM, nil
+	default:
+		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "Unknown image type", f)
+	}
 }
 
 func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource,

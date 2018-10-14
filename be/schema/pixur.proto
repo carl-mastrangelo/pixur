@@ -10,7 +10,8 @@ import "google/protobuf/timestamp.proto";
 
 message Pic {
   int64 pic_id = 1;
-  int64 file_size = 2;
+  File file = 22;
+  int64 file_size = 2 [deprecated = true];
 
   enum Mime {
     UNKNOWN = 0;
@@ -20,9 +21,9 @@ message Pic {
     WEBM = 4;
   }
 
-  Mime mime = 3;
-  int64 width = 4;
-  int64 height = 5;
+  Mime mime = 3 [deprecated = true];
+  int64 width = 4 [deprecated = true];
+  int64 height = 5 [deprecated = true];
   // TAG 9 unused
 
   google.protobuf.Timestamp created_ts = 10;
@@ -34,7 +35,7 @@ message Pic {
   DeletionStatus deletion_status = 12;
 
   // Only present on animated images.
-  AnimationInfo animation_info = 13;
+  AnimationInfo animation_info = 13 [deprecated = true];
 
   message DeletionStatus {
     // Represents when this Pic was marked for deletion
@@ -68,20 +69,20 @@ message Pic {
 
   int64 view_count = 14;
 
-   message FileSource {
-     // url is optional and is the location the pic came from.
-     string url = 1;
-     // referrer is optional and is what website the pic was linked to from.
-     string referrer = 2;
-     // created_ts is the time the file source was added.
-     google.protobuf.Timestamp created_ts = 3;
-     // If present, there is only one file_source per user_id.
-     int64 user_id = 4;
-     // name is optional and the file name for this source.  It may be derived
-     // from the url, from the content-disposition, or from the user who
-     // upload the file.
-     string name = 5;
-   }
+  message FileSource {
+    // url is optional and is the location the pic came from.
+    string url = 1;
+    // referrer is optional and is what website the pic was linked to from.
+    string referrer = 2;
+    // created_ts is the time the file source was added.
+    google.protobuf.Timestamp created_ts = 3;
+    // If present, there is only one file_source per user_id.
+    int64 user_id = 4;
+    // name is optional and the file name for this source.  It may be derived
+    // from the url, from the content-disposition, or from the user who
+    // upload the file.
+    string name = 5;
+  }
 
   repeated FileSource source = 15;
   // The denormalized sum of upvotes for this pic
@@ -92,6 +93,29 @@ message Pic {
   // Extra information that may not fit into the schema
   map<string, google.protobuf.Any> ext = 19;
   reserved 16, 20;
+
+  message File {
+    int64 index = 1; // usually concatenated after the file id
+    int64 size = 2; // how big the file is
+
+    enum Mime {
+      UNKNOWN = 0;
+      JPEG = 1;
+      GIF = 2;
+      PNG = 3;
+      WEBM = 4;
+    }
+
+    Mime mime = 3;
+    int64 width = 4;
+    int64 height = 5;
+    google.protobuf.Timestamp created_ts = 6;
+    google.protobuf.Timestamp modified_ts = 7;
+    // Only present on animated images.
+    AnimationInfo animation_info = 8;
+  }
+
+  repeated File thumbnail = 21;
 }
 
 // A picture identifier

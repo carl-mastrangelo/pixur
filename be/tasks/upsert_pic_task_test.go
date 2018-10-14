@@ -526,29 +526,57 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	}
 
 	p := task.CreatedPic
-	if p.Mime != schema.Pic_GIF {
+	if p.File == nil {
+		t.Fatal("missing file data", p)
+	}
+	if p.Mime != schema.Pic_GIF || p.File.Mime != schema.Pic_File_GIF {
 		t.Error("Mime not set", p.Mime)
 	}
-	if p.Width != 8 || p.Height != 10 {
+	if p.Width != 8 || p.Height != 10 || p.File.Width != 8 || p.File.Height != 10 {
 		t.Error("Dimensions wrong", p)
 	}
-
 	if !p.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Error("Should be updated")
+	}
+
+	if !proto.Equal(p.CreatedTs, p.File.CreatedTs) {
+		t.Error("pic file created time doesn't match", p)
+	}
+	if !proto.Equal(p.ModifiedTs, p.File.ModifiedTs) {
+		t.Error("pic file modified time doesn't match", p)
 	}
 	if f, err := os.Open(p.Path(c.TempDir())); err != nil {
 		t.Fatal("Pic not uploaded")
 	} else {
 		f.Close()
 	}
+	if len(p.Thumbnail) != 1 {
+		t.Fatal("Missing or excess thumbnails for pic", p)
+	}
 	if f, err := os.Open(p.ThumbnailPath(c.TempDir())); err != nil {
 		t.Fatal("Thumbnail not created")
 	} else {
-		f.Close()
+		defer f.Close()
+
+		fi, err := f.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if have, want := p.Thumbnail[0].Size, fi.Size(); have != want {
+			t.Error("have", have, "want", want)
+		}
+		if p.Thumbnail[0].Width <= 0 || p.Thumbnail[0].Height <= 0 {
+			t.Error("bad thumbnail dimensions", p.Thumbnail[0])
+		}
+		// Currently all thumbs are jpeg
+		if p.Thumbnail[0].Mime != schema.Pic_File_JPEG {
+			t.Error("bad thumbnail mime", p.Thumbnail[0])
+		}
+
 	}
 	tp := c.WrapPic(p)
 	// three hashes, 1 perceptual
-	if len(tp.Idents()) != 4 {
+	if len(tp.Idents()) != 3+1 {
 		t.Fatal("Not all idents created")
 	}
 	if task.CreatedPic == nil {

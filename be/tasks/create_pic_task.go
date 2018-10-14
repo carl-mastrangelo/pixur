@@ -70,6 +70,7 @@ func (t *CreatePicTask) reset() {
 	}
 }
 
+// TODO: remove this, it no longer is useful.
 func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	var err error
 	var sts status.S
