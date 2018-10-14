@@ -17,10 +17,11 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
-const (
-	// WEBM magic header
-	ebmlHeader = "\x1a\x45\xdf\xa3"
-)
+func init() {
+	defaultwebmreader = func(r io.Reader) (PixurImage, status.S) {
+		return ffmpegDecode(r)
+	}
+}
 
 var _ PixurImage = (*ffmpegImage)(nil)
 

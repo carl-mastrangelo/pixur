@@ -20,10 +20,10 @@ func TestReadImage_noImage(t *testing.T) {
 		pi.Close()
 		t.Fatal("expected an error")
 	}
-	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+	if have, want := sts.Code(), codes.Internal; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := sts.Message(), "unable to decode image"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "unable to read first"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
