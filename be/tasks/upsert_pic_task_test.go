@@ -65,7 +65,11 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +83,7 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 	}
 
 	ctx := CtxFromUserID(context.Background(), -1)
-	sts := new(TaskRunner).Run(ctx, task)
+	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.Unauthenticated(nil, "can't lookup user")
 	compareStatus(t, sts, expected)
 }
@@ -91,7 +95,11 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	u := c.CreateUser()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +113,7 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	sts := new(TaskRunner).Run(ctx, task)
+	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_CREATE")
 	compareStatus(t, sts, expected)
 }
@@ -119,7 +127,11 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +174,11 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +201,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	sts := new(TaskRunner).Run(ctx, task)
+	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
 
@@ -204,14 +220,25 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	// pretend its deleted.
-	if err := os.Rename(p.Pic.Path(c.TempDir()), p.Pic.Path(c.TempDir())+"B"); err != nil {
+	if err := os.Rename(path, path+"B"); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
-		t.Fatal(err)
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Fatal(sts)
+		}
+		if err := os.Remove(thumbpath); err != nil {
+			t.Fatal(err)
+		}
 	}
-	f, err := os.Open(p.Pic.Path(c.TempDir()) + "B")
+	p.Pic.Thumbnail = nil
+	f, err := os.Open(path + "B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,16 +274,26 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Should be updated")
 	}
-	if f, err := os.Open(p.Pic.Path(c.TempDir())); err != nil {
+	if f, err := os.Open(path); err != nil {
 		t.Fatal("Pic not uploaded")
 	} else {
 		f.Close()
 	}
-	if f, err := os.Open(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
-		t.Fatal("Thumbnail not created")
-	} else {
-		f.Close()
+	if len(p.Pic.Thumbnail) == 0 {
+		t.Error("Mising pic thumbnail(s)", p)
 	}
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Fatal(sts)
+		}
+		if f, err := os.Open(thumbpath); err != nil {
+			t.Fatal(err, "Thumbnail not created", th)
+		} else {
+			f.Close()
+		}
+	}
+
 	if task.CreatedPic.PicId != p.Pic.PicId {
 		t.Fatal("No Output")
 	}
@@ -271,7 +308,11 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +341,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	sts := new(TaskRunner).Run(ctx, task)
+	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Md5 hash mismatch")
 	compareStatus(t, sts, expected)
 
@@ -333,7 +374,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "decode image")
+	expected := status.InvalidArgument(nil, "unable to read")
 	compareStatus(t, sts, expected)
 }
 
@@ -346,7 +387,11 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +436,11 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
-	f, err := os.Open(p.Pic.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +465,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	sts := new(TaskRunner).Run(ctx, task)
+	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
 
@@ -435,14 +484,25 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	// pretend its deleted.
-	if err := os.Rename(p.Pic.Path(c.TempDir()), p.Pic.Path(c.TempDir())+"B"); err != nil {
+	if err := os.Rename(path, path+"B"); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
-		t.Fatal(err)
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Fatal(sts)
+		}
+		if err := os.Remove(thumbpath); err != nil {
+			t.Fatal(err)
+		}
 	}
-	f, err := os.Open(p.Pic.Path(c.TempDir()) + "B")
+	p.Pic.Thumbnail = nil
+	f, err := os.Open(path + "B")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -475,15 +535,24 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Should be updated")
 	}
-	if f, err := os.Open(p.Pic.Path(c.TempDir())); err != nil {
+	if f, err := os.Open(path); err != nil {
 		t.Fatal("Pic not uploaded")
 	} else {
 		f.Close()
 	}
-	if f, err := os.Open(p.Pic.ThumbnailPath(c.TempDir())); err != nil {
-		t.Fatal("Thumbnail not created")
-	} else {
-		f.Close()
+	if len(p.Pic.Thumbnail) == 0 {
+		t.Error("Mising pic thumbnail(s)", p)
+	}
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Fatal(sts)
+		}
+		if f, err := os.Open(thumbpath); err != nil {
+			t.Fatal("Thumbnail not created", th)
+		} else {
+			f.Close()
+		}
 	}
 	if task.CreatedPic.PicId != p.Pic.PicId {
 		t.Fatal("No Output")
@@ -545,35 +614,44 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	if !proto.Equal(p.ModifiedTs, p.File.ModifiedTs) {
 		t.Error("pic file modified time doesn't match", p)
 	}
-	if f, err := os.Open(p.Path(c.TempDir())); err != nil {
+	path, sts := schema.PicFilePath(c.TempDir(), p.PicId, p.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if f, err := os.Open(path); err != nil {
 		t.Fatal("Pic not uploaded")
 	} else {
 		f.Close()
 	}
-	if len(p.Thumbnail) != 1 {
-		t.Fatal("Missing or excess thumbnails for pic", p)
+	if len(p.Thumbnail) == 0 {
+		t.Error("Mising pic thumbnail(s)", p)
 	}
-	if f, err := os.Open(p.ThumbnailPath(c.TempDir())); err != nil {
-		t.Fatal("Thumbnail not created")
-	} else {
-		defer f.Close()
-
-		fi, err := f.Stat()
+	for _, th := range p.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Fatal(sts)
+		}
+		ft, err := os.Open(thumbpath)
+		if err != nil {
+			t.Fatal("Thumbnail not created", th)
+		}
+		defer ft.Close()
+		fi, err := ft.Stat()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if have, want := p.Thumbnail[0].Size, fi.Size(); have != want {
+		if have, want := th.Size, fi.Size(); have != want {
 			t.Error("have", have, "want", want)
 		}
-		if p.Thumbnail[0].Width <= 0 || p.Thumbnail[0].Height <= 0 {
-			t.Error("bad thumbnail dimensions", p.Thumbnail[0])
+		if th.Width <= 0 || th.Height <= 0 {
+			t.Error("bad thumbnail dimensions", th)
 		}
 		// Currently all thumbs are jpeg
-		if p.Thumbnail[0].Mime != schema.Pic_File_JPEG {
-			t.Error("bad thumbnail mime", p.Thumbnail[0])
+		if th.Mime != schema.Pic_File_JPEG {
+			t.Error("bad thumbnail mime", th)
 		}
-
 	}
+
 	tp := c.WrapPic(p)
 	// three hashes, 1 perceptual
 	if len(tp.Idents()) != 3+1 {
@@ -1835,12 +1913,12 @@ func TestValidateURL_RemoveFragment(t *testing.T) {
 func compareStatus(t *testing.T, actual, expected status.S) {
 	t.Helper()
 	if actual.Code() != expected.Code() {
-		t.Fatal("Code mismatch", actual.Code(), expected.Code())
+		t.Error("Code mismatch", actual.Code(), expected.Code())
 	}
 	if !strings.Contains(actual.Message(), expected.Message()) {
-		t.Fatal("Message mismatch", actual.Message(), expected.Message())
+		t.Error("Message mismatch", actual.Message(), expected.Message())
 	}
 	if expected.Cause() != nil && actual.Cause() != expected.Cause() {
-		t.Fatal("Cause mismatch", actual.Cause(), expected.Cause())
+		t.Error("Cause mismatch", actual.Cause(), expected.Cause())
 	}
 }

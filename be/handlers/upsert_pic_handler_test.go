@@ -40,6 +40,14 @@ func TestUpsertPic(t *testing.T) {
 		taskCap.CreatedPic = new(schema.Pic)
 		taskCap.CreatedPic.SetCreatedTime(now)
 		taskCap.CreatedPic.SetModifiedTime(now)
+
+		taskCap.CreatedPic.File = &schema.Pic_File{
+			Mime: schema.Pic_File_JPEG,
+		}
+		taskCap.CreatedPic.Thumbnail = []*schema.Pic_File{{
+			Mime: schema.Pic_File_JPEG,
+		}}
+
 		return nil
 	}
 	s := &serv{

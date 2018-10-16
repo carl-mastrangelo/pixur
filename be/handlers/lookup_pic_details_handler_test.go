@@ -26,6 +26,12 @@ func TestLookupPicWorkFlow(t *testing.T) {
 		taskCap.Pic = &schema.Pic{
 			PicId: 1,
 		}
+		taskCap.Pic.File = &schema.Pic_File{
+			Mime: schema.Pic_File_JPEG,
+		}
+		taskCap.Pic.Thumbnail = []*schema.Pic_File{{
+			Mime: schema.Pic_File_JPEG,
+		}}
 		taskCap.Pic.SetCreatedTime(now)
 		taskCap.Pic.SetModifiedTime(now)
 		taskCap.PicTags = []*schema.PicTag{{
@@ -104,6 +110,13 @@ func TestLookupPicParsePicId(t *testing.T) {
 		taskCap.Pic = &schema.Pic{
 			PicId: 1,
 		}
+		taskCap.Pic.File = &schema.Pic_File{
+			Mime: schema.Pic_File_JPEG,
+		}
+		taskCap.Pic.Thumbnail = []*schema.Pic_File{{
+			Mime: schema.Pic_File_JPEG,
+		}}
+
 		taskCap.Pic.SetCreatedTime(now)
 		taskCap.Pic.SetModifiedTime(now)
 		return nil

@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -83,8 +82,11 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	t.tempFilename = wf.Name()
 
 	var p = new(schema.Pic)
+	p.File = &schema.Pic_File{}
 	p.SetCreatedTime(t.now)
+	p.File.CreatedTs = p.CreatedTs
 	p.SetModifiedTime(t.now)
+	p.File.ModifiedTs = p.ModifiedTs
 
 	pfs := &schema.Pic_FileSource{
 		CreatedTs: schema.ToTspb(t.now),
@@ -109,6 +111,10 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	if sts != nil {
 		return sts
 	}
+	p.File.Mime = schema.Pic_File_Mime(p.Mime)
+	p.File.Width = p.Width
+	p.File.Height = p.Height
+	p.File.AnimationInfo = p.AnimationInfo
 
 	thumbnail := imaging.MakeThumbnail(img)
 
@@ -164,6 +170,16 @@ func (t *CreatePicTask) Run(ctx context.Context) (sCap status.S) {
 	if err := imaging.SaveThumbnail(thumbnail, p, t.PixPath); err != nil {
 		log.Println("WARN Failed to create thumbnail", err)
 	}
+	// TODO: this is completely wrong
+	p.Thumbnail = []*schema.Pic_File{{
+		Index:      0,
+		Mime:       schema.Pic_File_JPEG,
+		Width:      imaging.DefaultThumbnailWidth,
+		Height:     imaging.DefaultThumbnailHeight,
+		Size:       25000, // idk
+		CreatedTs:  p.CreatedTs,
+		ModifiedTs: p.ModifiedTs,
+	}}
 
 	tags, sts := t.insertOrFindTags(j)
 	if sts != nil {
@@ -213,6 +229,7 @@ func (t *CreatePicTask) moveUploadedFile(tempFile io.Writer, p *schema.Pic) stat
 		return status.InternalError(err, "Unable to move uploaded file")
 	} else {
 		p.FileSize = bytesWritten
+		p.File.Size = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
@@ -238,6 +255,7 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) status.S
 		return status.InternalError(err, "Failed to copy downloaded file")
 	} else {
 		p.FileSize = bytesWritten
+		p.File.Size = bytesWritten
 	}
 	// Attempt to flush the file incase an outside program needs to read from it.
 	if f, ok := tempFile.(*os.File); ok {
@@ -249,16 +267,21 @@ func (t *CreatePicTask) downloadFile(tempFile io.Writer, p *schema.Pic) status.S
 }
 
 func (t *CreatePicTask) renameTempFile(p *schema.Pic) status.S {
-	if err := os.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
+	base := schema.PicBaseDir(t.PixPath, p.PicId)
+	if err := os.MkdirAll(base, 0770); err != nil {
 		return status.InternalError(err, "Unable to prepare pic dir")
 	}
 
-	if err := os.Rename(t.tempFilename, p.Path(t.PixPath)); err != nil {
+	path, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
+	if sts != nil {
+		return sts
+	}
+	if err := os.Rename(t.tempFilename, path); err != nil {
 		return status.InternalErrorf(err, "Unable to move uploaded file %s -> %s",
-			t.tempFilename, p.Path(t.PixPath))
+			t.tempFilename, path)
 	}
 	// point this at the new file, incase the overall transaction fails
-	t.tempFilename = p.Path(t.PixPath)
+	t.tempFilename = path
 	return nil
 }
 

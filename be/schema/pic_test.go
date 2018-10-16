@@ -12,9 +12,10 @@ func TestPicBaseDir(t *testing.T) {
 }
 
 func TestPicPath(t *testing.T) {
-	p := &Pic{PicId: 72374, Mime: Pic_JPEG}
-
-	out := p.Path("/foo")
+	out, sts := PicFilePath("/foo", 72374, Pic_File_JPEG)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if out != "/foo/k/1/5/m/k15m6.jpg" {
 		t.Fatalf("%v != %v", out, "/foo/k/1/5/m/k15m6.jpg")
 	}

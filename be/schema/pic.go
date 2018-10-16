@@ -54,33 +54,6 @@ func (p *Pic) RelativeURL() string {
 	return fmt.Sprintf("pix/%s.%s", p.GetVarPicID(), p.Mime.Ext())
 }
 
-func (p *Pic) Path(pixPath string) string {
-	return filepath.Join(
-		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%s.%s", p.GetVarPicID(), p.Mime.Ext()))
-}
-
-func thumbnailExt(p *Pic) string {
-	mime := p.Mime
-	switch mime {
-	case Pic_WEBM:
-		mime = Pic_JPEG
-	case Pic_GIF:
-		mime = Pic_PNG
-	}
-	return mime.Ext()
-}
-
-func (p *Pic) ThumbnailRelativeURL() string {
-	return fmt.Sprintf("pix/%s0.%s", p.GetVarPicID(), thumbnailExt(p))
-}
-
-func (p *Pic) ThumbnailPath(pixPath string) string {
-	return filepath.Join(
-		PicBaseDir(pixPath, p.PicId),
-		fmt.Sprintf("%s0.%s", p.GetVarPicID(), thumbnailExt(p)))
-}
-
 func PicBaseDir(pixPath string, id int64) string {
 	vid := Varint(id).Encode()
 	path := []string{pixPath}

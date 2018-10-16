@@ -2,7 +2,6 @@ package schema
 
 import (
 	"path/filepath"
-	"strings"
 
 	"pixur.org/pixur/be/status"
 )
@@ -38,33 +37,23 @@ func init() {
 	}
 }
 
-func PicFilePath(pixPath, picFileID string, format Pic_Mime) (string, status.S) {
-	if filepath.Base(picFileID) != picFileID {
-		return "", status.InvalidArgument(nil, "not a varint")
+func PicFilePath(pixPath string, picID int64, mime Pic_File_Mime) (string, status.S) {
+	ext, present := picFileMimeExt[mime]
+	if !present {
+		return "", status.InvalidArgument(nil, "unknown mime", mime)
 	}
-	id := strings.ToLower(picFileID)
-	n, err := new(Varint).Decode(id)
-	if err != nil {
-		return "", status.InvalidArgument(err, "can't decode picFileID")
-	}
-	path := []string{pixPath}
 
-	for i := 0; i < n-1; i++ {
-		path = append(path, string(id[i:i+1]))
-	}
-	path = append(path, id+"."+format.Ext())
-
-	return filepath.Join(path...), nil
+	return filepath.Join(PicBaseDir(pixPath, picID), Varint(picID).Encode()+ext), nil
 }
 
 func PicFileThumbnailPath(
-	pixPath string, picFileID, index int64, mime Pic_File_Mime) (string, status.S) {
+	pixPath string, picID, index int64, mime Pic_File_Mime) (string, status.S) {
 	ext, present := picFileMimeExt[mime]
 	if !present {
 		return "", status.InvalidArgument(nil, "unknown mime", mime)
 	}
 
 	return filepath.Join(
-		PicBaseDir(pixPath, picFileID),
-		Varint(picFileID).Encode()+Varint(index).Encode()+ext), nil
+		PicBaseDir(pixPath, picID),
+		Varint(picID).Encode()+Varint(index).Encode()+ext), nil
 }

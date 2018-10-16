@@ -44,10 +44,25 @@ func TestPurgeWorkflow(t *testing.T) {
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
-
-	if _, err := os.Stat(p.Pic.Path(c.TempDir())); !os.IsNotExist(err) {
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("Expected file to be deleted", err)
 	}
+	if len(p.Pic.Thumbnail) == 0 {
+		t.Error("expected at least one thumbnail")
+	}
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Error(sts)
+		} else if _, err := os.Stat(thumbpath); !os.IsNotExist(err) {
+			t.Error(err)
+		}
+	}
+
 	if p.Refresh() {
 		t.Fatal("Expected Pic to be deleted", p)
 	}

@@ -40,6 +40,12 @@ func TestFindIndexPics(t *testing.T) {
 		p := &schema.Pic{}
 		p.SetModifiedTime(now)
 		p.SetCreatedTime(now)
+		p.File = &schema.Pic_File{
+			Mime: schema.Pic_File_JPEG,
+		}
+		p.Thumbnail = []*schema.Pic_File{{
+			Mime: schema.Pic_File_JPEG,
+		}}
 		taskCap.Pics = append(taskCap.Pics, p)
 		return nil
 	}

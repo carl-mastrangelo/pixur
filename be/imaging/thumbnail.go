@@ -206,8 +206,13 @@ func OutputThumbnail(im image.Image, mime schema.Pic_Mime, f *os.File) status.S 
 	return nil
 }
 
+// TODO: remove this function
 func SaveThumbnail(im image.Image, p *schema.Pic, pixPath string) status.S {
-	f, err := os.Create(p.ThumbnailPath(pixPath))
+	path, sts := schema.PicFileThumbnailPath(pixPath, p.PicId, 0, schema.Pic_File_JPEG)
+	if sts != nil {
+		return sts
+	}
+	f, err := os.Create(path)
 	if err != nil {
 		return status.InternalError(err, "unable to create thumbnail")
 	}

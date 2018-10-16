@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -76,8 +75,8 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stsCap status.S) {
 
 	// TODO: Check if this delete the original pic on a failed merge.
 	if err := j.Commit(); err != nil {
-		os.Remove(t.CreatedPic.Path(t.PixPath))
-		os.Remove(t.CreatedPic.ThumbnailPath(t.PixPath))
+		// Don't delete old pics, as the commit may have actually succeeded.  A cron job will clean
+		// this up.
 		t.CreatedPic = nil
 		return status.InternalError(err, "can't commit job")
 	}
@@ -244,6 +243,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if sts := thumb.Write(ft); sts != nil {
 		return sts
 	}
+
 	thumbfi, err := ft.Stat()
 	if err != nil {
 		return status.InternalError(err, "unable to stat thumbnail")
@@ -274,23 +274,34 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 
-	if err := t.MkdirAll(filepath.Dir(p.Path(t.PixPath)), 0770); err != nil {
+	if err := t.MkdirAll(schema.PicBaseDir(t.PixPath, p.PicId), 0770); err != nil {
 		return status.InternalError(err, "Can't prepare pic dir")
 	}
 	if err := f.Close(); err != nil {
 		return status.InternalErrorf(err, "Can't close %v", f.Name())
 	}
-	if err := t.Rename(f.Name(), p.Path(t.PixPath)); err != nil {
-		return status.InternalErrorf(err, "Can't rename %v to %v", f.Name(), p.Path(t.PixPath))
+	newpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
+	if sts != nil {
+		return sts
+	}
+	if err := t.Rename(f.Name(), newpath); err != nil {
+		return status.InternalErrorf(err, "Can't rename %v to %v", f.Name(), newpath)
 	}
 	if err := ft.Close(); err != nil {
 		return status.InternalErrorf(err, "Can't close %v", ft.Name())
 	}
+
+	lastthumbnail := p.Thumbnail[len(p.Thumbnail)-1]
 	// TODO: by luck the format created by imaging and the mime type decided by thumbnail are the
 	// same.  Thumbnails should be made into proper rows with their own mime type.
-	if err := t.Rename(ft.Name(), p.ThumbnailPath(t.PixPath)); err != nil {
-		os.Remove(p.Path(t.PixPath))
-		return status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), p.ThumbnailPath(t.PixPath))
+	newthumbpath, sts := schema.PicFileThumbnailPath(
+		t.PixPath, p.PicId, lastthumbnail.Index, lastthumbnail.Mime)
+	if sts != nil {
+		return sts
+	}
+	if err := t.Rename(ft.Name(), newthumbpath); err != nil {
+		os.Remove(newpath)
+		return status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
 	}
 
 	t.CreatedPic = p

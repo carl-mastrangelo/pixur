@@ -165,12 +165,21 @@ func (t *PurgePicTask) Run(ctx context.Context) (errCap status.S) {
 		return status.InternalError(err, "Unable to Commit")
 	}
 
-	if err := os.Remove(p.Path(t.PixPath)); err != nil {
-		log.Println("Warning, unable to delete pic data", p, err)
+	oldpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
+	if sts != nil {
+		log.Println("Warning, unable to construct old pic path, continuing", p, sts)
+	} else if err := os.Remove(oldpath); err != nil {
+		log.Println("Warning, unable to delete pic data", p, oldpath, err)
 	}
 
-	if err := os.Remove(p.ThumbnailPath(t.PixPath)); err != nil {
-		log.Println("Warning, unable to delete pic data", p, err)
+	// this would be a good place for addSuppressed
+	for _, th := range p.Thumbnail {
+		oldthumbpath, sts := schema.PicFileThumbnailPath(t.PixPath, p.PicId, th.Index, th.Mime)
+		if sts != nil {
+			log.Println("Warning, unable to construct old pic thumbnail path, continuing", p, th, sts)
+		} else if err := os.Remove(oldthumbpath); err != nil {
+			log.Println("Warning, unable to delete pic data", p, oldthumbpath, err)
+		}
 	}
 
 	return nil

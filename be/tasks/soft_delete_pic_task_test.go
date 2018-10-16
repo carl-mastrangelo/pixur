@@ -33,7 +33,11 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Pic.Path(c.TempDir())); os.IsNotExist(err) {
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if _, err := os.Stat(path); err != nil {
 		t.Fatal("Expected file to exist", err)
 	}
 

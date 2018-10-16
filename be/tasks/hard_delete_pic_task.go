@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"log"
 	"os"
 	"time"
 
@@ -66,6 +67,9 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 
 	p.DeletionStatus.ActualDeletedTs = nowpb
 
+	oldthumbs := p.Thumbnail
+	p.Thumbnail = nil
+
 	p.SetModifiedTime(now)
 	if err := j.UpdatePic(p); err != nil {
 		return status.InternalError(err, "can't update pic")
@@ -77,12 +81,21 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 
 	// At this point we actually release the file and thumbnail.  It would be better to remove
 	// these after the commit, since a cron job can clean up refs after the fact.
-	if err := os.Remove(p.Path(t.PixPath)); err != nil {
-		return status.InternalError(err, "Unable to Remove Pic")
+	oldpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
+	if sts != nil {
+		log.Println("Warning, unable to construct old pic path, continuing", p, sts)
+	} else if err := os.Remove(oldpath); err != nil {
+		log.Println("Warning, unable to delete pic data", p, oldpath, err)
 	}
 
-	if err := os.Remove(p.ThumbnailPath(t.PixPath)); err != nil {
-		return status.InternalError(err, "Unable to Remove Pic")
+	// this would be a good place for addSuppressed
+	for _, th := range oldthumbs {
+		oldthumbpath, sts := schema.PicFileThumbnailPath(t.PixPath, p.PicId, th.Index, th.Mime)
+		if sts != nil {
+			log.Println("Warning, unable to construct old pic thumbnail path, continuing", p, th, sts)
+		} else if err := os.Remove(oldthumbpath); err != nil {
+			log.Println("Warning, unable to delete pic data", p, oldthumbpath, err)
+		}
 	}
 
 	return nil

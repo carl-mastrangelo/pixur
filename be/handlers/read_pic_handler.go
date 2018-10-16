@@ -19,16 +19,16 @@ import (
 
 var picCacheTimeSeconds = 7 * 24 * time.Hour / time.Second
 
-func apiFormatToSchemaMime(format api.PicFile_Format) (schema.Pic_Mime, status.S) {
+func apiFormatToSchemaMime(format api.PicFile_Format) (schema.Pic_File_Mime, status.S) {
 	apiName, present := api.PicFile_Format_name[int32(format)]
 	if !present {
-		return schema.Pic_UNKNOWN, status.InvalidArgument(nil, "unknown format")
+		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "unknown format")
 	}
-	schemaValue, present := schema.Pic_Mime_value[apiName]
+	schemaValue, present := schema.Pic_File_Mime_value[apiName]
 	if !present {
-		return schema.Pic_UNKNOWN, status.InvalidArgument(nil, "unknown name")
+		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "unknown name")
 	}
-	return schema.Pic_Mime(schemaValue), nil
+	return schema.Pic_File_Mime(schemaValue), nil
 }
 
 // TODO: add tests
@@ -38,12 +38,28 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 		return nil, sts
 	}
 
+	var picId schema.Varint
+	var picThumbnailIndex schema.Varint
+	n, err := picId.Decode(req.PicFileId)
+	if err != nil {
+		return nil, status.InvalidArgument(err, "can't decode pic id")
+	}
+	if len(req.PicFileId) != n {
+		if err := picThumbnailIndex.DecodeAll(req.PicFileId[n:]); err != nil {
+			return nil, status.InvalidArgument(err, "can't decode pic index")
+		}
+	}
+
 	mime, sts := apiFormatToSchemaMime(req.Format)
 	if sts != nil {
 		return nil, sts
 	}
-
-	path, sts := schema.PicFilePath(s.pixpath, req.PicFileId, mime)
+	var path string
+	if len(req.PicFileId) != n {
+		path, sts = schema.PicFileThumbnailPath(s.pixpath, int64(picId), int64(picThumbnailIndex), mime)
+	} else {
+		path, sts = schema.PicFilePath(s.pixpath, int64(picId), mime)
+	}
 	if sts != nil {
 		return nil, sts
 	}
@@ -144,7 +160,26 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 			if sts != nil {
 				return sts
 			}
-			path, sts := schema.PicFilePath(s.pixpath, req.PicFileId, mime)
+
+			var picId schema.Varint
+			var picThumbnailIndex schema.Varint
+			n, err := picId.Decode(req.PicFileId)
+			if err != nil {
+				return status.InvalidArgument(err, "can't decode pic id")
+			}
+			if len(req.PicFileId) != n {
+				if err := picThumbnailIndex.DecodeAll(req.PicFileId[n:]); err != nil {
+					return status.InvalidArgument(err, "can't decode pic index")
+				}
+			}
+
+			var path string
+			if len(req.PicFileId) != n {
+				path, sts = schema.PicFileThumbnailPath(
+					s.pixpath, int64(picId), int64(picThumbnailIndex), mime)
+			} else {
+				path, sts = schema.PicFilePath(s.pixpath, int64(picId), mime)
+			}
 			if sts != nil {
 				return sts
 			}

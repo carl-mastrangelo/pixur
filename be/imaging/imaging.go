@@ -89,7 +89,7 @@ func ReadImage(r io.Reader) (PixurImage, status.S) {
 	}
 	firstfour := make([]byte, 4)
 	if _, err := ra.ReadAt(firstfour, 0); err != nil {
-		return nil, status.InternalError(err, "unable to read first 4 bytes")
+		return nil, status.InvalidArgument(err, "unable to read first 4 bytes")
 	}
 	if bytes.Equal(firstfour, []byte(ebmlHeader)) {
 		return defaultwebmreader(ra)

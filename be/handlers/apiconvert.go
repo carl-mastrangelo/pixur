@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"path/filepath"
+
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
 )
@@ -14,14 +16,29 @@ func apiPics(dst []*api.Pic, srcs ...*schema.Pic) []*api.Pic {
 
 func apiPic(src *schema.Pic) *api.Pic {
 	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
+	// temp work around to avoid super sized commits
+	path, sts := schema.PicFilePath("dummy", src.PicId, src.File.Mime)
+	if sts != nil {
+		panic(sts)
+	}
+	relurl := filepath.Base(path)
+	var thumbrelurl string
+	for _, th := range src.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath("dummy", src.PicId, th.Index, th.Mime)
+		if sts != nil {
+			panic(sts)
+		}
+		thumbrelurl = filepath.Base(thumbpath)
+		break
+	}
 	return &api.Pic{
 		Id:                   src.GetVarPicID(),
 		Width:                int32(src.Width),
 		Height:               int32(src.Height),
 		Version:              src.Version(),
 		Type:                 src.Mime.String(),
-		RelativeUrl:          src.RelativeURL(),
-		ThumbnailRelativeUrl: src.ThumbnailRelativeURL(),
+		RelativeUrl:          "pix/" + relurl,
+		ThumbnailRelativeUrl: "pix/" + thumbrelurl,
 		PendingDeletion:      src.SoftDeleted(),
 		ViewCount:            src.ViewCount,
 		Duration:             src.GetAnimationInfo().GetDuration(),

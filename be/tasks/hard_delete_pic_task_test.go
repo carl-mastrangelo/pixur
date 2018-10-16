@@ -29,21 +29,35 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if _, err := os.Stat(p.Pic.Path(c.TempDir())); !os.IsNotExist(err) {
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("Expected file to be deleted", err)
 	}
-
-	if _, err := os.Stat(p.Pic.ThumbnailPath(c.TempDir())); !os.IsNotExist(err) {
-		t.Fatal("Expected file to be deleted", err)
+	if len(p.Pic.Thumbnail) == 0 {
+		t.Error("expected at least one thumbnail")
+	}
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Error(sts)
+		} else if _, err := os.Stat(thumbpath); !os.IsNotExist(err) {
+			t.Error(err)
+		}
 	}
 
 	p.Refresh()
 
 	if !p.Pic.HardDeleted() {
-		t.Fatal("Expected pic to be hard deleted", p)
+		t.Error("Expected pic to be hard deleted", p)
 	}
 	if p.Pic.SoftDeleted() {
-		t.Fatal("Expected pic not to be soft deleted", p)
+		t.Error("Expected pic not to be soft deleted", p)
+	}
+	if p.Pic.Thumbnail != nil {
+		t.Error("Expected thumbnails to be de-indexed", p)
 	}
 
 	if p.Pic.DeletionStatus.ActualDeletedTs == nil {
@@ -82,21 +96,35 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(p.Pic.Path(c.TempDir())); !os.IsNotExist(err) {
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("Expected file to be deleted", err)
 	}
-
-	if _, err := os.Stat(p.Pic.ThumbnailPath(c.TempDir())); !os.IsNotExist(err) {
-		t.Fatal("Expected file to be deleted", err)
+	if len(p.Pic.Thumbnail) == 0 {
+		t.Error("expected at least one thumbnail")
+	}
+	for _, th := range p.Pic.Thumbnail {
+		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		if sts != nil {
+			t.Error(sts)
+		} else if _, err := os.Stat(thumbpath); !os.IsNotExist(err) {
+			t.Error(err)
+		}
 	}
 
 	p.Refresh()
 
 	if !p.Pic.HardDeleted() {
-		t.Fatal("Expected pic to be hard deleted", p)
+		t.Error("Expected pic to be hard deleted", p)
 	}
 	if p.Pic.SoftDeleted() {
-		t.Fatal("Expected pic not to be soft deleted", p)
+		t.Error("Expected pic not to be soft deleted", p)
+	}
+	if p.Pic.Thumbnail != nil {
+		t.Error("Expected thumbnails to be de-indexed", p)
 	}
 
 	if p.Pic.DeletionStatus.ActualDeletedTs == nil {

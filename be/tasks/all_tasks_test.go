@@ -13,7 +13,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -128,9 +127,21 @@ func (c *TestContainer) CreatePic() *TestPic {
 	p := &schema.Pic{
 		PicId: c.ID(),
 		Mime:  schema.Pic_PNG,
+		File: &schema.Pic_File{
+			Index: 0,
+			Mime:  schema.Pic_File_PNG,
+		},
+		Thumbnail: []*schema.Pic_File{{
+			Index: 0,
+			Mime:  schema.Pic_File_PNG,
+		}},
 	}
 	p.SetCreatedTime(now)
+	p.File.CreatedTs = p.CreatedTs
+	p.Thumbnail[0].CreatedTs = p.File.CreatedTs
 	p.SetModifiedTime(now)
+	p.File.ModifiedTs = p.ModifiedTs
+	p.Thumbnail[0].ModifiedTs = p.File.ModifiedTs
 
 	u := c.CreateUser()
 	p.Source = []*schema.Pic_FileSource{{
@@ -145,7 +156,11 @@ func (c *TestContainer) CreatePic() *TestPic {
 	img := makeImage(p.PicId)
 	buf := makeImageData(img, c)
 	p.Width = int64(img.Bounds().Dx())
+	p.File.Width = p.Width
+	p.Thumbnail[0].Width = p.File.Width
 	p.Height = int64(img.Bounds().Dx())
+	p.File.Height = p.Height
+	p.Thumbnail[0].Height = p.File.Height
 	c.AutoJob(func(j *tab.Job) error {
 		return j.UpdatePic(p)
 	})
@@ -153,18 +168,25 @@ func (c *TestContainer) CreatePic() *TestPic {
 	h1 := sha256.New()
 	h2 := sha1.New()
 	h3 := md5.New()
-	if err := os.MkdirAll(filepath.Dir(p.Path(c.TempDir())), 0700); err != nil {
+	base := schema.PicBaseDir(c.TempDir(), p.PicId)
+	if err := os.MkdirAll(base, 0700); err != nil {
 		c.T.Fatal(err)
 	}
-	f, err := os.Create(p.Path(c.TempDir()))
+	path, sts := schema.PicFilePath(c.TempDir(), p.PicId, p.File.Mime)
+	if sts != nil {
+		c.T.Fatal(sts)
+	}
+	f, err := os.Create(path)
 	if err != nil {
 		c.T.Fatal(err)
 	}
 	defer f.Close()
-	if err := os.MkdirAll(filepath.Dir(p.ThumbnailPath(c.TempDir())), 0700); err != nil {
-		c.T.Fatal(err)
+	thumbpath, sts := schema.PicFileThumbnailPath(
+		c.TempDir(), p.PicId, p.Thumbnail[0].Index, p.Thumbnail[0].Mime)
+	if sts != nil {
+		c.T.Fatal(sts)
 	}
-	tf, err := os.Create(p.ThumbnailPath(c.TempDir()))
+	tf, err := os.Create(thumbpath)
 	if err != nil {
 		c.T.Fatal(err)
 	}
