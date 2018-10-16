@@ -253,14 +253,14 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 	var imfanim *schema.AnimationInfo
-	if dur, sts := im.Duration(); sts != nil {
+	if dur, sts := thumb.Duration(); sts != nil {
 		return sts
 	} else if dur != nil {
 		imfanim = &schema.AnimationInfo{
 			Duration: ptypes.DurationProto(*dur),
 		}
 	}
-	twidth, theight := im.Dimensions()
+	twidth, theight := thumb.Dimensions()
 	p.Thumbnail = append(p.Thumbnail, &schema.Pic_File{
 		Index:         nextThumbnailIndex(p.Thumbnail),
 		Size:          thumbfi.Size(),
