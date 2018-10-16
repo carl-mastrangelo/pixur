@@ -31,6 +31,7 @@ func handlePic(db sdb.DB, picId int64) status.S {
 		return status.NotFound(nil, "can't find pic")
 	}
 	p := pics[0]
+	log.Println(p)
 	if p.File != nil {
 		return nil
 	}
@@ -146,14 +147,33 @@ func handlePic(db sdb.DB, picId int64) status.S {
 			AnimationInfo: nil,
 		})
 
-		log.Println(p)
+		if err := ft.Close(); err != nil {
+			return status.InternalError(err, "can't close old thumbnail")
+		}
 
+		newthumbnailpath, sts := schema.PicFileThumbnailPath(
+			beconfig.Conf.PixPath, p.PicId, p.Thumbnail[0].Index, p.Thumbnail[0].Mime)
+		if sts != nil {
+			return sts
+		}
+		if err := os.Remove(p.ThumbnailPath(beconfig.Conf.PixPath)); err != nil {
+			if os.IsNotExist(err) {
+				log.Println(err, "No thumbnail found for ", p.PicId)
+			} else {
+				return status.InternalError(err, "can't remove old path")
+			}
+		}
+		if err := os.Rename(ft.Name(), newthumbnailpath); err != nil {
+			return status.InternalError(err, "can't rename thumbnail")
+		}
 	}
+	log.Println(p)
 	if err := j.UpdatePic(p); err != nil {
 		return status.InternalError(err, "can't update pic")
 	}
-	log.Println(p.GetVarPicID())
-	// rollback
+	if err := j.Commit(); err != nil {
+		return status.InternalError(err, "can't commit")
+	}
 	return nil
 }
 
