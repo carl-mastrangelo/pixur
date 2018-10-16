@@ -6,7 +6,6 @@ option go_package = "api";
 option java_package = "org.pixur.api";
 option java_string_check_utf8 = true;
 option java_multiple_files = true;
-option optimize_for = CODE_SIZE;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
@@ -49,6 +48,10 @@ message Pic {
   double score_lo = 12;
   // The estimated upper bound of the pic score
   double score_hi = 13;
+  
+  PicFile file = 14;
+  
+  repeated PicFile Thumbnail = 15;
 }
 
 message PicFile {
@@ -514,7 +517,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20180707 // AUTO UPDATED BY generate.go
+    api_version: 20181016 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
