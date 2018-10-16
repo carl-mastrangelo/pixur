@@ -16,35 +16,61 @@ func apiPics(dst []*api.Pic, srcs ...*schema.Pic) []*api.Pic {
 
 func apiPic(src *schema.Pic) *api.Pic {
 	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
+	dst := &api.Pic{
+		Id:      src.GetVarPicID(),
+		Width:   int32(src.Width),
+		Height:  int32(src.Height),
+		Version: src.Version(),
+		Type:    src.Mime.String(),
+
+		PendingDeletion: src.SoftDeleted(),
+		ViewCount:       src.ViewCount,
+		Duration:        src.GetAnimationInfo().GetDuration(),
+		ScoreLo:         scorelo,
+		ScoreHi:         scorehi,
+		File: &api.PicFile{
+			Id:           src.GetVarPicID(),
+			Format:       api.PicFile_Format(src.File.Mime),
+			Width:        int32(src.Width),
+			Height:       int32(src.Height),
+			Duration:     src.File.GetAnimationInfo().GetDuration(),
+			Thumbnail:    false,
+			CreatedTime:  src.File.CreatedTs,
+			ModifiedTime: src.File.ModifiedTs,
+			Size:         src.File.Size,
+		},
+	}
+
 	// temp work around to avoid super sized commits
 	path, sts := schema.PicFilePath("dummy", src.PicId, src.File.Mime)
 	if sts != nil {
 		panic(sts)
 	}
-	relurl := filepath.Base(path)
-	var thumbrelurl string
+	dst.RelativeUrl = "pix/" + filepath.Base(path)
 	for _, th := range src.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath("dummy", src.PicId, th.Index, th.Mime)
-		if sts != nil {
-			panic(sts)
+		if dst.ThumbnailRelativeUrl == "" {
+			thumbpath, sts := schema.PicFileThumbnailPath("dummy", src.PicId, th.Index, th.Mime)
+			if sts != nil {
+				panic(sts)
+			}
+			dst.ThumbnailRelativeUrl = "pix/" + filepath.Base(thumbpath)
 		}
-		thumbrelurl = filepath.Base(thumbpath)
-		break
+
+		dst.Thumbnail = append(dst.Thumbnail, &api.PicFile{
+			Id:           src.GetVarPicID() + schema.Varint(th.Index).Encode(),
+			Format:       api.PicFile_Format(th.Mime),
+			Width:        int32(th.Width),
+			Height:       int32(th.Height),
+			Duration:     th.GetAnimationInfo().GetDuration(),
+			Thumbnail:    true,
+			CreatedTime:  th.CreatedTs,
+			ModifiedTime: th.ModifiedTs,
+			Size:         th.Size,
+		})
+
 	}
-	return &api.Pic{
-		Id:                   src.GetVarPicID(),
-		Width:                int32(src.Width),
-		Height:               int32(src.Height),
-		Version:              src.Version(),
-		Type:                 src.Mime.String(),
-		RelativeUrl:          "pix/" + relurl,
-		ThumbnailRelativeUrl: "pix/" + thumbrelurl,
-		PendingDeletion:      src.SoftDeleted(),
-		ViewCount:            src.ViewCount,
-		Duration:             src.GetAnimationInfo().GetDuration(),
-		ScoreLo:              scorelo,
-		ScoreHi:              scorehi,
-	}
+
+	return dst
 }
 
 func apiPicTags(dst []*api.PicTag, srcs ...*schema.PicTag) []*api.PicTag {

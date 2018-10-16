@@ -49,9 +49,9 @@ message Pic {
   // The estimated upper bound of the pic score
   double score_hi = 13;
   
-  PicFile file = 14;
+  PicFile file = 16;
   
-  repeated PicFile Thumbnail = 15;
+  repeated PicFile thumbnail = 17;
 }
 
 message PicFile {
