@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"path/filepath"
-
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
 )
@@ -41,21 +39,7 @@ func apiPic(src *schema.Pic) *api.Pic {
 		},
 	}
 
-	// temp work around to avoid super sized commits
-	path, sts := schema.PicFilePath("dummy", src.PicId, src.File.Mime)
-	if sts != nil {
-		panic(sts)
-	}
-	dst.RelativeUrl = "pix/" + filepath.Base(path)
 	for _, th := range src.Thumbnail {
-		if dst.ThumbnailRelativeUrl == "" {
-			thumbpath, sts := schema.PicFileThumbnailPath("dummy", src.PicId, th.Index, th.Mime)
-			if sts != nil {
-				panic(sts)
-			}
-			dst.ThumbnailRelativeUrl = "pix/" + filepath.Base(thumbpath)
-		}
-
 		dst.Thumbnail = append(dst.Thumbnail, &api.PicFile{
 			Id:           src.GetVarPicID() + schema.Varint(th.Index).Encode(),
 			Format:       api.PicFile_Format(th.Mime),
@@ -67,7 +51,6 @@ func apiPic(src *schema.Pic) *api.Pic {
 			ModifiedTime: th.ModifiedTs,
 			Size:         th.Size,
 		})
-
 	}
 
 	return dst
