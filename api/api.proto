@@ -15,10 +15,6 @@ import "google/protobuf/timestamp.proto";
 message Pic {
   // id is the unique identifier for the pic, in varint form
   string id = 1;
-  // width is the width of pic
-  int32 width = 2;
-  // height is the height of the pic
-  int32 height = 3;
   // version is the version of the pic.  It is used when updating the pic.
   sfixed64 version = 4;
   // type is the mime type of the pic. (JPEG, GIF, PNG, or WEBM)
@@ -28,17 +24,12 @@ message Pic {
   // modified_time is when the pic was last modified.
   google.protobuf.Timestamp modified_time = 15;
 
-  reserved 6, 7, 8;
+  reserved 2, 3, 6, 7, 8, 11;
 
   // pending_deletion indicates if the pic may be deleted soon.
   bool pending_deletion = 9;
   // view_count is the number of views this picture has received.
   int64 view_count = 10;
-
-  // duration is present if the image is animated (GIF or WEBM).  Note that
-  // GIFs duration is not well defined and is subject to reinterpretation.
-  google.protobuf.Duration duration = 11 [deprecated = true];
-
   // The estimated lower bound of the pic score
   double score_lo = 12;
   // The estimated upper bound of the pic score
@@ -61,7 +52,9 @@ message PicFile {
   }
   Format format = 2;
 
+  // width is the width of pic file
   int32 width = 3;
+  // height is the height of the pic file
   int32 height = 4;
 
   // duration is present if the image is animated (GIF or WEBM).  Note that

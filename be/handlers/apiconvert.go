@@ -16,14 +16,11 @@ func apiPic(src *schema.Pic) *api.Pic {
 	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
 	dst := &api.Pic{
 		Id:      src.GetVarPicID(),
-		Width:   int32(src.Width),
-		Height:  int32(src.Height),
 		Version: src.Version(),
 		Type:    src.Mime.String(),
 
 		PendingDeletion: src.SoftDeleted(),
 		ViewCount:       src.ViewCount,
-		Duration:        src.GetAnimationInfo().GetDuration(),
 		ScoreLo:         scorelo,
 		ScoreHi:         scorehi,
 		File: &api.PicFile{
