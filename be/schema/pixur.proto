@@ -11,20 +11,8 @@ import "google/protobuf/timestamp.proto";
 message Pic {
   int64 pic_id = 1;
   File file = 22;
-  int64 file_size = 2 [deprecated = true];
 
-  enum Mime {
-    UNKNOWN = 0;
-    JPEG = 1;
-    GIF = 2;
-    PNG = 3;
-    WEBM = 4;
-  }
-
-  Mime mime = 3 [deprecated = true];
-  int64 width = 4 [deprecated = true];
-  int64 height = 5 [deprecated = true];
-  // TAG 9 unused
+  reserved 2, 3, 4, 5, 9, 13;
 
   google.protobuf.Timestamp created_ts = 10;
   google.protobuf.Timestamp modified_ts = 11;
@@ -33,9 +21,6 @@ message Pic {
   // for deletion, it is delisted from normal indexing operations.  When the
   // pic is actually "deleted" only the pic object is removed.
   DeletionStatus deletion_status = 12;
-
-  // Only present on animated images.
-  AnimationInfo animation_info = 13 [deprecated = true];
 
   message DeletionStatus {
     // Represents when this Pic was marked for deletion
