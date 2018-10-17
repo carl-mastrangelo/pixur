@@ -75,7 +75,7 @@
 {{- $pr := $pt.Params -}}
 <div class="viewer">
   <div class="pic">
-    {{if ne .Pic.Type "WEBM"}}
+    {{if ne .Pic.File.Format.String `WEBM`}}
     <img class="thepic" src="{{$pt.PicFile .Pic.File}}" />
     {{else}}
     <video

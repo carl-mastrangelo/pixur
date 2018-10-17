@@ -17,14 +17,12 @@ message Pic {
   string id = 1;
   // version is the version of the pic.  It is used when updating the pic.
   sfixed64 version = 4;
-  // type is the mime type of the pic. (JPEG, GIF, PNG, or WEBM)
-  string type = 5 [deprecated = true];
   // created_time is when the pic was created.
   google.protobuf.Timestamp created_time = 14;
   // modified_time is when the pic was last modified.
   google.protobuf.Timestamp modified_time = 15;
 
-  reserved 2, 3, 6, 7, 8, 11;
+  reserved 2, 3, 5, 6, 7, 8, 11;
 
   // pending_deletion indicates if the pic may be deleted soon.
   bool pending_deletion = 9;
