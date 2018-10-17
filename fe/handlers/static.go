@@ -16,6 +16,37 @@ import (
 	"pixur.org/pixur/api"
 )
 
+var picFileFormatExt = map[api.PicFile_Format]string{
+	api.PicFile_JPEG: ".jpg",
+	api.PicFile_GIF:  ".gif",
+	api.PicFile_PNG:  ".png",
+	api.PicFile_WEBM: ".webm",
+}
+
+var picFileFormatTypes = map[string]api.PicFile_Format{
+	".jpg":  api.PicFile_JPEG,
+	".gif":  api.PicFile_GIF,
+	".png":  api.PicFile_PNG,
+	".webm": api.PicFile_WEBM,
+}
+
+func init() {
+	if len(picFileFormatExt) != len(api.PicFile_Format_name)-1 {
+		panic("format map wrong")
+	}
+	if len(picFileFormatTypes) != len(api.PicFile_Format_name)-1 {
+		panic("format map wrong")
+	}
+	for k, _ := range api.PicFile_Format_name {
+		if api.PicFile_Format(k) == api.PicFile_UNKNOWN {
+			continue
+		}
+		if _, present := picFileFormatExt[api.PicFile_Format(k)]; !present {
+			panic("missing value in format map")
+		}
+	}
+}
+
 type pixHandler struct {
 	c api.PixurServiceClient
 }
@@ -82,18 +113,14 @@ func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := path.Base(r.URL.Path)
 	picFileID := strings.TrimSuffix(p, path.Ext(p))
 
-	format := api.PicFile_UNKNOWN
-	switch path.Ext(p) {
-	case ".jpg":
-		format = api.PicFile_JPEG
-	case ".gif":
-		format = api.PicFile_GIF
-	case ".webm":
-		format = api.PicFile_WEBM
-	case ".png":
-		format = api.PicFile_PNG
+	format, ok := picFileFormatTypes[path.Ext(p)]
+	if !ok {
+		httpError(w, &HTTPErr{
+			Code:    http.StatusNotFound,
+			Message: "Unknown file extension",
+		})
+		return
 	}
-
 	var header metadata.MD
 	resp, err := h.c.LookupPicFile(ctx, &api.LookupPicFileRequest{
 		PicFileId: picFileID,
@@ -141,5 +168,4 @@ func (h *pixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeContent(w, r, p, mtime, pf)
-
 }

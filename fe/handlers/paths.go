@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"net/url"
-	"path"
+
+	"pixur.org/pixur/api"
 )
 
 type paths struct {
@@ -84,12 +85,19 @@ func (p *paths) CreateUserAction() *url.URL {
 	return p.ActionDir().ResolveReference(&url.URL{Path: "createUser"})
 }
 
-func (p *paths) PicThumb(relativeURL string) *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: path.Base(relativeURL)})
+func (p *paths) PicFile(pf *api.PicFile) *url.URL {
+	return p.pic(pf.Id, pf.Format)
 }
 
-func (p *paths) Pic(relativeURL string) *url.URL {
-	return p.Root().ResolveReference(&url.URL{Path: path.Base(relativeURL)})
+func (p *paths) PicFileFirst(pf []*api.PicFile) *url.URL {
+	if len(pf) == 0 {
+		return p.Root().ResolveReference(&url.URL{Path: "INVALIDURL"})
+	}
+	return p.PicFile(pf[0])
+}
+
+func (p *paths) pic(id string, f api.PicFile_Format) *url.URL {
+	return p.PixDir().ResolveReference(&url.URL{Path: id + picFileFormatExt[f]})
 }
 
 func (p *paths) ViewerDir() *url.URL {

@@ -76,11 +76,11 @@
 <div class="viewer">
   <div class="pic">
     {{if ne .Pic.Type "WEBM"}}
-    <img class="thepic" src="{{$pt.Pic .Pic.RelativeUrl}}" />
+    <img class="thepic" src="{{$pt.PicFile .Pic.File}}" />
     {{else}}
     <video
         class="thevideo"
-        src="{{$pt.Pic .Pic.RelativeUrl}}"
+        src="{{$pt.PicFile .Pic.File}}"
         loop
         muted
         autoplay
@@ -144,7 +144,7 @@
       </form>
     </div>
     <div class="actions">
-      <a href="{{$pt.Pic .Pic.RelativeUrl}}">View Full</a>
+      <a href="{{$pt.PicFile .Pic.File}}">View Full</a>
     </div>
   </div>
   {{ .Pic }}

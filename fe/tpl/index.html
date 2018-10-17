@@ -20,11 +20,11 @@
     border-color: #2c1fc0;
     border-radius: 10px;
     display: inline-block;
-    height: 224px;
+    height: 192px;
     margin: 6px;
     padding: 0;
     text-align: center;
-    width: 224px;
+    width: 192px;
   }
   
   .index .thumbnail-cntr:hover {
@@ -32,8 +32,8 @@
   }
   
   .index img.thumbnail {
-    width: 224px;
-    height: 224px;
+    width: 192px;
+    height: 192px;
     border-radius: 8px;
   }
 
@@ -79,7 +79,7 @@
         <a href="{{$pt.Viewer .Id}}">{{- /**/ -}}
           <img {{/**/ -}}
 	          class="thumbnail{{if .PendingDeletion}} deleted{{end}}" {{/**/ -}}
-	          src="{{$pt.PicThumb .ThumbnailRelativeUrl}}" />{{- /**/ -}}
+	          src="{{$pt.PicFileFirst .Thumbnail}}" />{{- /**/ -}}
 	      </a>{{- /**/ -}}
       </div>{{- /**/ -}}
     </li>{{- /**/ -}}
