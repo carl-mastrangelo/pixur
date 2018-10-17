@@ -80,6 +80,7 @@ func ReadImageOld(r *io.SectionReader) (*PixurImageOld, status.S) {
 	return &pi, nil
 }
 
+// TODO: delete
 func FillImageConfig(f *os.File, p *schema.Pic) (image.Image, status.S) {
 	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
 		return nil, status.InternalError(err, "unable to seek file")
@@ -161,7 +162,7 @@ type SubImager interface {
 	SubImage(image.Rectangle) image.Image
 }
 
-// TODO: interpret image rotation metadata
+// TODO: delete
 func MakeThumbnail(img image.Image) image.Image {
 	bounds := findMaxSquare(img.Bounds())
 

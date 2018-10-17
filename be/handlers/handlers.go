@@ -72,10 +72,6 @@ func (s *serv) AddPicTags(ctx oldctx.Context, req *api.AddPicTagsRequest) (*api.
 	return s.handleAddPicTags(ctx, req)
 }
 
-func (s *serv) CreatePic(ctx oldctx.Context, req *api.CreatePicRequest) (*api.CreatePicResponse, error) {
-	return s.handleCreatePic(ctx, req)
-}
-
 func (s *serv) CreateUser(ctx oldctx.Context, req *api.CreateUserRequest) (*api.CreateUserResponse, error) {
 	return s.handleCreateUser(ctx, req)
 }

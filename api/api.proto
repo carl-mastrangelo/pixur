@@ -251,23 +251,6 @@ message AddPicTagsResponse {
   // nothing here for now.
 }
 
-message CreatePicRequest {
-	// file_data is the contents of the pic.  Either file_data or file_url must be present.
-	// If sent as part of a stream, this field will be the only one read after the first message.
-	bytes file_data = 1;
-	// optional, only used if file_data is present.
-	string file_name = 2;
-	
-	// URL to get the pic from.  Either file_data or file_url must be present.
-	string file_url = 3;
-	
-	repeated string tag = 4;
-}
-
-message CreatePicResponse {
-  Pic pic = 1;
-}
-
 message FindSimilarPicsRequest {
   string pic_id = 1;
 }
@@ -512,9 +495,7 @@ service PixurService {
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
   
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
-  
-  rpc CreatePic(CreatePicRequest) returns (CreatePicResponse);
-  
+
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);

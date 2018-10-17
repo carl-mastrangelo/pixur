@@ -20,6 +20,7 @@ func CountBits(num uint64) int {
 	return int(num)
 }
 
+// TODO: maybe remove
 func PerceptualHash0(im image.Image) ([]byte, []float32) {
 	gray := dctResize(im)
 	arr := image2Array(gray)

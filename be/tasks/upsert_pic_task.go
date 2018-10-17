@@ -12,7 +12,10 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes"
 	any "github.com/golang/protobuf/ptypes/any"
@@ -741,4 +744,72 @@ func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha256Hash []byte, sts s
 		return nil, nil, nil, status.InternalError(err, "Can't copy")
 	}
 	return h1.Sum(nil), h2.Sum(nil), h3.Sum(nil), nil
+}
+
+func cleanTagNames(rawTagNames []string) ([]string, status.S) {
+	if sts := checkValidUnicode(rawTagNames); sts != nil {
+		return nil, sts
+	}
+	// TODO: normalize unicode names, in order to be searchable and collapse dupes
+	printableTagNames := removeUnprintableCharacters(rawTagNames)
+	trimmedTagNames := trimTagNames(printableTagNames)
+	nonEmptyTagNames := removeEmptyTagNames(trimmedTagNames)
+	uniqueTagNames := removeDuplicateTagNames(nonEmptyTagNames)
+
+	return uniqueTagNames, nil
+}
+
+func checkValidUnicode(tagNames []string) status.S {
+	for _, tn := range tagNames {
+		if !utf8.ValidString(tn) {
+			return status.InvalidArgument(nil, "Invalid tag name", tn)
+		}
+	}
+	return nil
+}
+
+func removeUnprintableCharacters(tagNames []string) []string {
+	printableTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		var buf bytes.Buffer
+		buf.Grow(len(tn))
+		for _, runeValue := range tn {
+			if unicode.IsPrint(runeValue) {
+				buf.WriteRune(runeValue)
+			}
+		}
+		printableTagNames = append(printableTagNames, buf.String())
+	}
+	return printableTagNames
+}
+
+func trimTagNames(tagNames []string) []string {
+	trimmed := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		trimmed = append(trimmed, strings.TrimSpace(tn))
+	}
+	return trimmed
+}
+
+func removeEmptyTagNames(tagNames []string) []string {
+	nonEmptyTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		if tn != "" {
+			nonEmptyTagNames = append(nonEmptyTagNames, tn)
+		}
+	}
+	return nonEmptyTagNames
+}
+
+// removeDuplicateTagNames preserves order of the tags
+func removeDuplicateTagNames(tagNames []string) []string {
+	var seen = make(map[string]struct{}, len(tagNames))
+	uniqueTagNames := make([]string, 0, len(tagNames))
+	for _, tn := range tagNames {
+		if _, present := seen[tn]; !present {
+			seen[tn] = struct{}{}
+			uniqueTagNames = append(uniqueTagNames, tn)
+		}
+	}
+	return uniqueTagNames
 }
