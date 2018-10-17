@@ -13,7 +13,7 @@ import (
 const (
 	defaultDescIndexID = math.MaxInt64
 	defaultAscIndexID  = 0
-	DefaultMaxPics     = 30
+	DefaultMaxPics     = 12
 )
 
 type ReadIndexPicsTask struct {
