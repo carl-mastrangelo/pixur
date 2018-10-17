@@ -1,6 +1,10 @@
 package imaging
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/png"
 	"testing"
 	"time"
 )
@@ -174,5 +178,80 @@ func TestParseDuration(t *testing.T) {
 	}
 	if expected := time.Duration(123123456789); d != expected {
 		t.Fatal("time mismatch", d, expected)
+	}
+}
+
+func TestKeepLastImage(t *testing.T) {
+	var buf = new(bytes.Buffer)
+	im := image.NewNRGBA(image.Rect(0, 0, 5, 10))
+	if err := png.Encode(buf, im); err != nil {
+		t.Fatal(err)
+	}
+
+	im.Set(0, 0, color.White)
+	if err := png.Encode(buf, im); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := keepLastImage(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Bounds() != im.Bounds() {
+		t.Fatal("Wrong bounds", out.Bounds())
+	}
+	if out.(*image.NRGBA).NRGBAAt(0, 0) != im.NRGBAAt(0, 0) {
+		t.Fatal("not last image")
+	}
+}
+
+func TestKeepLastImageBadLastImage(t *testing.T) {
+	var buf = new(bytes.Buffer)
+	im := image.NewNRGBA(image.Rect(0, 0, 5, 10))
+	if err := png.Encode(buf, im); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := buf.WriteString("XXXXXXXXXXXXXXXX"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := keepLastImage(buf); err == nil {
+		t.Fatal("Expected an error")
+	}
+}
+
+func TestKeepLastImageNoData(t *testing.T) {
+	var buf = new(bytes.Buffer)
+
+	if _, err := keepLastImage(buf); err == nil {
+		t.Fatal("Expected an error")
+	}
+}
+
+func TestKeepLastImageTooManyImages(t *testing.T) {
+	var buf = new(bytes.Buffer)
+	im := image.NewNRGBA(image.Rect(0, 0, 5, 5))
+	for i := 0; i < 500; i++ {
+		if err := png.Encode(buf, im); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	im.Set(0, 0, color.White)
+
+	if err := png.Encode(buf, im); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := keepLastImage(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Bounds() != im.Bounds() {
+		t.Fatal("Wrong bounds", out.Bounds())
+	}
+	if out.(*image.NRGBA).NRGBAAt(0, 0) == im.NRGBAAt(0, 0) {
+		t.Fatal("should not be last image")
 	}
 }

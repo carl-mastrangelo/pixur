@@ -17,6 +17,10 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
+const (
+	maxWebmDuration = time.Second * time.Duration(60*2+1) // Two minutes, with 1 second of leeway
+)
+
 func init() {
 	defaultwebmreader = func(r io.Reader) (PixurImage, status.S) {
 		return ffmpegDecode(r)
@@ -315,6 +319,31 @@ func parseFfmpegDuration(raw string) (time.Duration, status.S) {
 
 	dur := time.Duration(seconds)*time.Second + time.Duration(nanos)*time.Nanosecond
 	return dur, nil
+}
+
+// Reads in a concatenated set of images and returns the last one.
+// An error is returned if no images could be read, or the there was a
+// decode error.
+func keepLastImage(r io.Reader) (image.Image, status.S) {
+	maxFrames := 120
+	var im image.Image
+	for i := 0; i < maxFrames; i++ {
+		// don't use image.Decode because it doesn't return EOF on EOF
+		lastIm, err := png.Decode(r)
+
+		if err == io.ErrUnexpectedEOF {
+			break
+		} else if err != nil {
+			return nil, status.InvalidArgument(err, "unable to decode png image")
+		}
+		im = lastIm
+	}
+
+	if im == nil {
+		return nil, status.InvalidArgument(nil, "No frames in webm")
+	}
+
+	return im, nil
 }
 
 type probeResponse struct {
