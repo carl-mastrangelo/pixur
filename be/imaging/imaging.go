@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	thumbnailSquareSize = 160
+	thumbnailSquareSize = 192
 )
 
 const gifTicksPerSecond = 100
