@@ -126,7 +126,6 @@ func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
 		PicId: c.ID(),
-		Mime:  schema.Pic_PNG,
 		File: &schema.Pic_File{
 			Index: 0,
 			Mime:  schema.Pic_File_PNG,
@@ -155,11 +154,9 @@ func (c *TestContainer) CreatePic() *TestPic {
 
 	img := makeImage(p.PicId)
 	buf := makeImageData(img, c)
-	p.Width = int64(img.Bounds().Dx())
-	p.File.Width = p.Width
+	p.File.Width = int64(img.Bounds().Dx())
 	p.Thumbnail[0].Width = p.File.Width
-	p.Height = int64(img.Bounds().Dx())
-	p.File.Height = p.Height
+	p.File.Height = int64(img.Bounds().Dx())
 	p.Thumbnail[0].Height = p.File.Height
 	c.AutoJob(func(j *tab.Job) error {
 		return j.UpdatePic(p)

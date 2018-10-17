@@ -599,10 +599,10 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	if p.File == nil {
 		t.Fatal("missing file data", p)
 	}
-	if p.Mime != schema.Pic_GIF || p.File.Mime != schema.Pic_File_GIF {
-		t.Error("Mime not set", p.Mime)
+	if p.File.Mime != schema.Pic_File_GIF {
+		t.Error("Mime not set", p.File.Mime)
 	}
-	if p.Width != 8 || p.Height != 10 || p.File.Width != 8 || p.File.Height != 10 {
+	if p.File.Width != 8 || p.File.Height != 10 {
 		t.Error("Dimensions wrong", p)
 	}
 	if !p.GetModifiedTime().Equal(time.Unix(100, 0)) {
@@ -622,7 +622,14 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	if f, err := os.Open(path); err != nil {
 		t.Fatal("Pic not uploaded")
 	} else {
-		f.Close()
+		defer f.Close()
+		fi, err := f.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if have, want := p.File.Size, fi.Size(); have != want {
+			t.Error("have", have, "want", want)
+		}
 	}
 	if len(p.Thumbnail) == 0 {
 		t.Error("Mising pic thumbnail(s)", p)

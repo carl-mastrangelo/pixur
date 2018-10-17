@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"fmt"
 	"math"
 	"path/filepath"
 	"time"
@@ -48,10 +47,6 @@ func (p *Pic) IndexOrder() int64 {
 
 func (p *Pic) GetVarPicID() string {
 	return Varint(p.PicId).Encode()
-}
-
-func (p *Pic) RelativeURL() string {
-	return fmt.Sprintf("pix/%s.%s", p.GetVarPicID(), p.Mime.Ext())
 }
 
 func PicBaseDir(pixPath string, id int64) string {

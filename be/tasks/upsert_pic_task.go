@@ -201,12 +201,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 		width, height := im.Dimensions()
 		p = &schema.Pic{
-			PicId:         picID,
-			FileSize:      fh.Size,
-			Mime:          schema.Pic_Mime(immime),
-			Width:         int64(width),
-			Height:        int64(height),
-			AnimationInfo: imanim,
+			PicId: picID,
 			File: &schema.Pic_File{
 				Index:         0, // always 0 for main pic
 				Size:          fh.Size,
@@ -219,6 +214,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		}
 		p.SetCreatedTime(now)
 		p.File.CreatedTs = p.CreatedTs
+		// Just reuse Created Time
 		p.File.ModifiedTs = p.File.CreatedTs
 
 		if err := j.InsertPic(p); err != nil {

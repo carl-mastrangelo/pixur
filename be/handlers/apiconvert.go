@@ -26,8 +26,8 @@ func apiPic(src *schema.Pic) *api.Pic {
 		File: &api.PicFile{
 			Id:           src.GetVarPicID(),
 			Format:       api.PicFile_Format(src.File.Mime),
-			Width:        int32(src.Width),
-			Height:       int32(src.Height),
+			Width:        int32(src.File.Width),
+			Height:       int32(src.File.Height),
 			Duration:     src.File.GetAnimationInfo().GetDuration(),
 			Thumbnail:    false,
 			CreatedTime:  src.File.CreatedTs,
