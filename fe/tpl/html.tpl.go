@@ -4,7 +4,7 @@
 package tpl
 
 const (
-	Base = "<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=viewport content=\"width=device-width, initial-scale=1\">\n    <title>{{.Title}}</title>\n    <style>\n      body {\n        background-color: #FFFFEE;\n        margin: 0;\n      }\n    </style>\n    {{block \"basestyle\" .}}{{end}}\n  </head>\n  <body>\n    {{template \"body\" .}}\n  </body>\n</html>\n"
+	Base = "<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=viewport content=\"width=device-width, initial-scale=1\">\n    <title>{{.Title}}</title>\n    <style>\n      body {\n        background-color: #FFFFEE;\n        font-family: 'Helvetica', 'Arial', sans-serif;\n        margin: 0;\n      }\n    </style>\n    {{block \"basestyle\" .}}{{end}}\n  </head>\n  <body>\n    {{template \"body\" .}}\n  </body>\n</html>\n"
 
 	Comment = "{{- define \"pane\" -}}\n{{- template \"commentreply\" . -}}\n{{- end -}}\n"
 
