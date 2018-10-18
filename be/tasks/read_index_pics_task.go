@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"log"
 	"math"
 
 	"pixur.org/pixur/be/schema"
@@ -70,12 +71,21 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	return startPics[0], nil
 }
 
-func (t *ReadIndexPicsTask) Run(ctx context.Context) (errCap status.S) {
+func (t *ReadIndexPicsTask) Run(ctx context.Context) (stsCap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
-	defer cleanUp(j, &errCap)
+	defer func() {
+		if err := j.Rollback(); err != nil {
+			sts := status.InternalError(err, "can't rollback job")
+			if stsCap == nil {
+				stsCap = sts
+			} else {
+				log.Println(sts)
+			}
+		}
+	}()
 
 	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
 		return sts
@@ -131,10 +141,6 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (errCap status.S) {
 	pics, err := j.FindPics(opts)
 	if err != nil {
 		return status.InternalError(err, "Unable to find pics")
-	}
-
-	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback job")
 	}
 
 	t.Pics = pics

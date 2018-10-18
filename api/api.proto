@@ -233,6 +233,12 @@ message FindIndexPicsRequest {
 
 message FindIndexPicsResponse {
   repeated Pic pic = 1;
+  // if set, this field is the next pic id as a 
+  // continuation token.
+  string next_pic_id = 2;
+  // if set, this field is the previous pic id as a 
+  // continuation token.
+  string prev_pic_id = 3;
 }
 
 message FindSchedPicsRequest {
@@ -486,7 +492,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181016 // AUTO UPDATED BY generate.go
+    api_version: 20181018 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

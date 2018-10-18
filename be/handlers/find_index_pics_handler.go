@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"math"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
@@ -9,10 +10,13 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
+var indexMaxPics = tasks.DefaultMaxPics
+
 func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
 	*api.FindIndexPicsResponse, status.S) {
 	var picID schema.Varint
-	if req.StartPicId != "" {
+	startPicPresent := req.StartPicId != ""
+	if startPicPresent {
 		if err := picID.DecodeAll(req.StartPicId); err != nil {
 			return nil, status.InvalidArgument(err, "bad pic id")
 		}
@@ -22,13 +26,38 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 		DB:        s.db,
 		StartID:   int64(picID),
 		Ascending: req.Ascending,
+		MaxPics:   indexMaxPics,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts
 	}
 
-	return &api.FindIndexPicsResponse{
+	resp := &api.FindIndexPicsResponse{
 		Pic: apiPics(nil, task.Pics...),
-	}, nil
+	}
+
+	if req.Ascending {
+		if len(task.Pics) == indexMaxPics {
+			next := task.Pics[len(task.Pics)-1].PicId
+			if next < math.MaxInt64-1 {
+				resp.NextPicId = schema.Varint(next + 1).Encode()
+			}
+		}
+		if startPicPresent && picID > 1 {
+			resp.PrevPicId = (picID - 1).Encode()
+		}
+	} else {
+		if len(task.Pics) == indexMaxPics {
+			next := task.Pics[len(task.Pics)-1].PicId
+			if next > 1 {
+				resp.NextPicId = schema.Varint(next - 1).Encode()
+			}
+		}
+		if startPicPresent && picID < math.MaxInt64-1 {
+			resp.PrevPicId = (picID + 1).Encode()
+		}
+	}
+
+	return resp, nil
 }

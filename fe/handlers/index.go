@@ -58,19 +58,11 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 	var prevID string
 	var nextID string
 	if !isPrev {
-		if len(res.Pic) >= 2 {
-			nextID = res.Pic[len(res.Pic)-1].Id
-		}
-		if id != "" {
-			prevID = id
-		}
+		nextID = res.NextPicId
+		prevID = res.PrevPicId
 	} else {
-		if len(res.Pic) >= 2 {
-			prevID = res.Pic[len(res.Pic)-1].Id
-		}
-		if id != "" {
-			nextID = id
-		}
+		nextID = res.PrevPicId
+		prevID = res.NextPicId
 	}
 
 	if isPrev {
