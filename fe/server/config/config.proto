@@ -19,5 +19,8 @@ message Config {
 	
 	// describes the root url to serve from.
 	string http_root = 4;
+
+	// The name to show for this site.
+	string site_name = 5;
 }
 

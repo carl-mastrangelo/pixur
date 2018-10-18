@@ -17,6 +17,10 @@ import (
 )
 
 var (
+	globalSiteName string
+)
+
+var (
 	regfuncs []server.RegFunc
 )
 
@@ -26,6 +30,7 @@ func register(rf server.RegFunc) {
 
 type paneData struct {
 	*baseData
+	SiteName    string
 	XsrfToken   string
 	SubjectUser *api.User
 	// Err is a user visible error set after a failed write
@@ -49,9 +54,10 @@ func (pd *paneData) ErrShouldLogin() bool {
 func newPaneData(ctx context.Context, title string, pt *paths) *paneData {
 	return &paneData{
 		baseData: &baseData{
-			Title: title,
 			Paths: pt,
+			Title: title,
 		},
+		SiteName:    globalSiteName,
 		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 		SubjectUser: subjectUserOrNilFromCtx(ctx),
 		Err:         writeErrOrNilFromCtx(ctx),
@@ -73,6 +79,11 @@ func RegisterAll(s *server.Server) {
 	s.GetAndSetInterceptor(cookieToGRPCAuthInterceptor)
 	for _, rf := range regfuncs {
 		s.Register(rf)
+	}
+	if s.SiteName == "" {
+		globalSiteName = "Pixur"
+	} else {
+		globalSiteName = s.SiteName
 	}
 }
 

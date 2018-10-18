@@ -154,9 +154,10 @@ func init() {
 		readErrorPaneData = func(ctx context.Context, readErr error) *paneData {
 			return &paneData{
 				baseData: &baseData{
-					Title: "Error",
 					Paths: pt,
+					Title: "Error",
 				},
+				SiteName:    globalSiteName,
 				XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
 				SubjectUser: subjectUserOrNilFromCtx(ctx),
 				Err:         readErr,

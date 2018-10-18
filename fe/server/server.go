@@ -27,6 +27,7 @@ type Server struct {
 	Random   io.Reader
 	Secure   bool
 	HTTPRoot *url.URL
+	SiteName string
 
 	httpSpec    string
 	lnAddr      net.Addr
@@ -53,6 +54,7 @@ func (s *Server) GetAndSetInterceptor(in grpc.UnaryClientInterceptor) grpc.Unary
 // Init prepares a server for serving.
 func (s *Server) Init(ctx context.Context, c *config.Config) (errCap error) {
 	s.httpSpec = c.HttpSpec
+	s.SiteName = c.SiteName
 	if s.Client == nil {
 		channel, err := newPixurChannel(ctx, s.interceptor, c.PixurSpec)
 		if err != nil {
