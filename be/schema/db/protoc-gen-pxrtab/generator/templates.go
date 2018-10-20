@@ -197,14 +197,23 @@ type Job struct {
   beg db.Beginner
   tx db.QuerierExecutorCommitter
   adap db.DBAdapter
+  done bool
 }
 
 func (j *Job) Commit() error {
   defer runtime.SetFinalizer(j, nil)
-  return j.tx.Commit()
+  err := j.tx.Commit()
+  if err == nil {
+    j.done = true
+  }
+  return err
 }
 
 func (j *Job) Rollback() error {
+  if j.done {
+    return nil
+  }
+  j.done = true
   defer runtime.SetFinalizer(j, nil)
   return j.tx.Rollback()
 }

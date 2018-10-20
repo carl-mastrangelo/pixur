@@ -3,11 +3,13 @@
 
 package tables
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import schema "pixur.org/pixur/be/schema"
-import _ "pixur.org/pixur/be/schema/db/model"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+	schema "pixur.org/pixur/be/schema"
+	_ "pixur.org/pixur/be/schema/db/model"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -35,16 +37,17 @@ func (m *PicRow) Reset()         { *m = PicRow{} }
 func (m *PicRow) String() string { return proto.CompactTextString(m) }
 func (*PicRow) ProtoMessage()    {}
 func (*PicRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{0}
+	return fileDescriptor_9e429e24f449e1ed, []int{0}
 }
+
 func (m *PicRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PicRow.Unmarshal(m, b)
 }
 func (m *PicRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PicRow.Marshal(b, m, deterministic)
 }
-func (dst *PicRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PicRow.Merge(dst, src)
+func (m *PicRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PicRow.Merge(m, src)
 }
 func (m *PicRow) XXX_Size() int {
 	return xxx_messageInfo_PicRow.Size(m)
@@ -103,16 +106,17 @@ func (m *TagRow) Reset()         { *m = TagRow{} }
 func (m *TagRow) String() string { return proto.CompactTextString(m) }
 func (*TagRow) ProtoMessage()    {}
 func (*TagRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{1}
+	return fileDescriptor_9e429e24f449e1ed, []int{1}
 }
+
 func (m *TagRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TagRow.Unmarshal(m, b)
 }
 func (m *TagRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TagRow.Marshal(b, m, deterministic)
 }
-func (dst *TagRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TagRow.Merge(dst, src)
+func (m *TagRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TagRow.Merge(m, src)
 }
 func (m *TagRow) XXX_Size() int {
 	return xxx_messageInfo_TagRow.Size(m)
@@ -157,16 +161,17 @@ func (m *PicTagRow) Reset()         { *m = PicTagRow{} }
 func (m *PicTagRow) String() string { return proto.CompactTextString(m) }
 func (*PicTagRow) ProtoMessage()    {}
 func (*PicTagRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{2}
+	return fileDescriptor_9e429e24f449e1ed, []int{2}
 }
+
 func (m *PicTagRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PicTagRow.Unmarshal(m, b)
 }
 func (m *PicTagRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PicTagRow.Marshal(b, m, deterministic)
 }
-func (dst *PicTagRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PicTagRow.Merge(dst, src)
+func (m *PicTagRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PicTagRow.Merge(m, src)
 }
 func (m *PicTagRow) XXX_Size() int {
 	return xxx_messageInfo_PicTagRow.Size(m)
@@ -212,16 +217,17 @@ func (m *PicIdentRow) Reset()         { *m = PicIdentRow{} }
 func (m *PicIdentRow) String() string { return proto.CompactTextString(m) }
 func (*PicIdentRow) ProtoMessage()    {}
 func (*PicIdentRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{3}
+	return fileDescriptor_9e429e24f449e1ed, []int{3}
 }
+
 func (m *PicIdentRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PicIdentRow.Unmarshal(m, b)
 }
 func (m *PicIdentRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PicIdentRow.Marshal(b, m, deterministic)
 }
-func (dst *PicIdentRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PicIdentRow.Merge(dst, src)
+func (m *PicIdentRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PicIdentRow.Merge(m, src)
 }
 func (m *PicIdentRow) XXX_Size() int {
 	return xxx_messageInfo_PicIdentRow.Size(m)
@@ -273,16 +279,17 @@ func (m *PicCommentRow) Reset()         { *m = PicCommentRow{} }
 func (m *PicCommentRow) String() string { return proto.CompactTextString(m) }
 func (*PicCommentRow) ProtoMessage()    {}
 func (*PicCommentRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{4}
+	return fileDescriptor_9e429e24f449e1ed, []int{4}
 }
+
 func (m *PicCommentRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PicCommentRow.Unmarshal(m, b)
 }
 func (m *PicCommentRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PicCommentRow.Marshal(b, m, deterministic)
 }
-func (dst *PicCommentRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PicCommentRow.Merge(dst, src)
+func (m *PicCommentRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PicCommentRow.Merge(m, src)
 }
 func (m *PicCommentRow) XXX_Size() int {
 	return xxx_messageInfo_PicCommentRow.Size(m)
@@ -327,16 +334,17 @@ func (m *PicVoteRow) Reset()         { *m = PicVoteRow{} }
 func (m *PicVoteRow) String() string { return proto.CompactTextString(m) }
 func (*PicVoteRow) ProtoMessage()    {}
 func (*PicVoteRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{5}
+	return fileDescriptor_9e429e24f449e1ed, []int{5}
 }
+
 func (m *PicVoteRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PicVoteRow.Unmarshal(m, b)
 }
 func (m *PicVoteRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PicVoteRow.Marshal(b, m, deterministic)
 }
-func (dst *PicVoteRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PicVoteRow.Merge(dst, src)
+func (m *PicVoteRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PicVoteRow.Merge(m, src)
 }
 func (m *PicVoteRow) XXX_Size() int {
 	return xxx_messageInfo_PicVoteRow.Size(m)
@@ -381,16 +389,17 @@ func (m *UserRow) Reset()         { *m = UserRow{} }
 func (m *UserRow) String() string { return proto.CompactTextString(m) }
 func (*UserRow) ProtoMessage()    {}
 func (*UserRow) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tables_5220517a034d8391, []int{6}
+	return fileDescriptor_9e429e24f449e1ed, []int{6}
 }
+
 func (m *UserRow) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UserRow.Unmarshal(m, b)
 }
 func (m *UserRow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_UserRow.Marshal(b, m, deterministic)
 }
-func (dst *UserRow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UserRow.Merge(dst, src)
+func (m *UserRow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UserRow.Merge(m, src)
 }
 func (m *UserRow) XXX_Size() int {
 	return xxx_messageInfo_UserRow.Size(m)
@@ -432,9 +441,9 @@ func init() {
 	proto.RegisterType((*UserRow)(nil), "pixur.tables.UserRow")
 }
 
-func init() { proto.RegisterFile("tables.proto", fileDescriptor_tables_5220517a034d8391) }
+func init() { proto.RegisterFile("tables.proto", fileDescriptor_9e429e24f449e1ed) }
 
-var fileDescriptor_tables_5220517a034d8391 = []byte{
+var fileDescriptor_9e429e24f449e1ed = []byte{
 	// 721 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xcd, 0x6e, 0xd3, 0x4a,
 	0x14, 0xd6, 0x24, 0xb6, 0x93, 0x9c, 0xfc, 0xb9, 0xd3, 0x7b, 0x7b, 0x7b, 0x53, 0x51, 0xa6, 0xa6,
