@@ -23,12 +23,12 @@ type LookupPicVoteTask struct {
 	PicVote *schema.PicVote
 }
 
-func (t *LookupPicVoteTask) Run(ctx context.Context) (errCap status.S) {
+func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	subjectUserId, _ := UserIDFromCtx(ctx)
 	var perm schema.User_Capability

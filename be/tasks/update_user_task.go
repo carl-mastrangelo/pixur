@@ -29,12 +29,12 @@ type UpdateUserTask struct {
 	ObjectUser *schema.User
 }
 
-func (t *UpdateUserTask) Run(ctx context.Context) (errCap status.S) {
+func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "Unable to Begin TX")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	subjectUserID, ok := UserIDFromCtx(ctx)
 	if !ok {

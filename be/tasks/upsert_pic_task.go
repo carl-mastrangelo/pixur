@@ -65,12 +65,12 @@ type FileHeader struct {
 	Size int64
 }
 
-func (t *UpsertPicTask) Run(ctx context.Context) (stsCap status.S) {
+func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &stsCap)
+	defer revert(j, &stscap)
 
 	if sts := t.runInternal(ctx, j); sts != nil {
 		return sts

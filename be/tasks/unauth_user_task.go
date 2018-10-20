@@ -23,7 +23,7 @@ type UnauthUserTask struct {
 	TokenID int64
 }
 
-func (t *UnauthUserTask) Run(ctx context.Context) (sCap status.S) {
+func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 	if ctx == nil {
 		return status.InternalError(nil, "missing context")
 	}
@@ -32,7 +32,7 @@ func (t *UnauthUserTask) Run(ctx context.Context) (sCap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &sCap)
+	defer revert(j, &stscap)
 
 	var user *schema.User
 	nowts, err := ptypes.TimestampProto(t.Now())

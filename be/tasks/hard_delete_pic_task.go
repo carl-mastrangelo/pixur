@@ -23,12 +23,12 @@ type HardDeletePicTask struct {
 	PicID int64
 }
 
-func (t *HardDeletePicTask) Run(ctx context.Context) (errCap status.S) {
+func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_HARD_DELETE)
 	if sts != nil {

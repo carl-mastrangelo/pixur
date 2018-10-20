@@ -23,12 +23,12 @@ type FindSchedPicsTask struct {
 }
 
 // TODO: add tests
-func (t *FindSchedPicsTask) Run(ctx context.Context) (errCap status.S) {
+func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_INDEX, schema.User_USER_READ_SELF)
 	if sts != nil {

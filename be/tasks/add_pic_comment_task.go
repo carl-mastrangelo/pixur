@@ -30,7 +30,7 @@ const (
 	maxCommentLen = 16384
 )
 
-func (t *AddPicCommentTask) Run(ctx context.Context) (errCap status.S) {
+func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	if len(t.Text) < minCommentLen {
 		return status.InvalidArgument(nil, "comment too short")
 	} else if len(t.Text) > maxCommentLen {
@@ -46,7 +46,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (errCap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_COMMENT_CREATE)
 	if sts != nil {

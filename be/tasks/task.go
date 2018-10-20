@@ -2,10 +2,8 @@ package tasks // import "pixur.org/pixur/be/tasks"
 
 import (
 	"context"
-	"log"
 
 	"pixur.org/pixur/be/schema/db"
-	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
 )
 
@@ -37,14 +35,6 @@ func revert(j db.Commiter, stscap *status.S) {
 			}
 		} else {
 			*stscap = status.WithSuppressed(*stscap, err)
-		}
-	}
-}
-
-func cleanUp(j *tab.Job, stsCap *status.S) {
-	if *stsCap != nil {
-		if err := j.Rollback(); err != nil {
-			log.Println("Additional error during rollback", err)
 		}
 	}
 }

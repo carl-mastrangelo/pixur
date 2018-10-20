@@ -22,7 +22,7 @@ type LookupUserTask struct {
 	User *schema.User
 }
 
-func (t *LookupUserTask) Run(ctx context.Context) (errCap status.S) {
+func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 	subjectUserID, ok := UserIDFromCtx(ctx)
 	if !ok {
 		return status.Unauthenticated(nil, "missing user")
@@ -32,7 +32,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (errCap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	var objectUser *schema.User
 	if subjectUserID == t.ObjectUserID || t.ObjectUserID == 0 {

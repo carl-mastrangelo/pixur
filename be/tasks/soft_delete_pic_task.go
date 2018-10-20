@@ -29,7 +29,7 @@ type SoftDeletePicTask struct {
 	Temporary bool
 }
 
-func (t *SoftDeletePicTask) Run(ctx context.Context) (errCap status.S) {
+func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
 	}
@@ -38,7 +38,7 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (errCap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_SOFT_DELETE)
 	if sts != nil {

@@ -63,13 +63,13 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 	return u, nil
 }
 
-func (t *CreateUserTask) Run(ctx context.Context) (errCap status.S) {
+func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	var err error
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")
 	}
-	defer cleanUp(j, &errCap)
+	defer revert(j, &stscap)
 
 	if _, sts := requireCapability(ctx, j, schema.User_USER_CREATE); sts != nil {
 		return sts
