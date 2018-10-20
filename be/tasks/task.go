@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
 )
@@ -24,6 +25,20 @@ type Resettable interface {
 // always called exactly once, at the end of the task, regardless of success.
 type Messy interface {
 	CleanUp()
+}
+
+func revert(j db.Commiter, stscap *status.S) {
+	if err := j.Rollback(); err != nil {
+		if *stscap == nil {
+			if s, ok := err.(status.S); ok {
+				*stscap = s
+			} else {
+				*stscap = status.InternalError(err, "failed to rollback job after success")
+			}
+		} else {
+			*stscap = status.WithSuppressed(*stscap, err)
+		}
+	}
 }
 
 func cleanUp(j *tab.Job, stsCap *status.S) {
