@@ -83,6 +83,9 @@ type DBAdapter interface {
 
 	Open(dataSourceName string) (DB, error)
 	OpenForTest() (DB, error)
+
+	// Can the given error be retried?
+	RetryableErr(error) bool
 }
 
 type Lock int

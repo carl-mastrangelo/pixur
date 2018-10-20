@@ -7,7 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
+)
+
+const (
+	innoDbDeadlockErrorNumber = 1213
 )
 
 var _ DBAdapter = &mysqlAdapter{}
@@ -157,6 +161,13 @@ func (_ *mysqlAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	default:
 		panic(fmt.Errorf("Unknown lock %v", lock))
 	}
+}
+
+func (_ *mysqlAdapter) RetryableErr(err error) bool {
+	if myerr, ok := err.(*mysql.MySQLError); ok {
+		return myerr.Number == innoDbDeadlockErrorNumber
+	}
+	return false
 }
 
 func init() {

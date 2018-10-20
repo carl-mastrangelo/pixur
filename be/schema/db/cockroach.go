@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 var _ DBAdapter = &cockroachAdapter{}
@@ -89,6 +89,14 @@ func (_ *cockroachAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	default:
 		panic(fmt.Errorf("Unknown lock %v", lock))
 	}
+}
+
+func (_ *cockroachAdapter) RetryableErr(err error) bool {
+	if pqerr, ok := err.(*pq.Error); ok {
+		// TODO: implement
+		_ = pqerr
+	}
+	return false
 }
 
 var (

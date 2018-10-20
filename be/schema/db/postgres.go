@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 var _ DBAdapter = &postgresAdapter{}
@@ -83,6 +83,14 @@ func (_ *postgresAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 	default:
 		panic(fmt.Errorf("Unknown lock %v", lock))
 	}
+}
+
+func (_ *postgresAdapter) RetryableErr(err error) bool {
+	if pqerr, ok := err.(*pq.Error); ok {
+		// TODO: implement
+		_ = pqerr
+	}
+	return false
 }
 
 func fixLibPqQuery(query string) string {

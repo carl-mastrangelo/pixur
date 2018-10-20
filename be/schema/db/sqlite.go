@@ -118,6 +118,11 @@ func (_ *sqlite3Adapter) LockStmt(buf *strings.Builder, lock Lock) {
 	}
 }
 
+func (_ *sqlite3Adapter) RetryableErr(err error) bool {
+	// TODO: implement
+	return false
+}
+
 func init() {
 	RegisterAdapter(new(sqlite3Adapter))
 }
