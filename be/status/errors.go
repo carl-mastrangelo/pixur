@@ -2,7 +2,9 @@ package status // import "pixur.org/pixur/be/status"
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -30,13 +32,24 @@ func From(err error) S {
 	}
 }
 
+func WithSuppressed(s S, suppressed ...error) S {
+	unwrapped := s.(*status)
+	news := *unwrapped
+	news.suppressed = make([]error, 0, len(unwrapped.suppressed)+len(suppressed))
+	news.suppressed = append(news.suppressed, unwrapped.suppressed...)
+	news.suppressed = append(news.suppressed, suppressed...)
+	return &news
+}
+
 var _ S = &status{}
 
+// all fields are immutable
 type status struct {
-	code  codes.Code
-	msg   string
-	cause error
-	stack []uintptr
+	code       codes.Code
+	msg        string
+	cause      error
+	suppressed []error
+	stack      []uintptr
 }
 
 func (s *status) Code() codes.Code {
@@ -56,7 +69,17 @@ func (s *status) Stack() []uintptr {
 }
 
 func (s *status) Error() string {
-	return fmt.Sprintf("%s: %s", s.code, s.msg)
+	var b strings.Builder
+	s.writeSelf(&b, "", "")
+	return b.String()
+}
+
+func (s *status) writeSelf(b *strings.Builder, caption, prefix string) {
+	b.WriteString(prefix)
+	b.WriteString(caption)
+	b.WriteString(s.code.String())
+	b.WriteString(": ")
+	b.WriteString(s.msg)
 }
 
 func (s *status) Format(f fmt.State, r rune) {
@@ -64,39 +87,56 @@ func (s *status) Format(f fmt.State, r rune) {
 	case 'v':
 		f.Write([]byte(s.String()))
 	default:
-		f.Write([]byte("%!" + string(r) + "(bad fmt for " + s.Error() + ")"))
+		var b strings.Builder
+		s.writeSelf(&b, "", "")
+		f.Write([]byte("%!" + string(r) + "(bad fmt for " + b.String() + ")"))
 	}
 }
 
 func (s *status) String() string {
 	var b strings.Builder
-	s.stringer(&b)
+	s.writeAll(&b, "", "")
 	return b.String()
 }
 
 func (s *status) dontImplementMe() {
 }
 
-func (s *status) stringer(buf *strings.Builder) {
-	buf.WriteString(s.Error())
+func (s *status) writeAll(b *strings.Builder, caption, prefix string) {
+	s.writeSelf(b, caption, prefix)
 	if len(s.stack) != 0 {
 		frames := runtime.CallersFrames(s.stack)
 		for {
 			f, more := frames.Next()
-			fmt.Fprintf(buf, "\n\t%s (%s:%d)", f.Function, f.File, f.Line)
+			b.WriteRune('\n')
+			b.WriteString(prefix)
+			b.WriteString("\tat ")
+			b.WriteString(f.Function)
+			b.WriteRune('(')
+			b.WriteString(filepath.Base(f.File))
+			b.WriteRune(':')
+			b.WriteString(strconv.Itoa(f.Line))
+			b.WriteRune(')')
 			if !more {
 				break
 			}
 		}
 	}
-	if s.cause == nil {
-		return
+	for _, suppressed := range s.suppressed {
+		b.WriteRune('\n')
+		if ss, ok := suppressed.(*status); ok {
+			ss.writeAll(b, "Suppressed: ", prefix+"\t")
+		} else {
+			fmt.Fprintf(b, "%sSuppressed: %v\n", prefix+"\t", suppressed) // usually an error
+		}
 	}
-	buf.WriteString("\nCaused by: ")
-	if nexts, ok := s.cause.(*status); ok {
-		nexts.stringer(buf)
-	} else {
-		buf.WriteString(s.cause.Error())
+	if s.cause != nil {
+		b.WriteRune('\n')
+		if c, ok := s.cause.(*status); ok {
+			c.writeAll(b, "Caused by: ", prefix)
+		} else {
+			fmt.Fprintf(b, "%sCaused by: %v", prefix, s.cause) // usually an error
+		}
 	}
 }
 
