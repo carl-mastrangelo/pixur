@@ -94,7 +94,7 @@ func (stdb *sqlite3TestDB) _close() status.S {
 	sts := stdb.dbWrapper._close()
 
 	if err := os.RemoveAll(stdb.testdir); err != nil {
-		replaceOrSuppress(&sts, status.InternalError(err, "can't remove test dir"))
+		status.ReplaceOrSuppress(&sts, status.InternalError(err, "can't remove test dir"))
 	}
 
 	return sts

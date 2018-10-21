@@ -174,7 +174,7 @@ func localScan(
 	}
 	defer func() {
 		if newErr := rows.Close(); newErr != nil {
-			replaceOrSuppress(&stscap, status.From(newErr))
+			status.ReplaceOrSuppress(&stscap, status.From(newErr))
 		}
 	}()
 

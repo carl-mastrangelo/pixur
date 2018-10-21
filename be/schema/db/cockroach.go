@@ -133,7 +133,7 @@ func (a *cockroachAdapter) openForTest() (_ *cockroachTestDB, stscap status.S) {
 		defer func() {
 			if cockroachTestServActive == 0 {
 				if sts := cockroachTestServ.stop(); sts != nil {
-					replaceOrSuppress(&stscap, sts)
+					status.ReplaceOrSuppress(&stscap, sts)
 				}
 				cockroachTestServ = nil
 			}
@@ -195,7 +195,7 @@ func (a *cockroachTestDB) _close() status.S {
 		cockroachTestServActive--
 		if cockroachTestServActive == 0 {
 			if sts2 := cockroachTestServ.stop(); sts2 != nil {
-				replaceOrSuppress(&sts, sts2)
+				status.ReplaceOrSuppress(&sts, sts2)
 			}
 			cockroachTestServ = nil
 		}

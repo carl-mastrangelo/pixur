@@ -37,8 +37,27 @@ func WithSuppressed(s S, suppressed ...error) S {
 	news := *unwrapped
 	news.suppressed = make([]error, 0, len(unwrapped.suppressed)+len(suppressed))
 	news.suppressed = append(news.suppressed, unwrapped.suppressed...)
-	news.suppressed = append(news.suppressed, suppressed...)
+	for _, sup := range suppressed {
+		if sup == nil {
+			panic("nil suppressed error")
+		}
+		news.suppressed = append(news.suppressed, sup)
+	}
+
 	return &news
+}
+
+func ReplaceOrSuppress(dst *S, sts S) {
+	if sts == nil {
+		panic("nil suppressed error")
+	}
+	if sts != nil {
+		if *dst == nil {
+			*dst = sts
+		} else {
+			*dst = WithSuppressed(*dst, sts)
+		}
+	}
 }
 
 var _ S = &status{}

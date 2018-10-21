@@ -31,21 +31,21 @@ func (mts *mysqlTestServer) tearDownEnv() status.S {
 	var sts status.S
 	if mts.stdout != nil {
 		if err := mts.stdout.Close(); err != nil {
-			replaceOrSuppress(&sts, status.Unknown(err, "can't close stdout"))
+			status.ReplaceOrSuppress(&sts, status.Unknown(err, "can't close stdout"))
 		}
 		mts.stdout = nil
 	}
 
 	if mts.stderr != nil {
 		if err := mts.stderr.Close(); err != nil {
-			replaceOrSuppress(&sts, status.Unknown(err, "can't close err"))
+			status.ReplaceOrSuppress(&sts, status.Unknown(err, "can't close err"))
 		}
 		mts.stderr = nil
 	}
 
 	if mts.testdir != "" {
 		if err := os.RemoveAll(mts.testdir); err != nil {
-			replaceOrSuppress(&sts, status.Unknown(err, "can't remove testdir"))
+			status.ReplaceOrSuppress(&sts, status.Unknown(err, "can't remove testdir"))
 		}
 		mts.testdir = ""
 	}

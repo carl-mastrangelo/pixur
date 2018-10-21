@@ -140,10 +140,10 @@ func (a *mysqlTestDB) _close() status.S {
 		mysqlTestServ.active--
 		if mysqlTestServ.active == 0 {
 			if stopsts := mysqlTestServ.stop(); stopsts != nil {
-				replaceOrSuppress(&sts, stopsts)
+				status.ReplaceOrSuppress(&sts, stopsts)
 			}
 			if teardownsts := mysqlTestServ.tearDownEnv(); teardownsts != nil {
-				replaceOrSuppress(&sts, teardownsts)
+				status.ReplaceOrSuppress(&sts, teardownsts)
 			}
 			mysqlTestServ = nil
 		}

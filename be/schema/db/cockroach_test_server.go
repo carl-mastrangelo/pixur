@@ -52,16 +52,6 @@ type testCockroachPostgresServer struct {
 	user, host, port string
 }
 
-func replaceOrSuppress(stscap *status.S, sts status.S) {
-	if sts != nil {
-		if *stscap == nil {
-			*stscap = sts
-		} else {
-			*stscap = status.WithSuppressed(*stscap, sts)
-		}
-	}
-}
-
 func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.S) {
 	var defers []func()
 	defer func() {
@@ -75,7 +65,7 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.
 	}
 	defers = append(defers, func() {
 		if err := os.RemoveAll(testdir); err != nil {
-			replaceOrSuppress(&stscap, status.Unknown(err, "failed to remove testdir while cleaning up"))
+			status.ReplaceOrSuppress(&stscap, status.Unknown(err, "failed to remove testdir while cleaning up"))
 		}
 	})
 	// Don't use context command as it would kill the cmd even after starting successfully
@@ -96,7 +86,7 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.
 	}
 	defers = append(defers, func() {
 		if err := stderr.Close(); err != nil {
-			replaceOrSuppress(&stscap, status.Unknown(err, "failed to close stderr while cleaning up"))
+			status.ReplaceOrSuppress(&stscap, status.Unknown(err, "failed to close stderr while cleaning up"))
 		}
 	})
 
@@ -106,7 +96,7 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.
 	}
 	defers = append(defers, func() {
 		if err := stdout.Close(); err != nil {
-			replaceOrSuppress(&stscap, status.Unknown(err, "failed to close stdout while cleaning up"))
+			status.ReplaceOrSuppress(&stscap, status.Unknown(err, "failed to close stdout while cleaning up"))
 		}
 	})
 	doneparts := make(chan []string, 1)
@@ -123,7 +113,7 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.
 	}
 	defers = append(defers, func() {
 		if err := cmd.Process.Kill(); err != nil {
-			replaceOrSuppress(&stscap, status.Unknown(err, "failed to kill process while cleaning up"))
+			status.ReplaceOrSuppress(&stscap, status.Unknown(err, "failed to kill process while cleaning up"))
 		}
 	})
 
@@ -143,16 +133,16 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.
 func (s *testCockroachPostgresServer) stop() status.S {
 	var sts status.S
 	if err := s.cmd.Process.Kill(); err != nil {
-		replaceOrSuppress(&sts, status.Unknown(err, "failed to kill process"))
+		status.ReplaceOrSuppress(&sts, status.Unknown(err, "failed to kill process"))
 	}
 	if err := s.cmd.Stderr.(io.Closer).Close(); err != nil {
-		replaceOrSuppress(&sts, status.Unknown(err, "failed to close stderr"))
+		status.ReplaceOrSuppress(&sts, status.Unknown(err, "failed to close stderr"))
 	}
 	if err := s.cmd.Stdout.(io.Closer).Close(); err != nil {
-		replaceOrSuppress(&sts, status.Unknown(err, "failed to close stdout"))
+		status.ReplaceOrSuppress(&sts, status.Unknown(err, "failed to close stdout"))
 	}
 	if err := os.RemoveAll(s.testdir); err != nil {
-		replaceOrSuppress(&sts, status.Unknown(err, "failed to remove testdir"))
+		status.ReplaceOrSuppress(&sts, status.Unknown(err, "failed to remove testdir"))
 	}
 	return sts
 }

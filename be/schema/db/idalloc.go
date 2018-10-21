@@ -76,7 +76,7 @@ func (alloc *IDAlloc) refill(ctx context.Context, exec Beginner, grab int64, ada
 	}
 	defer func() {
 		if err := j.Rollback(); err != nil {
-			replaceOrSuppress(&stscap, status.From(err))
+			status.ReplaceOrSuppress(&stscap, status.From(err))
 		}
 	}()
 
