@@ -9,25 +9,39 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
+// Commiter is an interface to commit transactions.  It is not threadsafe
 type Commiter interface {
+	// Commit returns nil iff the transaction was successful.  This method may only be called once.
+	// If this method returns true, future calls to Rollback() will be no-ops and always return nil.
+	// If an error is returned, the transaction may have been successful, or it may have failed.
 	Commit() error
+	// Rollback reverts the transaction.  Invocations after first are no-ops and always return nil.
+	// If an error is returned, the caller does not need to call Rollback() again.
 	Rollback() error
 }
 
+// QuerierExecutorCommitter is an interface that matches the sql.Tx type.
 type QuerierExecutorCommitter interface {
 	Querier
 	Commiter
 	Executor
 }
 
+// Beginner begins transactions. Upon a successful call to Being(), callers should take care
+// to either Commit() or Rollback() the QuerierExecutorCommitter.
 type Beginner interface {
+	// Begin begins a transaction
 	Begin(context.Context) (QuerierExecutorCommitter, error)
 }
 
+// DB represents a database.  It is the entry point to creating transactions.
 type DB interface {
 	Beginner
+	// Close closes the database, and should be called when the db is no longer needed.
 	Close() error
+	// InitSchema initializes the database tables.  This is typically used in unit tests.
 	InitSchema(context.Context, []string) error
+	// Adapter describes what kind of database this is.
 	Adapter() DBAdapter
 }
 
@@ -36,6 +50,8 @@ type Retryable interface {
 	CanRetry() bool
 }
 
+// Open is the main entry point to the db package.  adapterName is one of the registered types.
+// dataSourceName is the connection information to initiate the db.
 func Open(adapterName, dataSourceName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
