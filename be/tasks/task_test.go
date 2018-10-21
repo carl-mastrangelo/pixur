@@ -100,11 +100,8 @@ func TestRevert_replacesNil(t *testing.T) {
 	var s status.S
 	revert(tc, &s)
 
-	if s == nil || s.Code() != codes.Internal || !strings.Contains(s.Message(), "failed to rollback") {
+	if s == nil || s.Code() != codes.Unknown || !strings.Contains(s.Message(), "explosions") {
 		t.Error("should have error", s)
-	}
-	if !strings.Contains(s.String(), "explosions") {
-		t.Error("missing causal error", s)
 	}
 	if have, want := tc.commits, 0; have != want {
 		t.Error("have", have, "want", want)

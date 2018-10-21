@@ -5,17 +5,13 @@ import (
 	"testing"
 
 	"pixur.org/pixur/be/status"
-
-	"github.com/go-sql-driver/mysql"
 )
 
 type fakeTask struct {
-	runCount     int
-	resetCount   int
-	cleanUpCount int
-	run          func(context.Context) status.S
-	reset        func()
-	cleanUp      func()
+	runCount   int
+	resetCount int
+	run        func(context.Context) status.S
+	reset      func()
 }
 
 func (t *fakeTask) Run(ctx context.Context) status.S {
@@ -30,13 +26,6 @@ func (t *fakeTask) ResetForRetry() {
 	t.resetCount++
 	if t.reset != nil {
 		t.reset()
-	}
-}
-
-func (t *fakeTask) CleanUp() {
-	t.cleanUpCount++
-	if t.cleanUp != nil {
-		t.cleanUp()
 	}
 }
 
@@ -64,9 +53,6 @@ func TestTaskIsNotReset_success(t *testing.T) {
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
 	}
-	if task.cleanUpCount != 1 {
-		t.Fatal("Expected task to be cleaned up 1 times")
-	}
 }
 
 func TestTaskIsReset_failure(t *testing.T) {
@@ -89,33 +75,40 @@ func TestTaskIsReset_failure(t *testing.T) {
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
 	}
-	if task.cleanUpCount != 1 {
-		t.Fatal("Expected task to be cleaned up 1 times")
-	}
 }
 
-func TestTaskRetriesOnDeadlock(t *testing.T) {
+type fakeError bool
+
+func (e *fakeError) Error() string {
+	return "bad"
+}
+
+func (e *fakeError) CanRetry() bool {
+	return bool(*e)
+}
+
+func TestTaskRetriesOnRetryableError(t *testing.T) {
 	runner := new(TaskRunner)
 	task := new(fakeTask)
 
 	task.run = func(_ context.Context) status.S {
-		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber}, "")
+		err := fakeError(true)
+		return status.InternalError(&err, "err")
 	}
+	oldlog := thetasklogger
+	thetasklogger = nil
 	sts := runner.Run(context.Background(), task)
+	thetasklogger = oldlog
 
 	if sts == nil {
 		t.Fatal("Expected error, but was nil")
 	}
 
 	if task.runCount != maxTaskRetries {
-		t.Fatalf("Expected task to be run %d time", maxTaskRetries)
+		t.Fatalf("Expected task to be run %d times !%d", maxTaskRetries, task.runCount)
 	}
-
 	if task.resetCount != maxTaskRetries {
-		t.Fatalf("Expected task to be reset %d time", maxTaskRetries)
-	}
-	if task.cleanUpCount != 1 {
-		t.Fatal("Expected task to be cleaned up 1 times")
+		t.Fatalf("Expected task to be reset %d times, !%d", maxTaskRetries, task.resetCount)
 	}
 }
 
@@ -124,7 +117,8 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 	task := new(fakeTask)
 
 	task.run = func(_ context.Context) status.S {
-		return status.InternalError(&mysql.MySQLError{Number: innoDbDeadlockErrorNumber + 1}, "")
+		err := fakeError(false)
+		return status.InternalError(&err, "")
 	}
 	sts := runner.Run(context.Background(), task)
 
@@ -138,8 +132,5 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 
 	if task.resetCount != 0 {
 		t.Fatal("Expected task to be reset 0 times")
-	}
-	if task.cleanUpCount != 1 {
-		t.Fatal("Expected task to be cleaned up 1 times")
 	}
 }

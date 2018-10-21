@@ -3,20 +3,24 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"runtime/trace"
+	_ "time"
 
-	"github.com/go-sql-driver/mysql"
-
+	"pixur.org/pixur/be/schema/db"
 	"pixur.org/pixur/be/status"
 )
 
 const (
-	maxTaskRetries            = 3
-	innoDbDeadlockErrorNumber = 1213
+	maxTaskRetries = 3
 )
 
+var thetasklogger *log.Logger = log.New(os.Stderr, "", log.LstdFlags)
+
 type TaskRunner struct {
-	run func(context.Context, Task) status.S
+	run    func(context.Context, Task) status.S
+	thelog *log.Logger
 }
 
 func TestTaskRunner(run func(context.Context, Task) status.S) *TaskRunner {
@@ -37,27 +41,66 @@ func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 	return runTask(ctx, task)
 }
 
-func runTask(ctx context.Context, task Task) status.S {
-	if messy, ok := task.(Messy); ok {
-		defer messy.CleanUp()
+func stsSliceToErrSlice(ss []status.S) []error {
+	es := make([]error, 0, len(ss))
+	for _, s := range ss {
+		es = append(es, s)
 	}
-	var sts status.S
+	return es
+}
+
+func runTask(ctx context.Context, task Task) (stscap status.S) {
+	var failures []status.S
+	defer func() {
+		if stscap == nil && len(failures) != 0 {
+			if thetasklogger != nil {
+				warnsts := status.Unknown(nil, "Encountered errors while running")
+				warnsts = status.WithSuppressed(warnsts, stsSliceToErrSlice(failures)...)
+
+				thetasklogger.Println(warnsts)
+			}
+		}
+	}()
+
+	res, resettable := task.(Resettable)
 	for i := 0; i < maxTaskRetries; i++ {
-		sts = task.Run(ctx)
+		select {
+		case <-ctx.Done():
+			failures = append(failures, status.From(ctx.Err()))
+			break
+		default:
+		}
+		sts := task.Run(ctx)
 		if sts == nil {
 			return nil
 		}
-		if cause := sts.Cause(); cause != nil {
-			if mysqlErr, ok := cause.(*mysql.MySQLError); ok {
-				if mysqlErr.Number == innoDbDeadlockErrorNumber {
-					if resettable, ok := task.(Resettable); ok {
-						resettable.ResetForRetry()
-					}
+		failures = append(failures, sts)
+
+		if cause := unwrapTaskStatus(sts); cause != nil {
+			if retryable, ok := cause.(db.Retryable); ok {
+				if retryable.CanRetry() && resettable {
+					res.ResetForRetry()
 					continue
 				}
 			}
 		}
 		return sts
 	}
-	return status.InternalErrorf(sts, "Failed to complete task %s after %d tries", task, maxTaskRetries)
+	if thetasklogger != nil {
+		thetasklogger.Printf("Failed to complete task %T after %d tries", task, maxTaskRetries)
+	}
+
+	return status.WithSuppressed(failures[0], stsSliceToErrSlice(failures[1:])...)
+}
+
+func unwrapTaskStatus(sts status.S) error {
+	var cause error = sts
+	for {
+		if s, ok := cause.(status.S); ok {
+			cause = s.Cause()
+		} else {
+			break
+		}
+	}
+	return cause
 }
