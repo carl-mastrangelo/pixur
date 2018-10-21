@@ -54,7 +54,9 @@ func (w *dbWrapper) begin(ctx context.Context) (*txWrapper, status.S) {
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, "SqlBeginTx").End()
 	}
-	tx, err := w.db.Begin()
+	tx, err := w.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	})
 	if err != nil {
 		return nil, status.Unknown(&sqlError{
 			wrapped: err,
@@ -91,9 +93,10 @@ func (w *dbWrapper) initSchema(ctx context.Context, tables []string) status.S {
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, "SqlInitSchema").End()
 	}
+
 	// also includes initial data
 	for _, table := range tables {
-		if _, err := w.db.Exec(table); err != nil {
+		if _, err := w.db.ExecContext(ctx, table); err != nil {
 			return status.Unknown(&sqlError{
 				wrapped: err,
 				adap:    w.adap,
