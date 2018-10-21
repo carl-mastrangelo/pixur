@@ -62,9 +62,10 @@ func (w *dbWrapper) begin(ctx context.Context) (*txWrapper, status.S) {
 		}, "failed to begin query")
 	}
 	return &txWrapper{
-		tx:  tx,
-		ctx: ctx,
-		pp:  w.pp,
+		tx:   tx,
+		ctx:  ctx,
+		adap: w.adap,
+		pp:   w.pp,
 	}, nil
 }
 
