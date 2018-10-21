@@ -47,15 +47,12 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
 	}
-	t.Pic = pics[0]
-
 	picTags, err := j.FindPicTags(db.Opts{
 		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
 	})
 	if err != nil {
 		return status.InternalError(err, "can't find pic tags")
 	}
-	t.PicTags = picTags
 
 	picComments, err := j.FindPicComments(db.Opts{
 		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
@@ -63,11 +60,13 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't find pic comments")
 	}
-	t.PicCommentTree = buildCommentTree(picComments)
-
 	if err := j.Rollback(); err != nil {
 		return status.InternalError(err, "can't rollback job")
 	}
+
+	t.Pic = pics[0]
+	t.PicTags = picTags
+	t.PicCommentTree = buildCommentTree(picComments)
 
 	return nil
 }

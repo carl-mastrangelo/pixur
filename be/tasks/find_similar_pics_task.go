@@ -42,7 +42,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InternalError(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
-		return status.InvalidArgument(err, "can't lookup pic", len(pics))
+		return status.InvalidArgument(nil, "can't lookup pic", len(pics))
 	}
 	pic := pics[0]
 
@@ -56,7 +56,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InternalError(err, "can't lookup pic ident")
 	}
 	if len(picIdents) != 1 {
-		return status.InvalidArgument(err, "can't lookup pic ident", len(picIdents))
+		return status.InvalidArgument(nil, "can't lookup pic ident", len(picIdents))
 	}
 	targetIdent := picIdents[0]
 	match := binary.BigEndian.Uint64(targetIdent.Value)
@@ -64,6 +64,8 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	scanOpts := db.Opts{
 		Start: tab.PicIdentsIdent{Type: &dctIdentType},
 	}
+	var similarPicIDs []int64
+
 	err = j.ScanPicIdents(scanOpts, func(pi *schema.PicIdent) error {
 		if pi.PicId == pic.PicId {
 			return nil
@@ -80,7 +82,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 			}
 		}
 		if bitCount <= 10 {
-			t.SimilarPicIDs = append(t.SimilarPicIDs, pi.PicId)
+			similarPicIDs = append(similarPicIDs, pi.PicId)
 		}
 
 		return nil
@@ -92,6 +94,8 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	if err := j.Rollback(); err != nil {
 		return status.InternalError(err, "can't rollback job")
 	}
+	// Only set results on success
+	t.SimilarPicIDs = similarPicIDs
 
 	return nil
 }

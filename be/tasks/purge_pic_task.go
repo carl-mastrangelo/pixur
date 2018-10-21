@@ -94,7 +94,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			return status.InternalError(err, "can't find tag")
 		}
 		if len(tags) != 1 {
-			return status.InternalError(err, "can't lookup tag")
+			return status.InternalError(nil, "can't lookup tag")
 		}
 		ts = append(ts, tags[0])
 	}

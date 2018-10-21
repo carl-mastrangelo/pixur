@@ -35,14 +35,6 @@ type ReadIndexPicsTask struct {
 	Pics []*schema.Pic
 }
 
-func (t *ReadIndexPicsTask) ResetForRetry() {
-	t.Pics = nil
-}
-
-func (t *ReadIndexPicsTask) CleanUp() {
-	// no op
-}
-
 func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	opts := db.Opts{
 		Limit: 1,
@@ -83,9 +75,9 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 
 	var indexID int64
 	if t.StartID != 0 {
-		startPic, err := lookupStartPic(j, t.StartID, t.Ascending)
+		startPic, sts := lookupStartPic(j, t.StartID, t.Ascending)
 		if err != nil {
-			return err
+			return sts
 		}
 		if startPic == nil {
 			return nil

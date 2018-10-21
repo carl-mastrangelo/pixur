@@ -47,6 +47,7 @@ func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (
 		Rename:     os.Rename,
 		MkdirAll:   os.MkdirAll,
 		Now:        s.now,
+		Remove:     os.Remove,
 
 		FileURL: req.Url,
 		File:    file,

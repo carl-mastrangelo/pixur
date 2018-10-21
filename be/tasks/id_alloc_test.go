@@ -17,16 +17,21 @@ func TestAllocDBSerial(t *testing.T) {
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	ids := make(map[int64]struct{}, 1000)
-	for i := 0; i < 1000; i++ {
+	ids := make(map[int64]int, 100)
+	for i := 0; i < 100; i++ {
 		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
-		ids[num] = struct{}{}
+		ids[num]++
 	}
-	if len(ids) != 1000 {
+	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
+	}
+	for i, val := range ids {
+		if val != 1 {
+			t.Error("bad id count", i, val)
+		}
 	}
 }
 
@@ -37,10 +42,10 @@ func TestAllocDBParallel(t *testing.T) {
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	idschan := make(chan int64, 1000)
+	idschan := make(chan int64, 100)
 	var wg sync.WaitGroup
-	wg.Add(1000)
-	for i := 0; i < 1000; i++ {
+	wg.Add(100)
+	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
 			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
@@ -52,47 +57,57 @@ func TestAllocDBParallel(t *testing.T) {
 	}
 	wg.Wait()
 	close(idschan)
-	ids := make(map[int64]struct{}, 1000)
+	ids := make(map[int64]int, 100)
 	for num := range idschan {
-		ids[num] = struct{}{}
+		ids[num]++
 	}
 
-	if len(ids) != 1000 {
+	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
+	}
+	for i, val := range ids {
+		if val != 1 {
+			t.Error("bad id count", i, val)
+		}
 	}
 }
 
 func TestAllocDBSerialMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 100
+	db.AllocatorGrab = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	ids := make(map[int64]struct{}, 1000)
-	for i := 0; i < 1000; i++ {
+	ids := make(map[int64]int, 100)
+	for i := 0; i < 100; i++ {
 		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
-		ids[num] = struct{}{}
+		ids[num]++
 	}
-	if len(ids) != 1000 {
+	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
+	}
+	for i, val := range ids {
+		if val != 1 {
+			t.Error("bad id count", i, val)
+		}
 	}
 }
 
 func TestAllocDBParallelMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 100
+	db.AllocatorGrab = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	idschan := make(chan int64, 1000)
+	idschan := make(chan int64, 100)
 	var wg sync.WaitGroup
-	wg.Add(1000)
-	for i := 0; i < 1000; i++ {
+	wg.Add(100)
+	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
 			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
@@ -104,13 +119,17 @@ func TestAllocDBParallelMulti(t *testing.T) {
 	}
 	wg.Wait()
 	close(idschan)
-	ids := make(map[int64]struct{}, 1000)
+	ids := make(map[int64]int, 100)
 	for num := range idschan {
-		ids[num] = struct{}{}
+		ids[num]++
 	}
-
-	if len(ids) != 1000 {
+	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
+	}
+	for i, val := range ids {
+		if val != 1 {
+			t.Error("bad id count", i, val)
+		}
 	}
 }
 
@@ -125,23 +144,28 @@ func TestAllocJobSerial(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer j.Rollback()
-	ids := make(map[int64]struct{}, 1000)
-	for i := 0; i < 1000; i++ {
+	ids := make(map[int64]int, 100)
+	for i := 0; i < 100; i++ {
 		num, err := db.AllocIDJob(j, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
-		ids[num] = struct{}{}
+		ids[num]++
 	}
-	if len(ids) != 1000 {
+	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
+	}
+	for i, val := range ids {
+		if val != 1 {
+			t.Error("bad id count", i, val)
+		}
 	}
 }
 
 func TestAllocMixed(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 100
+	db.AllocatorGrab = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
@@ -157,7 +181,7 @@ func TestAllocMixed(t *testing.T) {
 	defer j1.Rollback()
 	num1, err := db.AllocIDJob(j1, alloc, d.Adapter())
 
-	if num1 != num0+100 {
+	if num1 != num0+10 {
 		t.Error(num1, num0)
 	}
 	if err := j1.Rollback(); err != nil {
@@ -170,7 +194,7 @@ func TestAllocMixed(t *testing.T) {
 	}
 	defer j2.Rollback()
 	num2, err := db.AllocIDJob(j2, alloc, d.Adapter())
-	if num2 != num0+100 {
+	if num2 != num0+10 {
 		t.Error(num2, num0)
 	}
 	if err := j2.Commit(); err != nil {

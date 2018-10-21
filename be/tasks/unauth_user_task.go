@@ -24,10 +24,6 @@ type UnauthUserTask struct {
 }
 
 func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
-	if ctx == nil {
-		return status.InternalError(nil, "missing context")
-	}
-
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.InternalError(err, "can't create job")

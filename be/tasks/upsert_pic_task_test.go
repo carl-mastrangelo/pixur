@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -260,6 +259,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
+		Remove:   os.Remove,
 
 		File:     f,
 		Md5Hash:  md5Hash,
@@ -460,6 +460,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
+		Remove:   os.Remove,
 
 		File:     f,
 		TagNames: []string{"tag"},
@@ -522,6 +523,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
+		Remove:   os.Remove,
 
 		File:     f,
 		TagNames: []string{"tag"},
@@ -585,6 +587,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
+		Remove:   os.Remove,
 
 		File:     f,
 		TagNames: []string{"tag"},
@@ -1324,6 +1327,7 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 	}
 	task := &UpsertPicTask{
 		TempFile: tempFileFn,
+		Remove:   os.Remove,
 	}
 
 	srcFile := c.TempFile()
@@ -1399,6 +1403,7 @@ func TestPrepareFile_DownloadFileFails(t *testing.T) {
 	}
 	task := &UpsertPicTask{
 		TempFile: tempFileFn,
+		Remove:   os.Remove,
 	}
 
 	uu, _ := url.Parse("http://foo/")
@@ -1884,32 +1889,33 @@ func TestGeneratePicHashesError(t *testing.T) {
 }
 
 func TestValidateURL_TooLong(t *testing.T) {
-	long := string(make([]byte, 1025))
-	_, sts := validateURL(long)
-	expected := status.InvalidArgument(nil, "Can't use long URL")
+
+	long := strings.Repeat("a", maxUrlLength+1)
+	_, sts := validateAndNormalizeURL(long)
+	expected := status.InvalidArgument(nil, "url too long")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_CantParse(t *testing.T) {
-	_, sts := validateURL("::")
+	_, sts := validateAndNormalizeURL("http://%3")
 	expected := status.InvalidArgument(nil, "Can't parse")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_BadScheme(t *testing.T) {
-	_, sts := validateURL("file:///etc/passwd")
+	_, sts := validateAndNormalizeURL("file:///etc/passwd")
 	expected := status.InvalidArgument(nil, "Can't use non HTTP")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_UserInfo(t *testing.T) {
-	_, sts := validateURL("http://me@google.com/")
+	_, sts := validateAndNormalizeURL("http://me@google.com/")
 	expected := status.InvalidArgument(nil, "Can't provide userinfo")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_RemoveFragment(t *testing.T) {
-	u, err := validateURL("https://best/thing#ever")
+	u, err := validateAndNormalizeURL("https://best/thing#ever")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1918,99 +1924,11 @@ func TestValidateURL_RemoveFragment(t *testing.T) {
 	}
 }
 
-func TestCheckValidUnicode(t *testing.T) {
-	invalidTagName := string([]byte{0xc3, 0x28})
-	if err := checkValidUnicode([]string{invalidTagName}); err == nil {
-		t.Fatal("Expected failure")
-	}
-
-	validTagName := string(unicode.MaxRune)
-	if err := checkValidUnicode([]string{validTagName}); err != nil {
-		t.Fatal("Expected Success, but was", err)
-	}
-}
-
-func TestRemoveUnprintableCharacters(t *testing.T) {
-	tagNames := []string{"a\nb\rc"}
-
-	printableTagNames := removeUnprintableCharacters(tagNames)
-	if len(printableTagNames) != 1 || printableTagNames[0] != "abc" {
-		t.Fatal("Unprintable tag names were not removed: ", printableTagNames)
-	}
-}
-
-func TestTrimTagNames(t *testing.T) {
-	tagNames := []string{" a b "}
-
-	trimmedTagNames := trimTagNames(tagNames)
-	if len(trimmedTagNames) != 1 || trimmedTagNames[0] != "a b" {
-		t.Fatal("Whitespace was not trimmed: ", trimmedTagNames)
-	}
-}
-
-func TestRemoveDuplicateTagNames(t *testing.T) {
-	tagNames := []string{
-		"a",
-		"b",
-		"b",
-		"a",
-		"c",
-	}
-	expected := []string{"a", "b", "c"}
-
-	uniqueTagNames := removeDuplicateTagNames(tagNames)
-	if len(uniqueTagNames) != len(expected) {
-		t.Fatal("Size mismatch", uniqueTagNames, expected)
-	}
-	for i, tagName := range uniqueTagNames {
-		if tagName != expected[i] {
-			t.Fatal("Tag Name mismatch", tagName, expected[i])
-		}
-	}
-}
-
-func TestRemoveEmptyTagNames(t *testing.T) {
-	tagName := []string{"", "a"}
-	presentTagNames := removeEmptyTagNames(tagName)
-	if len(presentTagNames) != 1 || presentTagNames[0] != "a" {
-		t.Fatal("Unexpected tags", presentTagNames)
-	}
-}
-
-func TestCleanTagNames(t *testing.T) {
-	var unclean = []string{
-		"   ",
-		" ", // should collapse with the above
-		"",  // should also collapse"
-		"a",
-		"   a",
-		"a   ",
-		"b b",
-		"c\nc",
-		"pokémon",
-	}
-	var expected = []string{
-		"a",
-		"b b",
-		"cc",
-		"pokémon",
-	}
-	cleaned, err := cleanTagNames(unclean)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cleaned) != len(expected) {
-		t.Fatal("Size mismatch", cleaned, expected)
-	}
-	for i, tagName := range cleaned {
-		if tagName != expected[i] {
-			t.Fatal("tag mismatch", cleaned, expected)
-		}
-	}
-}
-
 func compareStatus(t *testing.T, actual, expected status.S) {
 	t.Helper()
+	if (actual == nil) != (expected == nil) {
+		t.Fatal("nil status", actual, expected)
+	}
 	if actual.Code() != expected.Code() {
 		t.Error("Code mismatch", actual.Code(), expected.Code())
 	}

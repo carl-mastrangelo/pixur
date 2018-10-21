@@ -47,7 +47,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InternalError(err, "can't lookup pic", t.PicID)
 	}
 	if len(pics) != 1 {
-		return status.NotFound(err, "can't find pic", t.PicID)
+		return status.NotFound(nil, "can't find pic", t.PicID)
 	}
 	p := pics[0]
 

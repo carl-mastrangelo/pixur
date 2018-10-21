@@ -14,8 +14,6 @@ import (
 	"path"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/golang/protobuf/ptypes"
 	any "github.com/golang/protobuf/ptypes/any"
@@ -38,6 +36,7 @@ type UpsertPicTask struct {
 	Rename   func(oldpath, newpath string) error
 	MkdirAll func(path string, perm os.FileMode) error
 	Now      func() time.Time
+	Remove   func(name string) error
 
 	// Inputs
 	FileURL string
@@ -60,6 +59,13 @@ type UpsertPicTask struct {
 	CreatedPic *schema.Pic
 }
 
+const (
+	maxUrlLength      = 2000 // most browsers
+	maxFileNameLength = 255  // most file systems
+	minTagLength      = 1
+	maxTagLength      = 64
+)
+
 type FileHeader struct {
 	Name string
 	Size int64
@@ -73,6 +79,9 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	defer revert(j, &stscap)
 
 	if sts := t.runInternal(ctx, j); sts != nil {
+		// Don't delete old pics, as the commit may have actually succeeded.  A cron job will clean
+		// this up.
+		t.CreatedPic = nil
 		return sts
 	}
 
@@ -94,7 +103,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 	var furl *url.URL
 	if t.FileURL != "" {
-		fu, sts := validateURL(t.FileURL)
+		fu, sts := validateAndNormalizeURL(t.FileURL)
 		if sts != nil {
 			return sts
 		}
@@ -104,14 +113,14 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 	now := t.Now()
 	// TODO: test this
-	if len(t.Header.Name) > 1024 {
-		return status.InvalidArgument(nil, "filename is too long")
+	validFileName, sts := validateAndNormalizePrintText(t.Header.Name, "filename", 0, maxFileNameLength)
+	if sts != nil {
+		return sts
 	}
-
 	pfs := &schema.Pic_FileSource{
 		CreatedTs: schema.ToTspb(now),
 		UserId:    u.UserId,
-		Name:      t.Header.Name,
+		Name:      validFileName,
 	}
 	if furl != nil {
 		pfs.Url = furl.String()
@@ -121,6 +130,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	// Check if md5 is present, and return ALREADY_EXISTS or PERMISSION_DENIED if deleted
 	//   User is expected to call new method: add file_source / referrer, and add tags
 	// If present, verify md5 sum after download
+	// Also, asser md5 has is the right length before doing queries.
 
 	if len(t.Md5Hash) != 0 {
 		p, sts := findExistingPic(j, schema.PicIdent_MD5, t.Md5Hash)
@@ -232,7 +242,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if err != nil {
 		return status.InternalError(err, "Can't create tempfile")
 	}
-	defer os.Remove(ft.Name())
+	defer t.Remove(ft.Name())
 	defer ft.Close()
 
 	thumb, sts := im.Thumbnail()
@@ -299,8 +309,14 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 	if err := t.Rename(ft.Name(), newthumbpath); err != nil {
-		os.Remove(newpath)
-		return status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
+		sts := status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
+		if err2 := t.Remove(ft.Name()); err2 != nil {
+			sts = status.WithSuppressed(sts, status.InternalError(err2, "can't remove temp thumbnail"))
+		}
+		if err2 := t.Remove(newpath); err2 != nil {
+			sts = status.WithSuppressed(sts, status.InternalError(err2, "can't remove pic", newpath))
+		}
+		return sts
 	}
 
 	t.CreatedPic = p
@@ -618,15 +634,21 @@ func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status
 }
 
 // prepareFile prepares the file for image processing.
+// The name in fh and the url must be validated previously.
 func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh FileHeader, u *url.URL) (
-	_ *os.File, _ *FileHeader, stsCap status.S) {
+	_ *os.File, _ *FileHeader, stscap status.S) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
 		return nil, nil, status.InternalError(err, "Can't create tempfile")
 	}
 	defer func() {
-		if stsCap != nil {
-			closeAndRemove(f)
+		if stscap != nil {
+			if err := f.Close(); err != nil {
+				stscap = status.WithSuppressed(stscap, status.InternalError(err, "can't close file"))
+			}
+			if err := t.Remove(f.Name()); err != nil {
+				stscap = status.WithSuppressed(stscap, status.InternalError(err, "can't remove file", f.Name()))
+			}
 		}
 	}()
 
@@ -663,21 +685,15 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 	return f, h, nil
 }
 
-// closeAndRemove cleans up in the event of an error.  Windows needs the file to
-// be closed so it is important to do it in order.
-func closeAndRemove(f *os.File) {
-	f.Close()
-	os.Remove(f.Name())
-}
-
 // TODO: add tests
-func validateURL(rawurl string) (*url.URL, status.S) {
-	if len(rawurl) > 1024 {
-		return nil, status.InvalidArgument(nil, "Can't use long URL")
+func validateAndNormalizeURL(rawurl string) (*url.URL, status.S) {
+	normalrawurl, sts := validateAndNormalizePrintText(rawurl, "url", len("http://"), maxUrlLength)
+	if sts != nil {
+		return nil, sts
 	}
-	u, err := url.Parse(rawurl)
+	u, err := url.Parse(normalrawurl)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't parse", rawurl)
+		return nil, status.InvalidArgument(err, "Can't parse", normalrawurl)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, status.InvalidArgument(nil, "Can't use non HTTP")
@@ -691,7 +707,7 @@ func validateURL(rawurl string) (*url.URL, status.S) {
 }
 
 func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL) (
-	*FileHeader, status.S) {
+	_ *FileHeader, stscap status.S) {
 	if u == nil {
 		return nil, status.InvalidArgument(nil, "Missing URL")
 	}
@@ -707,7 +723,11 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	if err != nil {
 		return nil, status.InvalidArgument(err, "Can't download", u)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.InternalError(err, "can't close url req", u))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		// todo: log the response and headers
@@ -725,9 +745,10 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	}
 	// Can happen for a url that is a dir like http://foo.com/
 	if base := path.Base(u.Path); base != "." {
+		// url was previously validated, so the same should be ok.
 		header.Name = base
 	}
-	// TODO: support Content-disposition
+	// TODO: support Content-disposition, and validate
 	return header, nil
 }
 
@@ -743,69 +764,40 @@ func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha256Hash []byte, sts s
 }
 
 func cleanTagNames(rawTagNames []string) ([]string, status.S) {
-	if sts := checkValidUnicode(rawTagNames); sts != nil {
+	validtagnames := make([]string, 0, len(rawTagNames))
+	for _, rawtagname := range rawTagNames {
+		if sts := validateMaxLength(rawtagname, "tag", minTagLength, maxTagLength); sts != nil {
+			return nil, sts
+		}
+		if sts := validateUtf8(rawtagname, "tag"); sts != nil {
+			return nil, sts
+		}
+		normalrawtagname := normalizeUnicodeTextUnsafe(rawtagname)
+		trimmednormaltagname := strings.TrimSpace(normalrawtagname)
+
+		if sts := validateMaxLength(trimmednormaltagname, "tag", minTagLength, maxTagLength); sts != nil {
+			return nil, sts
+		}
+		if sts := validateGraphicText(trimmednormaltagname, "tag"); sts != nil {
+			return nil, sts
+		}
+		validtagnames = append(validtagnames, trimmednormaltagname)
+	}
+
+	if sts := validateNoDuplicateTags(validtagnames); sts != nil {
 		return nil, sts
 	}
-	// TODO: normalize unicode names, in order to be searchable and collapse dupes
-	printableTagNames := removeUnprintableCharacters(rawTagNames)
-	trimmedTagNames := trimTagNames(printableTagNames)
-	nonEmptyTagNames := removeEmptyTagNames(trimmedTagNames)
-	uniqueTagNames := removeDuplicateTagNames(nonEmptyTagNames)
 
-	return uniqueTagNames, nil
+	return validtagnames, nil
 }
 
-func checkValidUnicode(tagNames []string) status.S {
-	for _, tn := range tagNames {
-		if !utf8.ValidString(tn) {
-			return status.InvalidArgument(nil, "Invalid tag name", tn)
+func validateNoDuplicateTags(tagNames []string) status.S {
+	var seen = make(map[string]int, len(tagNames))
+	for i, tn := range tagNames {
+		if pos, present := seen[tn]; present {
+			return status.InvalidArgumentf(nil, "duplicate tag '%s' at position %d and %d", tn, pos, i)
 		}
+		seen[tn] = i
 	}
 	return nil
-}
-
-func removeUnprintableCharacters(tagNames []string) []string {
-	printableTagNames := make([]string, 0, len(tagNames))
-	for _, tn := range tagNames {
-		var buf bytes.Buffer
-		buf.Grow(len(tn))
-		for _, runeValue := range tn {
-			if unicode.IsPrint(runeValue) {
-				buf.WriteRune(runeValue)
-			}
-		}
-		printableTagNames = append(printableTagNames, buf.String())
-	}
-	return printableTagNames
-}
-
-func trimTagNames(tagNames []string) []string {
-	trimmed := make([]string, 0, len(tagNames))
-	for _, tn := range tagNames {
-		trimmed = append(trimmed, strings.TrimSpace(tn))
-	}
-	return trimmed
-}
-
-func removeEmptyTagNames(tagNames []string) []string {
-	nonEmptyTagNames := make([]string, 0, len(tagNames))
-	for _, tn := range tagNames {
-		if tn != "" {
-			nonEmptyTagNames = append(nonEmptyTagNames, tn)
-		}
-	}
-	return nonEmptyTagNames
-}
-
-// removeDuplicateTagNames preserves order of the tags
-func removeDuplicateTagNames(tagNames []string) []string {
-	var seen = make(map[string]struct{}, len(tagNames))
-	uniqueTagNames := make([]string, 0, len(tagNames))
-	for _, tn := range tagNames {
-		if _, present := seen[tn]; !present {
-			seen[tn] = struct{}{}
-			uniqueTagNames = append(uniqueTagNames, tn)
-		}
-	}
-	return uniqueTagNames
 }

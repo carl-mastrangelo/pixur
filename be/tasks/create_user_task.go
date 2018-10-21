@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	maxUserIdentLength = 255
+	maxUserIdentLength  = 255
+	maxUserSecretLength = 255
 )
 
 type CreateUserTask struct {
@@ -123,7 +124,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	if t.Secret == "" {
 		return status.InvalidArgument(nil, "missing secret")
-	} else if len(t.Secret) > 255 {
+	} else if len(t.Secret) > maxUserSecretLength {
 		return status.InvalidArgument(nil, "secret too long")
 	}
 

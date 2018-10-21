@@ -41,7 +41,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InternalError(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
-		return status.NotFound(err, "can't find pic")
+		return status.NotFound(nil, "can't find pic")
 	}
 	p := pics[0]
 
@@ -49,8 +49,8 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "can't tag deleted pic")
 	}
 
-	if err := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId); err != nil {
-		return err
+	if sts := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId); sts != nil {
+		return sts
 	}
 
 	if err := j.Commit(); err != nil {

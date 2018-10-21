@@ -73,6 +73,13 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 			return status.Unauthenticated(nil, "can't lookup user")
 		}
 		user = users[0]
+
+		if t.Secret == "" {
+			return status.InvalidArgument(nil, "missing secret")
+		} else if len(t.Secret) > maxUserSecretLength {
+			return status.InvalidArgument(nil, "secret too long")
+		}
+
 		// TODO: rate limit this.
 		if err := bcrypt.CompareHashAndPassword(user.Secret, []byte(t.Secret)); err != nil {
 			return status.Unauthenticated(err, "can't lookup user")

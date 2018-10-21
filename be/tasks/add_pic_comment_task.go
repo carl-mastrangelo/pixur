@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 	"time"
-	"unicode/utf8"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -31,15 +30,9 @@ const (
 )
 
 func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
-	if len(t.Text) < minCommentLen {
-		return status.InvalidArgument(nil, "comment too short")
-	} else if len(t.Text) > maxCommentLen {
-		return status.InvalidArgument(nil, "comment too long")
-	}
-
-	// TODO: more validation
-	if !utf8.ValidString(t.Text) {
-		return status.InvalidArgument(nil, "invalid comment text", t.Text)
+	text, sts := validateAndNormalizeGraphicText(t.Text, "comment", minCommentLen, maxCommentLen)
+	if sts != nil {
+		return sts
 	}
 
 	j, err := tab.NewJob(ctx, t.DB)
@@ -60,7 +53,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InternalError(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
-		return status.NotFound(err, "can't find pic")
+		return status.NotFound(nil, "can't find pic")
 	}
 	p := pics[0]
 
@@ -76,7 +69,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 			return status.InternalError(err, "can't lookup comment")
 		}
 		if len(comments) != 1 {
-			return status.NotFound(err, "can't find comment")
+			return status.NotFound(nil, "can't find comment")
 		}
 	}
 
@@ -90,7 +83,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		PicId:           p.PicId,
 		CommentId:       commentID,
 		CommentParentId: t.CommentParentID,
-		Text:            t.Text,
+		Text:            text,
 		UserId:          u.UserId,
 	}
 	pc.SetCreatedTime(now)

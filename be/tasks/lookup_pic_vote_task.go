@@ -69,18 +69,20 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if err != nil {
 		return status.InternalError(err, "can't find pic votes")
 	}
+	var thevote *schema.PicVote
 	switch len(picVotes) {
 	case 0:
-		t.PicVote = nil
 	case 1:
-		t.PicVote = picVotes[0]
+		thevote = picVotes[0]
 	default:
-		panic("bad number of pic votes")
+		return status.InternalError(nil, "bad number of pic votes", t.PicID, len(picVotes))
 	}
 
 	if err := j.Rollback(); err != nil {
 		return status.InternalError(err, "can't rollback job")
 	}
+
+	t.PicVote = thevote
 
 	return nil
 }
