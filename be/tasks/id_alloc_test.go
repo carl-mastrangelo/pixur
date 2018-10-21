@@ -21,7 +21,7 @@ func TestAllocDBSerial(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 		ids[num] = struct{}{}
 	}
@@ -45,7 +45,7 @@ func TestAllocDBParallel(t *testing.T) {
 			defer wg.Done()
 			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 			idschan <- num
 		}()
@@ -73,7 +73,7 @@ func TestAllocDBSerialMulti(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 		ids[num] = struct{}{}
 	}
@@ -97,7 +97,7 @@ func TestAllocDBParallelMulti(t *testing.T) {
 			defer wg.Done()
 			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 			idschan <- num
 		}()
@@ -129,7 +129,7 @@ func TestAllocJobSerial(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		num, err := db.AllocIDJob(j, alloc, d.Adapter())
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 		ids[num] = struct{}{}
 	}

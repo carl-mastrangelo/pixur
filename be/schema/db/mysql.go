@@ -3,11 +3,12 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
 	"github.com/go-sql-driver/mysql"
+
+	"pixur.org/pixur/be/status"
 )
 
 const (
@@ -18,24 +19,34 @@ var _ DBAdapter = &mysqlAdapter{}
 
 type mysqlAdapter struct{}
 
-func (a *mysqlAdapter) Open(dataSourceName string) (_ DB, errcap error) {
+func (a *mysqlAdapter) Open(dataSourceName string) (DB, error) {
+	return a.open(dataSourceName)
+}
+
+func (a *mysqlAdapter) open(dataSourceName string) (_ *dbWrapper, stscap status.S) {
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
 	defer func() {
-		if errcap != nil {
-			if err := db.Close(); err != nil {
-				log.Println(err)
+		if stscap != nil {
+			if closeErr := db.Close(); closeErr != nil {
+				stscap = status.WithSuppressed(stscap, closeErr)
 			}
 		}
 	}()
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't ping")
 	}
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)
-	return dbWrapper{db: db, adap: a}, nil
+	return &dbWrapper{db: db, adap: a}, nil
 }
 
 func (_ *mysqlAdapter) Name() string {
@@ -46,74 +57,99 @@ func (_ *mysqlAdapter) SingleTx() bool {
 	return false
 }
 
-func (a *mysqlAdapter) OpenForTest() (_ DB, errcap error) {
+func (a *mysqlAdapter) OpenForTest() (DB, error) {
+	return a.openForTest()
+}
+
+func (a *mysqlAdapter) openForTest() (_ *mysqlTestDB, stscap status.S) {
 	mysqlTestServLock.Lock()
 	defer mysqlTestServLock.Unlock()
 	if mysqlTestServ == nil {
 		mysqlTestServ = new(mysqlTestServer)
-		if err := mysqlTestServ.setupEnv(); err != nil {
-			return nil, err
+		if sts := mysqlTestServ.setupEnv(); sts != nil {
+			return nil, sts
 		}
 		defer func() {
-			if errcap != nil {
-				mysqlTestServ.tearDownEnv()
+			if stscap != nil {
+				if teardownsts := mysqlTestServ.tearDownEnv(); teardownsts != nil {
+					stscap = status.WithSuppressed(stscap, teardownsts)
+				}
 			}
 		}()
-		if err := mysqlTestServ.start(); err != nil {
-			return nil, err
+		if sts := mysqlTestServ.start(); sts != nil {
+			return nil, sts
 		}
 		defer func() {
-			if errcap != nil {
-				mysqlTestServ.stop()
+			if stscap != nil {
+				if stopsts := mysqlTestServ.stop(); stopsts != nil {
+					stscap = status.WithSuppressed(stscap, stopsts)
+				}
 			}
 		}()
 	}
 
 	rawdb, err := sql.Open(a.Name(), "unix("+mysqlTestServ.socket+")/")
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
 
 	mysqlTestServ.total++
 	dbName := fmt.Sprintf("testdb%d", mysqlTestServ.total)
 	if _, err := rawdb.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", dbName)); err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't create db")
 	}
 
 	// Close our connection, so we can reopen with the correct db name.  Other threads
 	// will not use the correct database by default.
 	if err := rawdb.Close(); err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't close db")
 	}
 
-	db, err := a.Open("unix(" + mysqlTestServ.socket + ")/" + dbName)
-	if err != nil {
-		return nil, err
+	db, sts := a.open("unix(" + mysqlTestServ.socket + ")/" + dbName)
+	if sts != nil {
+		return nil, sts
 	}
 	mysqlTestServ.active++
-	return &mysqlTestDB{DB: db}, nil
+	return &mysqlTestDB{dbWrapper: db}, nil
 }
 
 type mysqlTestDB struct {
-	DB
+	*dbWrapper
 	closed bool
 }
 
 func (a *mysqlTestDB) Close() error {
-	err := a.DB.Close()
+	return a._close()
+}
+
+func (a *mysqlTestDB) _close() status.S {
+	sts := a.dbWrapper._close()
 	if !a.closed {
 		a.closed = true
 		mysqlTestServLock.Lock()
 		defer mysqlTestServLock.Unlock()
 		mysqlTestServ.active--
 		if mysqlTestServ.active == 0 {
-			mysqlTestServ.stop()
-			mysqlTestServ.tearDownEnv()
+			if stopsts := mysqlTestServ.stop(); stopsts != nil {
+				replaceOrSuppress(&sts, stopsts)
+			}
+			if teardownsts := mysqlTestServ.tearDownEnv(); teardownsts != nil {
+				replaceOrSuppress(&sts, teardownsts)
+			}
 			mysqlTestServ = nil
 		}
 	}
 
-	return err
+	return sts
 }
 
 var (

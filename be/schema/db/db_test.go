@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"pixur.org/pixur/be/status"
 )
 
 type testIdx struct {
@@ -96,9 +98,8 @@ func TestScanQueryFails(t *testing.T) {
 		return nil
 	}, testAdap)
 
-	if err != expected {
-		t.Log("Expected error", err)
-		t.Fail()
+	if have, want := err, expected; !strings.Contains(have.Error(), want.Error()) {
+		t.Error("have", have, "want", want)
 	}
 }
 
@@ -129,9 +130,8 @@ func TestScanQueryCloseFails(t *testing.T) {
 		panic("don't call me")
 	}, testAdap)
 
-	if err != expected {
-		t.Log("Expected error", err)
-		t.Fail()
+	if have, want := err, expected; !strings.Contains(have.Error(), want.Error()) {
+		t.Error("have", have, "want", want)
 	}
 }
 
@@ -203,13 +203,11 @@ func TestScanScanFails(t *testing.T) {
 		return nil
 	}, testAdap)
 
-	if err != expected {
-		t.Log("Expected error", err)
-		t.Fail()
+	if have, want := err, expected; !strings.Contains(err.Error(), expected.Error()) {
+		t.Error("have", have, "want", want)
 	}
 	if len(dataCap) != 0 {
-		t.Log("Wrong rows", dataCap)
-		t.Fail()
+		t.Error("Wrong rows", dataCap)
 	}
 }
 
@@ -226,13 +224,11 @@ func TestScanCallbackFails(t *testing.T) {
 		return expected
 	}, testAdap)
 
-	if err != expected {
-		t.Log("Expected error", err)
-		t.Fail()
+	if have, want := err, expected; !strings.Contains(err.Error(), expected.Error()) {
+		t.Error("have", have, "want", want)
 	}
 	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
-		t.Log("Wrong rows", dataCap)
-		t.Fail()
+		t.Error("Wrong rows", dataCap)
 	}
 }
 
@@ -250,13 +246,11 @@ func TestScanStopEarly(t *testing.T) {
 		return nil
 	}, testAdap)
 
-	if err != expected {
-		t.Log("Expected error", err)
-		t.Fail()
+	if have, want := err, expected; !strings.Contains(err.Error(), expected.Error()) {
+		t.Error("have", have, "want", want)
 	}
 	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
-		t.Log("Wrong rows", dataCap)
-		t.Fail()
+		t.Error("Wrong rows", dataCap)
 	}
 }
 
@@ -581,7 +575,7 @@ func TestBuildStartThreeVals(t *testing.T) {
 func TestInsertWrongColsCount(t *testing.T) {
 	err := Insert(nil, "Foo", []string{"one"}, []interface{}{1, 2}, testAdap)
 
-	if err != ErrColsValsMismatch {
+	if err.(status.S).Message() != errColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -589,7 +583,7 @@ func TestInsertWrongColsCount(t *testing.T) {
 func TestInsertNoCols(t *testing.T) {
 	err := Insert(nil, "Foo", []string{}, []interface{}{}, testAdap)
 
-	if err != ErrNoCols {
+	if err.(status.S).Message() != errNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -630,7 +624,7 @@ func TestDeleteWrongColsCount(t *testing.T) {
 	}
 
 	err := Delete(nil, "Foo", idx, testAdap)
-	if err != ErrColsValsMismatch {
+	if err.(status.S).Message() != errColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -639,7 +633,7 @@ func TestDeleteNoCols(t *testing.T) {
 	idx := &testUniqueIdx{}
 
 	err := Delete(nil, "Foo", idx, testAdap)
-	if err != ErrNoCols {
+	if err.(status.S).Message() != errNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -686,14 +680,14 @@ func TestDeleteMultiCols(t *testing.T) {
 
 func TestUpdateWrongColCount(t *testing.T) {
 	err := Update(nil, "Foo", []string{"bar"}, nil /*vals*/, nil, testAdap)
-	if err != ErrColsValsMismatch {
+	if err.(status.S).Message() != errColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
 
 func TestUpdateNoCols(t *testing.T) {
 	err := Update(nil, "Foo", nil /*cols*/, nil /*vals*/, nil, testAdap)
-	if err != ErrNoCols {
+	if err.(status.S).Message() != errNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -705,7 +699,7 @@ func TestUpdateWrongIdxColCount(t *testing.T) {
 		cols: []string{"bar"},
 	}
 	err := Update(nil, "Foo", cols, vals, idx, testAdap)
-	if err != ErrColsValsMismatch {
+	if err.(status.S).Message() != errColsValsMismatch {
 		t.Fatal("Expected error, but was", err)
 	}
 }
@@ -715,7 +709,7 @@ func TestUpdateNoIdxCols(t *testing.T) {
 	vals := []interface{}{1}
 	idx := &testUniqueIdx{}
 	err := Update(nil, "Foo", cols, vals, idx, testAdap)
-	if err != ErrNoCols {
+	if err.(status.S).Message() != errNoCols {
 		t.Fatal("Expected error, but was", err)
 	}
 }

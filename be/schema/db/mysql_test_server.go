@@ -1,14 +1,14 @@
 package db
 
 import (
-	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"pixur.org/pixur/be/status"
 )
 
 type mysqlTestServer struct {
@@ -18,46 +18,51 @@ type mysqlTestServer struct {
 	active, total                     int
 }
 
-func (mts *mysqlTestServer) tearDownEnvOnErr(errcap *error) {
-	if *errcap != nil {
-		mts.tearDownEnv()
+func (mts *mysqlTestServer) tearDownEnvOnErr(stscap *status.S) {
+	if *stscap != nil {
+		teardownsts := mts.tearDownEnv()
+		if teardownsts != nil {
+			*stscap = status.WithSuppressed(*stscap, teardownsts)
+		}
 	}
 }
 
-func (mts *mysqlTestServer) tearDownEnv() {
+func (mts *mysqlTestServer) tearDownEnv() status.S {
+	var sts status.S
 	if mts.stdout != nil {
 		if err := mts.stdout.Close(); err != nil {
-			log.Println(err)
+			replaceOrSuppress(&sts, status.Unknown(err, "can't close stdout"))
 		}
 		mts.stdout = nil
 	}
 
 	if mts.stderr != nil {
 		if err := mts.stderr.Close(); err != nil {
-			log.Println(err)
+			replaceOrSuppress(&sts, status.Unknown(err, "can't close err"))
 		}
 		mts.stderr = nil
 	}
 
 	if mts.testdir != "" {
 		if err := os.RemoveAll(mts.testdir); err != nil {
-			log.Println(err)
+			replaceOrSuppress(&sts, status.Unknown(err, "can't remove testdir"))
 		}
 		mts.testdir = ""
 	}
+	return sts
 }
 
-func (mts *mysqlTestServer) setupEnv() (errcap error) {
-	defer mts.tearDownEnvOnErr(&errcap)
+func (mts *mysqlTestServer) setupEnv() (stscap status.S) {
+	defer mts.tearDownEnvOnErr(&stscap)
 	testdir, err := ioutil.TempDir("", "mysqlpixurtest")
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create tempdir")
 	}
 	mts.testdir = testdir
 
 	datadir := filepath.Join(testdir, "datadir")
 	if err := os.Mkdir(datadir, 0700); err != nil {
-		return err
+		return status.Unknown(err, "can't create datadir")
 	}
 	mts.datadir = datadir
 
@@ -66,34 +71,38 @@ func (mts *mysqlTestServer) setupEnv() (errcap error) {
 
 	stderr, err := os.Create(filepath.Join(testdir, "STDERR"))
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create stderr")
 	}
 	mts.stderr = stderr
 
 	stdout, err := os.Create(filepath.Join(testdir, "STDOUT"))
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create stdout")
 	}
 	mts.stdout = stdout
 
 	return nil
 }
 
-func (mts *mysqlTestServer) stopOnErr(errcap *error) {
-	if *errcap != nil {
-		mts.stop()
+func (mts *mysqlTestServer) stopOnErr(stscap *status.S) {
+	if *stscap != nil {
+		if stopsts := mts.stop(); stopsts != nil {
+			*stscap = status.WithSuppressed(*stscap, stopsts)
+		}
 	}
 }
 
-func (mts *mysqlTestServer) stop() {
+func (mts *mysqlTestServer) stop() status.S {
 	if mts.cmd != nil {
-		if mts.cmd.Process != nil {
-			if err := mts.cmd.Process.Kill(); err != nil {
-				log.Println(err)
+		cmd := mts.cmd
+		mts.cmd = nil
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				return status.Unknown(err, "can't kill process")
 			}
 		}
-		mts.cmd = nil
 	}
+	return nil
 }
 
 type scanUntilReady struct {
@@ -123,8 +132,8 @@ func (s *scanUntilReady) Write(data []byte) (int, error) {
 	return s.Writer.Write(data)
 }
 
-func (mts *mysqlTestServer) start() (errcap error) {
-	defer mts.stopOnErr(&errcap)
+func (mts *mysqlTestServer) start() (stscap status.S) {
+	defer mts.stopOnErr(&stscap)
 	mts.cmd = exec.Command(
 		"mysqld",
 		"--datadir", mts.datadir,
@@ -143,12 +152,12 @@ func (mts *mysqlTestServer) start() (errcap error) {
 	mts.cmd.Stdout = mts.stdout
 
 	if err := mts.cmd.Start(); err != nil {
-		return err
+		return status.Unknown(err, "can't start server")
 	}
 
 	select {
 	case <-time.After(3 * time.Second):
-		return errors.New("failed to start")
+		return status.InternalError(nil, "failed to start")
 	case <-s.done:
 	}
 

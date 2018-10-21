@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
+
+	"pixur.org/pixur/be/status"
 
 	"github.com/lib/pq"
 )
@@ -20,19 +21,30 @@ const (
 )
 
 func (a *cockroachAdapter) Open(dataSourceName string) (DB, error) {
+	return a.open(dataSourceName)
+}
+
+func (a *cockroachAdapter) open(dataSourceName string) (*dbWrapper, status.S) {
 	db, err := sql.Open(cockroachSqlDriverName, dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
 	if err := db.Ping(); err != nil {
+		sts := status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't ping")
 		if err2 := db.Close(); err2 != nil {
-			log.Println(err2)
+			sts = status.WithSuppressed(sts, err2)
 		}
-		return nil, err
+		return nil, sts
 	}
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)
-	return dbWrapper{
+	return &dbWrapper{
 		db:   db,
 		adap: a,
 		pp:   fixLibPqQuery,
@@ -106,18 +118,22 @@ var (
 )
 
 func (a *cockroachAdapter) OpenForTest() (DB, error) {
+	return a.openForTest()
+}
+
+func (a *cockroachAdapter) openForTest() (_ *cockroachTestDB, stscap status.S) {
 	cockroachTestServLock.Lock()
 	defer cockroachTestServLock.Unlock()
 
 	if cockroachTestServ == nil {
 		cockroachTestServ = new(testCockroachPostgresServer)
-		if err := cockroachTestServ.start(context.Background()); err != nil {
-			return nil, err
+		if sts := cockroachTestServ.start(context.Background()); sts != nil {
+			return nil, sts
 		}
 		defer func() {
 			if cockroachTestServActive == 0 {
-				if err := cockroachTestServ.stop(); err != nil {
-					log.Println("failed to close down server", err)
+				if sts := cockroachTestServ.stop(); sts != nil {
+					replaceOrSuppress(&stscap, sts)
 				}
 				cockroachTestServ = nil
 			}
@@ -127,47 +143,64 @@ func (a *cockroachAdapter) OpenForTest() (DB, error) {
 	dsn += " sslmode=disable"
 	rawdb, err := sql.Open(cockroachSqlDriverName, dsn)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
 	dbName := fmt.Sprintf("testpixurdb%d", cockroachTestServTotal)
 	if _, err := rawdb.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", dbName)); err != nil {
-		return nil, err
+		sts := status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't create db")
+		if err2 := rawdb.Close(); err2 != nil {
+			sts = status.WithSuppressed(sts, err2)
+		}
+		return nil, sts
 	}
 	cockroachTestServTotal++
 	if err := rawdb.Close(); err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't close db")
 	}
 
 	dsn += " dbname=" + dbName
-	db, err := a.Open(dsn)
-	if err != nil {
-		return nil, err
+	db, sts := a.open(dsn)
+	if sts != nil {
+		return nil, sts
 	}
 
 	cockroachTestServActive++
-	return &cockroachTestDB{DB: db}, nil
+	return &cockroachTestDB{dbWrapper: db}, nil
 }
 
 type cockroachTestDB struct {
-	DB
+	*dbWrapper
 	closed bool
 }
 
 func (a *cockroachTestDB) Close() error {
-	err := a.DB.Close()
+	return a._close()
+}
+
+func (a *cockroachTestDB) _close() status.S {
+	sts := a.dbWrapper._close()
 	if !a.closed {
 		a.closed = true
 		cockroachTestServLock.Lock()
 		defer cockroachTestServLock.Unlock()
 		cockroachTestServActive--
 		if cockroachTestServActive == 0 {
-			if err := cockroachTestServ.stop(); err != nil {
-				log.Println("failed to close down server", err)
+			if sts2 := cockroachTestServ.stop(); sts2 != nil {
+				replaceOrSuppress(&sts, sts2)
 			}
 			cockroachTestServ = nil
 		}
 	}
-	return err
+	return sts
 }
 
 func init() {

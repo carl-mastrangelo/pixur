@@ -2,10 +2,11 @@ package db // import "pixur.org/pixur/be/schema/db"
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
+
+	"pixur.org/pixur/be/status"
 )
 
 type Commiter interface {
@@ -33,7 +34,7 @@ type DB interface {
 func Open(adapterName, dataSourceName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
-		return nil, errors.New("no adapter " + adapterName)
+		return nil, status.InvalidArgument(nil, "no adapter", adapterName)
 	}
 	return adapter.Open(dataSourceName)
 }
@@ -41,7 +42,7 @@ func Open(adapterName, dataSourceName string) (DB, error) {
 func OpenForTest(adapterName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
-		return nil, errors.New("no adapter " + adapterName)
+		return nil, status.InvalidArgument(nil, "no adapter", adapterName)
 	}
 	return adapter.OpenForTest()
 }
@@ -51,7 +52,7 @@ var adapters = make(map[string]DBAdapter)
 func RegisterAdapter(a DBAdapter) {
 	name := a.Name()
 	if _, present := adapters[name]; present {
-		panic(name + "already present")
+		panic(name + " already present")
 	}
 	adapters[name] = a
 }
@@ -148,9 +149,12 @@ type scanStmt struct {
 }
 
 // Scan scans a table for matching rows.
-func Scan(
-	q Querier, name string, opts Opts, cb func(data []byte) error, adap DBAdapter) (
-	errCap error) {
+func Scan(q Querier, name string, opts Opts, cb func(data []byte) error, adap DBAdapter) error {
+	return localScan(q, name, opts, cb, adap)
+}
+
+func localScan(
+	q Querier, name string, opts Opts, cb func(data []byte) error, adap DBAdapter) (stscap status.S) {
 	s := scanStmt{
 		opts: opts,
 		name: name,
@@ -161,25 +165,25 @@ func Scan(
 	query, queryArgs := s.buildScan()
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
-		return err
+		return status.From(err)
 	}
 	defer func() {
-		if newErr := rows.Close(); errCap == nil {
-			errCap = newErr
+		if newErr := rows.Close(); newErr != nil {
+			replaceOrSuppress(&stscap, status.From(newErr))
 		}
 	}()
 
 	for rows.Next() {
 		var tmp []byte
 		if err := rows.Scan(&tmp); err != nil {
-			return err
+			return status.From(err)
 		}
 		if err := cb(tmp); err != nil {
-			return err
+			return status.From(err)
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return err
+		return status.From(err)
 	}
 
 	return nil
@@ -342,17 +346,22 @@ func buildStop(cols []string, vals []interface{}, adap DBAdapter) (string, []int
 	return "(" + strings.Join(ors, " OR ") + ")", args
 }
 
-var (
-	ErrColsValsMismatch = errors.New("db: number of columns and values don't match.")
-	ErrNoCols           = errors.New("db: no columns provided")
+const (
+	errColsValsMismatch = "db: number of columns and values don't match."
+	errNoCols           = "db: no columns provided"
 )
 
 func Insert(exec Executor, name string, cols []string, vals []interface{}, adap DBAdapter) error {
+	return localInsert(exec, name, cols, vals, adap)
+}
+
+func localInsert(
+	exec Executor, name string, cols []string, vals []interface{}, adap DBAdapter) status.S {
 	if len(cols) != len(vals) {
-		return ErrColsValsMismatch
+		return status.InvalidArgument(nil, errColsValsMismatch)
 	}
 	if len(cols) == 0 {
-		return ErrNoCols
+		return status.InvalidArgument(nil, errNoCols)
 	}
 
 	valFmt := strings.Repeat("?, ", len(vals)-1) + "?"
@@ -362,18 +371,24 @@ func Insert(exec Executor, name string, cols []string, vals []interface{}, adap 
 	}
 	colFmt := strings.Join(colFmtParts, ", ")
 	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", adap.Quote(name), colFmt, valFmt)
-	_, err := exec.Exec(query, vals...)
-	return err
+	if _, err := exec.Exec(query, vals...); err != nil {
+		return status.From(err)
+	}
+	return nil
 }
 
 func Delete(exec Executor, name string, key UniqueIdx, adap DBAdapter) error {
+	return localDelete(exec, name, key, adap)
+}
+
+func localDelete(exec Executor, name string, key UniqueIdx, adap DBAdapter) status.S {
 	cols := key.Cols()
 	vals := key.Vals()
 	if len(cols) != len(vals) {
-		return ErrColsValsMismatch
+		return status.InvalidArgument(nil, errColsValsMismatch)
 	}
 	if len(cols) == 0 {
-		return ErrNoCols
+		return status.InvalidArgument(nil, errNoCols)
 	}
 
 	colFmtParts := make([]string, 0, len(cols))
@@ -382,26 +397,33 @@ func Delete(exec Executor, name string, key UniqueIdx, adap DBAdapter) error {
 	}
 	colFmt := strings.Join(colFmtParts, " AND ")
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s;", adap.Quote(name), colFmt)
-	_, err := exec.Exec(query, vals...)
-	return err
+	if _, err := exec.Exec(query, vals...); err != nil {
+		return status.From(err)
+	}
+	return nil
 }
 
 func Update(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx,
 	adap DBAdapter) error {
+	return localUpdate(exec, name, cols, vals, key, adap)
+}
+
+func localUpdate(exec Executor, name string, cols []string, vals []interface{}, key UniqueIdx,
+	adap DBAdapter) status.S {
 	if len(cols) != len(vals) {
-		return ErrColsValsMismatch
+		return status.InvalidArgument(nil, errColsValsMismatch)
 	}
 	if len(cols) == 0 {
-		return ErrNoCols
+		return status.InvalidArgument(nil, errNoCols)
 	}
 
 	idxCols := key.Cols()
 	idxVals := key.Vals()
 	if len(idxCols) != len(idxVals) {
-		return ErrColsValsMismatch
+		return status.InvalidArgument(nil, errColsValsMismatch)
 	}
 	if len(idxCols) == 0 {
-		return ErrNoCols
+		return status.InvalidArgument(nil, errNoCols)
 	}
 
 	colFmtParts := make([]string, 0, len(cols))
@@ -421,6 +443,8 @@ func Update(exec Executor, name string, cols []string, vals []interface{}, key U
 	allVals = append(allVals, idxVals...)
 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s;", adap.Quote(name), colFmt, idxColFmt)
-	_, err := exec.Exec(query, allVals...)
-	return err
+	if _, err := exec.Exec(query, allVals...); err != nil {
+		return status.From(err)
+	}
+	return nil
 }

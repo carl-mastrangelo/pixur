@@ -3,11 +3,12 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/lib/pq"
+
+	"pixur.org/pixur/be/status"
 )
 
 var _ DBAdapter = &postgresAdapter{}
@@ -15,19 +16,30 @@ var _ DBAdapter = &postgresAdapter{}
 type postgresAdapter struct{}
 
 func (a *postgresAdapter) Open(dataSourceName string) (DB, error) {
+	return a.open(dataSourceName)
+}
+
+func (a *postgresAdapter) open(dataSourceName string) (*dbWrapper, status.S) {
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
 	if err := db.Ping(); err != nil {
+		sts := status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't ping db")
 		if err2 := db.Close(); err2 != nil {
-			log.Println(err2)
+			sts = status.WithSuppressed(sts, err2)
 		}
-		return nil, err
+		return nil, sts
 	}
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)
-	return dbWrapper{
+	return &dbWrapper{
 		db:   db,
 		adap: a,
 		pp:   fixLibPqQuery,
@@ -35,7 +47,11 @@ func (a *postgresAdapter) Open(dataSourceName string) (DB, error) {
 }
 
 func (a *postgresAdapter) OpenForTest() (DB, error) {
-	panic("no implemented")
+	return a.openForTest()
+}
+
+func (a *postgresAdapter) openForTest() (*dbWrapper, status.S) {
+	panic("not implemented")
 }
 
 func (_ *postgresAdapter) Name() string {

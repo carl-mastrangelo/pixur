@@ -4,36 +4,44 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"pixur.org/pixur/be/status"
 )
 
 var _ DBAdapter = &sqlite3Adapter{}
 
 type sqlite3Adapter struct{}
 
-func (a *sqlite3Adapter) Open(dataSourceName string) (_ DB, errcap error) {
+func (a *sqlite3Adapter) Open(dataSourceName string) (DB, error) {
+	return a.open(dataSourceName)
+}
+
+func (a *sqlite3Adapter) open(dataSourceName string) (*dbWrapper, status.S) {
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't open db")
 	}
-	defer func() {
-		if errcap != nil {
-			if err := db.Close(); err != nil {
-				log.Println(err)
-			}
-		}
-	}()
 	if err := db.Ping(); err != nil {
-		return nil, err
+		sts := status.Unknown(&sqlError{
+			wrapped: err,
+			adap:    a,
+		}, "can't ping db")
+		if err2 := db.Close(); err2 != nil {
+			sts = status.WithSuppressed(sts, err2)
+		}
+		return nil, sts
 	}
 	// TODO: make this configurable
 	db.SetMaxOpenConns(20)
-	return dbWrapper{db: db, adap: a}, nil
+	return &dbWrapper{db: db, adap: a}, nil
 }
 
 func (_ *sqlite3Adapter) Name() string {
@@ -44,41 +52,52 @@ func (_ *sqlite3Adapter) SingleTx() bool {
 	return true
 }
 
-func (a *sqlite3Adapter) OpenForTest() (_ DB, errcap error) {
+func (a *sqlite3Adapter) OpenForTest() (DB, error) {
+	return a.openForTest()
+}
+
+func (a *sqlite3Adapter) openForTest() (_ *sqlite3TestDB, stscap status.S) {
 	// Can't use :memory: since they have a habit of sharing the same memory
 	testdir, err := ioutil.TempDir("", "sqlitepixurtest")
 	if err != nil {
-		return nil, err
+		return nil, status.InternalError(err, "can't create temp dir")
 	}
 	defer func() {
-		if errcap != nil {
+		if stscap != nil {
 			if err := os.RemoveAll(testdir); err != nil {
-				log.Println(err)
+				stscap = status.WithSuppressed(stscap, err)
 			}
 		}
 	}()
 	loc := filepath.Join(testdir, "db.sqlite")
-	db, err := a.Open(loc)
+	db, sts := a.open(loc)
+	if sts != nil {
+		return nil, sts
+	}
 
 	return &sqlite3TestDB{
-		DB:      db,
-		testdir: testdir,
-	}, err
+		dbWrapper: db,
+		testdir:   testdir,
+	}, nil
 }
 
 type sqlite3TestDB struct {
-	DB
+	*dbWrapper
 	testdir string
 }
 
 func (stdb *sqlite3TestDB) Close() error {
-	err := stdb.DB.Close()
+	return stdb._close()
+}
+
+func (stdb *sqlite3TestDB) _close() status.S {
+	sts := stdb.dbWrapper._close()
 
 	if err := os.RemoveAll(stdb.testdir); err != nil {
-		log.Println(err)
+		replaceOrSuppress(&sts, status.InternalError(err, "can't remove test dir"))
 	}
 
-	return err
+	return sts
 }
 
 func (_ *sqlite3Adapter) Quote(ident string) string {

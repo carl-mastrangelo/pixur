@@ -5,11 +5,12 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+
+	"pixur.org/pixur/be/status"
 )
 
 var cockroachReadyMatcher = regexp.MustCompile(`sql:[\s]*postgresql://([^@]+)@([^:]+):([\d]+)\?`)
@@ -51,7 +52,17 @@ type testCockroachPostgresServer struct {
 	user, host, port string
 }
 
-func (s *testCockroachPostgresServer) start(ctx context.Context) error {
+func replaceOrSuppress(stscap *status.S, sts status.S) {
+	if sts != nil {
+		if *stscap == nil {
+			*stscap = sts
+		} else {
+			*stscap = status.WithSuppressed(*stscap, sts)
+		}
+	}
+}
+
+func (s *testCockroachPostgresServer) start(ctx context.Context) (stscap status.S) {
 	var defers []func()
 	defer func() {
 		for i := len(defers) - 1; i >= 0; i-- {
@@ -60,11 +71,11 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) error {
 	}()
 	testdir, err := ioutil.TempDir("", "postgrespixurtest")
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create temp dir")
 	}
 	defers = append(defers, func() {
 		if err := os.RemoveAll(testdir); err != nil {
-			log.Println("failed to remove testdir while cleaning up", err)
+			replaceOrSuppress(&stscap, status.Unknown(err, "failed to remove testdir while cleaning up"))
 		}
 	})
 	// Don't use context command as it would kill the cmd even after starting successfully
@@ -81,21 +92,21 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) error {
 
 	stderr, err := os.Create(filepath.Join(testdir, "STDERR"))
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create stderr")
 	}
 	defers = append(defers, func() {
 		if err := stderr.Close(); err != nil {
-			log.Println("failed to close stderr while cleaning up", err)
+			replaceOrSuppress(&stscap, status.Unknown(err, "failed to close stderr while cleaning up"))
 		}
 	})
 
 	stdout, err := os.Create(filepath.Join(testdir, "STDOUT"))
 	if err != nil {
-		return err
+		return status.Unknown(err, "can't create stdout")
 	}
 	defers = append(defers, func() {
 		if err := stdout.Close(); err != nil {
-			log.Println("failed to close stdout while cleaning up", err)
+			replaceOrSuppress(&stscap, status.Unknown(err, "failed to close stdout while cleaning up"))
 		}
 	})
 	doneparts := make(chan []string, 1)
@@ -108,11 +119,11 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) error {
 	cmd.Stdout = scan
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return status.Unknown(err, "can't start")
 	}
 	defers = append(defers, func() {
 		if err := cmd.Process.Kill(); err != nil {
-			log.Println("failed to kill process while cleaning up", err)
+			replaceOrSuppress(&stscap, status.Unknown(err, "failed to kill process while cleaning up"))
 		}
 	})
 
@@ -120,7 +131,7 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) error {
 	case parts := <-doneparts:
 		s.user, s.host, s.port = parts[0], parts[1], parts[2]
 	case <-ctx.Done():
-		return ctx.Err()
+		return status.From(ctx.Err())
 	}
 
 	s.cmd = cmd
@@ -129,23 +140,19 @@ func (s *testCockroachPostgresServer) start(ctx context.Context) error {
 	return nil
 }
 
-func (s *testCockroachPostgresServer) stop() error {
-	var lasterr error
+func (s *testCockroachPostgresServer) stop() status.S {
+	var sts status.S
 	if err := s.cmd.Process.Kill(); err != nil {
-		lasterr = err
-		log.Println("failed to kill process", err)
+		replaceOrSuppress(&sts, status.Unknown(err, "failed to kill process"))
 	}
 	if err := s.cmd.Stderr.(io.Closer).Close(); err != nil {
-		lasterr = err
-		log.Println("failed to close stderr", err)
+		replaceOrSuppress(&sts, status.Unknown(err, "failed to close stderr"))
 	}
 	if err := s.cmd.Stdout.(io.Closer).Close(); err != nil {
-		lasterr = err
-		log.Println("failed to close stdout", err)
+		replaceOrSuppress(&sts, status.Unknown(err, "failed to close stdout"))
 	}
 	if err := os.RemoveAll(s.testdir); err != nil {
-		lasterr = err
-		log.Println("failed to remove testdir", err)
+		replaceOrSuppress(&sts, status.Unknown(err, "failed to remove testdir"))
 	}
-	return lasterr
+	return sts
 }
