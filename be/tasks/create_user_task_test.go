@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,6 +95,107 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 	}
 }
 
+func TestCreateUserAlreadyUsed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:     c.DB(),
+		Ident:  u.User.Ident,
+		Secret: "secret",
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	expected := status.AlreadyExists(nil, "ident already used")
+	compareStatus(t, sts, expected)
+}
+
+func TestCreateUserAlreadyUsedDifferentCase(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.User.Ident = "little"
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:     c.DB(),
+		Ident:  "LITTLE",
+		Secret: "secret",
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	expected := status.AlreadyExists(nil, "ident already used")
+	compareStatus(t, sts, expected)
+}
+
+func TestCreateUserIdentTooLong(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:     c.DB(),
+		Ident:  strings.Repeat("a", maxUserIdentLength+1),
+		Secret: "secret",
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	expected := status.InvalidArgument(nil, "invalid ident length")
+	compareStatus(t, sts, expected)
+}
+
+func TestCreateUserIdentBogusBytes(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:     c.DB(),
+		Ident:  string([]byte{0xff}),
+		Secret: "secret",
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	expected := status.InvalidArgument(nil, "invalid ident encoding")
+	compareStatus(t, sts, expected)
+}
+
+func TestCreateUserIdentPrintOnly(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
+	u.Update()
+
+	task := &CreateUserTask{
+		DB:     c.DB(),
+		Ident:  "👨‍🦲",
+		Secret: "secret",
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	expected := status.InvalidArgument(nil, "unprintable rune in ident")
+	compareStatus(t, sts, expected)
+}
+
 func TestCreateUserEmptyIdent(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
@@ -109,7 +211,7 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "missing ident or secret")
+	expected := status.InvalidArgument(nil, "invalid ident length")
 	compareStatus(t, sts, expected)
 }
 
@@ -127,7 +229,7 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "missing ident or secret")
+	expected := status.InvalidArgument(nil, "missing secret")
 	compareStatus(t, sts, expected)
 }
 

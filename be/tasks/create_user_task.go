@@ -3,14 +3,21 @@ package tasks
 import (
 	"context"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	any "github.com/golang/protobuf/ptypes/any"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/unicode/norm"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
+)
+
+const (
+	maxUserIdentLength = 255
 )
 
 type CreateUserTask struct {
@@ -75,8 +82,49 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		return sts
 	}
 
-	if t.Ident == "" || t.Secret == "" {
-		return status.InvalidArgument(nil, "missing ident or secret")
+	ident := t.Ident
+	if len(ident) > maxUserIdentLength {
+		return status.InvalidArgument(nil, "invalid ident length", ident)
+	}
+	if !utf8.ValidString(ident) {
+		return status.InvalidArgument(nil, "invalid ident encoding", ident)
+	}
+
+	ident = string(norm.NFC.Bytes([]byte(ident)))
+	keyident := schema.UserUniqueIdent(ident)
+
+	if len(ident) > maxUserIdentLength || len(ident) == 0 {
+		return status.InvalidArgument(nil, "invalid ident length", ident)
+	}
+	if len(keyident) > maxUserIdentLength || len(keyident) == 0 {
+		return status.InvalidArgument(nil, "invalid ident length", keyident)
+	}
+	for i, runeValue := range ident {
+		if !unicode.IsPrint(runeValue) {
+			return status.InvalidArgument(nil, "unprintable rune in ident", ident, "offset", i)
+		}
+	}
+	for i, runeValue := range keyident {
+		if !unicode.IsPrint(runeValue) {
+			return status.InvalidArgument(nil, "unprintable rune in ident", keyident, "offset", i)
+		}
+	}
+	// okay, we kinda believe the ident might be good.  Let's see if it's in use.
+	users, err := j.FindUsers(db.Opts{
+		Prefix: tab.UsersIdent{&keyident},
+		Limit:  1,
+	})
+	if err != nil {
+		return status.InternalError(err, "can't scan users")
+	}
+	if len(users) != 0 {
+		return status.AlreadyExists(nil, "ident already used")
+	}
+
+	if t.Secret == "" {
+		return status.InvalidArgument(nil, "missing secret")
+	} else if len(t.Secret) > 255 {
+		return status.InvalidArgument(nil, "secret too long")
 	}
 
 	userID, err := j.AllocID()
@@ -104,7 +152,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		UserId: userID,
 		Secret: hashed,
 		// Don't set last seen.
-		Ident:      t.Ident,
+		Ident:      ident,
 		Capability: newcap,
 		Ext:        t.Ext,
 	}
