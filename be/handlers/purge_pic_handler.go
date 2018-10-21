@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"os"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
@@ -22,6 +23,7 @@ func (s *serv) handlePurgePic(
 	var task = &tasks.PurgePicTask{
 		DB:      s.db,
 		PixPath: s.pixpath,
+		Remove:  os.Remove,
 		PicID:   int64(picID),
 	}
 	if sts := s.runner.Run(ctx, task); sts != nil {

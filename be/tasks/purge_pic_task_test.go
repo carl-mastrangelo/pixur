@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -37,6 +38,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	task := &PurgePicTask{
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
+		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
 	}
 
@@ -119,6 +121,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 	task := &PurgePicTask{
 		DB:      c.DB(),
 		PixPath: c.TempDir(),
+		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
 	}
 
@@ -132,5 +135,50 @@ func TestPurge_TagsDecremented(t *testing.T) {
 	}
 	if tag.Tag.UsageCount != 1 {
 		t.Fatal("Incorrect Tag Count", tag)
+	}
+}
+
+func TestPurgeDeleteFails(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_PURGE)
+	u.Update()
+
+	p := c.CreatePic()
+
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer func() {
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	task := &PurgePicTask{
+		DB:      c.DB(),
+		PixPath: c.TempDir(),
+		Remove:  func(name string) error { return errors.New("nope") },
+		PicID:   p.Pic.PicId,
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("Expected error")
+	}
+	if sts.Cause() == nil || sts.Cause().Error() != "nope" {
+		t.Error("wrong status", sts)
+	}
+	p.Refresh()
+	if p.Pic != nil {
+		t.Error("expected pic to be removed")
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		t.Error("Expected file to be still present", err)
 	}
 }

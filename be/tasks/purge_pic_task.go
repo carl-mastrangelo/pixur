@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"pixur.org/pixur/be/schema"
@@ -17,6 +16,7 @@ type PurgePicTask struct {
 	// deps
 	PixPath string
 	DB      db.DB
+	Remove  func(name string) error
 
 	// input
 	PicID int64
@@ -167,7 +167,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	oldpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
 	if sts != nil {
 		defer status.ReplaceOrSuppress(&stscap, sts)
-	} else if err := os.Remove(oldpath); err != nil {
+	} else if err := t.Remove(oldpath); err != nil {
 		defer status.ReplaceOrSuppress(&stscap, status.DataLoss(err, "unable to delete pic data", oldpath))
 	}
 
@@ -176,7 +176,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		oldthumbpath, sts := schema.PicFileThumbnailPath(t.PixPath, p.PicId, th.Index, th.Mime)
 		if sts != nil {
 			defer status.ReplaceOrSuppress(&stscap, sts)
-		} else if err := os.Remove(oldthumbpath); err != nil {
+		} else if err := t.Remove(oldthumbpath); err != nil {
 			defer status.ReplaceOrSuppress(&stscap, status.DataLoss(err, "unable to delete pic data", oldthumbpath))
 		}
 	}

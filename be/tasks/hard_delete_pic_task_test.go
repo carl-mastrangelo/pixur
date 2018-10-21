@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -21,8 +22,10 @@ func TestHardDeleteWorkflow(t *testing.T) {
 
 	task := &HardDeletePicTask{
 		DB:      c.DB(),
-		PicID:   p.Pic.PicId,
+		Remove:  os.Remove,
 		PixPath: c.TempDir(),
+
+		PicID: p.Pic.PicId,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
@@ -87,8 +90,10 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 
 	task := &HardDeletePicTask{
 		DB:      c.DB(),
-		PicID:   p.Pic.PicId,
+		Remove:  os.Remove,
 		PixPath: c.TempDir(),
+
+		PicID: p.Pic.PicId,
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -137,5 +142,51 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 
 	if p.Pic.DeletionStatus.MarkedDeletedTs == nil {
 		t.Fatal("Should have a pending deleted timestamp", p)
+	}
+}
+
+func TestHardDeleteFails(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_HARD_DELETE)
+	u.Update()
+
+	p := c.CreatePic()
+
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	defer func() {
+		if err := os.Remove(path); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	task := &HardDeletePicTask{
+		DB:      c.DB(),
+		PixPath: c.TempDir(),
+		Remove:  func(name string) error { return errors.New("nope") },
+
+		PicID: p.Pic.PicId,
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("Expected error")
+	}
+	if sts.Cause() == nil || sts.Cause().Error() != "nope" {
+		t.Error("wrong status", sts)
+	}
+	p.Refresh()
+	if p.Pic == nil {
+		t.Error("expected pic to be present")
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		t.Error("Expected file to be still present", err)
 	}
 }
