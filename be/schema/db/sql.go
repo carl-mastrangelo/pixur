@@ -23,6 +23,9 @@ func (w *dbWrapper) Adapter() DBAdapter {
 	return w.adap
 }
 
+var _ Retryable = &sqlError{}
+var _ error = &sqlError{}
+
 type sqlError struct {
 	wrapped error
 	adap    DBAdapter
@@ -37,6 +40,10 @@ func (e *sqlError) String() string {
 		return ws.String()
 	}
 	return e.Error()
+}
+
+func (e *sqlError) CanRetry() bool {
+	return e.adap.RetryableErr(e.wrapped)
 }
 
 func (w *dbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) {

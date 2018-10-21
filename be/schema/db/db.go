@@ -31,6 +31,11 @@ type DB interface {
 	Adapter() DBAdapter
 }
 
+// Retryable is implemented by errors that can describe their retryability.
+type Retryable interface {
+	CanRetry() bool
+}
+
 func Open(adapterName, dataSourceName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
