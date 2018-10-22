@@ -152,7 +152,7 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "invalid ident length")
+	expected := status.InvalidArgument(nil, "ident too long")
 	compareStatus(t, sts, expected)
 }
 
@@ -172,7 +172,7 @@ func TestCreateUserIdentBogusBytes(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "invalid ident encoding")
+	expected := status.InvalidArgument(nil, "invalid ident utf8 text")
 	compareStatus(t, sts, expected)
 }
 
@@ -192,7 +192,7 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "unprintable rune in ident")
+	expected := status.InvalidArgument(nil, "unprintable rune")
 	compareStatus(t, sts, expected)
 }
 
@@ -211,7 +211,7 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "invalid ident length")
+	expected := status.InvalidArgument(nil, "ident too short")
 	compareStatus(t, sts, expected)
 }
 

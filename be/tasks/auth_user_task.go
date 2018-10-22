@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/text/unicode/norm"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -56,10 +55,10 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	var newTokenID int64
 	if t.Ident != "" {
-		if len(t.Ident) > maxUserIdentLength {
-			return status.InvalidArgument(nil, "ident too long")
+		ident, sts := validateAndNormalizePrintText(t.Ident, "ident", 1, maxUserIdentLength)
+		if sts != nil {
+			return sts
 		}
-		ident := string(norm.NFC.Bytes([]byte(t.Ident)))
 		keyident := schema.UserUniqueIdent(ident)
 		users, err := j.FindUsers(db.Opts{
 			Prefix: tab.UsersIdent{&keyident},
