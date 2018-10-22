@@ -8,10 +8,8 @@ import (
 )
 
 type fakeTask struct {
-	runCount   int
-	resetCount int
-	run        func(context.Context) status.S
-	reset      func()
+	runCount int
+	run      func(context.Context) status.S
 }
 
 func (t *fakeTask) Run(ctx context.Context) status.S {
@@ -22,58 +20,11 @@ func (t *fakeTask) Run(ctx context.Context) status.S {
 	return nil
 }
 
-func (t *fakeTask) ResetForRetry() {
-	t.resetCount++
-	if t.reset != nil {
-		t.reset()
-	}
-}
-
 func TestTaskRunnerNil(t *testing.T) {
 	var tr *TaskRunner
 	sts := tr.Run(context.Background(), new(fakeTask))
 	if sts != nil {
 		t.Error("error running task", sts)
-	}
-}
-
-func TestTaskIsNotReset_success(t *testing.T) {
-	runner := new(TaskRunner)
-	task := new(fakeTask)
-	sts := runner.Run(context.Background(), task)
-
-	if sts != nil {
-		t.Fatal(sts)
-	}
-
-	if task.runCount != 1 {
-		t.Fatal("Expected task to be run 1 time")
-	}
-
-	if task.resetCount != 0 {
-		t.Fatal("Expected task to be reset 0 times")
-	}
-}
-
-func TestTaskIsReset_failure(t *testing.T) {
-	runner := new(TaskRunner)
-	task := new(fakeTask)
-	expectedError := status.InternalError(nil, "Expected")
-	task.run = func(_ context.Context) status.S {
-		return expectedError
-	}
-	sts := runner.Run(context.Background(), task)
-
-	if sts != expectedError {
-		t.Fatal("Expected different error", sts)
-	}
-
-	if task.runCount != 1 {
-		t.Fatal("Expected task to be run 1 time")
-	}
-
-	if task.resetCount != 0 {
-		t.Fatal("Expected task to be reset 0 times")
 	}
 }
 
@@ -97,7 +48,10 @@ func TestTaskRetriesOnRetryableError(t *testing.T) {
 	}
 	oldlog := thetasklogger
 	thetasklogger = nil
+	oldtaskInitialBackoffDelay := taskInitialBackoffDelay
+	taskInitialBackoffDelay = 1
 	sts := runner.Run(context.Background(), task)
+	taskInitialBackoffDelay = oldtaskInitialBackoffDelay
 	thetasklogger = oldlog
 
 	if sts == nil {
@@ -106,9 +60,6 @@ func TestTaskRetriesOnRetryableError(t *testing.T) {
 
 	if task.runCount != maxTaskRetries {
 		t.Fatalf("Expected task to be run %d times !%d", maxTaskRetries, task.runCount)
-	}
-	if task.resetCount != maxTaskRetries {
-		t.Fatalf("Expected task to be reset %d times, !%d", maxTaskRetries, task.resetCount)
 	}
 }
 
@@ -128,9 +79,5 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 
 	if task.runCount != 1 {
 		t.Fatal("Expected task to be run 1 time")
-	}
-
-	if task.resetCount != 0 {
-		t.Fatal("Expected task to be reset 0 times")
 	}
 }
