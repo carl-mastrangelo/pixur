@@ -668,8 +668,53 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	if len(tp.Idents()) != 3+1 {
 		t.Fatal("Not all idents created")
 	}
-	if task.CreatedPic == nil {
-		t.Fatal("No Output")
+}
+
+func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
+	f := c.TempFile()
+	defer f.Close()
+	img := image.NewGray(image.Rect(0, 0, 8, 10))
+	if err := gif.Encode(f, img, &gif.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		t.Fatal(err)
+	}
+	tt := c.CreateTag()
+	if strings.ToUpper(tt.Tag.Name) == tt.Tag.Name {
+		t.Fatal("already upper", tt.Tag.Name)
+	}
+
+	task := &UpsertPicTask{
+		DB:       c.DB(),
+		Now:      func() time.Time { return time.Unix(100, 0) },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+		Remove:   os.Remove,
+
+		File:     f,
+		TagNames: []string{"  blooper  ", strings.ToUpper(tt.Tag.Name)},
+	}
+
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	tp := c.WrapPic(task.CreatedPic)
+
+	ts, _ := tp.Tags()
+	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "blooper" {
+		t.Error("bad tags", ts)
 	}
 }
 
@@ -1063,7 +1108,7 @@ func TestCreateNewTags(t *testing.T) {
 
 	now := time.Now()
 
-	newTags, err := createNewTags(j, []string{"a"}, now)
+	newTags, err := createNewTags(j, []tagNameAndUniq{{name: "A", uniq: "a"}}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1074,7 +1119,7 @@ func TestCreateNewTags(t *testing.T) {
 
 	expectedTag := &schema.Tag{
 		TagId:      newTags[0].TagId,
-		Name:       "a",
+		Name:       "A",
 		UsageCount: 1,
 	}
 	expectedTag.SetCreatedTime(now)
@@ -1093,7 +1138,7 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 
 	now := time.Now()
 
-	_, sts := createNewTags(j, []string{"a"}, now)
+	_, sts := createNewTags(j, []tagNameAndUniq{{name: "A", uniq: "a"}}, now)
 	// It could fail for the id allocator or tag creation, so just check the code.
 	if sts.Code() != codes.Internal {
 		t.Fatal(sts)
@@ -1152,7 +1197,12 @@ func TestFindExistingTagsByName_AllFound(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(j, []string{tag2.Tag.Name, tag1.Tag.Name})
+	existing := []tagNameAndUniq{
+		{name: tag2.Tag.Name, uniq: schema.TagUniqueName(tag2.Tag.Name)},
+		{name: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
+	}
+
+	tags, unknown, err := findExistingTagsByName(j, existing)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1177,14 +1227,19 @@ func TestFindExistingTagsByName_SomeFound(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(j, []string{"missing", tag1.Tag.Name})
+	existing := []tagNameAndUniq{
+		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
+	}
+
+	tags, unknown, err := findExistingTagsByName(j, existing)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(tags) != 1 || tags[0].TagId != tag1.Tag.TagId {
 		t.Fatal("Tags mismatch", tags, *tag1.Tag)
 	}
-	if len(unknown) != 1 || unknown[0] != "missing" {
+	if len(unknown) != 1 || unknown[0] != existing[0] {
 		t.Fatal("Unknown tag should have been found", unknown)
 	}
 }
@@ -1199,7 +1254,12 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	tags, unknown, err := findExistingTagsByName(j, []string{"missing", "othertag"})
+	existing := []tagNameAndUniq{
+		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: "othertag", uniq: schema.TagUniqueName("othertag")},
+	}
+
+	tags, unknown, err := findExistingTagsByName(j, existing)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1207,7 +1267,7 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 		t.Fatal("No tags should be found", tags)
 	}
 	// Again take advantage of deterministic ordering.
-	if len(unknown) != 2 || unknown[0] != "missing" || unknown[1] != "othertag" {
+	if len(unknown) != 2 || unknown[0] != existing[0] || unknown[1] != existing[1] {
 		t.Fatal("Unknown tag should have been found", unknown)
 	}
 }
@@ -1217,8 +1277,12 @@ func TestFindUnattachedTagNames_AllNew(t *testing.T) {
 	defer c.Close()
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
-	names := findUnattachedTagNames(tags, []string{"missing"})
-	if len(names) != 1 || names[0] != "missing" {
+	newnames := []tagNameAndUniq{
+		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
+	}
+
+	names := findUnattachedTagNames(tags, newnames)
+	if len(names) != 1 || names[0] != newnames[0] {
 		t.Fatal("Names should have been found", names)
 	}
 }
@@ -1228,8 +1292,13 @@ func TestFindUnattachedTagNames_SomeNew(t *testing.T) {
 	defer c.Close()
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
-	names := findUnattachedTagNames(tags, []string{"missing", tags[0].Name})
-	if len(names) != 1 || names[0] != "missing" {
+	newnames := []tagNameAndUniq{
+		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
+	}
+
+	names := findUnattachedTagNames(tags, newnames)
+	if len(names) != 1 || names[0] != newnames[0] {
 		t.Fatal("Names should have been found", names)
 	}
 }
@@ -1239,7 +1308,12 @@ func TestFindUnattachedTagNames_NoneNew(t *testing.T) {
 	defer c.Close()
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
-	names := findUnattachedTagNames(tags, []string{tags[1].Name, tags[0].Name})
+	newnames := []tagNameAndUniq{
+		{name: tags[1].Name, uniq: schema.TagUniqueName(tags[1].Name)},
+		{name: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
+	}
+
+	names := findUnattachedTagNames(tags, newnames)
 	if len(names) != 0 {
 		t.Fatal("Names shouldn't have been found", names)
 	}

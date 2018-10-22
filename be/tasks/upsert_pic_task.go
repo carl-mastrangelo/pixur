@@ -405,6 +405,10 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 	return nil
 }
 
+type tagNameAndUniq struct {
+	name, uniq string
+}
+
 func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time, userID int64) status.S {
 	newTagNames, sts := cleanTagNames(rawTags)
 	if sts != nil {
@@ -468,15 +472,15 @@ func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicT
 
 // findUnattachedTagNames finds tag names that are not part of a pic's tags.
 // While pic tags are the SoT for attachment, only the Tag is the SoT for the name.
-func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []string {
+func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []tagNameAndUniq) []tagNameAndUniq {
 	attachedTagNames := make(map[string]struct{}, len(attachedTags))
 
 	for _, tag := range attachedTags {
-		attachedTagNames[tag.Name] = struct{}{}
+		attachedTagNames[schema.TagUniqueName(tag.Name)] = struct{}{}
 	}
-	var unattachedTagNames []string
+	var unattachedTagNames []tagNameAndUniq
 	for _, newTagName := range newTagNames {
-		if _, attached := attachedTagNames[newTagName]; !attached {
+		if _, attached := attachedTagNames[newTagName.uniq]; !attached {
 			unattachedTagNames = append(unattachedTagNames, newTagName)
 		}
 	}
@@ -484,11 +488,11 @@ func findUnattachedTagNames(attachedTags []*schema.Tag, newTagNames []string) []
 	return unattachedTagNames
 }
 
-func findExistingTagsByName(j *tab.Job, names []string) (
-	tags []*schema.Tag, unknownNames []string, _ status.S) {
+func findExistingTagsByName(j *tab.Job, names []tagNameAndUniq) (
+	tags []*schema.Tag, unknownNames []tagNameAndUniq, _ status.S) {
 	for _, name := range names {
 		ts, err := j.FindTags(db.Opts{
-			Prefix: tab.TagsName{&name},
+			Prefix: tab.TagsName{&name.uniq},
 			Limit:  1,
 			Lock:   db.LockWrite,
 		})
@@ -516,16 +520,16 @@ func updateExistingTags(j *tab.Job, tags []*schema.Tag, now time.Time) status.S 
 	return nil
 }
 
-func createNewTags(j *tab.Job, tagNames []string, now time.Time) ([]*schema.Tag, status.S) {
+func createNewTags(j *tab.Job, names []tagNameAndUniq, now time.Time) ([]*schema.Tag, status.S) {
 	var tags []*schema.Tag
-	for _, name := range tagNames {
+	for _, name := range names {
 		tagID, err := j.AllocID()
 		if err != nil {
 			return nil, status.InternalError(err, "can't allocate id")
 		}
 		tag := &schema.Tag{
 			TagId:      tagID,
-			Name:       name,
+			Name:       name.name,
 			UsageCount: 1,
 		}
 		tag.SetCreatedTime(now)
@@ -763,8 +767,8 @@ func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha256Hash []byte, sts s
 	return h1.Sum(nil), h2.Sum(nil), h3.Sum(nil), nil
 }
 
-func cleanTagNames(rawTagNames []string) ([]string, status.S) {
-	validtagnames := make([]string, 0, len(rawTagNames))
+func cleanTagNames(rawTagNames []string) ([]tagNameAndUniq, status.S) {
+	validtagnames := make([]tagNameAndUniq, 0, len(rawTagNames))
 	for _, rawtagname := range rawTagNames {
 		if sts := validateMaxLength(rawtagname, "tag", minTagLength, maxTagLength); sts != nil {
 			return nil, sts
@@ -781,7 +785,10 @@ func cleanTagNames(rawTagNames []string) ([]string, status.S) {
 		if sts := validateGraphicText(trimmednormaltagname, "tag"); sts != nil {
 			return nil, sts
 		}
-		validtagnames = append(validtagnames, trimmednormaltagname)
+		validtagnames = append(validtagnames, tagNameAndUniq{
+			name: trimmednormaltagname,
+			uniq: schema.TagUniqueName(trimmednormaltagname),
+		})
 	}
 
 	if sts := validateNoDuplicateTags(validtagnames); sts != nil {
@@ -791,13 +798,13 @@ func cleanTagNames(rawTagNames []string) ([]string, status.S) {
 	return validtagnames, nil
 }
 
-func validateNoDuplicateTags(tagNames []string) status.S {
+func validateNoDuplicateTags(tagNames []tagNameAndUniq) status.S {
 	var seen = make(map[string]int, len(tagNames))
 	for i, tn := range tagNames {
-		if pos, present := seen[tn]; present {
-			return status.InvalidArgumentf(nil, "duplicate tag '%s' at position %d and %d", tn, pos, i)
+		if pos, present := seen[tn.uniq]; present {
+			return status.InvalidArgumentf(nil, "duplicate tag '%s' at position %d and %d", tn.name, pos, i)
 		}
-		seen[tn] = i
+		seen[tn.uniq] = i
 	}
 	return nil
 }

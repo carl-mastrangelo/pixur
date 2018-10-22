@@ -13,7 +13,7 @@ func (u *User) IdentCol() string {
 	return UserUniqueIdent(u.Ident)
 }
 
-// UserUniqueIdent normalizes an identify for uniqueness constraints
+// UserUniqueIdent normalizes an identity for uniqueness constraints
 func UserUniqueIdent(s string) string {
 	return strings.ToLower(s)
 }
