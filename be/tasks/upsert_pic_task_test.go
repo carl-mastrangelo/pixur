@@ -702,7 +702,7 @@ func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
 		Remove:   os.Remove,
 
 		File:     f,
-		TagNames: []string{"  blooper  ", strings.ToUpper(tt.Tag.Name)},
+		TagNames: []string{"  Blooper  ", strings.ToUpper(tt.Tag.Name)},
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -713,7 +713,7 @@ func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
 	tp := c.WrapPic(task.CreatedPic)
 
 	ts, _ := tp.Tags()
-	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "blooper" {
+	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "Blooper" {
 		t.Error("bad tags", ts)
 	}
 }
