@@ -2,6 +2,9 @@ package schema
 
 import (
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/unicode/norm"
 )
 
 func (t *Tag) IdCol() int64 {
@@ -14,7 +17,7 @@ func (t *Tag) NameCol() string {
 
 // TagUniqueName normalizes a name for uniqueness constraints
 func TagUniqueName(s string) string {
-	return lowercaseUnicode(s)
+	return cases.Fold().String(norm.NFKC.String(s))
 }
 
 func (t *Tag) SetCreatedTime(now time.Time) {

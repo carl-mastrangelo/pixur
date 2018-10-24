@@ -8,8 +8,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	durpb "github.com/golang/protobuf/ptypes/duration"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // ToTime converts from a proto timestamp to a Go time.  It panics if it cannot losslessly convert.
@@ -46,10 +44,4 @@ func ToDuration(dur *durpb.Duration) time.Duration {
 // Do not use this function on untrusted input.
 func ToDurpb(d time.Duration) *durpb.Duration {
 	return ptypes.DurationProto(d)
-}
-
-func lowercaseUnicode(text string) string {
-	// Sorry, rest of the world.   I have to pick a language to call this API, and this is the only
-	// one I know.  Case folding in Go doesn't lend itself to storage in a database.
-	return cases.Lower(language.Und).String(text)
 }
