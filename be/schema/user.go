@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"strings"
 	"time"
 )
 
@@ -15,7 +14,7 @@ func (u *User) IdentCol() string {
 
 // UserUniqueIdent normalizes an identity for uniqueness constraints
 func UserUniqueIdent(s string) string {
-	return strings.ToLower(s)
+	return lowercaseUnicode(s)
 }
 
 func (u *User) SetCreatedTime(now time.Time) {

@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"strings"
 	"time"
 )
 
@@ -15,7 +14,7 @@ func (t *Tag) NameCol() string {
 
 // TagUniqueName normalizes a name for uniqueness constraints
 func TagUniqueName(s string) string {
-	return strings.ToLower(s)
+	return lowercaseUnicode(s)
 }
 
 func (t *Tag) SetCreatedTime(now time.Time) {
