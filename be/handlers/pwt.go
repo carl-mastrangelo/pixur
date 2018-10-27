@@ -3,7 +3,7 @@ package handlers
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"errors"
 	"time"
@@ -79,7 +79,7 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 		signature = signature[:size]
 	}
 
-	mac := hmac.New(sha256.New, c.secret)
+	mac := hmac.New(sha512.New512_256, c.secret)
 	mac.Write(b64Header)
 	mac.Write(sep)
 	mac.Write(b64Payload)
@@ -141,7 +141,7 @@ func (c *pwtCoder) encode(payload *api.PwtPayload) ([]byte, error) {
 	enc.Encode(b64Payload, rawPayload)
 	token = append(token, b64Payload...)
 
-	mac := hmac.New(sha256.New, c.secret)
+	mac := hmac.New(sha512.New512_256, c.secret)
 	mac.Write(token)
 	signature := mac.Sum(nil)
 
