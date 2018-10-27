@@ -172,15 +172,9 @@ func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if _, err := h.c.DeleteToken(ctx, &api.DeleteTokenRequest{}); err != nil {
-		httpWriteError(w, err)
-		ctx = ctxFromWriteErr(ctx, err)
-		r = r.WithContext(ctx)
-		h.display.ServeHTTP(w, r)
-		return
-	}
 
+	// always destroy the cookies.  Incase they become invalid, we don't want to fail to destroy them
+	// early.
 	past := h.now().AddDate(0, 0, -1)
 
 	http.SetCookie(w, &http.Cookie{
@@ -216,6 +210,15 @@ func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
 		Secure:   h.secure,
 		HttpOnly: true,
 	})
+
+	ctx := r.Context()
+	if _, err := h.c.DeleteToken(ctx, &api.DeleteTokenRequest{}); err != nil {
+		httpWriteError(w, err)
+		ctx = ctxFromWriteErr(ctx, err)
+		r = r.WithContext(ctx)
+		h.display.ServeHTTP(w, r)
+		return
+	}
 
 	http.Redirect(w, r, h.pt.Logout().String(), http.StatusSeeOther)
 }
