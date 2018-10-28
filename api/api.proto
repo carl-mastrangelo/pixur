@@ -364,6 +364,7 @@ message PwtHeader {
 		UNKNOWN = 0;
 		HS256 = 1;
 		RS256 = 2;
+		HS512_256 = 3;
 	}
 	Algorithm algorithm = 1;
 	int64 version = 2;
@@ -492,7 +493,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181018 // AUTO UPDATED BY generate.go
+    api_version: 20181027 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
