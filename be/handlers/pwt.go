@@ -64,7 +64,7 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 
 	// Check that it's even feasible to continue.
 	// TODO: suppport more algs and versions
-	if header.Algorithm != api.PwtHeader_HS256 {
+	if header.Algorithm != api.PwtHeader_HS512_256 {
 		return nil, errPwtUnsupported
 	}
 	if header.Version != 0 {
@@ -116,7 +116,7 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 
 func (c *pwtCoder) encode(payload *api.PwtPayload) ([]byte, error) {
 	header := &api.PwtHeader{
-		Algorithm: api.PwtHeader_HS256,
+		Algorithm: api.PwtHeader_HS512_256,
 		Version:   0,
 	}
 
