@@ -5,21 +5,21 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
-	"errors"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/be/status"
 )
 
 var (
-	errPwtInvalid     = errors.New("invalid pwt")
-	errPwtUnsupported = errors.New("unsupported pwt")
-	errPwtSignature   = errors.New("pwt signature mismatch")
-	errPwtExpired     = errors.New("expired pwt")
-	errNotAuth        = errors.New("invalid auth token")
+	errPwtInvalidMsg     = "invalid pwt"
+	errPwtUnsupportedMsg = "unsupported pwt"
+	errPwtSignatureMsg   = "pwt signature mismatch"
+	errPwtExpiredMsg     = "expired pwt"
+	errNotAuthMsg        = "invalid auth token"
 )
 
 var defaultPwtCoder *pwtCoder
@@ -38,12 +38,12 @@ type pwtCoder struct {
 	secret []byte
 }
 
-func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
+func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, status.S) {
 	sep := []byte{'.'}
 	// Split it into at most 4 chunks, to find errors.  We expect 3.
 	chunks := bytes.SplitN(data, sep, 4)
 	if len(chunks) != 3 {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(nil, errPwtInvalidMsg)
 	}
 	b64Header, b64Payload, b64Signature := chunks[0], chunks[1], chunks[2]
 	enc := base64.RawURLEncoding
@@ -51,7 +51,7 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 	// Decode the header from base64 to raw bytes
 	rawHeader := make([]byte, enc.DecodedLen(len(b64Header)))
 	if size, err := enc.Decode(rawHeader, b64Header); err != nil {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(err, errPwtInvalidMsg)
 	} else {
 		rawHeader = rawHeader[:size]
 	}
@@ -59,22 +59,22 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 	// Decode the header from raw bytes into a message
 	header := &api.PwtHeader{}
 	if err := proto.Unmarshal(rawHeader, header); err != nil {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(err, errPwtInvalidMsg)
 	}
 
 	// Check that it's even feasible to continue.
 	// TODO: suppport more algs and versions
 	if header.Algorithm != api.PwtHeader_HS512_256 {
-		return nil, errPwtUnsupported
+		return nil, status.Unauthenticated(nil, errPwtUnsupportedMsg)
 	}
 	if header.Version != 0 {
-		return nil, errPwtUnsupported
+		return nil, status.Unauthenticated(nil, errPwtUnsupportedMsg)
 	}
 
 	// The algorithm is one we support.  Decode the base64 signature to raw bytes.
 	signature := make([]byte, enc.DecodedLen(len(b64Signature)))
 	if size, err := enc.Decode(signature, b64Signature); err != nil {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(err, errPwtInvalidMsg)
 	} else {
 		signature = signature[:size]
 	}
@@ -84,13 +84,13 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 	mac.Write(sep)
 	mac.Write(b64Payload)
 	if !hmac.Equal(mac.Sum(nil), signature) {
-		return nil, errPwtSignature
+		return nil, status.Unauthenticated(nil, errPwtSignatureMsg)
 	}
 
 	// Okay, signatures match.  Decode the base64 payload to raw bytes.
 	rawPayload := make([]byte, enc.DecodedLen(len(b64Payload)))
 	if size, err := enc.Decode(rawPayload, b64Payload); err != nil {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(err, errPwtInvalidMsg)
 	} else {
 		rawPayload = rawPayload[:size]
 	}
@@ -98,17 +98,17 @@ func (c *pwtCoder) decode(data []byte) (*api.PwtPayload, error) {
 	// Decode the payload from raw bytes into a message
 	payload := &api.PwtPayload{}
 	if err := proto.Unmarshal(rawPayload, payload); err != nil {
-		return nil, errPwtInvalid
+		return nil, status.Unauthenticated(err, errPwtInvalidMsg)
 	}
 
 	notbefore, err := ptypes.Timestamp(payload.NotBefore)
 	if err != nil || c.now().Before(notbefore) {
-		return nil, errPwtExpired
+		return nil, status.Unauthenticated(err, errPwtExpiredMsg)
 	}
 
 	notafter, err := ptypes.Timestamp(payload.NotAfter)
 	if err != nil || c.now().After(notafter) {
-		return nil, errPwtExpired
+		return nil, status.Unauthenticated(err, errPwtExpiredMsg)
 	}
 
 	return payload, nil
@@ -122,7 +122,7 @@ func (c *pwtCoder) encode(payload *api.PwtPayload) ([]byte, error) {
 
 	rawHeader, err := proto.Marshal(header)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(err, "can't encode pwt header")
 	}
 
 	var token []byte
@@ -134,7 +134,7 @@ func (c *pwtCoder) encode(payload *api.PwtPayload) ([]byte, error) {
 
 	rawPayload, err := proto.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, status.Unknown(err, "can't encode pwt payload")
 	}
 
 	b64Payload := make([]byte, enc.EncodedLen(len(rawPayload)))
