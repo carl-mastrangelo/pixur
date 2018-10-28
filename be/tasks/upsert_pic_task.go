@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha512"
+	"hash"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -159,11 +160,12 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	md5Hash, sha1Hash, sha512_256Hash, sts := generatePicHashes(io.NewSectionReader(f, 0, fh.Size))
+	hashes, sts := generatePicHashes(io.NewSectionReader(f, 0, fh.Size), md5.New, sha1.New, sha512.New512_256)
 	if sts != nil {
 		// TODO: test this case
 		return sts
 	}
+	md5Hash, sha1Hash, sha512_256Hash := hashes[0], hashes[1], hashes[2]
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return status.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
@@ -598,13 +600,21 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	return header, nil
 }
 
-func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha512_256Hash []byte, sts status.S) {
-	h1 := md5.New()
-	h2 := sha1.New()
-	h3 := sha512.New512_256()
-
-	if _, err := io.Copy(io.MultiWriter(h1, h2, h3), f); err != nil {
-		return nil, nil, nil, status.Internal(err, "Can't copy")
+func generatePicHashes(f io.Reader, fns ...func() hash.Hash) ([][]byte, status.S) {
+	hs := make([]hash.Hash, len(fns))
+	for i, fn := range fns {
+		hs[i] = fn()
 	}
-	return h1.Sum(nil), h2.Sum(nil), h3.Sum(nil), nil
+	ws := make([]io.Writer, len(hs))
+	for i, h := range hs {
+		ws[i] = h // Go lacks contravariance, so we have to do this.
+	}
+	if _, err := io.Copy(io.MultiWriter(ws...), f); err != nil {
+		return nil, status.Internal(err, "Can't copy")
+	}
+	sums := make([][]byte, len(hs))
+	for i, h := range hs {
+		sums[i] = h.Sum(nil)
+	}
+	return sums, nil
 }

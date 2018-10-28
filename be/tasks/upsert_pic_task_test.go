@@ -3,6 +3,9 @@ package tasks
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha512"
 	"fmt"
 	"image"
 	"image/gif"
@@ -1575,10 +1578,11 @@ func TestGeneratePicHashes(t *testing.T) {
 	testSha1 := "6367c48dd193d56ea7b0baad25b19455e529f5ee"
 	testSha512_256 := "8f085c893e15d8e56065f47bb5c98b12f57cef3866ab3569eefd326ed65080c1"
 
-	md5Hash, sha1Hash, sha512_256Hash, err := generatePicHashes(bytes.NewBufferString("abc123"))
-	if err != nil {
-		t.Fatal(err)
+	hashes, sts := generatePicHashes(bytes.NewBufferString("abc123"), md5.New, sha1.New, sha512.New512_256)
+	if sts != nil {
+		t.Fatal(sts)
 	}
+	md5Hash, sha1Hash, sha512_256Hash := hashes[0], hashes[1], hashes[2]
 	if md5Hash := fmt.Sprintf("%x", md5Hash); md5Hash != testMd5 {
 		t.Error("Md5 Hash mismatch", md5Hash, testMd5)
 	}
@@ -1609,7 +1613,7 @@ func TestGeneratePicHashesError(t *testing.T) {
 		val: []byte("abc123"),
 		err: fmt.Errorf("bad"),
 	}
-	_, _, _, sts := generatePicHashes(r)
+	_, sts := generatePicHashes(r, md5.New, sha1.New, sha512.New512_256)
 	expected := status.Internal(nil, "Can't copy")
 	compareStatus(t, sts, expected)
 }
