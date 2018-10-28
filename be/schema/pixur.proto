@@ -108,10 +108,13 @@ message PicIdent {
   int64 pic_id = 1;
   enum Type {
     UNKNOWN = 0;
-    SHA256 = 1;
     SHA1 = 2;
     MD5 = 3;
     DCT_0 = 4;
+    SHA512_256 = 5;
+    
+    reserved 1;
+    reserved "SHA256";
   }
 
   Type type = 2;

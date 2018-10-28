@@ -1193,7 +1193,7 @@ func TestFindExistingPic_Failure(t *testing.T) {
 	// force job failure
 	j.Rollback()
 
-	_, sts := findExistingPic(j, schema.PicIdent_SHA256, []byte("sha256"))
+	_, sts := findExistingPic(j, schema.PicIdent_SHA512_256, []byte("sha512_256"))
 	expected := status.Internal(nil, "can't find pic idents")
 	compareStatus(t, sts, expected)
 }
@@ -1204,7 +1204,7 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 
 	j := c.Job()
 	defer j.Rollback()
-	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	md5Hash, sha1Hash, sha512_256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha512_256Hash")
 	md5Ident := &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_MD5,
@@ -1214,7 +1214,7 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha512_256Hash)
 	expected := status.Internal(nil, "can't create md5")
 	compareStatus(t, sts, expected)
 }
@@ -1225,7 +1225,7 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 
 	j := c.Job()
 	defer j.Rollback()
-	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	md5Hash, sha1Hash, sha512_256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha512_256Hash")
 	sha1Ident := &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_SHA1,
@@ -1235,29 +1235,29 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha512_256Hash)
 	expected := status.Internal(nil, "can't create sha1")
 	compareStatus(t, sts, expected)
 }
 
-func TestInsertPicHashes_SHA256Exists(t *testing.T) {
+func TestInsertPicHashes_SHA512_256Exists(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
 	j := c.Job()
 	defer j.Rollback()
-	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
-	sha256Ident := &schema.PicIdent{
+	md5Hash, sha1Hash, sha512_256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha512_256Hash")
+	sha512_256Ident := &schema.PicIdent{
 		PicId: 1234,
-		Type:  schema.PicIdent_SHA256,
-		Value: sha256Hash,
+		Type:  schema.PicIdent_SHA512_256,
+		Value: sha512_256Hash,
 	}
-	if err := j.InsertPicIdent(sha256Ident); err != nil {
+	if err := j.InsertPicIdent(sha512_256Ident); err != nil {
 		t.Fatal(err)
 	}
 
-	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-	expected := status.Internal(nil, "can't create sha256")
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha512_256Hash)
+	expected := status.Internal(nil, "can't create sha512_256")
 	compareStatus(t, sts, expected)
 }
 
@@ -1267,9 +1267,9 @@ func TestInsertPicHashes(t *testing.T) {
 
 	j := c.Job()
 	defer j.Rollback()
-	md5Hash, sha1Hash, sha256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha256Hash")
+	md5Hash, sha1Hash, sha512_256Hash := []byte("md5Hash"), []byte("sha1Hash"), []byte("sha512_256Hash")
 
-	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
+	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha512_256Hash)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -1287,27 +1287,27 @@ func TestInsertPicHashes(t *testing.T) {
 	}
 	expected := &schema.PicIdent{
 		PicId: 1234,
+		Type:  schema.PicIdent_SHA512_256,
+		Value: sha512_256Hash,
+	}
+	if !proto.Equal(idents[0], expected) {
+		t.Error("mismatch", idents[0], expected)
+	}
+	expected = &schema.PicIdent{
+		PicId: 1234,
 		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
-	if !proto.Equal(idents[0], expected) {
-		t.Fatal("mismatch", idents[0], expected)
+	if !proto.Equal(idents[1], expected) {
+		t.Error("mismatch", idents[1], expected)
 	}
 	expected = &schema.PicIdent{
 		PicId: 1234,
 		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
-	if !proto.Equal(idents[1], expected) {
-		t.Fatal("mismatch", idents[1], expected)
-	}
-	expected = &schema.PicIdent{
-		PicId: 1234,
-		Type:  schema.PicIdent_SHA256,
-		Value: sha256Hash,
-	}
 	if !proto.Equal(idents[2], expected) {
-		t.Fatal("mismatch", idents[2], expected)
+		t.Error("mismatch", idents[2], expected)
 	}
 }
 
@@ -1573,20 +1573,20 @@ func TestDownloadFile_DirectoryURL(t *testing.T) {
 func TestGeneratePicHashes(t *testing.T) {
 	testMd5 := "e99a18c428cb38d5f260853678922e03"
 	testSha1 := "6367c48dd193d56ea7b0baad25b19455e529f5ee"
-	testSha256 := "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090"
+	testSha512_256 := "8f085c893e15d8e56065f47bb5c98b12f57cef3866ab3569eefd326ed65080c1"
 
-	md5Hash, sha1Hash, sha256Hash, err := generatePicHashes(bytes.NewBufferString("abc123"))
+	md5Hash, sha1Hash, sha512_256Hash, err := generatePicHashes(bytes.NewBufferString("abc123"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if md5Hash := fmt.Sprintf("%x", md5Hash); md5Hash != testMd5 {
-		t.Fatal("Md5 Hash mismatch", md5Hash, testMd5)
+		t.Error("Md5 Hash mismatch", md5Hash, testMd5)
 	}
 	if sha1Hash := fmt.Sprintf("%x", sha1Hash); sha1Hash != testSha1 {
-		t.Fatal("Sha1 Hash mismatch", sha1Hash, testSha1)
+		t.Error("Sha1 Hash mismatch", sha1Hash, testSha1)
 	}
-	if sha256Hash := fmt.Sprintf("%x", sha256Hash); sha256Hash != testSha256 {
-		t.Fatal("Sha256 Hash mismatch", sha256Hash, testSha256)
+	if sha512_256Hash := fmt.Sprintf("%x", sha512_256Hash); sha512_256Hash != testSha512_256 {
+		t.Error("Sha512_256 Hash mismatch", sha512_256Hash, testSha512_256)
 	}
 }
 

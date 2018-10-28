@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
-	"crypto/sha256"
+	"crypto/sha512"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -159,7 +159,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	md5Hash, sha1Hash, sha256Hash, sts := generatePicHashes(io.NewSectionReader(f, 0, fh.Size))
+	md5Hash, sha1Hash, sha512_256Hash, sts := generatePicHashes(io.NewSectionReader(f, 0, fh.Size))
 	if sts != nil {
 		// TODO: test this case
 		return sts
@@ -229,7 +229,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		if err := j.InsertPic(p); err != nil {
 			return status.Internal(err, "Can't insert")
 		}
-		if sts := insertPicHashes(j, p.PicId, md5Hash, sha1Hash, sha256Hash); sts != nil {
+		if sts := insertPicHashes(j, p.PicId, md5Hash, sha1Hash, sha512_256Hash); sts != nil {
 			return sts
 		}
 		if sts := insertPerceptualHash(j, p.PicId, im); sts != nil {
@@ -434,7 +434,7 @@ func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema
 	return pics[0], nil
 }
 
-func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []byte) status.S {
+func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha512_256Hash []byte) status.S {
 	md5Ident := &schema.PicIdent{
 		PicId: picID,
 		Type:  schema.PicIdent_MD5,
@@ -451,13 +451,13 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []by
 	if err := j.InsertPicIdent(sha1Ident); err != nil {
 		return status.Internal(err, "can't create sha1")
 	}
-	sha256Ident := &schema.PicIdent{
+	sha512_256Ident := &schema.PicIdent{
 		PicId: picID,
-		Type:  schema.PicIdent_SHA256,
-		Value: sha256Hash,
+		Type:  schema.PicIdent_SHA512_256,
+		Value: sha512_256Hash,
 	}
-	if err := j.InsertPicIdent(sha256Ident); err != nil {
-		return status.Internal(err, "can't create sha256")
+	if err := j.InsertPicIdent(sha512_256Ident); err != nil {
+		return status.Internal(err, "can't create sha512_256")
 	}
 	return nil
 }
@@ -598,10 +598,10 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	return header, nil
 }
 
-func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha256Hash []byte, sts status.S) {
+func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha512_256Hash []byte, sts status.S) {
 	h1 := md5.New()
 	h2 := sha1.New()
-	h3 := sha256.New()
+	h3 := sha512.New512_256()
 
 	if _, err := io.Copy(io.MultiWriter(h1, h2, h3), f); err != nil {
 		return nil, nil, nil, status.Internal(err, "Can't copy")

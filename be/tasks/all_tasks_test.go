@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 	"fmt"
 	"image"
@@ -162,7 +162,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		return j.UpdatePic(p)
 	})
 
-	h1 := sha256.New()
+	h1 := sha512.New512_256()
 	h2 := sha1.New()
 	h3 := md5.New()
 	base := schema.PicBaseDir(c.TempDir(), p.PicId)
@@ -195,7 +195,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 
 	pi1 := &schema.PicIdent{
 		PicId: p.PicId,
-		Type:  schema.PicIdent_SHA256,
+		Type:  schema.PicIdent_SHA512_256,
 		Value: h1.Sum(nil),
 	}
 	c.AutoJob(func(j *tab.Job) error {
