@@ -38,13 +38,13 @@ func TestStatusSuppressed(t *testing.T) {
 	s4 := InvalidArgument(s2, "Most Wrong")
 	t.Log(s4)
 
-	s5 := WithSuppressed(s1, InternalError(nil, "can't close file"))
+	s5 := WithSuppressed(s1, Internal(nil, "can't close file"))
 	t.Log(s5)
 
-	s6 := WithSuppressed(s5, InternalError(nil, "really can't close file"))
+	s6 := WithSuppressed(s5, Internal(nil, "really can't close file"))
 	t.Log(s6)
 
-	s7 := WithSuppressed(s1, WithSuppressed(InternalError(errors.New("eof"), "can't close file"), s2))
+	s7 := WithSuppressed(s1, WithSuppressed(Internal(errors.New("eof"), "can't close file"), s2))
 	t.Log(s7)
 
 	s8 := WithSuppressed(s7, errors.New("i feel bad"))

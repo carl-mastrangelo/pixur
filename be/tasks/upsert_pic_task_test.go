@@ -38,7 +38,7 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), -1)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InternalError(nil, "can't create job")
+	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)
 }
 
@@ -1095,7 +1095,7 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	j.Rollback()
 
 	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, schema.AnonymousUserID)
-	expected := status.InternalError(nil, "can't create pic tag")
+	expected := status.Internal(nil, "can't create pic tag")
 	compareStatus(t, sts, expected)
 }
 
@@ -1181,7 +1181,7 @@ func TestUpdateExistingTags_CantPrepare(t *testing.T) {
 	j.Rollback()
 
 	sts := updateExistingTags(j, []*schema.Tag{tag.Tag}, tag.Tag.GetModifiedTime())
-	expected := status.InternalError(nil, "can't update tag")
+	expected := status.Internal(nil, "can't update tag")
 	compareStatus(t, sts, expected)
 }
 
@@ -1327,7 +1327,7 @@ func TestFindAttachedPicTags_CantPrepare(t *testing.T) {
 	j.Rollback()
 
 	_, _, sts := findAttachedPicTags(j, 0)
-	expected := status.InternalError(nil, "cant't find pic tags")
+	expected := status.Internal(nil, "cant't find pic tags")
 	compareStatus(t, sts, expected)
 }
 
@@ -1386,7 +1386,7 @@ func TestPrepareFile_CreateTempFileFails(t *testing.T) {
 	}
 
 	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, nil)
-	expected := status.InternalError(nil, "Can't create tempfile")
+	expected := status.Internal(nil, "Can't create tempfile")
 	compareStatus(t, sts, expected)
 }
 
@@ -1407,7 +1407,7 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
 	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, nil)
-	expected := status.InternalError(nil, "Can't save file")
+	expected := status.Internal(nil, "Can't save file")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
 		if err != nil {
@@ -1542,7 +1542,7 @@ func TestFindExistingPic_Failure(t *testing.T) {
 	j.Rollback()
 
 	_, sts := findExistingPic(j, schema.PicIdent_SHA256, []byte("sha256"))
-	expected := status.InternalError(nil, "can't find pic idents")
+	expected := status.Internal(nil, "can't find pic idents")
 	compareStatus(t, sts, expected)
 }
 
@@ -1563,7 +1563,7 @@ func TestInsertPicHashes_MD5Exists(t *testing.T) {
 	}
 
 	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-	expected := status.InternalError(nil, "can't create md5")
+	expected := status.Internal(nil, "can't create md5")
 	compareStatus(t, sts, expected)
 }
 
@@ -1584,7 +1584,7 @@ func TestInsertPicHashes_SHA1Exists(t *testing.T) {
 	}
 
 	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-	expected := status.InternalError(nil, "can't create sha1")
+	expected := status.Internal(nil, "can't create sha1")
 	compareStatus(t, sts, expected)
 }
 
@@ -1605,7 +1605,7 @@ func TestInsertPicHashes_SHA256Exists(t *testing.T) {
 	}
 
 	sts := insertPicHashes(j, 1234, md5Hash, sha1Hash, sha256Hash)
-	expected := status.InternalError(nil, "can't create sha256")
+	expected := status.Internal(nil, "can't create sha256")
 	compareStatus(t, sts, expected)
 }
 
@@ -1723,7 +1723,7 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	}
 	defer im.Close()
 	sts = insertPerceptualHash(j, 1234, im)
-	expected := status.InternalError(nil, "can't create dct0")
+	expected := status.Internal(nil, "can't create dct0")
 	compareStatus(t, sts, expected)
 
 	j = c.Job()
@@ -1958,7 +1958,7 @@ func TestGeneratePicHashesError(t *testing.T) {
 		err: fmt.Errorf("bad"),
 	}
 	_, _, _, sts := generatePicHashes(r)
-	expected := status.InternalError(nil, "Can't copy")
+	expected := status.Internal(nil, "Can't copy")
 	compareStatus(t, sts, expected)
 }
 

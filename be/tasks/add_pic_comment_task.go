@@ -37,7 +37,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -50,7 +50,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		Prefix: tab.PicsPrimary{&t.PicID},
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
@@ -66,7 +66,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 			Prefix: tab.PicCommentsPrimary{&t.PicID, &t.CommentParentID},
 		})
 		if err != nil {
-			return status.InternalError(err, "can't lookup comment")
+			return status.Internal(err, "can't lookup comment")
 		}
 		if len(comments) != 1 {
 			return status.NotFound(nil, "can't find comment")
@@ -75,7 +75,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 
 	commentID, err := j.AllocID()
 	if err != nil {
-		return status.InternalError(err, "can't allocate id")
+		return status.Internal(err, "can't allocate id")
 	}
 
 	now := t.Now()
@@ -90,11 +90,11 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	pc.SetModifiedTime(now)
 
 	if err := j.InsertPicComment(pc); err != nil {
-		return status.InternalError(err, "can't insert comment")
+		return status.Internal(err, "can't insert comment")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 	t.PicComment = pc
 

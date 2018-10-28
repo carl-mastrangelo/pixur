@@ -39,19 +39,19 @@ const (
 
 func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	if ctx == nil {
-		return status.InternalError(nil, "missing context")
+		return status.Internal(nil, "missing context")
 	}
 
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
 	var user *schema.User
 	nowts, err := ptypes.TimestampProto(t.Now())
 	if err != nil {
-		status.InternalError(err, "can't create timestamp")
+		status.Internal(err, "can't create timestamp")
 	}
 	var newTokenID int64
 	if t.Ident != "" {
@@ -66,7 +66,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 			Limit:  1,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't find users")
+			return status.Internal(err, "can't find users")
 		}
 		if len(users) != 1 {
 			return status.Unauthenticated(nil, "can't lookup user")
@@ -98,7 +98,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 			Limit:  1,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't find users")
+			return status.Internal(err, "can't find users")
 		}
 		if len(users) != 1 {
 			return status.Unauthenticated(nil, "can't lookup user")
@@ -126,7 +126,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 			if user.UserToken[i].TokenId == newTokenID {
 				// this could theoretically happen if all the tokens are newer than the one we just
 				// created, perhaps due to clock skew between servers.
-				return status.InternalError(nil, "new token no longer valid")
+				return status.Internal(nil, "new token no longer valid")
 			}
 		}
 		user.UserToken = user.UserToken[:maxUserTokens]
@@ -136,11 +136,11 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	user.ModifiedTs = nowts
 
 	if err := j.UpdateUser(user); err != nil {
-		return status.InternalError(err, "can't update user")
+		return status.Internal(err, "can't update user")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can' commit job")
+		return status.Internal(err, "can' commit job")
 	}
 	t.User = user
 	t.NewTokenID = newTokenID

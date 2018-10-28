@@ -30,7 +30,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -52,7 +52,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 			Lock:   db.LockNone,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't lookup user")
+			return status.Internal(err, "can't lookup user")
 		}
 		if len(objectUsers) != 1 {
 			return status.NotFound(nil, "can't lookup user")
@@ -60,7 +60,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 		objectUser = objectUsers[0]
 	}
 	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback")
+		return status.Internal(err, "can't rollback")
 	}
 	t.User = objectUser
 	return nil

@@ -25,7 +25,7 @@ type HardDeletePicTask struct {
 func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -42,7 +42,7 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pics")
+		return status.Internal(err, "can't find pics")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't lookup pic")
@@ -71,11 +71,11 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 
 	p.SetModifiedTime(now)
 	if err := j.UpdatePic(p); err != nil {
-		return status.InternalError(err, "can't update pic")
+		return status.Internal(err, "can't update pic")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 
 	// At this point we actually release the file and thumbnail.  It would be better to remove

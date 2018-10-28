@@ -169,7 +169,7 @@ func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
 
 func TestGetRefreshTokenFailsOnTaskError(t *testing.T) {
 	failureRunner := func(_ context.Context, task tasks.Task) status.S {
-		return status.InternalError(nil, "bad")
+		return status.Internal(nil, "bad")
 	}
 
 	s := serv{

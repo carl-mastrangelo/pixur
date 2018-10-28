@@ -26,7 +26,7 @@ type LookupPicVoteTask struct {
 func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -54,7 +54,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
@@ -67,7 +67,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		},
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic votes")
+		return status.Internal(err, "can't find pic votes")
 	}
 	var thevote *schema.PicVote
 	switch len(picVotes) {
@@ -75,11 +75,11 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	case 1:
 		thevote = picVotes[0]
 	default:
-		return status.InternalError(nil, "bad number of pic votes", t.PicID, len(picVotes))
+		return status.Internal(nil, "bad number of pic votes", t.PicID, len(picVotes))
 	}
 
 	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback job")
+		return status.Internal(err, "can't rollback job")
 	}
 
 	t.PicVote = thevote

@@ -170,7 +170,7 @@ func TestLookupPicTaskError(t *testing.T) {
 	var taskCap *tasks.LookupPicTask
 	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.LookupPicTask)
-		return status.InternalError(nil, "bad")
+		return status.Internal(nil, "bad")
 	}
 	s := &serv{
 		now:    time.Now,

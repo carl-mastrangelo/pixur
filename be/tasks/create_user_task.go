@@ -46,7 +46,7 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 			Lock:   db.LockNone,
 		})
 		if err != nil {
-			return nil, status.InternalError(err, "can't lookup user")
+			return nil, status.Internal(err, "can't lookup user")
 		}
 		if len(users) != 1 {
 			return nil, status.Unauthenticated(nil, "can't lookup user")
@@ -72,7 +72,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	var err error
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -92,7 +92,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't scan users")
+		return status.Internal(err, "can't scan users")
 	}
 	if len(users) != 0 {
 		return status.AlreadyExists(nil, "ident already used")
@@ -106,13 +106,13 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	userID, err := j.AllocID()
 	if err != nil {
-		return status.InternalError(err, "can't allocate id")
+		return status.Internal(err, "can't allocate id")
 	}
 
 	// TODO: rate limit this.
 	hashed, err := bcrypt.GenerateFromPassword([]byte(t.Secret), bcrypt.DefaultCost)
 	if err != nil {
-		return status.InternalError(err, "can't generate password")
+		return status.Internal(err, "can't generate password")
 	}
 
 	var newcap []schema.User_Capability
@@ -137,11 +137,11 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	user.SetModifiedTime(now)
 
 	if err := j.InsertUser(user); err != nil {
-		return status.InternalError(err, "can't create user")
+		return status.Internal(err, "can't create user")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 
 	t.CreatedUser = user

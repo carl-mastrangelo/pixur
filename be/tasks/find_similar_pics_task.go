@@ -26,7 +26,7 @@ type FindSimilarPicsTask struct {
 func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create new job")
+		return status.Internal(err, "can't create new job")
 	}
 	defer revert(j, &stscap)
 
@@ -39,7 +39,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 		Limit: 1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.InvalidArgument(nil, "can't lookup pic", len(pics))
@@ -53,7 +53,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 		Limit: 1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic ident")
+		return status.Internal(err, "can't lookup pic ident")
 	}
 	if len(picIdents) != 1 {
 		return status.InvalidArgument(nil, "can't lookup pic ident", len(picIdents))
@@ -89,10 +89,10 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	})
 
 	if err != nil {
-		return status.InternalError(err, "can't scan pic idents")
+		return status.Internal(err, "can't scan pic idents")
 	}
 	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback job")
+		return status.Internal(err, "can't rollback job")
 	}
 	// Only set results on success
 	t.SimilarPicIDs = similarPicIDs

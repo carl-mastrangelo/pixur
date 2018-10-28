@@ -30,7 +30,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -44,7 +44,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic", t.PicID)
+		return status.Internal(err, "can't lookup pic", t.PicID)
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic", t.PicID)
@@ -63,7 +63,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		Lock: db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic votes")
+		return status.Internal(err, "can't find pic votes")
 	}
 	if len(pvs) != 0 {
 		return status.AlreadyExists(nil, "can't double vote")
@@ -79,7 +79,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	pv.SetModifiedTime(now)
 
 	if err := j.InsertPicVote(pv); err != nil {
-		return status.InternalError(err, "can't insert vote")
+		return status.Internal(err, "can't insert vote")
 	}
 	pic_updated := false
 	switch pv.Vote {
@@ -93,12 +93,12 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if pic_updated {
 		p.SetModifiedTime(now)
 		if err := j.UpdatePic(p); err != nil {
-			return status.InternalError(err, "can't update pic")
+			return status.Internal(err, "can't update pic")
 		}
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 	t.PicVote = pv
 

@@ -29,7 +29,7 @@ type LookupPicTask struct {
 func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -42,7 +42,7 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
@@ -51,17 +51,17 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic tags")
+		return status.Internal(err, "can't find pic tags")
 	}
 
 	picComments, err := j.FindPicComments(db.Opts{
 		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic comments")
+		return status.Internal(err, "can't find pic comments")
 	}
 	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback job")
+		return status.Internal(err, "can't rollback job")
 	}
 
 	t.Pic = pics[0]

@@ -244,6 +244,6 @@ func TestCreateUserCantBegin(t *testing.T) {
 	}
 	ctx := CtxFromUserID(context.Background(), -1)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InternalError(nil, "can't create job")
+	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)
 }

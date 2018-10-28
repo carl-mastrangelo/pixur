@@ -25,7 +25,7 @@ type PurgePicTask struct {
 func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -39,7 +39,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pics")
+		return status.Internal(err, "can't find pics")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't lookup pic")
@@ -51,7 +51,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic idents")
+		return status.Internal(err, "can't find pic idents")
 	}
 
 	for _, pi := range pis {
@@ -61,7 +61,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			Value: &pi.Value,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't delete pic ident")
+			return status.Internal(err, "can't delete pic ident")
 		}
 	}
 
@@ -70,7 +70,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic tags")
+		return status.Internal(err, "can't find pic tags")
 	}
 
 	for _, pt := range pts {
@@ -79,7 +79,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			TagId: &pt.TagId,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't delete pic tag")
+			return status.Internal(err, "can't delete pic tag")
 		}
 	}
 
@@ -91,10 +91,10 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			Limit:  1,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't find tag")
+			return status.Internal(err, "can't find tag")
 		}
 		if len(tags) != 1 {
-			return status.InternalError(nil, "can't lookup tag")
+			return status.Internal(nil, "can't lookup tag")
 		}
 		ts = append(ts, tags[0])
 	}
@@ -105,14 +105,14 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			t.UsageCount--
 			t.SetModifiedTime(now)
 			if err := j.UpdateTag(t); err != nil {
-				return status.InternalError(err, "can't update tag")
+				return status.Internal(err, "can't update tag")
 			}
 		} else {
 			err := j.DeleteTag(tab.TagsPrimary{
 				Id: &t.TagId,
 			})
 			if err != nil {
-				return status.InternalError(err, "can't delete tag")
+				return status.Internal(err, "can't delete tag")
 			}
 		}
 	}
@@ -122,7 +122,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic comments")
+		return status.Internal(err, "can't find pic comments")
 	}
 
 	for _, pc := range pcs {
@@ -132,7 +132,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			CommentId: &pc.CommentId,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't delete pic comment")
+			return status.Internal(err, "can't delete pic comment")
 		}
 	}
 
@@ -141,7 +141,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic votes")
+		return status.Internal(err, "can't find pic votes")
 	}
 
 	for _, pv := range pvs {
@@ -150,7 +150,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			UserId: &pv.UserId,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't delete pic vote")
+			return status.Internal(err, "can't delete pic vote")
 		}
 	}
 
@@ -158,10 +158,10 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		Id: &t.PicID,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't delete pic")
+		return status.Internal(err, "can't delete pic")
 	}
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "Unable to Commit")
+		return status.Internal(err, "Unable to Commit")
 	}
 
 	oldpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)

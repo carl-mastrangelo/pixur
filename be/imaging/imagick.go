@@ -45,7 +45,7 @@ func (pi *imagickImage) PerceptualHash0() ([]byte, []float32, status.S) {
 	//newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
 	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
 	if err := newmw.ResizeImage(dctSize, dctSize, imagick.FILTER_LANCZOS2_SHARP, 1); err != nil {
-		return nil, nil, status.InternalError(err, "can't resize")
+		return nil, nil, status.Internal(err, "can't resize")
 	}
 
 	// TODO: maybe do this in LAB?  Just using GRAY 'cuz that's how it was before.
@@ -83,11 +83,11 @@ func (pi *imagickImage) Write(w io.Writer) status.S {
 	switch w := w.(type) {
 	case *os.File:
 		if err := pi.mw.WriteImageFile(w); err != nil {
-			return status.InternalError(err, "can't write image file")
+			return status.Internal(err, "can't write image file")
 		}
 	default:
 		if _, err := w.Write(pi.mw.GetImageBlob()); err != nil {
-			return status.InternalError(err, "can't write image")
+			return status.Internal(err, "can't write image")
 		}
 	}
 
@@ -121,17 +121,17 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 
 	// Some PNGs have an `oFFs` section that messes with the crop
 	if err := newmw.SetImagePage(w, h, 0, 0); err != nil {
-		return nil, status.InternalError(err, "unable to repage image")
+		return nil, status.Internal(err, "unable to repage image")
 	}
 
 	if err := newmw.CropImage(neww, newh, x, y); err != nil {
-		return nil, status.InternalError(err, "unable to crop thumbnail")
+		return nil, status.Internal(err, "unable to crop thumbnail")
 	}
 
 	side := uint(thumbnailSquareSize)
 	newmw.TransformImageColorspace(imagick.COLORSPACE_RGB)
 	if err := newmw.ResizeImage(side, side, imagick.FILTER_CATROM, 1); err != nil {
-		return nil, status.InternalError(err, "unable to resize thumbnail")
+		return nil, status.Internal(err, "unable to resize thumbnail")
 	}
 	newmw.TransformImageColorspace(imagick.COLORSPACE_SRGB)
 
@@ -169,7 +169,7 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 			fallthrough // don't care
 		default:
 			if err := newmw.DeleteImageProperty(p); err != nil {
-				return nil, status.InternalError(err, "unable to delete property ", p)
+				return nil, status.Internal(err, "unable to delete property ", p)
 			}
 		}
 	}
@@ -177,13 +177,13 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 	// None of the images I found had options, but delete them anyways
 	for _, o := range newmw.GetOptions("*") {
 		if err := newmw.DeleteOption(o); err != nil {
-			return nil, status.InternalError(err, "unable to delete option ", o)
+			return nil, status.Internal(err, "unable to delete option ", o)
 		}
 	}
 
 	for _, a := range newmw.GetImageArtifacts("*") {
 		if err := newmw.DeleteImageArtifact(a); err != nil {
-			return nil, status.InternalError(err, "unable to delete artifact ", a)
+			return nil, status.Internal(err, "unable to delete artifact ", a)
 		}
 	}
 
@@ -194,23 +194,23 @@ func (pi *imagickImage) Thumbnail() (PixurImage, status.S) {
 		pw := imagick.NewPixelWand()
 		defer pw.Destroy()
 		if !pw.SetColor("white") {
-			return nil, status.InternalError(nil, "unable to find background color white")
+			return nil, status.Internal(nil, "unable to find background color white")
 		}
 		if err := newmw.SetImageBackgroundColor(pw); err != nil {
-			return nil, status.InternalError(err, "unable to set background color")
+			return nil, status.Internal(err, "unable to set background color")
 		}
 		if err := newmw.SetImageAlphaChannel(imagick.ALPHA_CHANNEL_REMOVE); err != nil {
-			return nil, status.InternalError(err, "unable to remove alpha channel")
+			return nil, status.Internal(err, "unable to remove alpha channel")
 		}
 		if err := newmw.SetImageFormat(string(DefaultJpegFormat)); err != nil {
-			return nil, status.InternalError(err, "unable to set format")
+			return nil, status.Internal(err, "unable to set format")
 		}
 		// png, gif, and (webm via png) get high quality.   This is not so big for thumbnails
 		// and the decode speed of jpeg is fast.
 		newmw.SetImageCompressionQuality(95)
 	}
 	if err := newmw.SetOption("jpeg:sampling-factor", "1x1,1x1,1x1"); err != nil {
-		return nil, status.InternalError(err, "unable to set sampling factor")
+		return nil, status.Internal(err, "unable to set sampling factor")
 	}
 
 	// TODO:trim profiles (keep colorspace?), apply orientation,
@@ -234,7 +234,7 @@ func (pi *imagickImage) Duration() (*time.Duration, status.S) {
 		return nil, nil
 	}
 	if tps := pi.mw.GetImageTicksPerSecond(); tps != gifTicksPerSecond {
-		return nil, status.InternalErrorf(nil, "Wrong ticks per second %v", tps)
+		return nil, status.Internalf(nil, "Wrong ticks per second %v", tps)
 	}
 	switch pi.mw.GetNumberImages() {
 	case 1:

@@ -157,7 +157,7 @@ func (mts *mysqlTestServer) start() (stscap status.S) {
 
 	select {
 	case <-time.After(3 * time.Second):
-		return status.InternalError(nil, "failed to start")
+		return status.Internal(nil, "failed to start")
 	case <-s.done:
 	}
 

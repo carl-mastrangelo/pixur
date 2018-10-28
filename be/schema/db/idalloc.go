@@ -48,7 +48,7 @@ func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (i
 	done := false
 	for rows.Next() {
 		if done {
-			return 0, status.InternalError(nil, "Too many rows on sequence table")
+			return 0, status.Internal(nil, "Too many rows on sequence table")
 		}
 		if err := rows.Scan(&num); err != nil {
 			return 0, status.From(err)
@@ -59,7 +59,7 @@ func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (i
 		return 0, status.From(err)
 	}
 	if !done {
-		return 0, status.InternalError(nil, "Too few rows on sequence table")
+		return 0, status.Internal(nil, "Too few rows on sequence table")
 	}
 	buf.Reset()
 	buf.WriteString("UPDATE " + adap.Quote(tabname) + " SET " + adap.Quote(colname) + " = ?;")

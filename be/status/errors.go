@@ -521,7 +521,7 @@ func Unimplementedf(e error, format string, v ...interface{}) S {
 // Internal errors. Means some invariants expected by underlying
 // system has been broken. If you see one of these errors,
 // something is very broken.
-func InternalError(e error, v ...interface{}) S {
+func Internal(e error, v ...interface{}) S {
 	return &status{
 		code:  codes.Internal,
 		msg:   sprintln(v...),
@@ -533,7 +533,7 @@ func InternalError(e error, v ...interface{}) S {
 // Internal errors. Means some invariants expected by underlying
 // system has been broken. If you see one of these errors,
 // something is very broken.
-func InternalErrorf(e error, format string, v ...interface{}) S {
+func Internalf(e error, format string, v ...interface{}) S {
 	return &status{
 		code:  codes.Internal,
 		msg:   fmt.Sprintf(format, v...),

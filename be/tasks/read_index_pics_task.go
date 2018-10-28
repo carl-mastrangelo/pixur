@@ -53,7 +53,7 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	}
 	startPics, err := j.FindPics(opts)
 	if err != nil {
-		return nil, status.InternalError(err, "Unable to get Start Pic")
+		return nil, status.Internal(err, "Unable to get Start Pic")
 	}
 	if len(startPics) == 0 {
 		// TODO: log info that there were no pics
@@ -65,7 +65,7 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "Unable to Begin TX")
+		return status.Internal(err, "Unable to Begin TX")
 	}
 	defer revert(j, &stscap)
 
@@ -122,7 +122,7 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 
 	pics, err := j.FindPics(opts)
 	if err != nil {
-		return status.InternalError(err, "Unable to find pics")
+		return status.Internal(err, "Unable to find pics")
 	}
 
 	t.Pics = pics

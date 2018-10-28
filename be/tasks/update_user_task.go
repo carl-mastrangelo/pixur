@@ -32,7 +32,7 @@ type UpdateUserTask struct {
 func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "Unable to Begin TX")
+		return status.Internal(err, "Unable to Begin TX")
 	}
 	defer revert(j, &stscap)
 
@@ -49,7 +49,7 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 			Lock:   db.LockWrite,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't lookup user")
+			return status.Internal(err, "can't lookup user")
 		}
 		if len(users) != 1 {
 			return status.Unauthenticated(nil, "can't lookup user")
@@ -61,7 +61,7 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 			Prefix: tab.UsersPrimary{&subjectUserID},
 		})
 		if err != nil {
-			return status.InternalError(err, "can't lookup user")
+			return status.Internal(err, "can't lookup user")
 		}
 		if len(subjectUsers) != 1 {
 			return status.Unauthenticated(nil, "can't lookup user")
@@ -73,7 +73,7 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 			Lock:   db.LockWrite,
 		})
 		if err != nil {
-			return status.InternalError(err, "can't lookup user")
+			return status.Internal(err, "can't lookup user")
 		}
 		if len(objectUsers) != 1 {
 			return status.Unauthenticated(nil, "can't lookup user")
@@ -141,15 +141,15 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 		objectUser.ModifiedTs = schema.ToTspb(now)
 
 		if err := j.UpdateUser(objectUser); err != nil {
-			return status.InternalError(err, "can't update user")
+			return status.Internal(err, "can't update user")
 		}
 
 		if err := j.Commit(); err != nil {
-			return status.InternalError(err, "can't commit")
+			return status.Internal(err, "can't commit")
 		}
 	} else {
 		if err := j.Rollback(); err != nil {
-			return status.InternalError(err, "can't rollback")
+			return status.Internal(err, "can't rollback")
 		}
 	}
 	t.ObjectUser = objectUser

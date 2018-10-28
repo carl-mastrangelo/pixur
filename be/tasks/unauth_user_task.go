@@ -26,14 +26,14 @@ type UnauthUserTask struct {
 func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
 	var user *schema.User
 	nowts, err := ptypes.TimestampProto(t.Now())
 	if err != nil {
-		status.InternalError(err, "can't create timestamp")
+		status.Internal(err, "can't create timestamp")
 	}
 	users, err := j.FindUsers(db.Opts{
 		Prefix: tab.UsersPrimary{&t.UserID},
@@ -41,7 +41,7 @@ func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find users")
+		return status.Internal(err, "can't find users")
 	}
 	if len(users) != 1 {
 		return status.Unauthenticated(nil, "can't lookup user")
@@ -64,11 +64,11 @@ func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 	user.ModifiedTs = nowts
 
 	if err := j.UpdateUser(user); err != nil {
-		return status.InternalError(err, "can't update user")
+		return status.Internal(err, "can't update user")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can' commit job")
+		return status.Internal(err, "can' commit job")
 	}
 	return nil
 }

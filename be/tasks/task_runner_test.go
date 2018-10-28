@@ -44,7 +44,7 @@ func TestTaskRetriesOnRetryableError(t *testing.T) {
 
 	task.run = func(_ context.Context) status.S {
 		err := fakeError(true)
-		return status.InternalError(&err, "err")
+		return status.Internal(&err, "err")
 	}
 	oldlog := thetasklogger
 	thetasklogger = nil
@@ -69,7 +69,7 @@ func TestTaskFailsOnOtherError(t *testing.T) {
 
 	task.run = func(_ context.Context) status.S {
 		err := fakeError(false)
-		return status.InternalError(&err, "")
+		return status.Internal(&err, "")
 	}
 	sts := runner.Run(context.Background(), task)
 

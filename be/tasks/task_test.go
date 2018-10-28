@@ -52,7 +52,7 @@ func TestRevert_noError(t *testing.T) {
 func TestRevert_noErrorOnExisting(t *testing.T) {
 	tc := &testCommitter{}
 
-	var s status.S = status.InternalError(nil, "error")
+	var s status.S = status.Internal(nil, "error")
 	revert(tc, &s)
 
 	if s == nil || s.Code() != codes.Internal || s.Message() != "error" {
@@ -142,7 +142,7 @@ func TestRevert_addsSuppressed(t *testing.T) {
 		},
 	}
 
-	var s status.S = status.InternalError(nil, "very bad")
+	var s status.S = status.Internal(nil, "very bad")
 	revert(tc, &s)
 
 	if s == nil || s.Code() != codes.Internal || !strings.Contains(s.Message(), "very bad") {

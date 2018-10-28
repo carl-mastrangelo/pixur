@@ -16,7 +16,7 @@ import (
 
 func TestCreateUserFailsOnTaskFailure(t *testing.T) {
 	failureRunner := func(_ context.Context, task tasks.Task) status.S {
-		return status.InternalError(nil, "bad things")
+		return status.Internal(nil, "bad things")
 	}
 	s := &serv{
 		runner: tasks.TestTaskRunner(failureRunner),

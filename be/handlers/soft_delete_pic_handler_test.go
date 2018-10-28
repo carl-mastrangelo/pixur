@@ -155,7 +155,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 	var taskCap *tasks.SoftDeletePicTask
 	failureRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.SoftDeletePicTask)
-		return status.InternalError(nil, "bad")
+		return status.Internal(nil, "bad")
 	}
 	s := serv{
 		now:    time.Now,

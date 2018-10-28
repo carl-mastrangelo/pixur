@@ -31,12 +31,12 @@ type SoftDeletePicTask struct {
 
 func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
-		return status.InternalError(nil, "Invalid deletion reason", t.Reason)
+		return status.Internal(nil, "Invalid deletion reason", t.Reason)
 	}
 
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -53,7 +53,7 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:  1,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pics")
+		return status.Internal(err, "can't find pics")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't lookup pic")
@@ -84,11 +84,11 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	p.SetModifiedTime(now)
 	if err := j.UpdatePic(p); err != nil {
-		return status.InternalError(err, "can't update pic")
+		return status.Internal(err, "can't update pic")
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 
 	return nil

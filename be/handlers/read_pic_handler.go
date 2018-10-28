@@ -70,7 +70,7 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 
 	mts, err := ptypes.TimestampProto(fi.ModTime())
 	if err != nil {
-		return nil, status.InternalError(err, "bad ts")
+		return nil, status.Internal(err, "bad ts")
 	}
 
 	md, sts := readPicHeaders()
@@ -110,7 +110,7 @@ func authReadPicRequest(ctx context.Context) status.S {
 			}
 		}
 	} else {
-		return status.InternalError(nil, "missing MD")
+		return status.Internal(nil, "missing MD")
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func readPicHeaders() (metadata.MD, status.S) {
 	}
 	h1data, err := proto.Marshal(h1)
 	if err != nil {
-		return nil, status.InternalError(err, "can't encode headers")
+		return nil, status.Internal(err, "can't encode headers")
 	}
 	h2 := &api.HttpHeader{
 		Key:   "Cache-Control",
@@ -134,7 +134,7 @@ func readPicHeaders() (metadata.MD, status.S) {
 	}
 	h2data, err := proto.Marshal(h2)
 	if err != nil {
-		return nil, status.InternalError(err, "can't encode headers")
+		return nil, status.Internal(err, "can't encode headers")
 	}
 	return metadata.Pairs(httpHeaderKey, string(h1data), httpHeaderKey, string(h2data)), nil
 }
@@ -153,7 +153,7 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
-			return status.InternalError(err, "can't recv")
+			return status.Internal(err, "can't recv")
 		}
 		if f == nil {
 			mime, sts := apiFormatToSchemaMime(req.Format)
@@ -202,11 +202,11 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 		if err == io.EOF {
 			resp.Eof = true
 		} else if err != nil {
-			return status.InternalError(err, "can't read")
+			return status.Internal(err, "can't read")
 		}
 		resp.Data = resp.Data[:n]
 		if err := rps.Send(resp); err != nil {
-			return status.InternalError(err, "can't send")
+			return status.Internal(err, "can't send")
 		}
 	}
 }

@@ -24,7 +24,7 @@ type AddPicTagsTask struct {
 func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -38,7 +38,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't lookup pic")
+		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
 		return status.NotFound(nil, "can't find pic")
@@ -54,7 +54,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	if err := j.Commit(); err != nil {
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 	return nil
 }

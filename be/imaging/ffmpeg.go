@@ -65,7 +65,7 @@ func (im *ffmpegImage) videoFrameImage() (PixurImage, status.S) {
 		var buf bytes.Buffer
 		enc := png.Encoder{CompressionLevel: png.NoCompression}
 		if err := enc.Encode(&buf, im.videoFrame); err != nil {
-			return nil, status.InternalError(err, "unable to encode video frame")
+			return nil, status.Internal(err, "unable to encode video frame")
 		}
 		im2, sts := ReadImage(bytes.NewReader(buf.Bytes()))
 		if sts != nil {
@@ -172,26 +172,26 @@ func ffmpegConvert(r io.Reader) (image.Image, status.S) {
 	// PNG data comes across stdout
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, status.InternalError(err, "unable to create pipe")
+		return nil, status.Internal(err, "unable to create pipe")
 	}
 	defer stdout.Close()
 
 	if err := cmd.Start(); err != nil {
-		return nil, status.InternalError(err, "unable to start ffmpeg: "+errBuf.String())
+		return nil, status.Internal(err, "unable to start ffmpeg: "+errBuf.String())
 	}
 	defer cmd.Process.Kill()
 
 	im, sts := keepLastImage(stdout)
 	if sts != nil {
 		// This should be a deferred
-		return nil, status.InternalError(sts, "unable to get sample image: "+errBuf.String())
+		return nil, status.Internal(sts, "unable to get sample image: "+errBuf.String())
 	}
 	// See explanation why in probe()
 	if err := stdout.Close(); err != nil {
-		return nil, status.InternalError(err, "unable to close stdout stream")
+		return nil, status.Internal(err, "unable to close stdout stream")
 	}
 	if err := cmd.Wait(); err != nil {
-		return nil, status.InternalError(err, "unable to wait on ffmpeg: "+errBuf.String())
+		return nil, status.Internal(err, "unable to wait on ffmpeg: "+errBuf.String())
 	}
 	return im, nil
 }
@@ -254,17 +254,17 @@ func ffmpegProbe(r io.Reader) (*probeResponse, status.S) {
 	cmd.Stdout = &outBuf
 
 	if err := cmd.Start(); err != nil {
-		return nil, status.InternalError(err, "Unable to start ffprobe: "+errBuf.String())
+		return nil, status.Internal(err, "Unable to start ffprobe: "+errBuf.String())
 	}
 	defer cmd.Process.Kill()
 
 	if err := cmd.Wait(); err != nil {
-		return nil, status.InternalError(err, "Unable to wait on ffprobe: "+errBuf.String())
+		return nil, status.Internal(err, "Unable to wait on ffprobe: "+errBuf.String())
 	}
 
 	resp := new(probeResponse)
 	if err := json.NewDecoder(&outBuf).Decode(resp); err != nil {
-		return nil, status.InternalError(err, "Unable to decode ffprobe json: "+errBuf.String())
+		return nil, status.Internal(err, "Unable to decode ffprobe json: "+errBuf.String())
 	}
 
 	return resp, nil
@@ -283,7 +283,7 @@ func keepLastFfmpegImage(r io.Reader) (image.Image, status.S) {
 		if err == io.ErrUnexpectedEOF {
 			break
 		} else if err != nil {
-			return nil, status.InternalError(err, "unable to find frame")
+			return nil, status.Internal(err, "unable to find frame")
 		}
 		im = lastIm
 	}

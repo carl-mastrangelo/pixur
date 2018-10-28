@@ -74,7 +74,7 @@ type FileHeader struct {
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -90,7 +90,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		// Don't delete old pics, as the commit may have actually succeeded.  A cron job will clean
 		// this up.
 		t.CreatedPic = nil
-		return status.InternalError(err, "can't commit job")
+		return status.Internal(err, "can't commit job")
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	} else {
 		picID, err := j.AllocID()
 		if err != nil {
-			return status.InternalError(err, "can't allocate id")
+			return status.Internal(err, "can't allocate id")
 		}
 
 		width, height := im.Dimensions()
@@ -228,7 +228,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		p.File.ModifiedTs = p.File.CreatedTs
 
 		if err := j.InsertPic(p); err != nil {
-			return status.InternalError(err, "Can't insert")
+			return status.Internal(err, "Can't insert")
 		}
 		if sts := insertPicHashes(j, p.PicId, md5Hash, sha1Hash, sha256Hash); sts != nil {
 			return sts
@@ -240,7 +240,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 	ft, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
-		return status.InternalError(err, "Can't create tempfile")
+		return status.Internal(err, "Can't create tempfile")
 	}
 	defer t.Remove(ft.Name())
 	defer ft.Close()
@@ -255,7 +255,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 	thumbfi, err := ft.Stat()
 	if err != nil {
-		return status.InternalError(err, "unable to stat thumbnail")
+		return status.Internal(err, "unable to stat thumbnail")
 	}
 	imfmime, sts := imageFormatToMime(thumb.Format())
 	if sts != nil {
@@ -284,20 +284,20 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 
 	if err := t.MkdirAll(schema.PicBaseDir(t.PixPath, p.PicId), 0770); err != nil {
-		return status.InternalError(err, "Can't prepare pic dir")
+		return status.Internal(err, "Can't prepare pic dir")
 	}
 	if err := f.Close(); err != nil {
-		return status.InternalErrorf(err, "Can't close %v", f.Name())
+		return status.Internalf(err, "Can't close %v", f.Name())
 	}
 	newpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
 	if sts != nil {
 		return sts
 	}
 	if err := t.Rename(f.Name(), newpath); err != nil {
-		return status.InternalErrorf(err, "Can't rename %v to %v", f.Name(), newpath)
+		return status.Internalf(err, "Can't rename %v to %v", f.Name(), newpath)
 	}
 	if err := ft.Close(); err != nil {
-		return status.InternalErrorf(err, "Can't close %v", ft.Name())
+		return status.Internalf(err, "Can't close %v", ft.Name())
 	}
 
 	lastthumbnail := p.Thumbnail[len(p.Thumbnail)-1]
@@ -309,12 +309,12 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 	if err := t.Rename(ft.Name(), newthumbpath); err != nil {
-		sts := status.InternalErrorf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
+		sts := status.Internalf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
 		if err2 := t.Remove(ft.Name()); err2 != nil {
-			sts = status.WithSuppressed(sts, status.InternalError(err2, "can't remove temp thumbnail"))
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove temp thumbnail"))
 		}
 		if err2 := t.Remove(newpath); err2 != nil {
-			sts = status.WithSuppressed(sts, status.InternalError(err2, "can't remove pic", newpath))
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove pic", newpath))
 		}
 		return sts
 	}
@@ -399,7 +399,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 	}
 
 	if err := j.UpdatePic(p); err != nil {
-		return status.InternalError(err, "can't update pic")
+		return status.Internal(err, "can't update pic")
 	}
 
 	return nil
@@ -448,7 +448,7 @@ func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicT
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return nil, nil, status.InternalError(err, "cant't find pic tags")
+		return nil, nil, status.Internal(err, "cant't find pic tags")
 	}
 
 	var tags []*schema.Tag
@@ -460,10 +460,10 @@ func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicT
 			Lock:   db.LockWrite,
 		})
 		if err != nil {
-			return nil, nil, status.InternalError(err, "can't find tags")
+			return nil, nil, status.Internal(err, "can't find tags")
 		}
 		if len(ts) != 1 {
-			return nil, nil, status.InternalError(nil, "can't lookup tag", len(ts))
+			return nil, nil, status.Internal(nil, "can't lookup tag", len(ts))
 		}
 		tags = append(tags, ts[0])
 	}
@@ -497,7 +497,7 @@ func findExistingTagsByName(j *tab.Job, names []tagNameAndUniq) (
 			Lock:   db.LockWrite,
 		})
 		if err != nil {
-			return nil, nil, status.InternalError(err, "can't find tags")
+			return nil, nil, status.Internal(err, "can't find tags")
 		}
 		if len(ts) == 1 {
 			tags = append(tags, ts[0])
@@ -514,7 +514,7 @@ func updateExistingTags(j *tab.Job, tags []*schema.Tag, now time.Time) status.S 
 		tag.SetModifiedTime(now)
 		tag.UsageCount++
 		if err := j.UpdateTag(tag); err != nil {
-			return status.InternalError(err, "can't update tag")
+			return status.Internal(err, "can't update tag")
 		}
 	}
 	return nil
@@ -525,7 +525,7 @@ func createNewTags(j *tab.Job, names []tagNameAndUniq, now time.Time) ([]*schema
 	for _, name := range names {
 		tagID, err := j.AllocID()
 		if err != nil {
-			return nil, status.InternalError(err, "can't allocate id")
+			return nil, status.Internal(err, "can't allocate id")
 		}
 		tag := &schema.Tag{
 			TagId:      tagID,
@@ -535,7 +535,7 @@ func createNewTags(j *tab.Job, names []tagNameAndUniq, now time.Time) ([]*schema
 		tag.SetCreatedTime(now)
 		tag.SetModifiedTime(now)
 		if err := j.InsertTag(tag); err != nil {
-			return nil, status.InternalError(err, "can't create tag")
+			return nil, status.Internal(err, "can't create tag")
 		}
 		tags = append(tags, tag)
 	}
@@ -555,7 +555,7 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, u
 		pt.SetCreatedTime(now)
 		pt.SetModifiedTime(now)
 		if err := j.InsertPicTag(pt); err != nil {
-			return nil, status.InternalError(err, "can't create pic tag")
+			return nil, status.Internal(err, "can't create pic tag")
 		}
 		picTags = append(picTags, pt)
 	}
@@ -572,7 +572,7 @@ func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema
 		Limit: 1,
 	})
 	if err != nil {
-		return nil, status.InternalError(err, "can't find pic idents")
+		return nil, status.Internal(err, "can't find pic idents")
 	}
 	if len(pis) == 0 {
 		return nil, nil
@@ -583,10 +583,10 @@ func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema
 		Limit:  1,
 	})
 	if err != nil {
-		return nil, status.InternalError(err, "can't find pics")
+		return nil, status.Internal(err, "can't find pics")
 	}
 	if len(pics) != 1 {
-		return nil, status.InternalError(nil, "can't lookup pic")
+		return nil, status.Internal(nil, "can't lookup pic")
 	}
 
 	return pics[0], nil
@@ -599,7 +599,7 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []by
 		Value: md5Hash,
 	}
 	if err := j.InsertPicIdent(md5Ident); err != nil {
-		return status.InternalError(err, "can't create md5")
+		return status.Internal(err, "can't create md5")
 	}
 	sha1Ident := &schema.PicIdent{
 		PicId: picID,
@@ -607,7 +607,7 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []by
 		Value: sha1Hash,
 	}
 	if err := j.InsertPicIdent(sha1Ident); err != nil {
-		return status.InternalError(err, "can't create sha1")
+		return status.Internal(err, "can't create sha1")
 	}
 	sha256Ident := &schema.PicIdent{
 		PicId: picID,
@@ -615,7 +615,7 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha256Hash []by
 		Value: sha256Hash,
 	}
 	if err := j.InsertPicIdent(sha256Ident); err != nil {
-		return status.InternalError(err, "can't create sha256")
+		return status.Internal(err, "can't create sha256")
 	}
 	return nil
 }
@@ -632,7 +632,7 @@ func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status
 		Dct0Values: inputs,
 	}
 	if err := j.InsertPicIdent(dct0Ident); err != nil {
-		return status.InternalError(err, "can't create dct0")
+		return status.Internal(err, "can't create dct0")
 	}
 	return nil
 }
@@ -643,15 +643,15 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 	_ *os.File, _ *FileHeader, stscap status.S) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
-		return nil, nil, status.InternalError(err, "Can't create tempfile")
+		return nil, nil, status.Internal(err, "Can't create tempfile")
 	}
 	defer func() {
 		if stscap != nil {
 			if err := f.Close(); err != nil {
-				stscap = status.WithSuppressed(stscap, status.InternalError(err, "can't close file"))
+				stscap = status.WithSuppressed(stscap, status.Internal(err, "can't close file"))
 			}
 			if err := t.Remove(f.Name()); err != nil {
-				stscap = status.WithSuppressed(stscap, status.InternalError(err, "can't remove file", f.Name()))
+				stscap = status.WithSuppressed(stscap, status.Internal(err, "can't remove file", f.Name()))
 			}
 		}
 	}()
@@ -669,7 +669,7 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 		// Also get a copy of the size.  We don't want to move the file if it is on the
 		// same partition, because then we can't retry the task on failure.
 		if n, err := io.Copy(f, fd); err != nil {
-			return nil, nil, status.InternalError(err, "Can't save file")
+			return nil, nil, status.Internal(err, "Can't save file")
 		} else {
 			h = &FileHeader{
 				Size: n,
@@ -683,7 +683,7 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 
 	// The file is now local.  Sync it, since external programs might read it.
 	if err := f.Sync(); err != nil {
-		return nil, nil, status.InternalError(err, "Can't sync file")
+		return nil, nil, status.Internal(err, "Can't sync file")
 	}
 
 	return f, h, nil
@@ -720,7 +720,7 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
 		// if this fails, it's probably our fault
-		return nil, status.InternalError(err, "Can't create request")
+		return nil, status.Internal(err, "Can't create request")
 	}
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
@@ -729,7 +729,7 @@ func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			status.ReplaceOrSuppress(&stscap, status.InternalError(err, "can't close url req", u))
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close url req", u))
 		}
 	}()
 
@@ -762,7 +762,7 @@ func generatePicHashes(f io.Reader) (md5Hash, sha1Hash, sha256Hash []byte, sts s
 	h3 := sha256.New()
 
 	if _, err := io.Copy(io.MultiWriter(h1, h2, h3), f); err != nil {
-		return nil, nil, nil, status.InternalError(err, "Can't copy")
+		return nil, nil, nil, status.Internal(err, "Can't copy")
 	}
 	return h1.Sum(nil), h2.Sum(nil), h3.Sum(nil), nil
 }

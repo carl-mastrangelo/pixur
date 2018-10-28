@@ -77,11 +77,11 @@ func (s *serv) handleGetRefreshToken(
 	now := s.now()
 	notBefore, err := ptypes.TimestampProto(time.Unix(now.Add(-1*time.Minute).Unix(), 0))
 	if err != nil {
-		return nil, status.InternalError(err, "can't build notbefore")
+		return nil, status.Internal(err, "can't build notbefore")
 	}
 	refreshNotAfter, err := ptypes.TimestampProto(time.Unix(now.Add(refreshPwtDuration).Unix(), 0))
 	if err != nil {
-		return nil, status.InternalError(err, "can't build refresh notafter")
+		return nil, status.Internal(err, "can't build refresh notafter")
 	}
 
 	refreshPayload := &api.PwtPayload{
@@ -93,12 +93,12 @@ func (s *serv) handleGetRefreshToken(
 	}
 	refreshToken, err := defaultPwtCoder.encode(refreshPayload)
 	if err != nil {
-		return nil, status.InternalError(err, "can't build refresh token")
+		return nil, status.Internal(err, "can't build refresh token")
 	}
 
 	authNotAfter, err := ptypes.TimestampProto(time.Unix(now.Add(authPwtDuration).Unix(), 0))
 	if err != nil {
-		return nil, status.InternalError(err, "can't build auth notafter")
+		return nil, status.Internal(err, "can't build auth notafter")
 	}
 
 	authPayload := &api.PwtPayload{
@@ -110,7 +110,7 @@ func (s *serv) handleGetRefreshToken(
 	}
 	authToken, err := defaultPwtCoder.encode(authPayload)
 	if err != nil {
-		return nil, status.InternalError(err, "can't build auth token")
+		return nil, status.Internal(err, "can't build auth token")
 	}
 
 	var pixPayload *api.PwtPayload
@@ -128,7 +128,7 @@ func (s *serv) handleGetRefreshToken(
 		}
 		pixToken, err = defaultPwtCoder.encode(pixPayload)
 		if err != nil {
-			return nil, status.InternalError(err, "can't build pix token")
+			return nil, status.Internal(err, "can't build pix token")
 		}
 	}
 

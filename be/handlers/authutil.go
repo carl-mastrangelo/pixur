@@ -39,7 +39,7 @@ func addUserIDToCtx(ctx context.Context, pwt *api.PwtPayload) (context.Context, 
 	}
 	var userID schema.Varint
 	if err := userID.DecodeAll(pwt.Subject); err != nil {
-		return nil, status.InternalError(err, "can't decode pwt subject")
+		return nil, status.Internal(err, "can't decode pwt subject")
 	}
 	// TODO move auth here instead of the http handler
 	return tasks.CtxFromUserID(ctx, int64(userID)), nil

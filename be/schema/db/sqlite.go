@@ -60,7 +60,7 @@ func (a *sqlite3Adapter) openForTest() (_ *sqlite3TestDB, stscap status.S) {
 	// Can't use :memory: since they have a habit of sharing the same memory
 	testdir, err := ioutil.TempDir("", "sqlitepixurtest")
 	if err != nil {
-		return nil, status.InternalError(err, "can't create temp dir")
+		return nil, status.Internal(err, "can't create temp dir")
 	}
 	defer func() {
 		if stscap != nil {
@@ -94,7 +94,7 @@ func (stdb *sqlite3TestDB) _close() status.S {
 	sts := stdb.dbWrapper._close()
 
 	if err := os.RemoveAll(stdb.testdir); err != nil {
-		status.ReplaceOrSuppress(&sts, status.InternalError(err, "can't remove test dir"))
+		status.ReplaceOrSuppress(&sts, status.Internal(err, "can't remove test dir"))
 	}
 
 	return sts

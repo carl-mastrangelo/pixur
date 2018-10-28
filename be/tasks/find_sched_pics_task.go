@@ -26,7 +26,7 @@ type FindSchedPicsTask struct {
 func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
-		return status.InternalError(err, "can't create job")
+		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
@@ -39,7 +39,7 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 		Prefix: tab.PicVotesUserId{UserId: &u.UserId},
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pic votes")
+		return status.Internal(err, "can't find pic votes")
 	}
 	pvByPicId := make(map[int64]struct{}, len(pvs))
 	for _, pv := range pvs {
@@ -53,11 +53,11 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:   len(pvs) + DefaultMaxPics,
 	})
 	if err != nil {
-		return status.InternalError(err, "can't find pics")
+		return status.Internal(err, "can't find pics")
 	}
 
 	if err := j.Rollback(); err != nil {
-		return status.InternalError(err, "can't rollback")
+		return status.Internal(err, "can't rollback")
 	}
 	for _, p := range ps {
 		if _, present := pvByPicId[p.PicId]; !present {
