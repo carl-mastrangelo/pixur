@@ -653,6 +653,16 @@ func (idx PicsSchedOrder) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForPic(pb *schema.Pic) PicsPrimary {
+
+	Id := pb.IdCol()
+
+	return PicsPrimary{
+
+		Id: &Id,
+	}
+}
+
 var colsPics = []string{"id", "index_order", "score_order", "sched_order", "data"}
 
 func (j *Job) ScanPics(opts db.Opts, cb func(*schema.Pic) error) error {
@@ -738,11 +748,7 @@ func (j *Job) UpdatePic(pb *schema.Pic) error {
 }
 
 func (j *Job) UpdatePicRow(row *PicRow) error {
-
-	key := PicsPrimary{
-
-		Id: &row.Id,
-	}
+	key := KeyForPic(row.Data)
 
 	var vals []interface{}
 
@@ -825,6 +831,16 @@ func (idx TagsName) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForTag(pb *schema.Tag) TagsPrimary {
+
+	Id := pb.IdCol()
+
+	return TagsPrimary{
+
+		Id: &Id,
+	}
+}
+
 var colsTags = []string{"id", "name", "data"}
 
 func (j *Job) ScanTags(opts db.Opts, cb func(*schema.Tag) error) error {
@@ -890,11 +906,7 @@ func (j *Job) UpdateTag(pb *schema.Tag) error {
 }
 
 func (j *Job) UpdateTagRow(row *TagRow) error {
-
-	key := TagsPrimary{
-
-		Id: &row.Id,
-	}
+	key := KeyForTag(row.Data)
 
 	var vals []interface{}
 
@@ -953,6 +965,20 @@ func (idx PicTagsPrimary) Vals() (vals []interface{}) {
 	}
 
 	return
+}
+
+func KeyForPicTag(pb *schema.PicTag) PicTagsPrimary {
+
+	PicId := pb.PicIdCol()
+
+	TagId := pb.TagIdCol()
+
+	return PicTagsPrimary{
+
+		PicId: &PicId,
+
+		TagId: &TagId,
+	}
 }
 
 var colsPicTags = []string{"pic_id", "tag_id", "data"}
@@ -1020,13 +1046,7 @@ func (j *Job) UpdatePicTag(pb *schema.PicTag) error {
 }
 
 func (j *Job) UpdatePicTagRow(row *PicTagRow) error {
-
-	key := PicTagsPrimary{
-
-		PicId: &row.PicId,
-
-		TagId: &row.TagId,
-	}
+	key := KeyForPicTag(row.Data)
 
 	var vals []interface{}
 
@@ -1136,6 +1156,24 @@ func (idx PicIdentsIdent) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForPicIdent(pb *schema.PicIdent) PicIdentsPrimary {
+
+	PicId := pb.PicIdCol()
+
+	Type := pb.TypeCol()
+
+	Value := pb.ValueCol()
+
+	return PicIdentsPrimary{
+
+		PicId: &PicId,
+
+		Type: &Type,
+
+		Value: &Value,
+	}
+}
+
 var colsPicIdents = []string{"pic_id", "type", "value", "data"}
 
 func (j *Job) ScanPicIdents(opts db.Opts, cb func(*schema.PicIdent) error) error {
@@ -1211,15 +1249,7 @@ func (j *Job) UpdatePicIdent(pb *schema.PicIdent) error {
 }
 
 func (j *Job) UpdatePicIdentRow(row *PicIdentRow) error {
-
-	key := PicIdentsPrimary{
-
-		PicId: &row.PicId,
-
-		Type: &row.Type,
-
-		Value: &row.Value,
-	}
+	key := KeyForPicIdent(row.Data)
 
 	var vals []interface{}
 
@@ -1311,6 +1341,20 @@ func (idx PicCommentsCommentId) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForPicComment(pb *schema.PicComment) PicCommentsPrimary {
+
+	PicId := pb.PicIdCol()
+
+	CommentId := pb.CommentIdCol()
+
+	return PicCommentsPrimary{
+
+		PicId: &PicId,
+
+		CommentId: &CommentId,
+	}
+}
+
 var colsPicComments = []string{"pic_id", "comment_id", "data"}
 
 func (j *Job) ScanPicComments(opts db.Opts, cb func(*schema.PicComment) error) error {
@@ -1376,13 +1420,7 @@ func (j *Job) UpdatePicComment(pb *schema.PicComment) error {
 }
 
 func (j *Job) UpdatePicCommentRow(row *PicCommentRow) error {
-
-	key := PicCommentsPrimary{
-
-		PicId: &row.PicId,
-
-		CommentId: &row.CommentId,
-	}
+	key := KeyForPicComment(row.Data)
 
 	var vals []interface{}
 
@@ -1483,6 +1521,20 @@ func (idx PicVotesUserId) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForPicVote(pb *schema.PicVote) PicVotesPrimary {
+
+	PicId := pb.PicIdCol()
+
+	UserId := pb.UserIdCol()
+
+	return PicVotesPrimary{
+
+		PicId: &PicId,
+
+		UserId: &UserId,
+	}
+}
+
 var colsPicVotes = []string{"pic_id", "user_id", "data"}
 
 func (j *Job) ScanPicVotes(opts db.Opts, cb func(*schema.PicVote) error) error {
@@ -1548,13 +1600,7 @@ func (j *Job) UpdatePicVote(pb *schema.PicVote) error {
 }
 
 func (j *Job) UpdatePicVoteRow(row *PicVoteRow) error {
-
-	key := PicVotesPrimary{
-
-		PicId: &row.PicId,
-
-		UserId: &row.UserId,
-	}
+	key := KeyForPicVote(row.Data)
 
 	var vals []interface{}
 
@@ -1633,6 +1679,16 @@ func (idx UsersIdent) Vals() (vals []interface{}) {
 	return
 }
 
+func KeyForUser(pb *schema.User) UsersPrimary {
+
+	Id := pb.IdCol()
+
+	return UsersPrimary{
+
+		Id: &Id,
+	}
+}
+
 var colsUsers = []string{"id", "ident", "data"}
 
 func (j *Job) ScanUsers(opts db.Opts, cb func(*schema.User) error) error {
@@ -1698,11 +1754,7 @@ func (j *Job) UpdateUser(pb *schema.User) error {
 }
 
 func (j *Job) UpdateUserRow(row *UserRow) error {
-
-	key := UsersPrimary{
-
-		Id: &row.Id,
-	}
+	key := KeyForUser(row.Data)
 
 	var vals []interface{}
 

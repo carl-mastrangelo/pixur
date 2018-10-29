@@ -128,6 +128,7 @@ var (
   {{range .Indexes}}
     {{template "index" .}}
   {{end}}
+  {{template "keyfunc" .}}
   {{template "cols" .}}
   {{template "scanfunc" .}}
   {{template "findfunc" .}}
@@ -175,7 +176,6 @@ func (idx {{.Name}}) Vals() (vals []interface{}) {
   return
 }
 `))
-
 	_ = template.Must(tpl.New("defaults").Parse(`
 func NewJob(ctx context.Context, DB db.DB) (*Job, error) {
   tx, err := DB.Begin(ctx)
@@ -257,6 +257,23 @@ func (j *Job) Find{{.Name}}(opts db.Opts) (rows []*{{.GoDataType}}, err error) {
 	return
 }
 `))
+	_ = template.Must(tpl.New("keyfunc").Parse(`
+{{ $tab := . }}
+{{range .Indexes}}
+  {{if eq .KeyType "PRIMARY KEY"}}
+    func KeyFor{{$tab.GoDataTypeShort}}(pb *{{$tab.GoDataType}}) {{.Name}} {
+      {{range .Columns}}
+        {{.GoName}} := pb.{{.ColFn}}()
+      {{end}}
+      return {{.Name}}{
+        {{range .Columns}}
+          {{.GoName}}: &{{.GoName}},
+        {{end}}
+      }
+    }
+  {{end}}
+{{end}}
+`))
 	_ = template.Must(tpl.New("insertfunc").Parse(`
 {{if .HasColFns}}
   {{$goDataType := .GoDataType}}
@@ -324,15 +341,7 @@ func (j *Job) Delete{{.GoDataTypeShort}}(key {{.Name}}Primary) error {
 `))
 	_ = template.Must(tpl.New("updaterowfunc").Parse(`
 func (j *Job) Update{{.GoType}}(row *{{.GoType}}) error {
-  {{range .Indexes}}
-    {{if eq .KeyType "PRIMARY KEY"}}
-      key := {{.Name}}{
-        {{range .Columns}}
-          {{.GoName}}: &row.{{.GoName}},
-        {{end}}
-      }
-    {{end}}
-  {{end}}
+  key := KeyFor{{.GoDataTypeShort}}(row.Data)
 
   var vals []interface{}
   {{range .Columns}}
