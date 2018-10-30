@@ -7,6 +7,7 @@ option go_package = "schema";
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 message Pic {
   int64 pic_id = 1;
@@ -259,5 +260,36 @@ message UserToken {
 	int64 token_id = 1;
 	google.protobuf.Timestamp created_ts = 2;
 	google.protobuf.Timestamp last_seen_ts = 3;
+}
+
+message Configuration {
+  // the minimum comment length in bytes.
+  google.protobuf.Int64Value min_comment_length = 1;
+  // the maximum comment length in bytes.
+  google.protobuf.Int64Value max_comment_length = 2;
+  // the minimum ident length for a user in bytes.
+  google.protobuf.Int64Value min_ident_length = 3;
+  // the maximum ident length for a user in bytes.
+  google.protobuf.Int64Value max_ident_length = 4;
+  // the minimum file name length in bytes.
+  google.protobuf.Int64Value min_file_name_length = 5;
+  // the maximum file name length in bytes.
+  google.protobuf.Int64Value max_file_name_length = 6;
+  // the minimum url length for pic upsert in bytes.
+  google.protobuf.Int64Value min_url_length = 7;
+  // the maximum url length for pic upsert in bytes.
+  google.protobuf.Int64Value max_url_length = 8;
+  // the minimum tag length in bytes.
+  google.protobuf.Int64Value min_tag_length = 9;
+  // the maximum tag length in bytes.
+  google.protobuf.Int64Value max_tag_length = 10;
+  // the capabilities of the anonymous user.
+  CapabilitySet anonymous_capability = 11;
+  // the capabilities of a newly created user.
+  CapabilitySet new_user_capability = 12;
+  
+  message CapabilitySet {
+    repeated User.Capability capability = 1;
+  } 
 }
 
