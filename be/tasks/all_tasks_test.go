@@ -33,9 +33,16 @@ type TestContainer struct {
 }
 
 func Container(t testing.TB) *TestContainer {
-	return &TestContainer{
+	c := &TestContainer{
 		T: t,
 	}
+	task := &LoadConfigurationTask{
+		DB: c.DB(),
+	}
+	if sts := new(TaskRunner).Run(context.TODO(), task); sts != nil {
+		t.Fatal(sts)
+	}
+	return c
 }
 
 var allDbs []db.DB

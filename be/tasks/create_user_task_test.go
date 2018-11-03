@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	any "github.com/golang/protobuf/ptypes/any"
+	wpb "github.com/golang/protobuf/ptypes/wrappers"
 	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
@@ -46,12 +47,16 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	if err := bcrypt.CompareHashAndPassword(task.CreatedUser.Secret, []byte("secret")); err != nil {
 		t.Fatal(err)
 	}
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 
 	expected := &schema.User{
 		UserId:     2,
 		Secret:     task.CreatedUser.Secret,
 		Ident:      "email",
-		Capability: schema.UserNewCap,
+		Capability: conf.NewUserCapability.Capability,
 		Ext:        map[string]*any.Any{"key": userExt},
 	}
 	expected.SetCreatedTime(now)
@@ -146,12 +151,18 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 
 	task := &CreateUserTask{
 		DB:     c.DB(),
-		Ident:  strings.Repeat("a", maxUserIdentLength+1),
+		Ident:  strings.Repeat("a", 22+1),
 		Secret: "secret",
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	sts := new(TaskRunner).Run(ctx, task)
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	conf.MaxIdentLength = &wpb.Int64Value{Value: 22}
+	sts = new(TaskRunner).Run(CtxFromTestConfig(ctx, conf), task)
+
 	expected := status.InvalidArgument(nil, "ident too long")
 	compareStatus(t, sts, expected)
 }

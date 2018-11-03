@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
@@ -50,7 +51,24 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "can't tag deleted pic")
 	}
 
-	if sts := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+
+	var minTagLen, maxTagLen int64
+	if conf.MinTagLength != nil {
+		minTagLen = conf.MinTagLength.Value
+	} else {
+		minTagLen = math.MinInt64
+	}
+	if conf.MaxTagLength != nil {
+		maxTagLen = conf.MaxTagLength.Value
+	} else {
+		maxTagLen = math.MaxInt64
+	}
+
+	if sts := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId, minTagLen, maxTagLen); sts != nil {
 		return sts
 	}
 
@@ -64,8 +82,9 @@ type tagNameAndUniq struct {
 	name, uniq string
 }
 
-func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time, userID int64) status.S {
-	newTagNames, sts := cleanTagNames(rawTags)
+func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
+	userID, minTagLen, maxTagLen int64) status.S {
+	newTagNames, sts := cleanTagNames(rawTags, minTagLen, maxTagLen)
 	if sts != nil {
 		return sts
 	}
@@ -217,10 +236,10 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, u
 	return picTags, nil
 }
 
-func cleanTagNames(rawTagNames []string) ([]tagNameAndUniq, status.S) {
+func cleanTagNames(rawTagNames []string, minTagLen, maxTagLen int64) ([]tagNameAndUniq, status.S) {
 	validtagnames := make([]tagNameAndUniq, 0, len(rawTagNames))
 	for _, rawtagname := range rawTagNames {
-		if sts := validateMaxLength(rawtagname, "tag", minTagLength, maxTagLength); sts != nil {
+		if sts := validateMaxLength(rawtagname, "tag", minTagLen, maxTagLen); sts != nil {
 			return nil, sts
 		}
 		if sts := validateUtf8(rawtagname, "tag"); sts != nil {
@@ -229,7 +248,7 @@ func cleanTagNames(rawTagNames []string) ([]tagNameAndUniq, status.S) {
 		normalrawtagname := normalizeUnicodeTextUnsafe(rawtagname)
 		trimmednormaltagname := strings.TrimSpace(normalrawtagname)
 
-		if sts := validateMaxLength(trimmednormaltagname, "tag", minTagLength, maxTagLength); sts != nil {
+		if sts := validateMaxLength(trimmednormaltagname, "tag", minTagLen, maxTagLen); sts != nil {
 			return nil, sts
 		}
 		if sts := validateGraphicText(trimmednormaltagname, "tag"); sts != nil {

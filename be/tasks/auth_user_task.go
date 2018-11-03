@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"sort"
 	"time"
 
@@ -55,7 +56,22 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	var newTokenID int64
 	if t.Ident != "" {
-		ident, sts := validateAndNormalizePrintText(t.Ident, "ident", 1, maxUserIdentLength)
+		conf, sts := GetConfiguration(ctx)
+		if sts != nil {
+			return sts
+		}
+		var minIdentLen, maxIdentLen int64
+		if conf.MinIdentLength != nil {
+			minIdentLen = conf.MinIdentLength.Value
+		} else {
+			minIdentLen = math.MinInt64
+		}
+		if conf.MaxIdentLength != nil {
+			maxIdentLen = conf.MaxIdentLength.Value
+		} else {
+			maxIdentLen = math.MaxInt64
+		}
+		ident, sts := validateAndNormalizePrintText(t.Ident, "ident", minIdentLen, maxIdentLen)
 		if sts != nil {
 			return sts
 		}

@@ -87,8 +87,9 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	var changed bool
 	if capchange := len(t.SetCapability) + len(t.ClearCapability); capchange > 0 {
-		if c := schema.User_USER_UPDATE_CAPABILITY; !schema.UserHasPerm(subjectUser, c) {
-			return status.PermissionDeniedf(nil, "missing %v", c)
+
+		if sts := schema.VerifyCapabilitySubset(subjectUser.Capability, schema.User_USER_UPDATE_CAPABILITY); sts != nil {
+			return sts
 		}
 		both := make(map[schema.User_Capability]struct{}, capchange)
 		for _, c := range t.SetCapability {

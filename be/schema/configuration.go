@@ -1,10 +1,17 @@
 package schema
 
 import (
+	"github.com/golang/protobuf/proto"
+
 	wpb "github.com/golang/protobuf/ptypes/wrappers"
 )
 
-var DefaultConfiguration = Configuration{
+// GetDefaultConfiguration returns a copy of the default configuration.  All fields are set.
+func GetDefaultConfiguration() *Configuration {
+	return proto.Clone(defaultConfiguration).(*Configuration)
+}
+
+var defaultConfiguration = &Configuration{
 	MinCommentLength: &wpb.Int64Value{
 		Value: 1,
 	},
@@ -24,7 +31,7 @@ var DefaultConfiguration = Configuration{
 		Value: 255,
 	},
 	MinUrlLength: &wpb.Int64Value{
-		Value: int64(len("http://")),
+		Value: int64(len("http://a/")),
 	},
 	MaxUrlLength: &wpb.Int64Value{
 		Value: 2000,

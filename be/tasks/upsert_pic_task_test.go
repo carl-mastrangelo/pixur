@@ -747,7 +747,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, pfs, ext, tagNames, userID)
+	err = mergePic(j, p.Pic, now, pfs, ext, tagNames, userID, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -802,7 +802,7 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	sts := mergePic(j, p.Pic, now, pfs, ext, tagNames, userID)
+	sts := mergePic(j, p.Pic, now, pfs, ext, tagNames, userID, 1, 64)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -824,7 +824,7 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -850,7 +850,7 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +882,7 @@ func TestMergeAddsSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -914,7 +914,7 @@ func TestMergeIgnoresDuplicateSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -946,7 +946,7 @@ func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -978,7 +978,7 @@ func TestMergeIgnoresEmptySource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1012,7 +1012,7 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	p.Pic.Source = nil
 	p.Update()
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId)
+	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1620,32 +1620,32 @@ func TestGeneratePicHashesError(t *testing.T) {
 
 func TestValidateURL_TooLong(t *testing.T) {
 
-	long := strings.Repeat("a", maxUrlLength+1)
-	_, sts := validateAndNormalizeURL(long)
+	long := "aa"
+	_, sts := validateAndNormalizeURL(long, 0, 1)
 	expected := status.InvalidArgument(nil, "url too long")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_CantParse(t *testing.T) {
-	_, sts := validateAndNormalizeURL("http://%3")
+	_, sts := validateAndNormalizeURL("http://%3", 0, 50)
 	expected := status.InvalidArgument(nil, "Can't parse")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_BadScheme(t *testing.T) {
-	_, sts := validateAndNormalizeURL("file:///etc/passwd")
+	_, sts := validateAndNormalizeURL("file:///etc/passwd", 0, 50)
 	expected := status.InvalidArgument(nil, "Can't use non HTTP")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_UserInfo(t *testing.T) {
-	_, sts := validateAndNormalizeURL("http://me@google.com/")
+	_, sts := validateAndNormalizeURL("http://me@google.com/", 0, 50)
 	expected := status.InvalidArgument(nil, "Can't provide userinfo")
 	compareStatus(t, sts, expected)
 }
 
 func TestValidateURL_RemoveFragment(t *testing.T) {
-	u, err := validateAndNormalizeURL("https://best/thing#ever")
+	u, err := validateAndNormalizeURL("https://best/thing#ever", 0, 50)
 	if err != nil {
 		t.Fatal(err)
 	}

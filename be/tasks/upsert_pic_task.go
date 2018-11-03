@@ -8,6 +8,7 @@ import (
 	"crypto/sha512"
 	"hash"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -59,13 +60,6 @@ type UpsertPicTask struct {
 	CreatedPic *schema.Pic
 }
 
-const (
-	maxUrlLength      = 2000 // most browsers
-	maxFileNameLength = 255  // most file systems
-	minTagLength      = 1
-	maxTagLength      = 64
-)
-
 type FileHeader struct {
 	Name string
 	Size int64
@@ -101,9 +95,25 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return sts
 	}
 
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	var minUrlLen, maxUrlLen int64
+	if conf.MinUrlLength != nil {
+		minUrlLen = conf.MinUrlLength.Value
+	} else {
+		minUrlLen = math.MinInt64
+	}
+	if conf.MaxUrlLength != nil {
+		maxUrlLen = conf.MaxUrlLength.Value
+	} else {
+		maxUrlLen = math.MaxInt64
+	}
+
 	var furl *url.URL
 	if t.FileURL != "" {
-		fu, sts := validateAndNormalizeURL(t.FileURL)
+		fu, sts := validateAndNormalizeURL(t.FileURL, minUrlLen, maxUrlLen)
 		if sts != nil {
 			return sts
 		}
@@ -112,11 +122,29 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		return status.InvalidArgument(nil, "No pic specified")
 	}
 	now := t.Now()
-	// TODO: test this
-	validFileName, sts := validateAndNormalizePrintText(t.Header.Name, "filename", 0, maxFileNameLength)
-	if sts != nil {
-		return sts
+
+	var minFileNameLen, maxFileNameLen int64
+	if conf.MinFileNameLength != nil {
+		minFileNameLen = conf.MinFileNameLength.Value
+	} else {
+		minFileNameLen = math.MinInt64
 	}
+	if conf.MaxFileNameLength != nil {
+		maxFileNameLen = conf.MaxFileNameLength.Value
+	} else {
+		maxFileNameLen = math.MaxInt64
+	}
+
+	var validFileName string
+	if len(t.Header.Name) != 0 {
+		validFileName, sts =
+			validateAndNormalizePrintText(t.Header.Name, "filename", minFileNameLen, maxFileNameLen)
+		if sts != nil {
+			return sts
+		}
+	}
+	// TODO: test this
+
 	pfs := &schema.Pic_FileSource{
 		CreatedTs: schema.ToTspb(now),
 		UserId:    u.UserId,
@@ -124,6 +152,18 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 	if furl != nil {
 		pfs.Url = furl.String()
+	}
+
+	var minTagLen, maxTagLen int64
+	if conf.MinTagLength != nil {
+		minTagLen = conf.MinTagLength.Value
+	} else {
+		minTagLen = math.MinInt64
+	}
+	if conf.MaxTagLength != nil {
+		maxTagLen = conf.MaxTagLength.Value
+	} else {
+		maxTagLen = math.MaxInt64
 	}
 
 	// TODO: change md5 hash to:
@@ -145,7 +185,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId)
+				return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
 			}
 		}
 	}
@@ -202,7 +242,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId)
+			return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -280,7 +320,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		AnimationInfo: imfanim,
 	})
 
-	if sts := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId); sts != nil {
+	if sts := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen); sts != nil {
 		return sts
 	}
 
@@ -358,7 +398,7 @@ func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
 }
 
 func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource,
-	ext map[string]*any.Any, tagNames []string, userID int64) status.S {
+	ext map[string]*any.Any, tagNames []string, userID, minTagLen, maxTagLen int64) status.S {
 	p.SetModifiedTime(now)
 	if ds := p.GetDeletionStatus(); ds != nil {
 		if ds.Temporary {
@@ -367,7 +407,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 		}
 	}
 
-	if sts := upsertTags(j, tagNames, p.PicId, now, userID); sts != nil {
+	if sts := upsertTags(j, tagNames, p.PicId, now, userID, minTagLen, maxTagLen); sts != nil {
 		return sts
 	}
 
@@ -534,8 +574,8 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 }
 
 // TODO: add tests
-func validateAndNormalizeURL(rawurl string) (*url.URL, status.S) {
-	normalrawurl, sts := validateAndNormalizePrintText(rawurl, "url", len("http://"), maxUrlLength)
+func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.URL, status.S) {
+	normalrawurl, sts := validateAndNormalizePrintText(rawurl, "url", minUrlLen, maxUrlLen)
 	if sts != nil {
 		return nil, sts
 	}

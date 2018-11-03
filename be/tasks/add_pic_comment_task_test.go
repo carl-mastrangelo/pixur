@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	wpb "github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -224,12 +225,18 @@ func TestAddPicCommentTask_TooLongComment(t *testing.T) {
 	defer c.Close()
 
 	task := &AddPicCommentTask{
-		Text: strings.Repeat("a", maxCommentLen+1),
+		Text: strings.Repeat("a", 22+1),
 		DB:   c.DB(),
 		Now:  time.Now,
 	}
+	ctx := context.Background()
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	conf.MaxCommentLength = &wpb.Int64Value{Value: 22}
+	sts = new(TaskRunner).Run(CtxFromTestConfig(ctx, conf), task)
 
-	sts := new(TaskRunner).Run(context.Background(), task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}

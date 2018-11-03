@@ -198,7 +198,7 @@ func TestUpdateUserTaskMissingCap(t *testing.T) {
 	if have, want := sts.Code(), codes.PermissionDenied; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := sts.Message(), "missing USER_UPDATE_CAPABILITY"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "missing cap USER_UPDATE_CAPABILITY"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }

@@ -25,7 +25,7 @@ func TestUpsertTags(t *testing.T) {
 
 	now := time.Now()
 	tagNames := []string{attachedTag.Tag.Name, unattachedTag.Tag.Name, "missing"}
-	err := upsertTags(j, tagNames, pic.Pic.PicId, now, -1)
+	err := upsertTags(j, tagNames, pic.Pic.PicId, now, -1, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}

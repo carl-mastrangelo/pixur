@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"pixur.org/pixur/be/schema"
@@ -24,22 +25,32 @@ type AddPicCommentTask struct {
 	PicComment *schema.PicComment
 }
 
-const (
-	minCommentLen = 1
-	maxCommentLen = 16384
-)
-
 func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
-	text, sts := validateAndNormalizeGraphicText(t.Text, "comment", minCommentLen, maxCommentLen)
-	if sts != nil {
-		return sts
-	}
-
 	j, err := tab.NewJob(ctx, t.DB)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	var minCommentLen, maxCommentLen int64
+	if conf.MinCommentLength != nil {
+		minCommentLen = conf.MinCommentLength.Value
+	} else {
+		minCommentLen = math.MinInt64
+	}
+	if conf.MaxCommentLength != nil {
+		maxCommentLen = conf.MaxCommentLength.Value
+	} else {
+		maxCommentLen = math.MaxInt64
+	}
+	text, sts := validateAndNormalizeGraphicText(t.Text, "comment", minCommentLen, maxCommentLen)
+	if sts != nil {
+		return sts
+	}
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_COMMENT_CREATE)
 	if sts != nil {
@@ -78,7 +89,6 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't allocate id")
 	}
 
-	now := t.Now()
 	pc := &schema.PicComment{
 		PicId:           p.PicId,
 		CommentId:       commentID,
@@ -86,6 +96,8 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		Text:            text,
 		UserId:          u.UserId,
 	}
+
+	now := t.Now()
 	pc.SetCreatedTime(now)
 	pc.SetModifiedTime(now)
 

@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"time"
 
 	any "github.com/golang/protobuf/ptypes/any"
@@ -14,7 +15,6 @@ import (
 )
 
 const (
-	maxUserIdentLength  = 255
 	maxUserSecretLength = 255
 )
 
@@ -36,36 +36,42 @@ type CreateUserTask struct {
 	CreatedUser *schema.User
 }
 
-func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
-	*schema.User, status.S) {
-	var u *schema.User
-	userID, userIDPresent := UserIDFromCtx(ctx)
-	if userIDPresent {
-		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&userID},
+// TODO: test
+// lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
+func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job) (*schema.User, status.S) {
+	if uid, ok := UserIDFromCtx(ctx); ok {
+		us, err := j.FindUsers(db.Opts{
+			Prefix: tab.UsersPrimary{&uid},
 			Lock:   db.LockNone,
 		})
 		if err != nil {
 			return nil, status.Internal(err, "can't lookup user")
 		}
-		if len(users) != 1 {
+		if len(us) != 1 {
 			return nil, status.Unauthenticated(nil, "can't lookup user")
 		}
-		u = users[0]
-	} else {
-		u = schema.AnonymousUser
+		return us[0], nil
 	}
-	// TODO: make sure sorted.
-	for _, c := range caps {
-		if !schema.UserHasPerm(u, c) {
-			if !userIDPresent {
-				return nil, status.Unauthenticatedf(nil, "unauthenticated user missing cap %v", c)
-			}
-			return u, status.PermissionDeniedf(nil, "missing cap %v", c)
-		}
-	}
+	return nil, nil
+}
 
-	return u, nil
+func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
+	*schema.User, status.S) {
+	u, sts := lookupUserForAuthOrNil(ctx, j)
+	if sts != nil {
+		return nil, sts
+	}
+	var have []schema.User_Capability
+	if u != nil {
+		have = u.Capability
+	} else {
+		conf, sts := GetConfiguration(ctx)
+		if sts != nil {
+			return nil, sts
+		}
+		have = conf.NewUserCapability.Capability
+	}
+	return u, schema.VerifyCapabilitySubset(have, caps...)
 }
 
 func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
@@ -80,7 +86,22 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		return sts
 	}
 
-	ident, sts := validateAndNormalizePrintText(t.Ident, "ident", 1, maxUserIdentLength)
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	var minIdentLen, maxIdentLen int64
+	if conf.MinIdentLength != nil {
+		minIdentLen = conf.MinIdentLength.Value
+	} else {
+		minIdentLen = math.MinInt64
+	}
+	if conf.MaxIdentLength != nil {
+		maxIdentLen = conf.MaxIdentLength.Value
+	} else {
+		maxIdentLen = math.MaxInt64
+	}
+	ident, sts := validateAndNormalizePrintText(t.Ident, "ident", minIdentLen, maxIdentLen)
 	if sts != nil {
 		return sts
 	}
@@ -121,7 +142,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		// TODO: check there are no UNKNOWN capabilities
 		newcap = t.Capability
 	} else {
-		newcap = schema.UserNewCap
+		newcap = conf.NewUserCapability.Capability
 	}
 
 	now := t.Now()

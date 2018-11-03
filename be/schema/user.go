@@ -5,6 +5,8 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
+
+	"pixur.org/pixur/be/status"
 )
 
 func (u *User) IdCol() int64 {
@@ -52,13 +54,8 @@ func (u *User) Version() int64 {
 	return ToTime(u.ModifiedTs).UnixNano()
 }
 
-func UserHasPerm(u *User, uc User_Capability) bool {
-	for _, c := range u.Capability {
-		if c == uc {
-			return true
-		}
-	}
-	return false
+func (u *User) IsAnon() bool {
+	return u == nil
 }
 
 /**
@@ -72,26 +69,55 @@ func UserHasPerm(u *User, uc User_Capability) bool {
  */
 var AnonymousUserID int64 = 0
 
-// TODO: make this configurable.
-var (
-	// Capabilities of Anonymous users
-	UserAnonymousCap = []User_Capability{
-		User_USER_CREATE,
+// TODO: test
+func VerifyCapabilitySubset(have []User_Capability, want ...User_Capability) status.S {
+	missing := findMissingCapability(have, want)
+	if len(missing) != 0 {
+		args := make([]interface{}, len(missing)+1)
+		args[0] = "missing cap"
+		for i, c := range missing {
+			args[i+1] = c
+		}
+		return status.PermissionDenied(nil, args...)
 	}
+	return nil
+}
 
-	// Capabilities of new users.
-	UserNewCap = []User_Capability{
-		User_PIC_READ,
-		User_PIC_INDEX,
-		User_PIC_UPDATE_VIEW_COUNTER,
-		User_PIC_TAG_CREATE,
-		User_PIC_COMMENT_CREATE,
-		User_PIC_VOTE_CREATE,
-		User_USER_READ_SELF,
+// TODO: test
+func HasCapabilitySubset(have []User_Capability, want ...User_Capability) (
+	has bool, missing []User_Capability) {
+	mc := findMissingCapability(have, want)
+	if len(mc) != 0 {
+		return false, mc
 	}
-)
+	return true, nil
+}
 
-var AnonymousUser = &User{
-	UserId:     AnonymousUserID,
-	Capability: UserAnonymousCap,
+func findMissingCapability(have []User_Capability, want []User_Capability) (
+	missing []User_Capability) {
+	const bits = 64
+	var havemask uint64
+	var havemap map[User_Capability]struct{}
+	for _, c := range have {
+		if c < bits {
+			havemask |= uint64(1) << uint(c)
+		} else {
+			if havemap == nil {
+				havemap = make(map[User_Capability]struct{})
+			}
+			havemap[c] = struct{}{}
+		}
+	}
+	for _, c := range want {
+		if c < bits {
+			if havemask&(uint64(1)<<uint(c)) == 0 {
+				missing = append(missing, c)
+			}
+		} else {
+			if _, ok := havemap[c]; !ok {
+				missing = append(missing, c)
+			}
+		}
+	}
+	return
 }

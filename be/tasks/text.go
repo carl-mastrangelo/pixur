@@ -14,16 +14,16 @@ import (
 type textValidator func(text, fieldname string) status.S
 
 // for text that cannot contain newlines
-func validateAndNormalizePrintText(text, fieldname string, min, max int) (string, status.S) {
+func validateAndNormalizePrintText(text, fieldname string, min, max int64) (string, status.S) {
 	return validateAndNormalizeText(text, fieldname, min, max, validatePrintText)
 }
 
 // for text that can contain newlines
-func validateAndNormalizeGraphicText(text, fieldname string, min, max int) (string, status.S) {
+func validateAndNormalizeGraphicText(text, fieldname string, min, max int64) (string, status.S) {
 	return validateAndNormalizeText(text, fieldname, min, max, validateGraphicText)
 }
 
-func validateAndNormalizeText(text, fieldname string, min, max int, validate textValidator) (
+func validateAndNormalizeText(text, fieldname string, min, max int64, validate textValidator) (
 	string, status.S) {
 	if sts := validateMaxLength(text, fieldname, min, max); sts != nil {
 		return "", sts
@@ -48,11 +48,11 @@ func validateUtf8(text, fieldname string) status.S {
 	return nil
 }
 
-func validateMaxLength(text, fieldname string, min, max int) status.S {
-	if len(text) < min {
-		return status.InvalidArgumentf(nil, "%s too short (%d < %d)", fieldname, len(text), min)
-	} else if len(text) > max {
-		return status.InvalidArgumentf(nil, "%s too long (%d > %d)", fieldname, len(text), max)
+func validateMaxLength(text, fieldname string, min, max int64) status.S {
+	if ln := int64(len(text)); ln < min {
+		return status.InvalidArgumentf(nil, "%s too short (%d < %d)", fieldname, ln, min)
+	} else if ln > max {
+		return status.InvalidArgumentf(nil, "%s too long (%d > %d)", fieldname, ln, max)
 	}
 	return nil
 }

@@ -115,7 +115,7 @@ func (s *serv) handleGetRefreshToken(
 
 	var pixPayload *api.PwtPayload
 	var pixToken []byte
-	if schema.UserHasPerm(task.User, schema.User_PIC_READ) {
+	if has, _ := schema.HasCapabilitySubset(task.User.Capability, schema.User_PIC_READ); has {
 		var err error
 		pixPayload = &api.PwtPayload{
 			Subject:   subject,

@@ -15,6 +15,7 @@ import (
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/tasks"
 )
 
 var picCacheTimeSeconds = 7 * 24 * time.Hour / time.Second
@@ -73,7 +74,7 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 		return nil, status.Internal(err, "bad ts")
 	}
 
-	md, sts := readPicHeaders()
+	md, sts := readPicHeaders(ctx)
 	if sts != nil {
 		return nil, sts
 	}
@@ -95,7 +96,12 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 func authReadPicRequest(ctx context.Context) status.S {
 	if md, present := metadata.FromIncomingContext(ctx); present {
 		if tokens, ok := md[pixPwtHeaderKey]; !ok || len(tokens) == 0 {
-			if !schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
+			conf, sts := tasks.GetConfiguration(ctx)
+			if sts != nil {
+				return sts
+			}
+			if has, _ := schema.HasCapabilitySubset(
+				conf.AnonymousCapability.Capability, schema.User_PIC_READ); !has {
 				return status.Unauthenticated(nil, "missing pix token")
 			}
 		} else if len(tokens) > 1 {
@@ -115,14 +121,21 @@ func authReadPicRequest(ctx context.Context) status.S {
 	return nil
 }
 
-func readPicHeaders() (metadata.MD, status.S) {
+func readPicHeaders(ctx context.Context) (metadata.MD, status.S) {
 	h1 := &api.HttpHeader{
 		Key: "Cache-Control",
 	}
-	if schema.UserHasPerm(schema.AnonymousUser, schema.User_PIC_READ) {
-		h1.Value = "public"
-	} else {
-		h1.Value = "private"
+	conf, sts := tasks.GetConfiguration(ctx)
+	if sts != nil {
+		return nil, sts
+	}
+	h1.Value = "private"
+
+	for _, c := range conf.AnonymousCapability.Capability {
+		if c == schema.User_PIC_READ {
+			h1.Value = "public"
+			break
+		}
 	}
 	h1data, err := proto.Marshal(h1)
 	if err != nil {
