@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"pixur.org/pixur/be/schema"
@@ -46,11 +47,22 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 		pvByPicId[pv.PicId] = struct{}{}
 	}
 
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	var defaultIndexPics int64
+	if conf.DefaultFindIndexPics != nil {
+		defaultIndexPics = conf.DefaultFindIndexPics.Value
+	} else {
+		defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+	}
+
 	top := int32(schema.PicScoreMax)
 	ps, err := j.FindPics(db.Opts{
 		Stop:    tab.PicsSchedOrder{&top},
 		Reverse: true,
-		Limit:   len(pvs) + DefaultMaxPics,
+		Limit:   int(int64(len(pvs)) + defaultIndexPics),
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pics")
@@ -66,7 +78,7 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 				continue
 			}
 			t.Pics = append(t.Pics, p)
-			if len(t.Pics) >= DefaultMaxPics {
+			if int64(len(t.Pics)) >= defaultIndexPics {
 				break
 			}
 		}

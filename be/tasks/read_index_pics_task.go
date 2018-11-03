@@ -13,7 +13,6 @@ import (
 const (
 	defaultDescIndexID = math.MaxInt64
 	defaultAscIndexID  = 0
-	DefaultMaxPics     = 12
 )
 
 type ReadIndexPicsTask struct {
@@ -25,7 +24,7 @@ type ReadIndexPicsTask struct {
 	StartID int64
 	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
 	// may be less than the number requested.  If unset, the default is used.
-	MaxPics int
+	MaxPics int64
 	// Ascending determines the order of pics returned.
 	Ascending bool
 
@@ -33,6 +32,8 @@ type ReadIndexPicsTask struct {
 
 	// Results
 	Pics []*schema.Pic
+	
+	Complete bool // if we have reached the end.
 }
 
 func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
@@ -94,16 +95,36 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 			indexID = defaultDescIndexID
 		}
 	}
-
-	var maxPics int
-	if t.MaxPics != 0 {
-		maxPics = t.MaxPics
+	
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+	  return sts
+	}
+	var defaultIndexPics, maxIndexPics int64
+	if conf.DefaultFindIndexPics != nil {
+	  defaultIndexPics = conf.DefaultFindIndexPics.Value
 	} else {
-		maxPics = DefaultMaxPics
+	  defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+	}
+	if conf.MaxFindIndexPics != nil {
+	  maxIndexPics = conf.MaxFindIndexPics.Value
+	} else {
+	  maxIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+	}
+
+	var maxPics int64
+	if t.MaxPics != 0 {
+	  if t.MaxPics < maxIndexPics{
+	    maxPics = t.MaxPics
+	  } else {
+	    maxPics = maxIndexPics
+	  }
+	} else {
+		maxPics = defaultIndexPics
 	}
 
 	opts := db.Opts{
-		Limit: maxPics,
+		Limit: int(maxPics),
 	}
 	if t.Ascending {
 		opts.Start = tab.PicsIndexOrder{
@@ -126,6 +147,7 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	t.Pics = pics
+	t.Complete = int64(len(pics)) == maxPics
 
 	return nil
 }

@@ -287,6 +287,10 @@ message Configuration {
   CapabilitySet anonymous_capability = 11;
   // the capabilities of a newly created user.
   CapabilitySet new_user_capability = 12;
+  // the default number of index pics to return
+  google.protobuf.Int64Value default_find_index_pics = 13;
+  // the max number of index pics to return
+  google.protobuf.Int64Value max_find_index_pics = 14;
   
   message CapabilitySet {
     repeated User.Capability capability = 1;

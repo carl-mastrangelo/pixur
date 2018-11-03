@@ -48,6 +48,7 @@ func TestFindIndexPics(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
+		taskCap.Complete = true
 		return nil
 	}
 	s := &serv{
@@ -104,19 +105,17 @@ func TestFindIndexPics_descending(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
+		taskCap.Complete = false
 		return nil
 	}
 	s := &serv{
 		runner: tasks.TestTaskRunner(successRunner),
 	}
 
-	oldIndexMaxPics := indexMaxPics
-	indexMaxPics = 1
 	res, sts := s.handleFindIndexPics(context.Background(), &api.FindIndexPicsRequest{
 		StartPicId: "8",
 		Ascending:  false,
 	})
-	indexMaxPics = oldIndexMaxPics
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -170,13 +169,10 @@ func TestFindIndexPics_noStartPic(t *testing.T) {
 		runner: tasks.TestTaskRunner(successRunner),
 	}
 
-	oldIndexMaxPics := indexMaxPics
-	indexMaxPics = 1
 	res, sts := s.handleFindIndexPics(context.Background(), &api.FindIndexPicsRequest{
 		StartPicId: "",
 		Ascending:  false,
 	})
-	indexMaxPics = oldIndexMaxPics
 	if sts != nil {
 		t.Fatal(sts)
 	}

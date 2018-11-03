@@ -10,8 +10,6 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-var indexMaxPics = tasks.DefaultMaxPics
-
 func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
 	*api.FindIndexPicsResponse, status.S) {
 	var picID schema.Varint
@@ -26,7 +24,6 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 		DB:        s.db,
 		StartID:   int64(picID),
 		Ascending: req.Ascending,
-		MaxPics:   indexMaxPics,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {
@@ -38,7 +35,7 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 	}
 
 	if req.Ascending {
-		if len(task.Pics) == indexMaxPics {
+		if !task.Complete {
 			next := task.Pics[len(task.Pics)-1].PicId
 			if next < math.MaxInt64-1 {
 				resp.NextPicId = schema.Varint(next + 1).Encode()
@@ -48,7 +45,7 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 			resp.PrevPicId = (picID - 1).Encode()
 		}
 	} else {
-		if len(task.Pics) == indexMaxPics {
+		if !task.Complete {
 			next := task.Pics[len(task.Pics)-1].PicId
 			if next > 1 {
 				resp.NextPicId = schema.Varint(next - 1).Encode()

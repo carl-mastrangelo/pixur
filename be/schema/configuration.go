@@ -58,4 +58,10 @@ var defaultConfiguration = &Configuration{
 			User_USER_READ_SELF,
 		},
 	},
+	DefaultFindIndexPics: &wpb.Int64Value{
+		Value: 12,
+	},
+	MaxFindIndexPics: &wpb.Int64Value{
+		Value: 100,
+	},
 }
