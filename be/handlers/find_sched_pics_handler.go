@@ -13,7 +13,7 @@ func (s *serv) handleFindSchedPics(ctx context.Context, req *api.FindSchedPicsRe
 	*api.FindSchedPicsResponse, status.S) {
 
 	var task = &tasks.FindSchedPicsTask{
-		DB: s.db,
+		Beg: s.db,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

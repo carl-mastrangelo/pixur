@@ -20,7 +20,7 @@ func TestLookupUserWorkflow(t *testing.T) {
 	u.Update()
 
 	task := &LookupUserTask{
-		DB:           c.DB(),
+		Beg:          c.DB(),
 		ObjectUserID: u.User.UserId,
 	}
 
@@ -43,7 +43,7 @@ func TestLookupUserBlankID(t *testing.T) {
 	u.Update()
 
 	task := &LookupUserTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -66,7 +66,7 @@ func TestLookupUserOther(t *testing.T) {
 	u2.Update()
 
 	task := &LookupUserTask{
-		DB:           c.DB(),
+		Beg:          c.DB(),
 		ObjectUserID: u1.User.UserId,
 	}
 
@@ -87,7 +87,7 @@ func TestLookupUserCantLookupSelf(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &LookupUserTask{
-		DB:           c.DB(),
+		Beg:          c.DB(),
 		ObjectUserID: u.User.UserId,
 	}
 
@@ -113,7 +113,7 @@ func TestLookupUserCantLookupOther(t *testing.T) {
 	u2 := c.CreateUser()
 
 	task := &LookupUserTask{
-		DB:           c.DB(),
+		Beg:          c.DB(),
 		ObjectUserID: u2.User.UserId,
 	}
 	ctx := CtxFromUserID(context.Background(), u1.User.UserId)
@@ -136,7 +136,7 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 	u1.Update()
 
 	task := &LookupUserTask{
-		DB:           c.DB(),
+		Beg:          c.DB(),
 		ObjectUserID: -1,
 	}
 

@@ -25,7 +25,7 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
 		PicID: p.Pic.PicId,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -77,7 +77,7 @@ func TestAddPicVoteTaskWork_NoDoubleVoting(t *testing.T) {
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
 		PicID: p.Pic.PicId,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -114,7 +114,7 @@ func TestAddPicVoteTaskWork_MissingPic(t *testing.T) {
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
 		PicID: 0,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -152,7 +152,7 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
 		PicID: p.Pic.PicId,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -174,7 +174,7 @@ func TestAddPicVoteTask_BadVoteDir(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote: schema.PicVote_UNKNOWN,
-		DB:   c.DB(),
+		Beg:  c.DB(),
 		Now:  time.Now,
 	}
 

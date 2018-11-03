@@ -14,7 +14,7 @@ var _ Task = &HardDeletePicTask{}
 
 type HardDeletePicTask struct {
 	// deps
-	DB      db.DB
+	Beg     tab.JobBeginner
 	PixPath string
 	Remove  func(name string) error
 
@@ -23,7 +23,7 @@ type HardDeletePicTask struct {
 }
 
 func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

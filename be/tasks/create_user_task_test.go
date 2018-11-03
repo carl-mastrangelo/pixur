@@ -32,7 +32,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	}
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    func() time.Time { return now },
 		Ident:  "email",
 		Secret: "secret",
@@ -76,7 +76,7 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:         c.DB(),
+		Beg:        c.DB(),
 		Now:        func() time.Time { return now },
 		Ident:      "email",
 		Secret:     "secret",
@@ -109,7 +109,7 @@ func TestCreateUserAlreadyUsed(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Ident:  u.User.Ident,
 		Secret: "secret",
 	}
@@ -130,7 +130,7 @@ func TestCreateUserAlreadyUsedDifferentCase(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Ident:  "LITTLE",
 		Secret: "secret",
 	}
@@ -150,7 +150,7 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Ident:  strings.Repeat("a", 22+1),
 		Secret: "secret",
 	}
@@ -176,7 +176,7 @@ func TestCreateUserIdentBogusBytes(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Ident:  string([]byte{0xff}),
 		Secret: "secret",
 	}
@@ -196,7 +196,7 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Ident:  "👨‍🦲",
 		Secret: "secret",
 	}
@@ -216,7 +216,7 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Secret: "secret",
 	}
 
@@ -235,7 +235,7 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	u.Update()
 
 	task := &CreateUserTask{
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Ident: "email",
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -251,7 +251,7 @@ func TestCreateUserCantBegin(t *testing.T) {
 	db.Close()
 
 	task := &CreateUserTask{
-		DB: db,
+		Beg: db,
 	}
 	ctx := CtxFromUserID(context.Background(), -1)
 	sts := new(TaskRunner).Run(ctx, task)

@@ -19,7 +19,7 @@ func (s *serv) handleAddPicTags(ctx context.Context, req *api.AddPicTagsRequest)
 	}
 
 	var task = &tasks.AddPicTagsTask{
-		DB:  s.db,
+		Beg: s.db,
 		Now: s.now,
 
 		PicID:    int64(vid),

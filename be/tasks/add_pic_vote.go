@@ -12,7 +12,7 @@ import (
 
 type AddPicVoteTask struct {
 	// Deps
-	DB  db.DB
+	Beg tab.JobBeginner
 	Now func() time.Time
 
 	// Inputs
@@ -28,7 +28,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "bad vote dir", t.Vote)
 	}
 
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

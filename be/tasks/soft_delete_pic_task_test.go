@@ -22,7 +22,7 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &SoftDeletePicTask{
-		DB:        c.DB(),
+		Beg:       c.DB(),
 		PicID:     p.Pic.PicId,
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
@@ -86,7 +86,7 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 	p.Update()
 
 	task := &SoftDeletePicTask{
-		DB:                  c.DB(),
+		Beg:                 c.DB(),
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
@@ -125,7 +125,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 	p.Update()
 
 	task := &SoftDeletePicTask{
-		DB:                  c.DB(),
+		Beg:                 c.DB(),
 		PicID:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,

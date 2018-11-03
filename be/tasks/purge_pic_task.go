@@ -15,7 +15,7 @@ var _ Task = &PurgePicTask{}
 type PurgePicTask struct {
 	// deps
 	PixPath string
-	DB      db.DB
+	Beg     tab.JobBeginner
 	Remove  func(name string) error
 
 	// input
@@ -23,7 +23,7 @@ type PurgePicTask struct {
 }
 
 func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

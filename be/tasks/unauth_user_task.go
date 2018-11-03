@@ -15,7 +15,7 @@ import (
 // TODO: add tests
 type UnauthUserTask struct {
 	// Deps
-	DB  db.DB
+	Beg tab.JobBeginner
 	Now func() time.Time
 
 	// Inputs
@@ -24,7 +24,7 @@ type UnauthUserTask struct {
 }
 
 func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

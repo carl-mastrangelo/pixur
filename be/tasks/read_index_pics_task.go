@@ -17,7 +17,7 @@ const (
 
 type ReadIndexPicsTask struct {
 	// Deps
-	DB db.DB
+	Beg tab.JobBeginner
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
@@ -64,7 +64,7 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 }
 
 func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "Unable to Begin TX")
 	}

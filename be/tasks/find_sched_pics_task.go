@@ -13,7 +13,7 @@ import (
 
 type FindSchedPicsTask struct {
 	// Deps
-	DB  db.DB
+	Beg tab.JobBeginner
 	Now func() time.Time
 
 	// Inputs
@@ -25,7 +25,7 @@ type FindSchedPicsTask struct {
 
 // TODO: add tests
 func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

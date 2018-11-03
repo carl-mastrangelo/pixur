@@ -35,7 +35,7 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 	c.DB().Close()
 
 	task := &UpsertPicTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 
 	ctx := CtxFromUserID(context.Background(), -1)
@@ -53,7 +53,7 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 	u.Update()
 
 	task := &UpsertPicTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -78,7 +78,7 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 	defer f.Close()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      time.Now,
 		File:     f,
 		TagNames: []string{"tag"},
@@ -108,7 +108,7 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	defer f.Close()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      time.Now,
 		File:     f,
 		TagNames: []string{"tag"},
@@ -142,7 +142,7 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	md5Hash := p.Md5()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		File:     f,
 		Md5Hash:  md5Hash,
@@ -195,7 +195,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	md5Hash := p.Md5()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		File:     f,
 		Md5Hash:  md5Hash,
@@ -255,7 +255,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 	md5Hash := p.Md5()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -331,7 +331,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 	md5Hash[0] = md5Hash[0] + 0x10
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -363,7 +363,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 	u.Update()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -401,7 +401,7 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 	defer f.Close()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -456,7 +456,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 	p.Update()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -519,7 +519,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 	p.Update()
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -583,7 +583,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	}
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
@@ -695,7 +695,7 @@ func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
 	}
 
 	task := &UpsertPicTask{
-		DB:       c.DB(),
+		Beg:      c.DB(),
 		Now:      func() time.Time { return time.Unix(100, 0) },
 		PixPath:  c.TempDir(),
 		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },

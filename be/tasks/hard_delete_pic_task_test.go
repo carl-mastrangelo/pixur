@@ -21,7 +21,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &HardDeletePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		Remove:  os.Remove,
 		PixPath: c.TempDir(),
 
@@ -89,7 +89,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 	p.Update()
 
 	task := &HardDeletePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		Remove:  os.Remove,
 		PixPath: c.TempDir(),
 
@@ -166,7 +166,7 @@ func TestHardDeleteFails(t *testing.T) {
 	}()
 
 	task := &HardDeletePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  func(name string) error { return errors.New("nope") },
 

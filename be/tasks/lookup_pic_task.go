@@ -15,7 +15,7 @@ import (
 
 type LookupPicTask struct {
 	// Deps
-	DB db.DB
+	Beg tab.JobBeginner
 
 	// Inputs
 	PicID int64
@@ -27,7 +27,7 @@ type LookupPicTask struct {
 }
 
 func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

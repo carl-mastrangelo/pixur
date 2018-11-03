@@ -30,7 +30,7 @@ import (
 type UpsertPicTask struct {
 	// Deps
 	PixPath    string
-	DB         db.DB
+	Beg        tab.JobBeginner
 	HTTPClient *http.Client
 	// os functions
 	TempFile func(dir, prefix string) (*os.File, error)
@@ -66,7 +66,7 @@ type FileHeader struct {
 }
 
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

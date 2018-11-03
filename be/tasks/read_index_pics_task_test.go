@@ -101,7 +101,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &ReadIndexPicsTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
@@ -132,7 +132,7 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	p3.Update()
 
 	task := &ReadIndexPicsTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {

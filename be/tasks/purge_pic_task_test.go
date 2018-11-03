@@ -36,7 +36,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	pc2 := pc.Comment()
 
 	task := &PurgePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
@@ -119,7 +119,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 	c.CreatePicTag(p2, tag)
 
 	task := &PurgePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
@@ -159,7 +159,7 @@ func TestPurgeDeleteFails(t *testing.T) {
 	}()
 
 	task := &PurgePicTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  func(name string) error { return errors.New("nope") },
 		PicID:   p.Pic.PicId,

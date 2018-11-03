@@ -25,7 +25,7 @@ func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRe
 	}
 
 	var task = &tasks.AddPicCommentTask{
-		DB:  s.db,
+		Beg: s.db,
 		Now: s.now,
 
 		PicID:           int64(picID),

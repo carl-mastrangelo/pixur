@@ -27,7 +27,7 @@ func (s *serv) handleLookupPicVote(ctx context.Context, req *api.LookupPicVoteRe
 	}
 
 	task := &tasks.LookupPicVoteTask{
-		DB: s.db,
+		Beg: s.db,
 
 		PicID:        int64(picID),
 		ObjectUserID: int64(userID),

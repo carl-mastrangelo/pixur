@@ -41,7 +41,7 @@ func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (
 
 	var task = &tasks.UpsertPicTask{
 		PixPath:    s.pixpath,
-		DB:         s.db,
+		Beg:        s.db,
 		HTTPClient: http.DefaultClient,
 		TempFile:   ioutil.TempFile,
 		Rename:     os.Rename,

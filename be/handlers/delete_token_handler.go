@@ -26,7 +26,7 @@ func (s *serv) handleDeleteToken(
 		panic("missing user id")
 	}
 	var task = &tasks.UnauthUserTask{
-		DB:      s.db,
+		Beg:     s.db,
 		Now:     s.now,
 		UserID:  userID,
 		TokenID: payload.TokenParentId,

@@ -14,7 +14,7 @@ var _ Task = &SoftDeletePicTask{}
 
 type SoftDeletePicTask struct {
 	// deps
-	DB db.DB
+	Beg tab.JobBeginner
 
 	// input
 	PicID int64
@@ -34,7 +34,7 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(nil, "Invalid deletion reason", t.Reason)
 	}
 
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

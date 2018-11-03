@@ -250,7 +250,7 @@ func run(args []string) error {
 			schema.User_PIC_SOFT_DELETE, schema.User_USER_UPDATE_CAPABILITY)
 
 		task := &tasks.CreateUserTask{
-			DB:  db,
+			Beg: db,
 			Now: time.Now,
 
 			Ident:      ident,

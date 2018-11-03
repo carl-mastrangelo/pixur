@@ -20,7 +20,7 @@ func (s *serv) handleIncrementViewCount(
 	}
 
 	var task = &tasks.IncrementViewCountTask{
-		DB:    s.db,
+		Beg:   s.db,
 		Now:   s.now,
 		PicID: int64(picID),
 	}

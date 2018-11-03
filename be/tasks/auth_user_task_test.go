@@ -20,7 +20,7 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	db := c.DB()
 	db.Close()
 	task := &AuthUserTask{
-		DB: db,
+		Beg: db,
 	}
 
 	sts := new(TaskRunner).Run(context.Background(), task)
@@ -40,7 +40,7 @@ func TestAuthUserTaskFailsOnNoIdentifier(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		DB:  c.DB(),
+		Beg: c.DB(),
 		Now: time.Now,
 	}
 
@@ -64,7 +64,7 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 	id := c.ID()
 
 	task := &AuthUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    time.Now,
 		UserID: id,
 	}
@@ -89,7 +89,7 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		Now:     time.Now,
 		UserID:  u.User.UserId,
 		TokenID: 0,
@@ -121,7 +121,7 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		DB:      c.DB(),
+		Beg:     c.DB(),
 		Now:     time.Now,
 		UserID:  u.User.UserId,
 		TokenID: 1,
@@ -152,7 +152,7 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 		Ident: "foo@bar.com",
 	}
@@ -177,7 +177,7 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    time.Now,
 		Ident:  u.User.Ident,
 		Secret: "bogus",
@@ -214,7 +214,7 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    time.Now,
 		Ident:  u.User.Ident,
 		Secret: "secret",
@@ -274,7 +274,7 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 	u2.Update()
 
 	task := &AuthUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    time.Now,
 		Ident:  u1.User.Ident,
 		Secret: "secret",
@@ -321,7 +321,7 @@ func TestAuthUserTask_LowerIdentWorks(t *testing.T) {
 	u2.Update()
 
 	task := &AuthUserTask{
-		DB:     c.DB(),
+		Beg:    c.DB(),
 		Now:    time.Now,
 		Ident:  "LITTLE",
 		Secret: "secret",

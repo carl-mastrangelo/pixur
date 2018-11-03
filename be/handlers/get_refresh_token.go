@@ -44,7 +44,7 @@ func (s *serv) handleGetRefreshToken(
 	ctx context.Context, req *api.GetRefreshTokenRequest) (*api.GetRefreshTokenResponse, status.S) {
 
 	var task = &tasks.AuthUserTask{
-		DB:     s.db,
+		Beg:    s.db,
 		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,

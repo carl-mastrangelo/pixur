@@ -27,7 +27,7 @@ func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRe
 	}
 
 	task := &tasks.AddPicVoteTask{
-		DB:  s.db,
+		Beg: s.db,
 		Now: s.now,
 
 		PicID: int64(picID),

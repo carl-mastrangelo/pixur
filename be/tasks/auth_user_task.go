@@ -17,7 +17,7 @@ import (
 
 type AuthUserTask struct {
 	// Deps
-	DB  db.DB
+	Beg tab.JobBeginner
 	Now func() time.Time
 	// TODO: GC tokens after a handler provided timeout
 
@@ -43,7 +43,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(nil, "missing context")
 	}
 
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}

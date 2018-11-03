@@ -25,7 +25,7 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		PicID: p.Pic.PicId,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
@@ -70,7 +70,7 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		PicID:           p.Pic.PicId,
-		DB:              c.DB(),
+		Beg:             c.DB(),
 		Now:             time.Now,
 		Text:            "hi",
 		CommentParentID: parent.PicComment.CommentId,
@@ -115,7 +115,7 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 	task := &AddPicCommentTask{
 		Text:  "hi",
 		PicID: 0,
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -141,7 +141,7 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 	task := &AddPicCommentTask{
 		PicID: p.Pic.PicId,
 		Text:  "hi",
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -179,7 +179,7 @@ func TestAddPicCommentTaskWork_CantCommentOnHardDeleted(t *testing.T) {
 	task := &AddPicCommentTask{
 		PicID: p.Pic.PicId,
 		Text:  "hi",
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -203,7 +203,7 @@ func TestAddPicCommentTask_MissingComment(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		Text:  "",
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
@@ -226,7 +226,7 @@ func TestAddPicCommentTask_TooLongComment(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		Text: strings.Repeat("a", 22+1),
-		DB:   c.DB(),
+		Beg:  c.DB(),
 		Now:  time.Now,
 	}
 	ctx := context.Background()
@@ -264,7 +264,7 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 		Text:            "hi",
 		PicID:           p.Pic.PicId,
 		CommentParentID: parent.PicComment.CommentId,
-		DB:              c.DB(),
+		Beg:             c.DB(),
 		Now:             time.Now,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)

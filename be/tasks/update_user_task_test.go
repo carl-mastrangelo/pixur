@@ -25,7 +25,7 @@ func TestUpdateUserTaskDifferentUser(t *testing.T) {
 	v1 := ou.User.Version()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  ou.User.UserId,
 		Version:       ou.User.Version(),
@@ -59,7 +59,7 @@ func TestUpdateUserTaskSameUserDefault(t *testing.T) {
 	u.Update()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  0,
 		Version:       u.User.Version(),
@@ -89,7 +89,7 @@ func TestUpdateUserTaskSameUserID(t *testing.T) {
 	u.Update()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  u.User.UserId,
 		Version:       u.User.Version(),
@@ -121,7 +121,7 @@ func TestUpdateUserTaskNoUpdate(t *testing.T) {
 	v1 := u.User.Version()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  u.User.UserId,
 		Version:       u.User.Version(),
@@ -154,7 +154,7 @@ func TestUpdateUserTaskNoopNoUpdate(t *testing.T) {
 	v1 := u.User.Version()
 
 	task := &UpdateUserTask{
-		DB:              c.DB(),
+		Beg:             c.DB(),
 		Now:             time.Now,
 		ObjectUserID:    u.User.UserId,
 		Version:         u.User.Version(),
@@ -183,7 +183,7 @@ func TestUpdateUserTaskMissingCap(t *testing.T) {
 	su := c.CreateUser()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  0,
 		Version:       su.User.Version(),
@@ -212,7 +212,7 @@ func TestUpdateUserTaskDupeCap(t *testing.T) {
 	su.Update()
 
 	task := &UpdateUserTask{
-		DB:              c.DB(),
+		Beg:             c.DB(),
 		Now:             time.Now,
 		ObjectUserID:    0,
 		Version:         su.User.Version(),
@@ -240,7 +240,7 @@ func TestUpdateUserTaskWrongVersion(t *testing.T) {
 	su := c.CreateUser()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  0,
 		Version:       0,
@@ -267,7 +267,7 @@ func TestUpdateUserTaskMissingSubject(t *testing.T) {
 	su := c.CreateUser()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  0,
 		Version:       su.User.Version(),
@@ -294,7 +294,7 @@ func TestUpdateUserTaskMissingObject(t *testing.T) {
 	su := c.CreateUser()
 
 	task := &UpdateUserTask{
-		DB:            c.DB(),
+		Beg:           c.DB(),
 		Now:           time.Now,
 		ObjectUserID:  -1,
 		Version:       0,

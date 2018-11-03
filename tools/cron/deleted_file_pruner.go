@@ -59,7 +59,7 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 
 	log.Println("Preparing to delete", p.GetVarPicID(), pendingTime)
 	var task = &tasks.HardDeletePicTask{
-		DB:      db,
+		Beg:     db,
 		PixPath: pixPath,
 		PicID:   p.PicId,
 	}

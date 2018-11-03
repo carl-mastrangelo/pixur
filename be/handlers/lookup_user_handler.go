@@ -21,7 +21,7 @@ func (s *serv) handleLookupUser(ctx context.Context, req *api.LookupUserRequest)
 	}
 
 	var task = &tasks.LookupUserTask{
-		DB:           s.db,
+		Beg:          s.db,
 		ObjectUserID: int64(objectUserID),
 	}
 

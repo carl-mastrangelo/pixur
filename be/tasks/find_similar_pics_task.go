@@ -14,7 +14,7 @@ import (
 
 type FindSimilarPicsTask struct {
 	// Deps
-	DB db.DB
+	Beg tab.JobBeginner
 
 	// Inputs
 	PicID int64
@@ -24,7 +24,7 @@ type FindSimilarPicsTask struct {
 }
 
 func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.DB)
+	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create new job")
 	}

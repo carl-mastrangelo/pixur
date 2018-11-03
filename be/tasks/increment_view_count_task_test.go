@@ -22,7 +22,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 	oldTime := p.Pic.GetModifiedTime()
 
 	task := &IncrementViewCountTask{
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
@@ -60,7 +60,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 	p.Update()
 
 	task := &IncrementViewCountTask{
-		DB:    c.DB(),
+		Beg:   c.DB(),
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}

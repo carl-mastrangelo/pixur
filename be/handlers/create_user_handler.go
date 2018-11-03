@@ -11,7 +11,7 @@ import (
 func (s *serv) handleCreateUser(ctx context.Context, req *api.CreateUserRequest) (
 	*api.CreateUserResponse, status.S) {
 	var task = &tasks.CreateUserTask{
-		DB:     s.db,
+		Beg:    s.db,
 		Now:    s.now,
 		Ident:  req.Ident,
 		Secret: req.Secret,
