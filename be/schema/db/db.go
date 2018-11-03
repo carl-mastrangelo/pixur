@@ -36,12 +36,16 @@ type Beginner interface {
 
 // DB represents a database.  It is the entry point to creating transactions.
 type DB interface {
+	DBAdaptable
 	Beginner
 	// Close closes the database, and should be called when the db is no longer needed.
 	Close() error
 	// InitSchema initializes the database tables.  This is typically used in unit tests.
 	InitSchema(context.Context, []string) error
-	// Adapter describes what kind of database this is.
+}
+
+type DBAdaptable interface {
+	// Adapter returns an adapter for use with a database.
 	Adapter() DBAdapter
 }
 
