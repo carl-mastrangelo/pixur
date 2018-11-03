@@ -17,6 +17,7 @@ type PurgePicTask struct {
 	PixPath string
 	Beg     tab.JobBeginner
 	Remove  func(name string) error
+	Now     func() time.Time
 
 	// input
 	PicID int64
@@ -99,7 +100,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		ts = append(ts, tags[0])
 	}
 
-	now := time.Now()
+	now := t.Now()
 	for _, t := range ts {
 		if t.UsageCount > 1 {
 			t.UsageCount--

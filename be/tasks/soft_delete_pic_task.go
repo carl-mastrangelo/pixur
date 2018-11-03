@@ -15,6 +15,7 @@ var _ Task = &SoftDeletePicTask{}
 type SoftDeletePicTask struct {
 	// deps
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// input
 	PicID int64
@@ -60,7 +61,7 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	p := pics[0]
 
-	now := time.Now()
+	now := t.Now()
 
 	if p.DeletionStatus != nil {
 		if p.HardDeleted() {

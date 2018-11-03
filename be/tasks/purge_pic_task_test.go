@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -38,6 +39,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	task := &PurgePicTask{
 		Beg:     c.DB(),
 		PixPath: c.TempDir(),
+		Now:     time.Now,
 		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
 	}
@@ -123,6 +125,7 @@ func TestPurge_TagsDecremented(t *testing.T) {
 		PixPath: c.TempDir(),
 		Remove:  os.Remove,
 		PicID:   p.Pic.PicId,
+		Now:     time.Now,
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
@@ -163,6 +166,7 @@ func TestPurgeDeleteFails(t *testing.T) {
 		PixPath: c.TempDir(),
 		Remove:  func(name string) error { return errors.New("nope") },
 		PicID:   p.Pic.PicId,
+		Now:     time.Now,
 	}
 
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)

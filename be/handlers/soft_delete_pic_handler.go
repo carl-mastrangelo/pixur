@@ -36,6 +36,7 @@ func (s *serv) handleSoftDeletePic(
 
 	var task = &tasks.SoftDeletePicTask{
 		Beg:                 s.db,
+		Now:                 s.now,
 		PicID:               int64(picID),
 		Details:             req.Details,
 		Reason:              schema.Pic_DeletionStatus_Reason(reason),

@@ -24,6 +24,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		Beg:     c.DB(),
 		Remove:  os.Remove,
 		PixPath: c.TempDir(),
+		Now:     time.Now,
 
 		PicID: p.Pic.PicId,
 	}
@@ -92,6 +93,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		Beg:     c.DB(),
 		Remove:  os.Remove,
 		PixPath: c.TempDir(),
+		Now:     func() time.Time { return now },
 
 		PicID: p.Pic.PicId,
 	}
@@ -169,6 +171,7 @@ func TestHardDeleteFails(t *testing.T) {
 		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  func(name string) error { return errors.New("nope") },
+		Now:     time.Now,
 
 		PicID: p.Pic.PicId,
 	}

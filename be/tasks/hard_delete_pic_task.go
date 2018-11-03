@@ -17,6 +17,7 @@ type HardDeletePicTask struct {
 	Beg     tab.JobBeginner
 	PixPath string
 	Remove  func(name string) error
+	Now     func() time.Time
 
 	// input
 	PicID int64
@@ -49,7 +50,7 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	p := pics[0]
 
-	now := time.Now()
+	now := t.Now()
 	nowpb := schema.ToTspb(now)
 
 	if p.DeletionStatus == nil {

@@ -22,6 +22,7 @@ func (s *serv) handlePurgePic(
 
 	var task = &tasks.PurgePicTask{
 		Beg:     s.db,
+		Now:     s.now,
 		PixPath: s.pixpath,
 		Remove:  os.Remove,
 		PicID:   int64(picID),
