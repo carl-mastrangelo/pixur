@@ -57,7 +57,6 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 		return nil, status.Internal(err, "Unable to get Start Pic")
 	}
 	if len(startPics) == 0 {
-		// TODO: log info that there were no pics
 		return nil, nil
 	}
 	return startPics[0], nil
@@ -81,6 +80,7 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 			return sts
 		}
 		if startPic == nil {
+			t.Complete = true
 			return nil
 		}
 		if t.Ascending {
@@ -104,12 +104,12 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	if conf.DefaultFindIndexPics != nil {
 		defaultIndexPics = conf.DefaultFindIndexPics.Value
 	} else {
-		defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+		defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default.
 	}
 	if conf.MaxFindIndexPics != nil {
 		maxIndexPics = conf.MaxFindIndexPics.Value
 	} else {
-		maxIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+		maxIndexPics = math.MaxInt64 // seems crazy, but there is no default.
 	}
 
 	var maxPics int64
@@ -122,9 +122,13 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	} else {
 		maxPics = defaultIndexPics
 	}
+	overMax := maxPics
+	if overMax < math.MaxInt64 {
+		overMax++
+	}
 
 	opts := db.Opts{
-		Limit: int(maxPics),
+		Limit: int(overMax),
 	}
 	if t.Ascending {
 		opts.Start = tab.PicsIndexOrder{
@@ -146,8 +150,13 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "Unable to find pics")
 	}
 
-	t.Pics = pics
-	t.Complete = int64(len(pics)) == maxPics
+	if n := int64(len(pics)); n > 0 && n == overMax && n != math.MaxInt64 {
+		t.Pics = pics[:int(n)-1]
+		t.Complete = false
+	} else {
+		t.Pics = pics
+		t.Complete = true
+	}
 
 	return nil
 }

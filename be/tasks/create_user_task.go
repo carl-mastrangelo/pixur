@@ -69,7 +69,7 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 		if sts != nil {
 			return nil, sts
 		}
-		have = conf.NewUserCapability.Capability
+		have = conf.AnonymousCapability.Capability
 	}
 	return u, schema.VerifyCapabilitySubset(have, caps...)
 }

@@ -35,8 +35,8 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 	}
 
 	if req.Ascending {
-		if !task.Complete {
-			next := task.Pics[len(task.Pics)-1].PicId
+		if n := len(task.Pics); !task.Complete && n != 0 {
+			next := task.Pics[n-1].PicId
 			if next < math.MaxInt64-1 {
 				resp.NextPicId = schema.Varint(next + 1).Encode()
 			}
@@ -45,8 +45,8 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 			resp.PrevPicId = (picID - 1).Encode()
 		}
 	} else {
-		if !task.Complete {
-			next := task.Pics[len(task.Pics)-1].PicId
+		if n := len(task.Pics); !task.Complete && n != 0 {
+			next := task.Pics[n-1].PicId
 			if next > 1 {
 				resp.NextPicId = schema.Varint(next - 1).Encode()
 			}
