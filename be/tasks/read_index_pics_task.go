@@ -32,7 +32,7 @@ type ReadIndexPicsTask struct {
 
 	// Results
 	Pics []*schema.Pic
-	
+
 	Complete bool // if we have reached the end.
 }
 
@@ -95,30 +95,30 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 			indexID = defaultDescIndexID
 		}
 	}
-	
+
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
-	  return sts
+		return sts
 	}
 	var defaultIndexPics, maxIndexPics int64
 	if conf.DefaultFindIndexPics != nil {
-	  defaultIndexPics = conf.DefaultFindIndexPics.Value
+		defaultIndexPics = conf.DefaultFindIndexPics.Value
 	} else {
-	  defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+		defaultIndexPics = math.MaxInt64 // seems crazy, but there is no default!
 	}
 	if conf.MaxFindIndexPics != nil {
-	  maxIndexPics = conf.MaxFindIndexPics.Value
+		maxIndexPics = conf.MaxFindIndexPics.Value
 	} else {
-	  maxIndexPics = math.MaxInt64 // seems crazy, but there is no default!
+		maxIndexPics = math.MaxInt64 // seems crazy, but there is no default!
 	}
 
 	var maxPics int64
 	if t.MaxPics != 0 {
-	  if t.MaxPics < maxIndexPics{
-	    maxPics = t.MaxPics
-	  } else {
-	    maxPics = maxIndexPics
-	  }
+		if t.MaxPics < maxIndexPics {
+			maxPics = t.MaxPics
+		} else {
+			maxPics = maxIndexPics
+		}
 	} else {
 		maxPics = defaultIndexPics
 	}

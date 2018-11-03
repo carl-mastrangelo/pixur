@@ -1,6 +1,7 @@
 package handlers // import "pixur.org/pixur/be/handlers"
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"io"
@@ -155,6 +156,12 @@ type ServerConfig struct {
 
 func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 	initPwtCoder(c)
+
+	// TODO: don't be so hacky!  This should probably come from a file, or the db itself.
+	sts := new(tasks.TaskRunner).Run(context.TODO(), &tasks.LoadConfigurationTask{Beg: c.DB})
+	if sts != nil {
+		panic(sts)
+	}
 
 	opts := []grpc.ServerOption{grpc.UnaryInterceptor((&serverInterceptor{}).intercept)}
 	return opts, func(s *grpc.Server) {

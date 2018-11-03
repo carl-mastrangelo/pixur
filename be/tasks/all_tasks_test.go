@@ -37,7 +37,7 @@ func Container(t testing.TB) *TestContainer {
 		T: t,
 	}
 	task := &LoadConfigurationTask{
-		DB: c.DB(),
+		Beg: c.DB(),
 	}
 	if sts := new(TaskRunner).Run(context.TODO(), task); sts != nil {
 		t.Fatal(sts)

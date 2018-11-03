@@ -8,7 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"pixur.org/pixur/be/schema"
-	sdb "pixur.org/pixur/be/schema/db"
+	"pixur.org/pixur/be/schema/db"
 	"pixur.org/pixur/be/status"
 )
 
@@ -30,12 +30,12 @@ var (
 )
 
 type LoadConfigurationTask struct {
-	DB sdb.DB
+	Beg db.Beginner
 }
 
 func (t *LoadConfigurationTask) Run(ctx context.Context) (stscap status.S) {
-	if t.DB == nil {
-		panic("nil DB")
+	if t.Beg == nil {
+		panic("nil Beginner")
 	}
 
 	_configLoadLock.Lock()
@@ -53,9 +53,9 @@ func GetConfiguration(ctx context.Context) (*schema.Configuration, status.S) {
 		return conf, nil
 	}
 	for {
-		if conf := _siteConfiguration.Load().(*schema.Configuration); conf != nil {
+		if conf := _siteConfiguration.Load(); conf != nil {
 			combo := schema.GetDefaultConfiguration()
-			proto.Merge(combo, conf)
+			proto.Merge(combo, conf.(*schema.Configuration))
 			return combo, nil
 		}
 		select {
