@@ -1,6 +1,7 @@
 package status // import "pixur.org/pixur/be/status"
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -21,11 +22,20 @@ type S interface {
 }
 
 func From(err error) S {
-	if s, ok := err.(S); ok {
-		return s
+	switch e := err.(type) {
+	case S:
+		return e
 	}
+
+	code := codes.Unknown
+	if err == context.Canceled {
+		code = codes.Canceled
+	} else if err == context.DeadlineExceeded {
+		code = codes.DeadlineExceeded
+	}
+
 	return &status{
-		code:  codes.Unknown,
+		code:  code,
 		msg:   err.Error(),
 		cause: err,
 		stack: getStack(),
