@@ -24,10 +24,10 @@ var (
 
 var defaultPwtCoder *pwtCoder
 
-func initPwtCoder(c *ServerConfig) {
+func initPwtCoder(c *ServerConfig, now func() time.Time) {
 	if defaultPwtCoder == nil {
 		defaultPwtCoder = &pwtCoder{
-			now:    time.Now,
+			now:    now,
 			secret: c.TokenSecret,
 		}
 	}

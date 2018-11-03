@@ -155,7 +155,9 @@ type ServerConfig struct {
 }
 
 func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
-	initPwtCoder(c)
+
+	now := time.Now
+	initPwtCoder(c, now)
 
 	// TODO: don't be so hacky!  This should probably come from a file, or the db itself.
 	sts := new(tasks.TaskRunner).Run(context.TODO(), &tasks.LoadConfigurationTask{Beg: c.DB})
@@ -173,7 +175,7 @@ func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 			pubkey:      c.PublicKey,
 			secure:      c.Secure,
 			runner:      nil,
-			now:         time.Now,
+			now:         now,
 			rand:        rand.Reader,
 		})
 	}
