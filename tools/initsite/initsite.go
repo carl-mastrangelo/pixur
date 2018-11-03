@@ -242,23 +242,32 @@ func run(args []string) error {
 			return err
 		}
 
+		conf := schema.GetDefaultConfiguration()
+		if conf.NewUserCapability == nil {
+			conf.NewUserCapability = &schema.Configuration_CapabilitySet{}
+		}
+		conf.NewUserCapability.Capability = append(conf.NewUserCapability.Capability,
+			schema.User_PIC_SOFT_DELETE, schema.User_USER_UPDATE_CAPABILITY)
+
 		task := &tasks.CreateUserTask{
 			DB:  db,
 			Now: time.Now,
 
-			Ident:  ident,
-			Secret: string(secret),
-			Capability: append(schema.UserNewCap,
-				schema.User_PIC_SOFT_DELETE,
-				schema.User_USER_UPDATE_CAPABILITY),
+			Ident:      ident,
+			Secret:     string(secret),
+			Capability: conf.NewUserCapability.Capability,
 		}
 
 		// Presumably there is nobody in the database yet, so we need to temporarily relax permissions
 		// on the anonymous user.
-		oldcap := schema.AnonymousUser.Capability
-		schema.AnonymousUser.Capability = []schema.User_Capability{schema.User_USER_CREATE}
+		conf.AnonymousCapability = &schema.Configuration_CapabilitySet{
+			Capability: []schema.User_Capability{
+				schema.User_USER_CREATE,
+			},
+		}
+
+		ctx = tasks.CtxFromTestConfig(ctx, conf)
 		sts := new(tasks.TaskRunner).Run(ctx, task)
-		schema.AnonymousUser.Capability = oldcap
 		if sts != nil {
 			return sts
 		}
