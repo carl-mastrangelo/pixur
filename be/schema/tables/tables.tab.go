@@ -42,11 +42,11 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\",\"id\");",
 
-		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\",\"id\");",
 
-		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\",\"id\");",
 
 		"CREATE TABLE \"Tags\" (" +
 
@@ -153,11 +153,11 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`);",
+		"CREATE INDEX `PicsIndexOrder` ON `Pics` (`index_order`,`id`);",
 
-		"CREATE INDEX `PicsScoreOrder` ON `Pics` (`score_order`);",
+		"CREATE INDEX `PicsScoreOrder` ON `Pics` (`score_order`,`id`);",
 
-		"CREATE INDEX `PicsSchedOrder` ON `Pics` (`sched_order`);",
+		"CREATE INDEX `PicsSchedOrder` ON `Pics` (`sched_order`,`id`);",
 
 		"CREATE TABLE `Tags` (" +
 
@@ -264,11 +264,11 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\",\"id\");",
 
-		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\",\"id\");",
 
-		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\",\"id\");",
 
 		"CREATE TABLE \"Tags\" (" +
 
@@ -375,11 +375,11 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\");",
+		"CREATE INDEX \"PicsIndexOrder\" ON \"Pics\" (\"index_order\",\"id\");",
 
-		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\");",
+		"CREATE INDEX \"PicsScoreOrder\" ON \"Pics\" (\"score_order\",\"id\");",
 
-		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\");",
+		"CREATE INDEX \"PicsSchedOrder\" ON \"Pics\" (\"sched_order\",\"id\");",
 
 		"CREATE TABLE \"Tags\" (" +
 
@@ -581,11 +581,13 @@ func (idx PicsPrimary) Vals() (vals []interface{}) {
 
 type PicsIndexOrder struct {
 	IndexOrder *int64
+
+	Id *int64
 }
 
 var _ db.Idx = PicsIndexOrder{}
 
-var colsPicsIndexOrder = []string{"index_order"}
+var colsPicsIndexOrder = []string{"index_order", "id"}
 
 func (idx PicsIndexOrder) Cols() []string {
 	return colsPicsIndexOrder
@@ -603,16 +605,27 @@ func (idx PicsIndexOrder) Vals() (vals []interface{}) {
 		done = true
 	}
 
+	if idx.Id != nil {
+		if done {
+			panic("Extra value Id")
+		}
+		vals = append(vals, *idx.Id)
+	} else {
+		done = true
+	}
+
 	return
 }
 
 type PicsScoreOrder struct {
 	ScoreOrder *int32
+
+	Id *int64
 }
 
 var _ db.Idx = PicsScoreOrder{}
 
-var colsPicsScoreOrder = []string{"score_order"}
+var colsPicsScoreOrder = []string{"score_order", "id"}
 
 func (idx PicsScoreOrder) Cols() []string {
 	return colsPicsScoreOrder
@@ -630,16 +643,27 @@ func (idx PicsScoreOrder) Vals() (vals []interface{}) {
 		done = true
 	}
 
+	if idx.Id != nil {
+		if done {
+			panic("Extra value Id")
+		}
+		vals = append(vals, *idx.Id)
+	} else {
+		done = true
+	}
+
 	return
 }
 
 type PicsSchedOrder struct {
 	SchedOrder *int32
+
+	Id *int64
 }
 
 var _ db.Idx = PicsSchedOrder{}
 
-var colsPicsSchedOrder = []string{"sched_order"}
+var colsPicsSchedOrder = []string{"sched_order", "id"}
 
 func (idx PicsSchedOrder) Cols() []string {
 	return colsPicsSchedOrder
@@ -653,6 +677,15 @@ func (idx PicsSchedOrder) Vals() (vals []interface{}) {
 			panic("Extra value SchedOrder")
 		}
 		vals = append(vals, *idx.SchedOrder)
+	} else {
+		done = true
+	}
+
+	if idx.Id != nil {
+		if done {
+			panic("Extra value Id")
+		}
+		vals = append(vals, *idx.Id)
 	} else {
 		done = true
 	}

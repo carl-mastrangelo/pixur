@@ -59,7 +59,7 @@ func TestReadIndex_LookupStartPicDesc(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	sp, err := lookupStartPic(j, larger.Pic.PicId+1, false)
+	sp, err := lookupStartPic(j, larger.Pic.PicId, false)
 	if err != nil {
 		t.Fatal(err)
 	}
