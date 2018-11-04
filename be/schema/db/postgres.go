@@ -103,8 +103,12 @@ func (_ *postgresAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 
 func (_ *postgresAdapter) RetryableErr(err error) bool {
 	if pqerr, ok := err.(*pq.Error); ok {
-		// TODO: implement
-		_ = pqerr
+		if pqerr.Code == codeSerializationFailureError {
+			return true
+		}
+		if pqerr.Code == codeDeadlockDetectedError {
+			return true
+		}
 	}
 	return false
 }

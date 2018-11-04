@@ -20,6 +20,13 @@ const (
 	cockroachSqlDriverName = "postgres"
 )
 
+// retryable codes
+const (
+	// I have only seen 40001 in practice.
+	codeSerializationFailureError = "40001"
+	codeDeadlockDetectedError     = "40P01"
+)
+
 func (a *cockroachAdapter) Open(dataSourceName string) (DB, error) {
 	return a.open(dataSourceName)
 }
@@ -105,8 +112,12 @@ func (_ *cockroachAdapter) LockStmt(buf *strings.Builder, lock Lock) {
 
 func (_ *cockroachAdapter) RetryableErr(err error) bool {
 	if pqerr, ok := err.(*pq.Error); ok {
-		// TODO: implement
-		_ = pqerr
+		if pqerr.Code == codeSerializationFailureError {
+			return true
+		}
+		if pqerr.Code == codeDeadlockDetectedError {
+			return true
+		}
 	}
 	return false
 }
