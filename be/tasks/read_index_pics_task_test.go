@@ -113,9 +113,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	}
 }
 
-// TODO: reenable once Index order is consolidated.
-// See: https://github.com/carl-mastrangelo/pixur/issues/28
-func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
+func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -142,4 +140,157 @@ func DisablesTestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p1, task.Pics)
 	}
+}
+
+func TestReadIndexTask_StartAtDeleted(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
+	p1 := c.CreatePic()
+	p2 := c.CreatePic()
+	p3 := c.CreatePic()
+	p4 := c.CreatePic()
+	p5 := c.CreatePic()
+	p6 := c.CreatePic()
+	p7 := c.CreatePic()
+
+	// A hard deletion
+	p3.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.ToTspb(time.Now()),
+	}
+	p3.Update()
+
+	task := &ReadIndexPicsTask{
+		Beg:       c.DB(),
+		StartID:   p3.Pic.PicId,
+		MaxPics:   1,
+		Ascending: false,
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(task.Pics) != 1 || !proto.Equal(p2.Pic, task.Pics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p2.Pic, task.Pics[0])
+	}
+	if task.NextID != p1.Pic.PicId {
+		t.Fatal(task.NextID, p1.Pic.PicId)
+	}
+	if task.PrevID != p4.Pic.PicId {
+		t.Fatal(task.PrevID, p4.Pic.PicId)
+	}
+
+	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7
+}
+
+func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
+	p1 := c.CreatePic()
+	p2 := c.CreatePic()
+	p3 := c.CreatePic()
+	p4 := c.CreatePic()
+	p5 := c.CreatePic()
+	p6 := c.CreatePic()
+	p7 := c.CreatePic()
+
+	// A hard deletion
+	p3.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.ToTspb(time.Now()),
+	}
+	p3.Update()
+
+	p4.Pic.DeletionStatus = &schema.Pic_DeletionStatus{
+		ActualDeletedTs: schema.ToTspb(time.Now()),
+	}
+	p4.Update()
+
+	task := &ReadIndexPicsTask{
+		Beg:       c.DB(),
+		StartID:   p3.Pic.PicId,
+		MaxPics:   1,
+		Ascending: true,
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(task.Pics) != 1 || !proto.Equal(p5.Pic, task.Pics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p5.Pic, task.Pics[0])
+	}
+	if task.NextID != p6.Pic.PicId {
+		t.Fatal(task.NextID, p6.Pic.PicId)
+	}
+	if task.PrevID != p2.Pic.PicId {
+		t.Fatal(task.PrevID, p2.Pic.PicId)
+	}
+
+	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7
+}
+
+func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
+	p1 := c.CreatePic()
+	p2 := c.CreatePic()
+	p3 := c.CreatePic()
+	p4 := c.CreatePic()
+	p5 := c.CreatePic()
+	p6 := c.CreatePic()
+	p7 := c.CreatePic()
+
+	now := time.Now()
+	p1.Pic.SetModifiedTime(now)
+	p1.Update()
+	p2.Pic.SetModifiedTime(now)
+	p2.Update()
+	p3.Pic.SetModifiedTime(now)
+	p3.Update()
+	p4.Pic.SetModifiedTime(now)
+	p4.Update()
+	p5.Pic.SetModifiedTime(now)
+	p5.Update()
+	p6.Pic.SetModifiedTime(now)
+	p6.Update()
+	p7.Pic.SetModifiedTime(now)
+	p7.Update()
+
+	task := &ReadIndexPicsTask{
+		Beg:       c.DB(),
+		StartID:   p3.Pic.PicId,
+		MaxPics:   1,
+		Ascending: false,
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if err := new(TaskRunner).Run(ctx, task); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(task.Pics) != 1 || !proto.Equal(p3.Pic, task.Pics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p3.Pic, task.Pics[0])
+	}
+	if task.NextID != p2.Pic.PicId {
+		t.Fatal(task.NextID, p2.Pic.PicId)
+	}
+	if task.PrevID != p4.Pic.PicId {
+		t.Fatal(task.PrevID, p4.Pic.PicId)
+	}
+
+	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7
 }

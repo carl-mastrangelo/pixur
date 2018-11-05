@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"math"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
@@ -34,26 +33,11 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 		Pic: apiPics(nil, task.Pics...),
 	}
 
-	if req.Ascending {
-		if n := len(task.Pics); !task.Complete && n != 0 {
-			next := task.Pics[n-1].PicId
-			if next < math.MaxInt64-1 {
-				resp.NextPicId = schema.Varint(next + 1).Encode()
-			}
-		}
-		if startPicPresent && picID > 1 {
-			resp.PrevPicId = (picID - 1).Encode()
-		}
-	} else {
-		if n := len(task.Pics); !task.Complete && n != 0 {
-			next := task.Pics[n-1].PicId
-			if next > 1 {
-				resp.NextPicId = schema.Varint(next - 1).Encode()
-			}
-		}
-		if startPicPresent && picID < math.MaxInt64-1 {
-			resp.PrevPicId = (picID + 1).Encode()
-		}
+	if task.NextID != 0 {
+		resp.NextPicId = schema.Varint(task.NextID).Encode()
+	}
+	if task.PrevID != 0 {
+		resp.PrevPicId = schema.Varint(task.PrevID).Encode()
 	}
 
 	return resp, nil

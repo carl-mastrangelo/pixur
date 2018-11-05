@@ -48,7 +48,6 @@ func TestFindIndexPics(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
-		taskCap.Complete = true
 		return nil
 	}
 	s := &serv{
@@ -82,8 +81,8 @@ func TestFindIndexPics(t *testing.T) {
 	if res.NextPicId != "" {
 		t.Error("expected no next pic id", res.NextPicId)
 	}
-	if res.PrevPicId != "1" {
-		t.Error("expected prev pic id", res.PrevPicId)
+	if res.PrevPicId != "" {
+		t.Error("expected no prev pic id", res.PrevPicId)
 	}
 }
 
@@ -105,7 +104,8 @@ func TestFindIndexPics_descending(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
-		taskCap.Complete = false
+		taskCap.NextID = 5
+		taskCap.PrevID = 9
 		return nil
 	}
 	s := &serv{
@@ -163,6 +163,7 @@ func TestFindIndexPics_noStartPic(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
+		taskCap.NextID = 5
 		return nil
 	}
 	s := &serv{
