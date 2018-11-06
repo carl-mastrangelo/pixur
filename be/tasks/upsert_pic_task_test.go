@@ -1062,7 +1062,7 @@ func TestPrepareFile_CopyFileFails(t *testing.T) {
 	srcFile := c.TempFile()
 	srcFile.Close() // Reading from it should fail
 	_, _, sts := task.prepareFile(context.Background(), srcFile, FileHeader{}, nil)
-	expected := status.Internal(nil, "Can't save file")
+	expected := status.Internal(nil, "can't seek")
 	compareStatus(t, sts, expected)
 	if ff, err := os.Open(capturedTempFile.Name()); !os.IsNotExist(err) {
 		if err != nil {
@@ -1087,7 +1087,7 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	if _, err := srcFile.Write([]byte("hello")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := srcFile.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := srcFile.Seek(2, os.SEEK_SET); err != nil {
 		t.Fatal(err)
 	}
 	dstFile, fh, sts := task.prepareFile(context.Background(), srcFile, FileHeader{Name: "name"}, nil)
@@ -1101,15 +1101,23 @@ func TestPrepareFile_CopyFileSucceeds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s := string(data); s != "hello" {
+	if s := string(data); s != "llo" {
 		t.Fatal("Bad copy", s)
 	}
 	expectedFh := FileHeader{
 		Name: "name",
-		Size: 5,
+		Size: 3,
 	}
 	if *fh != expectedFh {
 		t.Fatal("File header mismatch", fh, expectedFh)
+	}
+
+	srcOff, err := srcFile.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if srcOff != 2 {
+		t.Error("Offset not preserved", srcOff, 2)
 	}
 }
 

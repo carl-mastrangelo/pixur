@@ -9,7 +9,6 @@ import (
 	"hash"
 	"io"
 	"math"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +25,11 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
+type readerAtReadSeeker interface {
+	io.ReadSeeker
+	io.ReaderAt
+}
+
 // UpsertPicTask inserts or updates a pic with the provided information.
 type UpsertPicTask struct {
 	// Deps
@@ -41,7 +45,7 @@ type UpsertPicTask struct {
 
 	// Inputs
 	FileURL string
-	File    multipart.File
+	File    readerAtReadSeeker
 	Md5Hash []byte
 
 	// Header is the name (and size) of the file.  Currently only the Name is used.  If the name is
@@ -523,7 +527,8 @@ func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status
 
 // prepareFile prepares the file for image processing.
 // The name in fh and the url must be validated previously.
-func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh FileHeader, u *url.URL) (
+func (t *UpsertPicTask) prepareFile(
+	ctx context.Context, fd readerAtReadSeeker, fh FileHeader, u *url.URL) (
 	_ *os.File, _ *FileHeader, stscap status.S) {
 	f, err := t.TempFile(t.PixPath, "__")
 	if err != nil {
@@ -548,6 +553,16 @@ func (t *UpsertPicTask) prepareFile(ctx context.Context, fd multipart.File, fh F
 			h = header
 		}
 	} else {
+		off, err := fd.Seek(0, os.SEEK_CUR)
+		if err != nil {
+			return nil, nil, status.Internal(err, "can't seek")
+		}
+		defer func() {
+			if _, err := fd.Seek(off, os.SEEK_SET); err != nil {
+				status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't seek"))
+			}
+		}()
+
 		// TODO: maybe extract the filename from the url, if not provided in FileHeader
 		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
 		// Also get a copy of the size.  We don't want to move the file if it is on the
