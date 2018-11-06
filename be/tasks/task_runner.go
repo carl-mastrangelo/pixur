@@ -103,13 +103,13 @@ func runTask(ctx context.Context, task Task) (stscap status.S) {
 				}
 			}
 		}
-		return sts
+		return status.WithSuppressed(sts, stsSliceToErrSlice(failures[:len(failures)-1])...)
 	}
 	if thetasklogger != nil {
 		thetasklogger.Printf("Failed to complete task %T after %d tries", task, maxTaskRetries)
 	}
-
-	return status.WithSuppressed(failures[0], stsSliceToErrSlice(failures[1:])...)
+	return status.WithSuppressed(
+		failures[len(failures)-1], stsSliceToErrSlice(failures[:len(failures)-1])...)
 }
 
 func unwrapTaskStatus(sts status.S) error {
