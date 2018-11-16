@@ -1,8 +1,10 @@
 package schema
 
 import (
-	"github.com/golang/protobuf/proto"
+	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	wpb "github.com/golang/protobuf/ptypes/wrappers"
 )
 
@@ -64,4 +66,6 @@ var defaultConfiguration = &Configuration{
 	MaxFindIndexPics: &wpb.Int64Value{
 		Value: 100,
 	},
+	// Ten minutes, with 1 second of leeway
+	MaxWebmDuration: ptypes.DurationProto(10*time.Minute + 1*time.Second),
 }

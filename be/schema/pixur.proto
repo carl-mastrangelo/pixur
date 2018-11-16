@@ -291,6 +291,8 @@ message Configuration {
   google.protobuf.Int64Value default_find_index_pics = 13;
   // the max number of index pics to return
   google.protobuf.Int64Value max_find_index_pics = 14;
+  // the max duration a WEBM pic can be 
+  google.protobuf.Duration max_webm_duration = 15;
   
   message CapabilitySet {
     repeated User.Capability capability = 1;

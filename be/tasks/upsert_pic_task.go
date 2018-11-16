@@ -227,6 +227,16 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if dur, sts := im.Duration(); sts != nil {
 		return sts
 	} else if dur != nil {
+		// TODO: test this check
+		if immime == schema.Pic_File_WEBM && conf.MaxWebmDuration != nil {
+			maxDur, err := ptypes.Duration(conf.MaxWebmDuration)
+			if err != nil {
+				return status.Internal(err, "can't parse max duration")
+			}
+			if *dur > maxDur {
+				return status.InvalidArgumentf(nil, "duration %v exceeds max %v", *dur, maxDur)
+			}
+		}
 		imanim = &schema.AnimationInfo{
 			Duration: ptypes.DurationProto(*dur),
 		}

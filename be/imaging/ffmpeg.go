@@ -17,10 +17,6 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
-const (
-	maxWebmDuration = time.Second * time.Duration(60*2+1) // Two minutes, with 1 second of leeway
-)
-
 func init() {
 	defaultwebmreader = func(r io.Reader) (PixurImage, status.S) {
 		return ffmpegDecode(r)
@@ -207,7 +203,7 @@ func checkValidWebm(resp *probeResponse) status.S {
 	if sts != nil {
 		return sts
 	}
-	if duration < 0 || duration > maxWebmDuration {
+	if duration < 0 {
 		return status.InvalidArgumentf(nil, "Invalid duration: %v for %+v", duration, *resp)
 	}
 
