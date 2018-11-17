@@ -2,6 +2,7 @@ package imaging
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,7 @@ import (
 
 func TestReadImage_noImage(t *testing.T) {
 	var b bytes.Buffer
-	pi, sts := ReadImage(&b)
+	pi, sts := ReadImage(context.Background(), &b)
 	if sts == nil {
 		pi.Close()
 		t.Fatal("expected an error")
@@ -51,7 +52,7 @@ func TestReadImage_partialImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts == nil {
 		pi.Close()
 		t.Fatal("expected an error")
@@ -85,7 +86,7 @@ func TestReadImage_jpeg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -130,7 +131,7 @@ func TestReadImage_png(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -182,7 +183,7 @@ func TestThumbnail_png_offset(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -221,7 +222,7 @@ func TestWriteThumbnail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -246,7 +247,7 @@ func TestWriteThumbnail(t *testing.T) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		t.Fatal(err)
 	}
-	thumb2, sts := ReadImage(f)
+	thumb2, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -279,7 +280,7 @@ func TestReadImage_gif_singleframe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -325,7 +326,7 @@ func TestReadImage_gif_singleframe_duration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -377,7 +378,7 @@ func TestReadImage_gif_multiframe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -437,7 +438,7 @@ func TestReadImage_gif_shortFrameLengthRoundsUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pi, sts := ReadImage(f)
+	pi, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -515,7 +516,7 @@ func TestReadImage_gif_firstFrameSetsSize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	im, sts := ReadImage(f)
+	im, sts := ReadImage(context.Background(), f)
 	if sts != nil {
 		t.Fatal(sts)
 	}

@@ -2,6 +2,7 @@ package imaging
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"io"
 	"math"
@@ -280,7 +281,7 @@ func (pi *imagickImage) Close() {
 	}
 }
 
-func imagickReader(r io.Reader) (PixurImage, status.S) {
+func imagickReader(ctx context.Context, r io.Reader) (PixurImage, status.S) {
 	mw := imagick.NewMagickWand()
 	destroy := true
 	defer func() {

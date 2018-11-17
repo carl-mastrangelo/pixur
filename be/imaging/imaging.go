@@ -2,6 +2,7 @@ package imaging
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"time"
 
@@ -67,15 +68,15 @@ type PixurImage interface {
 	Close()
 }
 
-var defaultimagereader func(r io.Reader) (PixurImage, status.S)
-var defaultwebmreader func(r io.Reader) (PixurImage, status.S)
+var defaultimagereader func(ctx context.Context, r io.Reader) (PixurImage, status.S)
+var defaultwebmreader func(ctx context.Context, r io.Reader) (PixurImage, status.S)
 
 type rra interface {
 	io.Reader
 	io.ReaderAt
 }
 
-func ReadImage(r io.Reader) (PixurImage, status.S) {
+func ReadImage(ctx context.Context, r io.Reader) (PixurImage, status.S) {
 	var ra rra
 	switch r := r.(type) {
 	case rra:
@@ -92,7 +93,7 @@ func ReadImage(r io.Reader) (PixurImage, status.S) {
 		return nil, status.InvalidArgument(err, "unable to read first 4 bytes")
 	}
 	if bytes.Equal(firstfour, []byte(ebmlHeader)) {
-		return defaultwebmreader(ra)
+		return defaultwebmreader(ctx, ra)
 	}
-	return defaultimagereader(ra)
+	return defaultimagereader(ctx, ra)
 }

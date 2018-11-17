@@ -19,14 +19,15 @@ import (
 )
 
 func init() {
-	defaultwebmreader = func(r io.Reader) (PixurImage, status.S) {
-		return ffmpegDecode(context.TODO(), r)
+	defaultwebmreader = func(ctx context.Context, r io.Reader) (PixurImage, status.S) {
+		return ffmpegDecode(ctx, r)
 	}
 }
 
 var _ PixurImage = (*ffmpegImage)(nil)
 
 type ffmpegImage struct {
+	ctx              context.Context
 	videoFrame       image.Image
 	cachedVideoFrame PixurImage
 	probeResponse    *probeResponse
@@ -64,7 +65,7 @@ func (im *ffmpegImage) videoFrameImage() (PixurImage, status.S) {
 		if err := enc.Encode(&buf, im.videoFrame); err != nil {
 			return nil, status.Internal(err, "unable to encode video frame")
 		}
-		im2, sts := ReadImage(bytes.NewReader(buf.Bytes()))
+		im2, sts := ReadImage(im.ctx, bytes.NewReader(buf.Bytes()))
 		if sts != nil {
 			return nil, sts
 		}
@@ -157,6 +158,7 @@ func ffmpegDecode(ctx context.Context, r io.Reader) (_ *ffmpegImage, stscap stat
 	duration, _ := parseFfmpegDuration(resp.Format.Duration)
 
 	return &ffmpegImage{
+		ctx:           ctx,
 		videoFrame:    img,
 		duration:      duration,
 		probeResponse: resp,

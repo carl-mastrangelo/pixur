@@ -1335,7 +1335,7 @@ func TestInsertPerceptualHash(t *testing.T) {
 	if err := gif.Encode(&buf, img, nil); err != nil {
 		t.Fatal(err)
 	}
-	im, sts := imaging.ReadImage(bytes.NewReader(buf.Bytes()))
+	im, sts := imaging.ReadImage(context.Background(), bytes.NewReader(buf.Bytes()))
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -1380,7 +1380,7 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	if err := gif.Encode(&buf, img, nil); err != nil {
 		t.Fatal(err)
 	}
-	im, sts := imaging.ReadImage(bytes.NewReader(buf.Bytes()))
+	im, sts := imaging.ReadImage(context.Background(), bytes.NewReader(buf.Bytes()))
 	if sts != nil {
 		t.Fatal(sts)
 	}

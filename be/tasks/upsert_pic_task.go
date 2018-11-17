@@ -213,7 +213,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return status.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
-	im, sts := imaging.ReadImage(io.NewSectionReader(f, 0, fh.Size))
+	im, sts := imaging.ReadImage(ctx, io.NewSectionReader(f, 0, fh.Size))
 	if sts != nil {
 		return sts
 	}
