@@ -87,7 +87,7 @@ func validatePrintText(text, fieldname string) status.S {
 // for text that can contain newlines
 func validateGraphicText(text, fieldname string) status.S {
 	for i, r := range text {
-		if !unicode.IsGraphic(r) {
+		if !unicode.IsGraphic(r) && r != '\r' && r != '\n' {
 			msg := "nongraphic"
 			return status.InvalidArgumentf(nil, "%s rune '%U' in %s @%d", msg, r, fieldname, i)
 		}
