@@ -3,9 +3,12 @@ package handlers
 import (
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/sync/errgroup"
 
 	"pixur.org/pixur/api"
@@ -27,6 +30,14 @@ type picComment struct {
 	XsrfToken string
 	// CommentText is the initial comment after a failed write
 	CommentText string
+}
+
+func (pc *picComment) CreatedTime() time.Time {
+	ts, err := ptypes.Timestamp(pc.PicComment.CreatedTime)
+	if err != nil {
+		panic(err)
+	}
+	return ts
 }
 
 type viewerDataDeletionReason struct {
@@ -87,6 +98,26 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		}
 		root.Child = m["0"]
 	}
+	var timesort func(children []*picComment)
+	timesort = func(children []*picComment) {
+		if len(children) == 0 {
+			return
+		}
+		sort.Slice(children, func(i, k int) bool {
+			itime, ktime := children[i].CreatedTime(), children[k].CreatedTime()
+			if itime.Before(ktime) {
+				return true
+			} else if itime.After(ktime) {
+				return false
+			} else {
+				return children[i].PicComment.CommentId < children[k].PicComment.CommentId
+			}
+		})
+		for _, c := range children {
+			timesort(c.Child)
+		}
+	}
+	timesort(root.Child)
 
 	data := viewerData{
 		paneData:   pd,
