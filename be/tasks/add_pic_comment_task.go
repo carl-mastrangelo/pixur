@@ -5,6 +5,8 @@ import (
 	"math"
 	"time"
 
+	any "github.com/golang/protobuf/ptypes/any"
+
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
@@ -20,6 +22,9 @@ type AddPicCommentTask struct {
 	PicID           int64
 	CommentParentID int64
 	Text            string
+
+	// Ext is additional extra data associated with this comment.
+	Ext map[string]*any.Any
 
 	// Outs
 	PicComment *schema.PicComment
@@ -95,6 +100,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		CommentParentId: t.CommentParentID,
 		Text:            text,
 		UserId:          u.UserId,
+		Ext:             t.Ext,
 	}
 
 	now := t.Now()
