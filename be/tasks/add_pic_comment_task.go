@@ -116,7 +116,6 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	t.PicComment = pc
 
-	// TODO: allow self replies?  Allow multiple replies by the same user?
 	// TODO: ratelimit
 
 	return nil

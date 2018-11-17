@@ -279,3 +279,105 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 		t.Error("have", have, "want", want)
 	}
 }
+
+func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_COMMENT_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+
+	task := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+		Text:  "hi",
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	if task.PicComment == nil {
+		t.Fatal("no comment created")
+	}
+
+	task2 := &AddPicCommentTask{
+		PicID:           p.Pic.PicId,
+		CommentParentID: task.PicComment.CommentId,
+		Beg:             c.DB(),
+		Now:             time.Now,
+		Text:            "hello",
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task2); sts != nil {
+		t.Fatal(sts)
+	}
+
+	expected2 := &schema.PicComment{
+		PicId:           p.Pic.PicId,
+		UserId:          u.User.UserId,
+		Text:            "hello",
+		CommentId:       task2.PicComment.CommentId,
+		CommentParentId: task.PicComment.CommentId,
+	}
+	task2.PicComment.CreatedTs = nil
+	task2.PicComment.ModifiedTs = nil
+
+	if !proto.Equal(expected2, task2.PicComment) {
+		t.Error("have", task2.PicComment, "want", expected2)
+	}
+}
+
+func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_COMMENT_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+
+	task := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+		Text:  "hi",
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	if task.PicComment == nil {
+		t.Fatal("no comment created")
+	}
+
+	task2 := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+		Text:  "hello",
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task2); sts != nil {
+		t.Fatal(sts)
+	}
+
+	expected2 := &schema.PicComment{
+		PicId:     p.Pic.PicId,
+		UserId:    u.User.UserId,
+		Text:      "hello",
+		CommentId: task2.PicComment.CommentId,
+	}
+	task2.PicComment.CreatedTs = nil
+	task2.PicComment.ModifiedTs = nil
+
+	if !proto.Equal(expected2, task2.PicComment) {
+		t.Error("have", task2.PicComment, "want", expected2)
+	}
+}
