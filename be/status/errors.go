@@ -124,17 +124,24 @@ func (s *status) Format(f fmt.State, r rune) {
 
 func (s *status) String() string {
 	var b strings.Builder
-	s.writeAll(&b, "", "")
+	s.writeAll(&b, nil, "", "")
 	return b.String()
 }
 
 func (s *status) dontImplementMe() {
 }
 
-func (s *status) writeAll(b *strings.Builder, caption, prefix string) {
+func (s *status) writeAll(b *strings.Builder, enclosingTrace []uintptr, caption, prefix string) {
 	s.writeSelf(b, caption, prefix)
 	if len(s.stack) != 0 {
-		frames := runtime.CallersFrames(s.stack)
+		c := 0 // common
+		for i, k := len(s.stack)-1, len(enclosingTrace)-1; i >= 0 && k >= 0; i, k, c = i-1, k-1, c+1 {
+			if s.stack[i] != enclosingTrace[k] {
+				break
+			}
+		}
+
+		frames := runtime.CallersFrames(s.stack[:len(s.stack)-c])
 		for {
 			f, more := frames.Next()
 			b.WriteRune('\n')
@@ -150,11 +157,18 @@ func (s *status) writeAll(b *strings.Builder, caption, prefix string) {
 				break
 			}
 		}
+		if c != 0 {
+			b.WriteRune('\n')
+			b.WriteString(prefix)
+			b.WriteString("\t... ")
+			b.WriteString(strconv.Itoa(c))
+			b.WriteString(" more")
+		}
 	}
 	for _, suppressed := range s.suppressed {
 		b.WriteRune('\n')
 		if ss, ok := suppressed.(*status); ok {
-			ss.writeAll(b, "Suppressed: ", prefix+"\t")
+			ss.writeAll(b, s.stack, "Suppressed: ", prefix+"\t")
 		} else {
 			fmt.Fprintf(b, "%sSuppressed: %v\n", prefix+"\t", suppressed) // usually an error
 		}
@@ -162,7 +176,7 @@ func (s *status) writeAll(b *strings.Builder, caption, prefix string) {
 	if s.cause != nil {
 		b.WriteRune('\n')
 		if c, ok := s.cause.(*status); ok {
-			c.writeAll(b, "Caused by: ", prefix)
+			c.writeAll(b, s.stack, "Caused by: ", prefix)
 		} else {
 			fmt.Fprintf(b, "%sCaused by: %v", prefix, s.cause) // usually an error
 		}
