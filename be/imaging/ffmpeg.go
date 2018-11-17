@@ -2,6 +2,7 @@ package imaging
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"image"
 	"image/png"
@@ -19,7 +20,7 @@ import (
 
 func init() {
 	defaultwebmreader = func(r io.Reader) (PixurImage, status.S) {
-		return ffmpegDecode(r)
+		return ffmpegDecode(context.TODO(), r)
 	}
 }
 
@@ -92,31 +93,43 @@ func (im *ffmpegImage) Write(io.Writer) status.S {
 	return status.Unimplemented(nil, "write not supported")
 }
 
-func ffmpegDecode(r io.Reader) (*ffmpegImage, status.S) {
+func ffmpegDecode(ctx context.Context, r io.Reader) (_ *ffmpegImage, stscap status.S) {
 	var wg sync.WaitGroup
 
 	pr, pw := io.Pipe()
-	defer pr.Close()
-	defer pw.Close()
+	defer func() {
+		if err := pr.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close pipe reader"))
+		}
+		if err := pw.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close pipe writer"))
+		}
+	}()
 	var resp *probeResponse
 	var probeSts status.S
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		resp, probeSts = ffmpegProbe(pr)
+		resp, probeSts = ffmpegProbe(ctx, pr)
 		// Throw away extra data, to not block the multiwriter
 		io.Copy(ioutil.Discard, pr)
 	}()
 
 	cr, cw := io.Pipe()
-	defer cr.Close()
-	defer cw.Close()
+	defer func() {
+		if err := cr.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close pipe reader"))
+		}
+		if err := cw.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close pipe writer"))
+		}
+	}()
 	var img image.Image
 	var convertSts status.S
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		img, convertSts = ffmpegConvert(cr)
+		img, convertSts = ffmpegConvert(ctx, cr)
 		io.Copy(ioutil.Discard, cr)
 	}()
 
@@ -150,8 +163,9 @@ func ffmpegDecode(r io.Reader) (*ffmpegImage, status.S) {
 	}, nil
 }
 
-func ffmpegConvert(r io.Reader) (image.Image, status.S) {
-	cmd := exec.Command(
+func ffmpegConvert(ctx context.Context, r io.Reader) (_ image.Image, stscap status.S) {
+	cmd := exec.CommandContext(
+		ctx,
 		"ffmpeg",
 		"-hide_banner",
 		"-t", "1.0", // Grab the last frame before the first second
@@ -170,25 +184,45 @@ func ffmpegConvert(r io.Reader) (image.Image, status.S) {
 	if err != nil {
 		return nil, status.Internal(err, "unable to create pipe")
 	}
-	defer stdout.Close()
+	close_ := true
+	defer func() {
+		if !close_ {
+			return
+		}
+		if err := stdout.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close stdout"))
+		}
+	}()
 
 	if err := cmd.Start(); err != nil {
 		return nil, status.Internal(err, "unable to start ffmpeg: "+errBuf.String())
 	}
-	defer cmd.Process.Kill()
+	kill := true
+	defer func() {
+		if !kill {
+			return
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't kill ffmpeg"))
+		}
+	}()
 
 	im, sts := keepLastImage(stdout)
 	if sts != nil {
 		// This should be a deferred
 		return nil, status.Internal(sts, "unable to get sample image: "+errBuf.String())
 	}
-	// See explanation why in probe()
-	if err := stdout.Close(); err != nil {
-		return nil, status.Internal(err, "unable to close stdout stream")
+	// discard any remaining frames.  This should not happen, but I don't want to risk cmd.Wait()
+	// hanging.
+	if _, err := io.Copy(ioutil.Discard, stdout); err != nil {
+		return nil, status.Internal(err, "unable to discard excess frames: "+errBuf.String())
 	}
+
+	close_ = false // Wait causes the close to happen
 	if err := cmd.Wait(); err != nil {
 		return nil, status.Internal(err, "unable to wait on ffmpeg: "+errBuf.String())
 	}
+	kill = false
 	return im, nil
 }
 
@@ -232,8 +266,9 @@ func checkValidWebm(resp *probeResponse) status.S {
 	return nil
 }
 
-func ffmpegProbe(r io.Reader) (*probeResponse, status.S) {
-	cmd := exec.Command(
+func ffmpegProbe(ctx context.Context, r io.Reader) (_ *probeResponse, stscap status.S) {
+	cmd := exec.CommandContext(
+		ctx,
 		"ffprobe",
 		"-hide_banner",
 		"-print_format", "json",
@@ -252,11 +287,20 @@ func ffmpegProbe(r io.Reader) (*probeResponse, status.S) {
 	if err := cmd.Start(); err != nil {
 		return nil, status.Internal(err, "Unable to start ffprobe: "+errBuf.String())
 	}
-	defer cmd.Process.Kill()
+	kill := true
+	defer func() {
+		if !kill {
+			return
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't kill ffprobe"))
+		}
+	}()
 
 	if err := cmd.Wait(); err != nil {
 		return nil, status.Internal(err, "Unable to wait on ffprobe: "+errBuf.String())
 	}
+	kill = false
 
 	resp := new(probeResponse)
 	if err := json.NewDecoder(&outBuf).Decode(resp); err != nil {
@@ -264,31 +308,6 @@ func ffmpegProbe(r io.Reader) (*probeResponse, status.S) {
 	}
 
 	return resp, nil
-}
-
-// Reads in a concatenated set of images and returns the last one.
-// An error is returned if no images could be read, or the there was a
-// decode error.
-func keepLastFfmpegImage(r io.Reader) (image.Image, status.S) {
-	maxFrames := 120
-	var im image.Image
-	for i := 0; i < maxFrames; i++ {
-		// don't use image.Decode because it doesn't return EOF on EOF
-		lastIm, err := png.Decode(r)
-
-		if err == io.ErrUnexpectedEOF {
-			break
-		} else if err != nil {
-			return nil, status.Internal(err, "unable to find frame")
-		}
-		im = lastIm
-	}
-
-	if im == nil {
-		return nil, status.InvalidArgument(nil, "unable to find frames in video file")
-	}
-
-	return im, nil
 }
 
 // parseFfmpegDuration parses the ffmpeg rational format
@@ -328,17 +347,16 @@ func keepLastImage(r io.Reader) (image.Image, status.S) {
 		lastIm, err := png.Decode(r)
 
 		if err == io.ErrUnexpectedEOF {
-			break
+			if im == nil {
+				return nil, status.InvalidArgument(err, "unable to find frames in video file")
+			} else {
+				return im, nil
+			}
 		} else if err != nil {
-			return nil, status.InvalidArgument(err, "unable to decode png image")
+			return nil, status.Internal(err, "unable to decode png image")
 		}
 		im = lastIm
 	}
-
-	if im == nil {
-		return nil, status.InvalidArgument(nil, "No frames in webm")
-	}
-
 	return im, nil
 }
 
