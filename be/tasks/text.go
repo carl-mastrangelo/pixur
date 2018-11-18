@@ -9,8 +9,6 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
-// TODO: test
-
 type textValidator func(text, fieldname string) status.S
 
 // for text that cannot contain newlines
@@ -32,6 +30,7 @@ func validateAndNormalizeText(text, fieldname string, min, max int64, validate t
 		return "", sts
 	}
 	newtext := normalizeUnicodeTextUnsafe(text)
+	// validate length again, as normalization can expand text.
 	if sts := validateMaxLength(newtext, fieldname, min, max); sts != nil {
 		return "", sts
 	}
@@ -58,8 +57,8 @@ func validateMaxLength(text, fieldname string, min, max int64) status.S {
 }
 
 func normalizeUnicodeText(text, fieldname string) (string, status.S) {
-	if !utf8.ValidString(text) {
-		return "", status.InvalidArgumentf(nil, "invalid %s utf8 text: '%s'", fieldname, text)
+	if sts := validateUtf8(text, fieldname); sts != nil {
+		return "", sts
 	}
 	return normalizeUnicodeTextUnsafe(text), nil
 }
@@ -87,7 +86,7 @@ func validatePrintText(text, fieldname string) status.S {
 // for text that can contain newlines
 func validateGraphicText(text, fieldname string) status.S {
 	for i, r := range text {
-		if !unicode.IsGraphic(r) && r != '\r' && r != '\n' {
+		if !unicode.IsGraphic(r) && r != '\r' && r != '\n' && r != '\t' {
 			msg := "nongraphic"
 			return status.InvalidArgumentf(nil, "%s rune '%U' in %s @%d", msg, r, fieldname, i)
 		}
