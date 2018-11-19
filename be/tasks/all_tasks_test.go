@@ -28,18 +28,23 @@ var sqlAdapterName = "sqlite3"
 
 type TestContainer struct {
 	T       testing.TB
+	Ctx     context.Context
+	cancel  func()
 	db      db.DB
 	tempdir string
 }
 
 func Container(t testing.TB) *TestContainer {
+	ctx, cancel := context.WithCancel(context.Background())
 	c := &TestContainer{
-		T: t,
+		T:      t,
+		Ctx:    ctx,
+		cancel: cancel,
 	}
 	task := &LoadConfigurationTask{
 		Beg: c.DB(),
 	}
-	if sts := new(TaskRunner).Run(context.TODO(), task); sts != nil {
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 	return c
@@ -57,7 +62,7 @@ func (c *TestContainer) DB() db.DB {
 		var stmts []string
 		stmts = append(stmts, tab.SqlTables[db.Adapter().Name()]...)
 		stmts = append(stmts, tab.SqlInitTables[db.Adapter().Name()]...)
-		if err := db.InitSchema(context.TODO(), stmts); err != nil {
+		if err := db.InitSchema(c.Ctx, stmts); err != nil {
 			c.T.Fatal(err)
 		}
 		c.db = db
@@ -66,6 +71,7 @@ func (c *TestContainer) DB() db.DB {
 }
 
 func (c *TestContainer) Close() {
+	c.cancel()
 	if c.db != nil {
 		if err := c.db.Close(); err != nil {
 			c.T.Fatal(err)
@@ -81,7 +87,7 @@ func (c *TestContainer) Close() {
 }
 
 func (c *TestContainer) Job() *tab.Job {
-	j, err := tab.NewJob(context.Background(), c.DB())
+	j, err := tab.NewJob(c.Ctx, c.DB())
 	if err != nil {
 		c.T.Fatal(err)
 	}
