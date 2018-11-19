@@ -199,46 +199,51 @@ message PicVote {
   map<string, google.protobuf.Any> ext = 6;
 }
 
-message UserPicEvent {
+message UserEvent {
   int64 user_id = 1;
-  int64 pic_id = 2;
   // If multiple events are being created for a single pic, this acts as a tie breaker.
-  int64 index = 3;
+  int64 index = 2;
 
-  google.protobuf.Timestamp created_ts = 4;
-  google.protobuf.Timestamp modified_ts = 5;
+  // Indexed and can't change
+  google.protobuf.Timestamp created_ts = 3;
+  google.protobuf.Timestamp modified_ts = 4;
 
-  // IncomingUpsertPicVoteEvent represents sending a vote on a pic another user made.  If a user
-  // self-votes, OutgoingUpsertPicVoteEvent will be created instead of IncomingUpsertPicVoteEvent.
-  message OutgoingUpsertPicVoteEvent {}
+  // IncomingUpsertPicVote represents sending a vote on a pic another user made.  If a user
+  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
+  message OutgoingUpsertPicVote {
+    int64 pic_id = 1;
+  }
 
-  // IncomingUpsertPicVoteEvent represents receiving a vote on a pic they made.  If a user
-  // self-votes, OutgoingUpsertPicVoteEvent will be created instead of IncomingUpsertPicVoteEvent.
-  message IncomingUpsertPicVoteEvent {
+  // IncomingUpsertPicVote represents receiving a vote on a pic they made.  If a user
+  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
+  message IncomingUpsertPicVote {
     // The user who made the vote
     int64 subject_user_id = 1;
+    int64 pic_id = 2;
   }
 
-  // OutgoingPicCommentEvent represents commenting on someone else's pic.  If a user comments on
-  // their own pic, OutgoingPicCommentEvent will be used instead of IncomingPicCommentEvent.
-  message OutgoingPicCommentEvent {
+  // OutgoingPicComment represents commenting on someone else's pic.  If a user comments on
+  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
+  message OutgoingPicComment {
     // comment_id is the comment that this user created.
     int64 comment_id = 1;
+    int64 pic_id = 2;
   }
 
-  // IncomingPicCommentEvent represents commenting on someone else's pic.  If a user comments on
-  // their own pic, OutgoingPicCommentEvent will be used instead of IncomingPicCommentEvent.
-  message IncomingPicCommentEvent {
+  // IncomingPicComment represents commenting on someone else's pic.  If a user comments on
+  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
+  message IncomingPicComment {
     // comment_id is the newly created child comment, **not** the one owned by user_id.  The
     // comment_parent_id of the given comment must be owned by user_id.
     int64 comment_id = 1;
+    int64 pic_id = 2;
   }
 
   oneof evt {
-    OutgoingUpsertPicVoteEvent outgoing_upsert_pic_vote_evt = 6;
-    IncomingUpsertPicVoteEvent incoming_upsert_pic_vote_evt = 7;
-    OutgoingPicCommentEvent outgoing_pic_comment_evt = 8;
-    IncomingPicCommentEvent incoming_pic_comment_evt = 9;
+    OutgoingUpsertPicVote outgoing_upsert_pic_vote = 5;
+    IncomingUpsertPicVote incoming_upsert_pic_vote = 6;
+    OutgoingPicComment outgoing_pic_comment = 7;
+    IncomingPicComment incoming_pic_comment = 8;
   }
 }
 

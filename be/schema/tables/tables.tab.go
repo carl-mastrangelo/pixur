@@ -132,23 +132,19 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE TABLE \"UserPicEvents\" (" +
+		"CREATE TABLE \"UserEvents\" (" +
 
 			"\"user_id\" bigint NOT NULL, " +
 
-			"\"pic_id\" bigint NOT NULL, " +
+			"\"created_ts\" bigint NOT NULL, " +
 
 			"\"index\" bigint NOT NULL, " +
 
-			"\"created_ts\" bigint NOT NULL, " +
-
 			"\"data\" bytea NOT NULL, " +
 
-			"PRIMARY KEY(\"user_id\",\"pic_id\",\"index\")" +
+			"PRIMARY KEY(\"user_id\",\"created_ts\",\"index\")" +
 
 			");",
-
-		"CREATE INDEX \"UserPicEventsRecent\" ON \"UserPicEvents\" (\"user_id\",\"created_ts\");",
 
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
 	},
@@ -261,23 +257,19 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE TABLE `UserPicEvents` (" +
+		"CREATE TABLE `UserEvents` (" +
 
 			"`user_id` bigint(20) NOT NULL, " +
 
-			"`pic_id` bigint(20) NOT NULL, " +
+			"`created_ts` bigint(20) NOT NULL, " +
 
 			"`index` bigint(20) NOT NULL, " +
 
-			"`created_ts` bigint(20) NOT NULL, " +
-
 			"`data` blob NOT NULL, " +
 
-			"PRIMARY KEY(`user_id`,`pic_id`,`index`)" +
+			"PRIMARY KEY(`user_id`,`created_ts`,`index`)" +
 
 			");",
-
-		"CREATE INDEX `UserPicEventsRecent` ON `UserPicEvents` (`user_id`,`created_ts`);",
 
 		"CREATE TABLE `_SequenceTable` (`the_sequence` bigint(20) NOT NULL);",
 	},
@@ -390,23 +382,19 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE TABLE \"UserPicEvents\" (" +
+		"CREATE TABLE \"UserEvents\" (" +
 
 			"\"user_id\" bigint NOT NULL, " +
 
-			"\"pic_id\" bigint NOT NULL, " +
+			"\"created_ts\" bigint NOT NULL, " +
 
 			"\"index\" bigint NOT NULL, " +
 
-			"\"created_ts\" bigint NOT NULL, " +
-
 			"\"data\" bytea NOT NULL, " +
 
-			"PRIMARY KEY(\"user_id\",\"pic_id\",\"index\")" +
+			"PRIMARY KEY(\"user_id\",\"created_ts\",\"index\")" +
 
 			");",
-
-		"CREATE INDEX \"UserPicEventsRecent\" ON \"UserPicEvents\" (\"user_id\",\"created_ts\");",
 
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
 	},
@@ -519,23 +507,19 @@ var SqlTables = map[string][]string{
 
 			");",
 
-		"CREATE TABLE \"UserPicEvents\" (" +
+		"CREATE TABLE \"UserEvents\" (" +
 
 			"\"user_id\" integer NOT NULL, " +
 
-			"\"pic_id\" integer NOT NULL, " +
+			"\"created_ts\" integer NOT NULL, " +
 
 			"\"index\" integer NOT NULL, " +
 
-			"\"created_ts\" integer NOT NULL, " +
-
 			"\"data\" blob NOT NULL, " +
 
-			"PRIMARY KEY(\"user_id\",\"pic_id\",\"index\")" +
+			"PRIMARY KEY(\"user_id\",\"created_ts\",\"index\")" +
 
 			");",
-
-		"CREATE INDEX \"UserPicEventsRecent\" ON \"UserPicEvents\" (\"user_id\",\"created_ts\");",
 
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" integer NOT NULL);",
 	},
@@ -1887,72 +1871,25 @@ func (j *Job) DeleteUser(key UsersPrimary) error {
 	return db.Delete(j.tx, "Users", key, j.adap)
 }
 
-type UserPicEventsPrimary struct {
+type UserEventsPrimary struct {
 	UserId *int64
 
-	PicId *int64
+	CreatedTs *int64
 
 	Index *int64
 }
 
-func (_ UserPicEventsPrimary) Unique() {}
+func (_ UserEventsPrimary) Unique() {}
 
-var _ db.UniqueIdx = UserPicEventsPrimary{}
+var _ db.UniqueIdx = UserEventsPrimary{}
 
-var colsUserPicEventsPrimary = []string{"user_id", "pic_id", "index"}
+var colsUserEventsPrimary = []string{"user_id", "created_ts", "index"}
 
-func (idx UserPicEventsPrimary) Cols() []string {
-	return colsUserPicEventsPrimary
+func (idx UserEventsPrimary) Cols() []string {
+	return colsUserEventsPrimary
 }
 
-func (idx UserPicEventsPrimary) Vals() (vals []interface{}) {
-	var done bool
-
-	if idx.UserId != nil {
-		if done {
-			panic("Extra value UserId")
-		}
-		vals = append(vals, *idx.UserId)
-	} else {
-		done = true
-	}
-
-	if idx.PicId != nil {
-		if done {
-			panic("Extra value PicId")
-		}
-		vals = append(vals, *idx.PicId)
-	} else {
-		done = true
-	}
-
-	if idx.Index != nil {
-		if done {
-			panic("Extra value Index")
-		}
-		vals = append(vals, *idx.Index)
-	} else {
-		done = true
-	}
-
-	return
-}
-
-type UserPicEventsRecent struct {
-	UserId *int64
-
-	CreatedTs *int64
-}
-
-var _ db.Idx = UserPicEventsRecent{}
-
-var colsUserPicEventsRecent = []string{"user_id", "created_ts"}
-
-func (idx UserPicEventsRecent) Cols() []string {
-	return colsUserPicEventsRecent
-}
-
-func (idx UserPicEventsRecent) Vals() (vals []interface{}) {
+func (idx UserEventsPrimary) Vals() (vals []interface{}) {
 	var done bool
 
 	if idx.UserId != nil {
@@ -1973,32 +1910,41 @@ func (idx UserPicEventsRecent) Vals() (vals []interface{}) {
 		done = true
 	}
 
+	if idx.Index != nil {
+		if done {
+			panic("Extra value Index")
+		}
+		vals = append(vals, *idx.Index)
+	} else {
+		done = true
+	}
+
 	return
 }
 
-func KeyForUserPicEvent(pb *schema.UserPicEvent) UserPicEventsPrimary {
+func KeyForUserEvent(pb *schema.UserEvent) UserEventsPrimary {
 
 	UserId := pb.UserIdCol()
 
-	PicId := pb.PicIdCol()
+	CreatedTs := pb.CreatedTsCol()
 
 	Index := pb.IndexCol()
 
-	return UserPicEventsPrimary{
+	return UserEventsPrimary{
 
 		UserId: &UserId,
 
-		PicId: &PicId,
+		CreatedTs: &CreatedTs,
 
 		Index: &Index,
 	}
 }
 
-var colsUserPicEvents = []string{"user_id", "pic_id", "index", "created_ts", "data"}
+var colsUserEvents = []string{"user_id", "created_ts", "index", "data"}
 
-func (j *Job) ScanUserPicEvents(opts db.Opts, cb func(*schema.UserPicEvent) error) error {
-	return db.Scan(j.tx, "UserPicEvents", opts, func(data []byte) error {
-		var pb schema.UserPicEvent
+func (j *Job) ScanUserEvents(opts db.Opts, cb func(*schema.UserEvent) error) error {
+	return db.Scan(j.tx, "UserEvents", opts, func(data []byte) error {
+		var pb schema.UserEvent
 		if err := proto.Unmarshal(data, &pb); err != nil {
 			return err
 		}
@@ -2006,46 +1952,40 @@ func (j *Job) ScanUserPicEvents(opts db.Opts, cb func(*schema.UserPicEvent) erro
 	}, j.adap)
 }
 
-func (j *Job) FindUserPicEvents(opts db.Opts) (rows []*schema.UserPicEvent, err error) {
-	err = j.ScanUserPicEvents(opts, func(data *schema.UserPicEvent) error {
+func (j *Job) FindUserEvents(opts db.Opts) (rows []*schema.UserEvent, err error) {
+	err = j.ScanUserEvents(opts, func(data *schema.UserEvent) error {
 		rows = append(rows, data)
 		return nil
 	})
 	return
 }
 
-var _ interface{ UserIdCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ UserIdCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ PicIdCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ CreatedTsCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ IndexCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ IndexCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ CreatedTsCol() int64 } = (*schema.UserPicEvent)(nil)
-
-func (j *Job) InsertUserPicEvent(pb *schema.UserPicEvent) error {
-	return j.InsertUserPicEventRow(&UserPicEventRow{
+func (j *Job) InsertUserEvent(pb *schema.UserEvent) error {
+	return j.InsertUserEventRow(&UserEventRow{
 		Data: pb,
 
 		UserId: pb.UserIdCol(),
 
-		PicId: pb.PicIdCol(),
+		CreatedTs: pb.CreatedTsCol(),
 
 		Index: pb.IndexCol(),
-
-		CreatedTs: pb.CreatedTsCol(),
 	})
 }
 
-func (j *Job) InsertUserPicEventRow(row *UserPicEventRow) error {
+func (j *Job) InsertUserEventRow(row *UserEventRow) error {
 	var vals []interface{}
 
 	vals = append(vals, row.UserId)
 
-	vals = append(vals, row.PicId)
+	vals = append(vals, row.CreatedTs)
 
 	vals = append(vals, row.Index)
-
-	vals = append(vals, row.CreatedTs)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err
@@ -2053,43 +1993,37 @@ func (j *Job) InsertUserPicEventRow(row *UserPicEventRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Insert(j.tx, "UserPicEvents", colsUserPicEvents, vals, j.adap)
+	return db.Insert(j.tx, "UserEvents", colsUserEvents, vals, j.adap)
 }
 
-var _ interface{ UserIdCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ UserIdCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ PicIdCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ CreatedTsCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ IndexCol() int64 } = (*schema.UserPicEvent)(nil)
+var _ interface{ IndexCol() int64 } = (*schema.UserEvent)(nil)
 
-var _ interface{ CreatedTsCol() int64 } = (*schema.UserPicEvent)(nil)
-
-func (j *Job) UpdateUserPicEvent(pb *schema.UserPicEvent) error {
-	return j.UpdateUserPicEventRow(&UserPicEventRow{
+func (j *Job) UpdateUserEvent(pb *schema.UserEvent) error {
+	return j.UpdateUserEventRow(&UserEventRow{
 		Data: pb,
 
 		UserId: pb.UserIdCol(),
 
-		PicId: pb.PicIdCol(),
+		CreatedTs: pb.CreatedTsCol(),
 
 		Index: pb.IndexCol(),
-
-		CreatedTs: pb.CreatedTsCol(),
 	})
 }
 
-func (j *Job) UpdateUserPicEventRow(row *UserPicEventRow) error {
-	key := KeyForUserPicEvent(row.Data)
+func (j *Job) UpdateUserEventRow(row *UserEventRow) error {
+	key := KeyForUserEvent(row.Data)
 
 	var vals []interface{}
 
 	vals = append(vals, row.UserId)
 
-	vals = append(vals, row.PicId)
+	vals = append(vals, row.CreatedTs)
 
 	vals = append(vals, row.Index)
-
-	vals = append(vals, row.CreatedTs)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err
@@ -2097,9 +2031,9 @@ func (j *Job) UpdateUserPicEventRow(row *UserPicEventRow) error {
 		vals = append(vals, val)
 	}
 
-	return db.Update(j.tx, "UserPicEvents", colsUserPicEvents, vals, key, j.adap)
+	return db.Update(j.tx, "UserEvents", colsUserEvents, vals, key, j.adap)
 }
 
-func (j *Job) DeleteUserPicEvent(key UserPicEventsPrimary) error {
-	return db.Delete(j.tx, "UserPicEvents", key, j.adap)
+func (j *Job) DeleteUserEvent(key UserEventsPrimary) error {
+	return db.Delete(j.tx, "UserEvents", key, j.adap)
 }
