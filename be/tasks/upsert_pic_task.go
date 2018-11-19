@@ -103,6 +103,13 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if sts != nil {
 		return sts
 	}
+	var ext map[string]*any.Any
+	if len(t.Ext) != 0 {
+		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_CREATE); sts != nil {
+			return sts
+		}
+		ext = t.Ext
+	}
 	var minUrlLen, maxUrlLen int64
 	if conf.MinUrlLength != nil {
 		minUrlLen = conf.MinUrlLength.Value
@@ -189,7 +196,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
+				return mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
 			}
 		}
 	}
@@ -256,7 +263,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
+			return mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -334,7 +341,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		AnimationInfo: imfanim,
 	})
 
-	if sts := mergePic(j, p, now, pfs, t.Ext, t.TagNames, u.UserId, minTagLen, maxTagLen); sts != nil {
+	if sts := mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen); sts != nil {
 		return sts
 	}
 

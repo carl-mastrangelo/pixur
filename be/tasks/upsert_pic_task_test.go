@@ -119,6 +119,94 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	compareStatus(t, sts, expected)
 }
 
+func TestUpsertPicTask_MissingPicExtCap(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	pfs := &schema.Pic_FileSource{}
+	a, err := ptypes.MarshalAny(pfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := map[string]*any.Any{"foo": a}
+
+	task := &UpsertPicTask{
+		Beg:      c.DB(),
+		Now:      time.Now,
+		File:     f,
+		TagNames: []string{"tag"},
+		Ext:      ext,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	expected := status.PermissionDenied(nil, "missing cap PIC_EXTENSION_CREATE")
+	compareStatus(t, sts, expected)
+}
+
+func TestUpsertPicTask_PresentPicExtCap(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_CREATE, schema.User_PIC_EXTENSION_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	pfs := &schema.Pic_FileSource{}
+	a, err := ptypes.MarshalAny(pfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := map[string]*any.Any{"foo": a}
+
+	task := &UpsertPicTask{
+		Beg:      c.DB(),
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+		Remove:   os.Remove,
+		Now:      time.Now,
+
+		File:     f,
+		TagNames: []string{"tag"},
+		Ext:      ext,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
 func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
@@ -727,13 +815,14 @@ func TestMerge(t *testing.T) {
 	p.Update()
 	now := time.Now()
 	userID := int64(-1)
+
+	tagNames := []string{"a", "b"}
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
 		UserId:    userID,
 		Name:      "Name",
 		CreatedTs: schema.ToTspb(now),
 	}
-	tagNames := []string{"a", "b"}
 	a, err := ptypes.MarshalAny(pfs)
 	if err != nil {
 		t.Fatal(err)
