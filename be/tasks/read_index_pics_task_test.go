@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -95,13 +94,13 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %s in\n %s", p, task.Pics)
+		t.Fatalf("Unable to find %v in\n %v", p, task.Pics)
 	}
 }
 
@@ -119,7 +118,7 @@ func TestReadIndexTaskWorkflow_validateExtCapFails(t *testing.T) {
 		Beg:                c.DB(),
 		CheckReadPicExtCap: true,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -148,7 +147,7 @@ func TestReadIndexTaskWorkflow_validateExtCapSucceeds(t *testing.T) {
 		Beg:                c.DB(),
 		CheckReadPicExtCap: true,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -174,13 +173,13 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %s in\n %s", p1, task.Pics)
+		t.Fatalf("Unable to find %v in\n %v", p1, task.Pics)
 	}
 }
 
@@ -212,7 +211,7 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -263,7 +262,7 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 		MaxPics:   1,
 		Ascending: true,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -319,7 +318,7 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
