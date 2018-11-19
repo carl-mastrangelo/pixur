@@ -187,11 +187,12 @@ func TestValidateCapability_capabilitiesNotMerged(t *testing.T) {
 	}
 }
 
-////////////////////////////////////////////
-
 func TestRequireCapability_worksOnNilUser(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	j := c.Job()
+	defer j.Rollback()
 
 	conf := &schema.Configuration{
 		AnonymousCapability: &schema.Configuration_CapabilitySet{
@@ -202,7 +203,7 @@ func TestRequireCapability_worksOnNilUser(t *testing.T) {
 	}
 	ctx := CtxFromTestConfig(context.Background(), conf)
 
-	_, sts := requireCapability(ctx, c.Job(), schema.User_PIC_READ)
+	_, sts := requireCapability(ctx, j, schema.User_PIC_READ)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -211,6 +212,9 @@ func TestRequireCapability_worksOnNilUser(t *testing.T) {
 func TestRequireCapability_failOnNilUserWithoutCap(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
+
+	j := c.Job()
+	defer j.Rollback()
 
 	conf := &schema.Configuration{
 		AnonymousCapability: &schema.Configuration_CapabilitySet{
@@ -221,7 +225,7 @@ func TestRequireCapability_failOnNilUserWithoutCap(t *testing.T) {
 	}
 	ctx := CtxFromTestConfig(context.Background(), conf)
 
-	_, sts := requireCapability(ctx, c.Job(), schema.User_PIC_READ)
+	_, sts := requireCapability(ctx, j, schema.User_PIC_READ)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -241,6 +245,9 @@ func TestRequireCapability_worksOnPresentUser(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
 	u.Update()
 
+	j := c.Job()
+	defer j.Rollback()
+
 	conf := &schema.Configuration{
 		AnonymousCapability: &schema.Configuration_CapabilitySet{
 			Capability: []schema.User_Capability{},
@@ -249,7 +256,7 @@ func TestRequireCapability_worksOnPresentUser(t *testing.T) {
 	ctx := CtxFromTestConfig(context.Background(), conf)
 	ctx = CtxFromUserID(ctx, u.User.UserId)
 
-	foundUser, sts := requireCapability(ctx, c.Job(), schema.User_PIC_CREATE)
+	foundUser, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -265,6 +272,9 @@ func TestRequireCapability_failsOnPresentUserWithoutCap(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_READ)
 	u.Update()
 
+	j := c.Job()
+	defer j.Rollback()
+
 	conf := &schema.Configuration{
 		AnonymousCapability: &schema.Configuration_CapabilitySet{
 			Capability: []schema.User_Capability{},
@@ -273,7 +283,7 @@ func TestRequireCapability_failsOnPresentUserWithoutCap(t *testing.T) {
 	ctx := CtxFromTestConfig(context.Background(), conf)
 	ctx = CtxFromUserID(ctx, u.User.UserId)
 
-	_, sts := requireCapability(ctx, c.Job(), schema.User_PIC_CREATE)
+	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -301,11 +311,14 @@ func TestRequireCapability_capabilitiesNotMerged(t *testing.T) {
 		},
 	}
 
+	j := c.Job()
+	defer j.Rollback()
+
 	ctx := CtxFromTestConfig(context.Background(), conf)
 	ctx = CtxFromUserID(ctx, u.User.UserId)
 	// Even though the anonymous user has the cap, don't allow it.  This prevents
 	// accidental privelege access for limited users.
-	_, sts := requireCapability(ctx, c.Job(), schema.User_PIC_CREATE)
+	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -329,13 +342,15 @@ func TestRequireCapability_capabilitiesNotMergedOnBadUser(t *testing.T) {
 			},
 		},
 	}
+	j := c.Job()
+	defer j.Rollback()
 
 	ctx := CtxFromTestConfig(context.Background(), conf)
 	// a user which does not exist doesn't escalate to anonymous capability.
 	ctx = CtxFromUserID(ctx, -1)
 	// Even though the anonymous user has the cap, don't allow it.  This prevents
 	// accidental privelege access for limited users.
-	_, sts := requireCapability(ctx, c.Job(), schema.User_PIC_CREATE)
+	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
