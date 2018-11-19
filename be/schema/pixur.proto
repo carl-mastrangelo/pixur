@@ -235,10 +235,10 @@ message UserPicEvent {
   }
 
   oneof evt {
-    OutgoingUpsertPicVoteEvent outgoing_upsert_pic_vote_event = 6;
-    IncomingUpsertPicVoteEvent incoming_upsert_pic_vote_event = 7;
-    OutgoingPicCommentEvent outgoing_pic_coment_event = 8;
-    IncomingPicCommentEvent incoming_pic_coment_event = 9;
+    OutgoingUpsertPicVoteEvent outgoing_upsert_pic_vote_evt = 6;
+    IncomingUpsertPicVoteEvent incoming_upsert_pic_vote_evt = 7;
+    OutgoingPicCommentEvent outgoing_pic_comment_evt = 8;
+    IncomingPicCommentEvent incoming_pic_comment_evt = 9;
   }
 }
 
