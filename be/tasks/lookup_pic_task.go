@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"bytes"
 	"context"
 	"strings"
 
@@ -11,14 +10,15 @@ import (
 	"pixur.org/pixur/be/status"
 )
 
-// TODO: add tests
-
 type LookupPicTask struct {
 	// Deps
 	Beg tab.JobBeginner
 
 	// Inputs
 	PicID int64
+	// If true, check if the user is allowed to read extended pic info.  The data will be included
+	// regardless of if this is set, and the caller should remove the extended data.
+	CheckReadPicExtCap bool
 
 	// Results
 	Pic            *schema.Pic
@@ -33,8 +33,18 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
+	u, sts := requireCapability(ctx, j, schema.User_PIC_INDEX)
+	if sts != nil {
 		return sts
+	}
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if t.CheckReadPicExtCap {
+		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_READ); sts != nil {
+			return sts
+		}
 	}
 
 	pics, err := j.FindPics(db.Opts{
@@ -77,12 +87,12 @@ type PicCommentTree struct {
 }
 
 func (pct *PicCommentTree) String() string {
-	var buf bytes.Buffer
+	var buf strings.Builder
 	pct.str(0, &buf)
 	return buf.String()
 }
 
-func (pct *PicCommentTree) str(level int, buf *bytes.Buffer) {
+func (pct *PicCommentTree) str(level int, buf *strings.Builder) {
 	buf.WriteString(strings.Repeat("  ", level))
 	buf.WriteString(pct.PicComment.String())
 	buf.WriteRune('\n')
