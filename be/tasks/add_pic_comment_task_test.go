@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/schema/db"
+	tab "pixur.org/pixur/be/schema/tables"
 )
 
 func TestAddPicCommentTaskWorkFlow(t *testing.T) {
@@ -54,6 +56,36 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 
 	if !proto.Equal(expected, task.PicComment) {
 		t.Error("have", task.PicComment, "want", expected)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+	ues, err := j.FindUserEvents(db.Opts{
+		Prefix: tab.UserEventsPrimary{
+			UserId: &u.User.UserId,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 1 {
+		t.Fatal("wrong number of upes", ues)
+	}
+	ue := ues[0]
+	ue.CreatedTs = nil
+	ue.ModifiedTs = nil
+	expectUe := &schema.UserEvent{
+		UserId: u.User.UserId,
+		Index:  0,
+		Evt: &schema.UserEvent_OutgoingPicComment_{
+			OutgoingPicComment: &schema.UserEvent_OutgoingPicComment{
+				PicId:     p.Pic.PicId,
+				CommentId: task.PicComment.CommentId,
+			},
+		},
+	}
+	if !proto.Equal(expectUe, ue) {
+		t.Error("have", ue, "want", expected)
 	}
 }
 
