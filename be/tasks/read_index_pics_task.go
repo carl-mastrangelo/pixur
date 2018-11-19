@@ -29,8 +29,9 @@ type ReadIndexPicsTask struct {
 	MaxPics int64
 	// Ascending determines the order of pics returned.
 	Ascending bool
-
-	// State
+	// If true, check if the user is allowed to read extended pic info.  The data will be included
+	// regardless of if this is set, and the caller should remove the extended data.
+	CheckReadPicExtCap bool
 
 	// Results
 	Pics []*schema.Pic
@@ -70,13 +71,10 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	return p, nil
 }
 
-func getAndValidateMaxPics(ctx context.Context, requestedMax int64) (max, overmax int64, _ status.S) {
+func getAndValidateMaxPics(conf *schema.Configuration, requestedMax int64) (
+	max, overmax int64, _ status.S) {
 	if requestedMax < 0 {
 		return 0, 0, status.InvalidArgument(nil, "negative max pics")
-	}
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return 0, 0, sts
 	}
 	maxPics, overMaxPics := getMaxPics(requestedMax, conf)
 	return maxPics, overMaxPics, nil
@@ -123,11 +121,21 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
+	u, sts := requireCapability(ctx, j, schema.User_PIC_INDEX)
+	if sts != nil {
 		return sts
 	}
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if t.CheckReadPicExtCap {
+		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_READ); sts != nil {
+			return sts
+		}
+	}
 
-	_, overmax, sts := getAndValidateMaxPics(ctx, t.MaxPics)
+	_, overmax, sts := getAndValidateMaxPics(conf, t.MaxPics)
 	if sts != nil {
 		return sts
 	}

@@ -2,13 +2,14 @@ package tasks
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
-	"pixur.org/pixur/be/schema"
-	tab "pixur.org/pixur/be/schema/tables"
-
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/codes"
+
+	"pixur.org/pixur/be/schema"
 )
 
 func TestReadIndex_LookupStartPicAsc(t *testing.T) {
@@ -24,15 +25,12 @@ func TestReadIndex_LookupStartPicAsc(t *testing.T) {
 		smaller = p2
 	}
 
-	j, err := tab.NewJob(context.Background(), c.DB())
-	if err != nil {
-		t.Fatal(err)
-	}
+	j := c.Job()
 	defer j.Rollback()
 
-	sp, err := lookupStartPic(j, smaller.Pic.PicId-1, true)
-	if err != nil {
-		t.Fatal(err)
+	sp, sts := lookupStartPic(j, smaller.Pic.PicId-1, true)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
 	if !proto.Equal(sp, smaller.Pic) {
@@ -53,15 +51,12 @@ func TestReadIndex_LookupStartPicDesc(t *testing.T) {
 		larger = p2
 	}
 
-	j, err := tab.NewJob(context.Background(), c.DB())
-	if err != nil {
-		t.Fatal(err)
-	}
+	j := c.Job()
 	defer j.Rollback()
 
-	sp, err := lookupStartPic(j, larger.Pic.PicId, false)
-	if err != nil {
-		t.Fatal(err)
+	sp, sts := lookupStartPic(j, larger.Pic.PicId, false)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
 	if !proto.Equal(sp, larger.Pic) {
@@ -75,15 +70,12 @@ func TestReadIndex_LookupStartPicNone(t *testing.T) {
 
 	p := c.CreatePic()
 
-	j, err := tab.NewJob(context.Background(), c.DB())
-	if err != nil {
-		t.Fatal(err)
-	}
+	j := c.Job()
 	defer j.Rollback()
 
-	sp, err := lookupStartPic(j, p.Pic.PicId-1, false)
-	if err != nil {
-		t.Fatal(err)
+	sp, sts := lookupStartPic(j, p.Pic.PicId-1, false)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 	if sp != nil {
 		t.Fatalf("got %v: want nil", sp)
@@ -104,12 +96,62 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	if err := new(TaskRunner).Run(ctx, task); err != nil {
-		t.Fatal(err)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p.Pic, task.Pics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p, task.Pics)
+	}
+}
+
+func TestReadIndexTaskWorkflow_validateExtCapFails(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
+	_ = c.CreatePic()
+
+	task := &ReadIndexPicsTask{
+		Beg:                c.DB(),
+		CheckReadPicExtCap: true,
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+
+	if have, want := sts.Code(), codes.PermissionDenied; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "missing cap"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestReadIndexTaskWorkflow_validateExtCapSucceeds(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_EXTENSION_READ)
+	u.Update()
+
+	_ = c.CreatePic()
+
+	task := &ReadIndexPicsTask{
+		Beg:                c.DB(),
+		CheckReadPicExtCap: true,
+	}
+	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
 	}
 }
 
@@ -133,8 +175,8 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	if err := new(TaskRunner).Run(ctx, task); err != nil {
-		t.Fatal(err)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
@@ -171,8 +213,8 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 		Ascending: false,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	if err := new(TaskRunner).Run(ctx, task); err != nil {
-		t.Fatal(err)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p2.Pic, task.Pics[0]) {
@@ -222,8 +264,8 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 		Ascending: true,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	if err := new(TaskRunner).Run(ctx, task); err != nil {
-		t.Fatal(err)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p5.Pic, task.Pics[0]) {
@@ -278,8 +320,8 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 		Ascending: false,
 	}
 	ctx := CtxFromUserID(context.Background(), u.User.UserId)
-	if err := new(TaskRunner).Run(ctx, task); err != nil {
-		t.Fatal(err)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
 
 	if len(task.Pics) != 1 || !proto.Equal(p3.Pic, task.Pics[0]) {
