@@ -177,3 +177,31 @@ message UserRow {
   
   pixur.User data = 3;
 }
+
+message UserPicEventRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "UserPicEvents"
+    key: {
+      key_type: PRIMARY
+      col: "user_id"
+      col: "pic_id"
+      col: "index"
+    }
+    key: {
+      name: "Recent"
+      key_type: INDEX
+      col: "user_id"
+      col: "created_ts"
+    }
+  };
+
+  int64 user_id = 1 [(pixur.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  
+  int64 pic_id = 2 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  
+  int64 index = 3 [(pixur.db.model.field_opts) = {col_fn: "IndexCol"}];
+  
+  int64 created_ts = 4 [(pixur.db.model.field_opts) = {col_fn: "CreatedTsCol"}];
+  
+  pixur.UserPicEvent data = 5;
+}
