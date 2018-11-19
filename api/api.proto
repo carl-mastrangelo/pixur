@@ -171,6 +171,10 @@ message Capability {
     USER_READ_SELF = 13;
     // Can this user read infortmation about others?
     USER_READ_ALL = 14;
+    // Can this user create arbitrary extension data on a pic? 
+    PIC_EXTENSION_CREATE = 15;
+    // Can this user read arbitrary extension data on a pic? 
+    PIC_EXTENSION_READ = 16;
   }
 }
 
@@ -493,7 +497,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181027 // AUTO UPDATED BY generate.go
+    api_version: 20181119 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

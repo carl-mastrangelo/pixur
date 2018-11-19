@@ -290,6 +290,10 @@ message User {
     USER_READ_SELF = 13;
     // Can this user read infortmation about others?
     USER_READ_ALL = 14;
+    // Can this user create arbitrary extension data on a pic? 
+    PIC_EXTENSION_CREATE = 15;
+    // Can this user read arbitrary extension data on a pic? 
+    PIC_EXTENSION_READ = 16;
   }
 
   repeated Capability capability = 7;
