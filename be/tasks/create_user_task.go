@@ -36,44 +36,6 @@ type CreateUserTask struct {
 	CreatedUser *schema.User
 }
 
-// TODO: test
-// lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
-func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job) (*schema.User, status.S) {
-	if uid, ok := UserIDFromCtx(ctx); ok {
-		us, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&uid},
-			Lock:   db.LockNone,
-		})
-		if err != nil {
-			return nil, status.Internal(err, "can't lookup user")
-		}
-		if len(us) != 1 {
-			return nil, status.Unauthenticated(nil, "can't lookup user")
-		}
-		return us[0], nil
-	}
-	return nil, nil
-}
-
-func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
-	*schema.User, status.S) {
-	u, sts := lookupUserForAuthOrNil(ctx, j)
-	if sts != nil {
-		return nil, sts
-	}
-	var have []schema.User_Capability
-	if u != nil {
-		have = u.Capability
-	} else {
-		conf, sts := GetConfiguration(ctx)
-		if sts != nil {
-			return nil, sts
-		}
-		have = conf.AnonymousCapability.Capability
-	}
-	return u, schema.VerifyCapabilitySubset(have, caps...)
-}
-
 func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	var err error
 	j, err := tab.NewJob(ctx, t.Beg)
