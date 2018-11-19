@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -80,7 +79,7 @@ func TestAddPicVoteTaskWork_NoDoubleVoting(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -117,7 +116,7 @@ func TestAddPicVoteTaskWork_MissingPic(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -155,7 +154,7 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -178,7 +177,7 @@ func TestAddPicVoteTask_BadVoteDir(t *testing.T) {
 		Now:  time.Now,
 	}
 
-	sts := new(TaskRunner).Run(context.Background(), task)
+	sts := new(TaskRunner).Run(c.Ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}

@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -24,7 +23,7 @@ func TestLookupUserWorkflow(t *testing.T) {
 		ObjectUserID: u.User.UserId,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -46,7 +45,7 @@ func TestLookupUserBlankID(t *testing.T) {
 		Beg: c.DB(),
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -70,7 +69,7 @@ func TestLookupUserOther(t *testing.T) {
 		ObjectUserID: u1.User.UserId,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u2.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u2.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -91,7 +90,7 @@ func TestLookupUserCantLookupSelf(t *testing.T) {
 		ObjectUserID: u.User.UserId,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -116,7 +115,7 @@ func TestLookupUserCantLookupOther(t *testing.T) {
 		Beg:          c.DB(),
 		ObjectUserID: u2.User.UserId,
 	}
-	ctx := CtxFromUserID(context.Background(), u1.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -140,7 +139,7 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 		ObjectUserID: -1,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u1.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")

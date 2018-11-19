@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +38,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Ext:    map[string]*any.Any{"key": userExt},
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +82,7 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 		Capability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -114,7 +113,7 @@ func TestCreateUserAlreadyUsed(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.AlreadyExists(nil, "ident already used")
 	compareStatus(t, sts, expected)
@@ -135,7 +134,7 @@ func TestCreateUserAlreadyUsedDifferentCase(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.AlreadyExists(nil, "ident already used")
 	compareStatus(t, sts, expected)
@@ -155,7 +154,7 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		t.Fatal(sts)
@@ -181,7 +180,7 @@ func TestCreateUserIdentBogusBytes(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "invalid ident utf8 text")
 	compareStatus(t, sts, expected)
@@ -201,7 +200,7 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "unprintable rune")
 	compareStatus(t, sts, expected)
@@ -220,7 +219,7 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "ident too short")
 	compareStatus(t, sts, expected)
@@ -238,7 +237,7 @@ func TestCreateUserEmptySecret(t *testing.T) {
 		Beg:   c.DB(),
 		Ident: "email",
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "missing secret")
 	compareStatus(t, sts, expected)
@@ -253,7 +252,7 @@ func TestCreateUserCantBegin(t *testing.T) {
 	task := &CreateUserTask{
 		Beg: db,
 	}
-	ctx := CtxFromUserID(context.Background(), -1)
+	ctx := CtxFromUserID(c.Ctx, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)

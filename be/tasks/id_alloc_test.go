@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -19,7 +18,7 @@ func TestAllocDBSerial(t *testing.T) {
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
-		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -48,7 +47,7 @@ func TestAllocDBParallel(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
-			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +80,7 @@ func TestAllocDBSerialMulti(t *testing.T) {
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
-		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,7 +109,7 @@ func TestAllocDBParallelMulti(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
-			num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -139,7 +138,7 @@ func TestAllocJobSerial(t *testing.T) {
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	j, err := d.Begin(context.Background())
+	j, err := d.Begin(c.Ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,12 +168,12 @@ func TestAllocMixed(t *testing.T) {
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
-	num0, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+	num0, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 	if err != nil {
 		t.Error(err)
 	}
 
-	j1, err := d.Begin(context.Background())
+	j1, err := d.Begin(c.Ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +187,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Error(err)
 	}
 
-	j2, err := d.Begin(context.Background())
+	j2, err := d.Begin(c.Ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +200,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Error(err)
 	}
 
-	num3, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+	num3, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 	if err != nil {
 		t.Error(err)
 	}
@@ -222,7 +221,7 @@ func BenchmarkAllocDBSerial(b *testing.B) {
 	alloc := new(db.IDAlloc)
 
 	for i := 0; i < b.N; i++ {
-		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 		if err != nil {
 			b.Error(err)
 		}
@@ -246,7 +245,7 @@ func BenchmarkAllocDBSerialMulti(b *testing.B) {
 	alloc := new(db.IDAlloc)
 
 	for i := 0; i < b.N; i++ {
-		num, err := db.AllocID(context.Background(), d, alloc, d.Adapter())
+		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 		if err != nil {
 			b.Error(err)
 		}

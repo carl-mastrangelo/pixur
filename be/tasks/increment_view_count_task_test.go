@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -26,7 +25,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +63,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 		Now:   time.Now,
 		PicID: p.Pic.PicId,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts == nil {
 		t.Fatal("Expected an error")
 	} else {

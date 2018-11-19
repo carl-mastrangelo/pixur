@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -29,7 +28,7 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 		Details:   "LowQuality",
 		Temporary: true,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +92,7 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +133,7 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")

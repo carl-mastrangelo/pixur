@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
@@ -28,7 +27,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 
 		PicID: p.Pic.PicId,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -98,7 +97,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		PicID: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +175,7 @@ func TestHardDeleteFails(t *testing.T) {
 		PicID: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("Expected error")

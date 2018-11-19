@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -31,7 +30,7 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -107,7 +106,7 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 		Text:            "hi",
 		CommentParentID: parent.PicComment.CommentId,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -150,7 +149,7 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -176,7 +175,7 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -214,7 +213,7 @@ func TestAddPicCommentTaskWork_CantCommentOnHardDeleted(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -240,7 +239,7 @@ func TestAddPicCommentTask_MissingComment(t *testing.T) {
 		PicID: p.Pic.PicId,
 	}
 
-	sts := new(TaskRunner).Run(context.Background(), task)
+	sts := new(TaskRunner).Run(c.Ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -261,7 +260,7 @@ func TestAddPicCommentTask_TooLongComment(t *testing.T) {
 		Beg:  c.DB(),
 		Now:  time.Now,
 	}
-	ctx := context.Background()
+	ctx := c.Ctx
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		t.Fatal(sts)
@@ -299,7 +298,7 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 		Beg:             c.DB(),
 		Now:             time.Now,
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -328,7 +327,7 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -380,7 +379,7 @@ func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}

@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +22,7 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 		Beg: db,
 	}
 
-	sts := new(TaskRunner).Run(context.Background(), task)
+	sts := new(TaskRunner).Run(c.Ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
 	}
@@ -44,7 +43,7 @@ func TestAuthUserTaskFailsOnNoIdentifier(t *testing.T) {
 		Now: time.Now,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -69,7 +68,7 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 		UserID: id,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -95,7 +94,7 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 		TokenID: 0,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -127,7 +126,7 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 		TokenID: 1,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -157,7 +156,7 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 		Ident: "foo@bar.com",
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -183,7 +182,7 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 		Secret: "bogus",
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -220,7 +219,7 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 		Secret: "secret",
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -284,7 +283,7 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 		TokenID: u2.User.NextTokenId - 1,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal("expected nil status", sts)
@@ -331,7 +330,7 @@ func TestAuthUserTask_LowerIdentWorks(t *testing.T) {
 		TokenID: u2.User.NextTokenId - 1,
 	}
 
-	ctx := context.Background()
+	ctx := c.Ctx
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal("expected nil status", sts)
