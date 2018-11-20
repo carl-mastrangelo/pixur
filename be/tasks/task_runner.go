@@ -21,6 +21,7 @@ var (
 	totalTasksCounter   = expvar.NewInt("PixurTasks")
 	successTasksCounter = expvar.NewInt("PixurSuccessTasks")
 	failureTasksCounter = expvar.NewInt("PixurFailureTasks")
+	retryTasksCounter   = expvar.NewInt("PixurRetryTasks")
 )
 
 var (
@@ -117,6 +118,7 @@ func runTask(
 		if !retry {
 			break
 		}
+		retryTasksCounter.Add(1)
 		backoff = time.Duration(float64(backoff) * taskBackoffMultiplier)
 		if rn == nil {
 			rn = rng()
