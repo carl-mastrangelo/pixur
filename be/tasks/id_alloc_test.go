@@ -180,7 +180,7 @@ func TestAllocMixed(t *testing.T) {
 	defer j1.Rollback()
 	num1, err := db.AllocIDJob(j1, alloc, d.Adapter())
 
-	if num1 != num0+10 {
+	if num1 != num0+1 {
 		t.Error(num1, num0)
 	}
 	if err := j1.Rollback(); err != nil {
@@ -193,7 +193,7 @@ func TestAllocMixed(t *testing.T) {
 	}
 	defer j2.Rollback()
 	num2, err := db.AllocIDJob(j2, alloc, d.Adapter())
-	if num2 != num0+10 {
+	if num2 != num0+2 {
 		t.Error(num2, num0)
 	}
 	if err := j2.Commit(); err != nil {
@@ -204,7 +204,7 @@ func TestAllocMixed(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if num3 != num0+1 {
+	if num3 != num0+3 {
 		t.Error(num3, num0)
 	}
 }

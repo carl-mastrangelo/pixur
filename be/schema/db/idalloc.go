@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"math"
 	"strings"
 	"sync"
 
@@ -22,7 +23,7 @@ const (
 // DefaultAllocatorGrab determines how many IDs will be grabbed at a time. If the number is too high
 // program restarts will waste ID space.  Additionally, IDs will become less monotonic if there are
 // multiple servers.  If the number is too low, it will make a lot more queries than necessary.
-const DefaultAllocatorGrab = 1
+const DefaultAllocatorGrab = 10
 
 var AllocatorGrab int64 = DefaultAllocatorGrab
 
@@ -31,9 +32,10 @@ type querierExecutor interface {
 	Executor
 }
 
-// Be careful when using this function.  If the transaction fails, alloc will think it has updated
-// the cached copy.
-func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (int64, status.S) {
+func reserveIDLocked(qe querierExecutor, grab int64, adap DBAdapter) (int64, status.S) {
+	if grab < 1 {
+		return 0, status.Internal(nil, "grab too low", grab)
+	}
 	tabname, colname := SequenceTableName, SequenceColName
 	var buf strings.Builder
 	buf.WriteString("SELECT " + adap.Quote(colname) + " FROM " + adap.Quote(tabname))
@@ -61,6 +63,9 @@ func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (i
 	if !done {
 		return 0, status.Internal(nil, "Too few rows on sequence table")
 	}
+	if grab > math.MaxInt64-num {
+		return 0, status.Internalf(nil, "id allocation overflow %d+%d", num, grab)
+	}
 	buf.Reset()
 	buf.WriteString("UPDATE " + adap.Quote(tabname) + " SET " + adap.Quote(colname) + " = ?;")
 	if _, err := qe.Exec(buf.String(), num+grab); err != nil {
@@ -69,10 +74,25 @@ func (alloc *IDAlloc) reserve(qe querierExecutor, grab int64, adap DBAdapter) (i
 	return num, nil
 }
 
-func (alloc *IDAlloc) refill(ctx context.Context, exec Beginner, grab int64, adap DBAdapter) (stscap status.S) {
+func AllocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
+	return allocID(ctx, exec, alloc, adap)
+}
+
+func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (
+	_ int64, stscap status.S) {
+	var id int64
+	alloc.lock.Lock()
+	if alloc.available > 0 {
+		id, alloc.next, alloc.available = alloc.next, alloc.next+1, alloc.available-1
+		alloc.lock.Unlock()
+		return id, nil
+	}
+	alloc.lock.Unlock()
+	// The transaction has to begin outside of the lock to avoid a deadlock.  The lock ordering
+	// must be database connection, then idalloc lock.
 	j, err := exec.Begin(ctx)
 	if err != nil {
-		return status.From(err)
+		return 0, status.From(err)
 	}
 	defer func() {
 		if err := j.Rollback(); err != nil {
@@ -80,37 +100,34 @@ func (alloc *IDAlloc) refill(ctx context.Context, exec Beginner, grab int64, ada
 		}
 	}()
 
-	num, sts := alloc.reserve(j, grab, adap)
-	if sts != nil {
-		return sts
-	}
-
-	if err := j.Commit(); err != nil {
-		return status.From(err)
-	}
-	alloc.available += grab
-	alloc.next = num
-	return nil
-}
-
-func AllocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
-	return allocID(ctx, exec, alloc, adap)
-}
-
-func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, status.S) {
+	grab := AllocatorGrab
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
-	if alloc.available == 0 {
-		if sts := alloc.refill(ctx, exec, AllocatorGrab, adap); sts != nil {
-			return 0, sts
-		}
+	// Another thread could have jumped in line and updated allocate.  Double check there isn't
+	// actually one available.
+	if alloc.available > 0 {
+		id, alloc.next, alloc.available = alloc.next, alloc.next+1, alloc.available-1
+		return id, nil
 	}
-	num := alloc.next
-	alloc.next++
-	alloc.available--
-	return num, nil
+	next, sts := reserveIDLocked(j, grab, adap)
+	if sts != nil {
+		return 0, sts
+	}
+	if err := j.Commit(); err != nil {
+		return 0, status.From(err)
+	}
+	id, alloc.next, alloc.available = next, next+1, alloc.available+grab-1
+	return id, nil
 }
 
 func AllocIDJob(qe querierExecutor, alloc *IDAlloc, adap DBAdapter) (int64, error) {
-	return alloc.reserve(qe, 1, adap)
+	alloc.lock.Lock()
+	defer alloc.lock.Unlock()
+	// Since the transaction may not be commited, don't update alloc
+	var id int64
+	if alloc.available > 0 {
+		id, alloc.next, alloc.available = alloc.next, alloc.next+1, alloc.available-1
+		return id, nil
+	}
+	return reserveIDLocked(qe /*grab=*/, 1, adap)
 }
