@@ -25,6 +25,9 @@ const (
 	// I have only seen 40001 in practice.
 	codeSerializationFailureError = "40001"
 	codeDeadlockDetectedError     = "40P01"
+	// codeUniqueViolationError can happen occasionally when not using preallocated IDs for rows.
+	// An example is UserEvents, which all compete for index 0, but which can be retried and pass.
+	codeUniqueViolationError = "23505"
 )
 
 func (a *cockroachAdapter) Open(dataSourceName string) (DB, error) {
@@ -116,6 +119,9 @@ func (_ *cockroachAdapter) RetryableErr(err error) bool {
 			return true
 		}
 		if pqerr.Code == codeDeadlockDetectedError {
+			return true
+		}
+		if pqerr.Code == codeUniqueViolationError {
 			return true
 		}
 	}

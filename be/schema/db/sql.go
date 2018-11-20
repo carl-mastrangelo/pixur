@@ -31,6 +31,32 @@ type sqlError struct {
 	adap    DBAdapter
 }
 
+func (e *sqlError) Format(f fmt.State, r rune) {
+	if ef, ok := e.wrapped.(fmt.Formatter); ok {
+		ef.Format(f, r)
+		return
+	}
+	var err error
+	defer func() {
+		if err != nil {
+			panic(err)
+		}
+	}()
+	switch r {
+	case 'v':
+		switch {
+		case f.Flag('+'):
+			_, err = fmt.Fprintf(f, "%+v", e.wrapped)
+		case f.Flag('#'):
+			_, err = fmt.Fprintf(f, "%#v", e.wrapped)
+		default:
+			_, err = fmt.Fprintf(f, "%v ==> %#v", e.wrapped, e.wrapped)
+		}
+	default:
+		_, err = fmt.Fprintf(f, "%%!%s(bad fmt for %s)", string(r), e.String())
+	}
+}
+
 func (e *sqlError) Error() string {
 	return e.wrapped.Error()
 }

@@ -109,6 +109,9 @@ func (_ *postgresAdapter) RetryableErr(err error) bool {
 		if pqerr.Code == codeDeadlockDetectedError {
 			return true
 		}
+		if pqerr.Code == codeUniqueViolationError {
+			return true
+		}
 	}
 	return false
 }
