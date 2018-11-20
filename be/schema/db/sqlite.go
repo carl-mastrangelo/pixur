@@ -8,9 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	_ "github.com/mattn/go-sqlite3"
+	sqlite3 "github.com/mattn/go-sqlite3"
 
 	"pixur.org/pixur/be/status"
+)
+
+// retryable codes
+const (
+	// codeUniqueViolationError can happen occasionally when not using preallocated IDs for rows.
+	// An example is UserEvents, which all compete for index 0, but which can be retried and pass.
+	codeConstrainPrimaryKeyError = 1555
 )
 
 var _ DBAdapter = &sqlite3Adapter{}
@@ -138,7 +145,12 @@ func (_ *sqlite3Adapter) LockStmt(buf *strings.Builder, lock Lock) {
 }
 
 func (_ *sqlite3Adapter) RetryableErr(err error) bool {
-	// TODO: implement
+	if sqlite3Err, ok := err.(sqlite3.Error); ok {
+		if sqlite3Err.Code == sqlite3.ErrConstraint &&
+			sqlite3Err.ExtendedCode == codeConstrainPrimaryKeyError {
+			return true
+		}
+	}
 	return false
 }
 
