@@ -206,6 +206,9 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 
 func nextUserEventIndex(j *tab.Job, userID, createdTs int64) (int64, status.S) {
 	ues, err := j.FindUserEvents(db.Opts{
+		// We don't actually intend to write, but this prevents other transactions
+		// from trying to use the same index.
+		Lock: db.LockWrite,
 		Prefix: tab.UserEventsPrimary{
 			UserId:    &userID,
 			CreatedTs: &createdTs,
