@@ -118,11 +118,14 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	createdTs := schema.UserEventCreatedTsCol(pc.CreatedTs)
+	next := func(uid int64) (int64, status.S) {
+		return nextUserEventIndex(j, uid, createdTs)
+	}
 
 	var iues []*schema.UserEvent
 	var oue *schema.UserEvent
 	if userID != schema.AnonymousUserID {
-		idx, sts := nextUserEventIndex(j, userID, createdTs)
+		idx, sts := next(userID)
 		if sts != nil {
 			return sts
 		}
@@ -141,7 +144,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	if commentParent != nil && commentParent.UserId != schema.AnonymousUserID &&
 		(oue == nil || oue.UserId != commentParent.UserId) {
-		idx, sts := nextUserEventIndex(j, commentParent.UserId, createdTs)
+		idx, sts := next(commentParent.UserId)
 		if sts != nil {
 			return sts
 		}
@@ -164,7 +167,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		// The file source list promises that there will be at most one, non-anonymous, user id
 		for _, fs := range p.Source {
 			if fs.UserId != schema.AnonymousUserID && (oue == nil || oue.UserId != fs.UserId) {
-				idx, sts := nextUserEventIndex(j, fs.UserId, p.PicId)
+				idx, sts := next(fs.UserId)
 				if sts != nil {
 					return sts
 				}

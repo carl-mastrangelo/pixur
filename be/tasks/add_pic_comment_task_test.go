@@ -1057,6 +1057,85 @@ func TestAddPicComment_Notification_AnonAuthor_PicParent(t *testing.T) {
 	}
 }
 
+// Checks to see a next index is used.
+func TestAddPicComment_Notification_AnonAuthor_PicParent_ExistingEvents(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	conf := schema.GetDefaultConfiguration()
+	conf.AnonymousCapability.Capability =
+		append(conf.AnonymousCapability.Capability, schema.User_PIC_COMMENT_CREATE)
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
+	p := c.CreatePic()
+	u2 := c.CreateUser()
+	p.Pic.Source = []*schema.Pic_FileSource{{
+		UserId: u2.User.UserId,
+	}}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	c.AutoJob(func(j *tab.Job) error {
+		return j.InsertUserEvent(&schema.UserEvent{
+			UserId:     u2.User.UserId,
+			CreatedTs:  schema.ToTspb(now()),
+			ModifiedTs: schema.ToTspb(now()),
+			Evt: &schema.UserEvent_IncomingPicComment_{
+				IncomingPicComment: &schema.UserEvent_IncomingPicComment{
+					PicId: p.Pic.PicId,
+				},
+			},
+		})
+	})
+
+	task := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Text:  "hi",
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 2 {
+		t.Fatal("wrong number of events", ues)
+	}
+
+	expect2 := &schema.UserEvent{
+		UserId:     u2.User.UserId,
+		CreatedTs:  schema.ToTspb(now()),
+		ModifiedTs: schema.ToTspb(now()),
+		Index:      1,
+		Evt: &schema.UserEvent_IncomingPicComment_{
+			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
+				PicId: p.Pic.PicId,
+			},
+		},
+	}
+	found := 1 // ignore the original one
+	for _, ue := range ues {
+		if proto.Equal(expect2, ue) {
+			expect2 = nil
+			found++
+		}
+	}
+
+	if found != 2 {
+		t.Error("missing events", ues)
+	}
+}
+
 func TestNextUserEventIndex(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
