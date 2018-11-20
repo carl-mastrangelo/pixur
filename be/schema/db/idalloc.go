@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"math"
+	"runtime/trace"
 	"strings"
 	"sync"
 
@@ -80,6 +81,9 @@ func AllocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter)
 
 func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (
 	_ int64, stscap status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "AllocID").End()
+	}
 	var id int64
 	alloc.lock.Lock()
 	if alloc.available > 0 {
@@ -120,7 +124,11 @@ func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter)
 	return id, nil
 }
 
-func AllocIDJob(qe querierExecutor, alloc *IDAlloc, adap DBAdapter) (int64, error) {
+func AllocIDJob(ctx context.Context, qe querierExecutor, alloc *IDAlloc, adap DBAdapter) (
+	int64, error) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "AllocIDJob").End()
+	}
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	// Since the transaction may not be commited, don't update alloc

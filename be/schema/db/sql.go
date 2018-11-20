@@ -205,13 +205,13 @@ func (w *txWrapper) Rollback() error {
 }
 
 func (w *txWrapper) rollback() status.S {
-	if trace.IsEnabled() {
-		defer trace.StartRegion(w.ctx, "SqlRollback").End()
-	}
 	if w.done {
 		return nil
 	}
 	w.done = true
+	if trace.IsEnabled() {
+		defer trace.StartRegion(w.ctx, "SqlRollback").End()
+	}
 	if err := w.tx.Rollback(); err != nil {
 		return status.Unknown(&sqlError{
 			wrapped: err,

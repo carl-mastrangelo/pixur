@@ -145,7 +145,7 @@ func TestAllocJobSerial(t *testing.T) {
 	defer j.Rollback()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
-		num, err := db.AllocIDJob(j, alloc, d.Adapter())
+		num, err := db.AllocIDJob(c.Ctx, j, alloc, d.Adapter())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +178,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer j1.Rollback()
-	num1, err := db.AllocIDJob(j1, alloc, d.Adapter())
+	num1, err := db.AllocIDJob(c.Ctx, j1, alloc, d.Adapter())
 
 	if num1 != num0+1 {
 		t.Error(num1, num0)
@@ -192,7 +192,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer j2.Rollback()
-	num2, err := db.AllocIDJob(j2, alloc, d.Adapter())
+	num2, err := db.AllocIDJob(c.Ctx, j2, alloc, d.Adapter())
 	if num2 != num0+2 {
 		t.Error(num2, num0)
 	}
