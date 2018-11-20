@@ -160,7 +160,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	// If we aren't notifying the parent comment because it doesn't exist, then create a notification
 	// for each of the "uploaders" of the pic.
-	if len(iues) == 0 && commentParent == nil {
+	if commentParent == nil {
 		// The file source list promises that there will be at most one, non-anonymous, user id
 		for _, fs := range p.Source {
 			if fs.UserId != schema.AnonymousUserID && (oue == nil || oue.UserId != fs.UserId) {
