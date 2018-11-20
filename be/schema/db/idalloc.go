@@ -76,10 +76,10 @@ func reserveIDLocked(qe querierExecutor, grab int64, adap DBAdapter) (int64, sta
 }
 
 func AllocID(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
-	return allocID(ctx, exec, alloc, adap)
+	return allocID(ctx, beg, alloc, adap)
 }
 
-func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (
+func allocID(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAdapter) (
 	_ int64, stscap status.S) {
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, "AllocID").End()
