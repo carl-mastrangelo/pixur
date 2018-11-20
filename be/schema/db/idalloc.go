@@ -75,7 +75,7 @@ func reserveIDLocked(qe querierExecutor, grab int64, adap DBAdapter) (int64, sta
 	return num, nil
 }
 
-func AllocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
+func AllocID(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAdapter) (int64, error) {
 	return allocID(ctx, exec, alloc, adap)
 }
 
@@ -94,12 +94,12 @@ func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter)
 	alloc.lock.Unlock()
 	// The transaction has to begin outside of the lock to avoid a deadlock.  The lock ordering
 	// must be database connection, then idalloc lock.
-	j, err := exec.Begin(ctx)
+	qec, err := beg.Begin(ctx)
 	if err != nil {
 		return 0, status.From(err)
 	}
 	defer func() {
-		if err := j.Rollback(); err != nil {
+		if err := qec.Rollback(); err != nil {
 			status.ReplaceOrSuppress(&stscap, status.From(err))
 		}
 	}()
@@ -113,11 +113,11 @@ func allocID(ctx context.Context, exec Beginner, alloc *IDAlloc, adap DBAdapter)
 		id, alloc.next, alloc.available = alloc.next, alloc.next+1, alloc.available-1
 		return id, nil
 	}
-	next, sts := reserveIDLocked(j, grab, adap)
+	next, sts := reserveIDLocked(qec, grab, adap)
 	if sts != nil {
 		return 0, sts
 	}
-	if err := j.Commit(); err != nil {
+	if err := qec.Commit(); err != nil {
 		return 0, status.From(err)
 	}
 	id, alloc.next, alloc.available = next, next+1, alloc.available+grab-1
@@ -131,11 +131,11 @@ func AllocIDJob(ctx context.Context, qe querierExecutor, alloc *IDAlloc, adap DB
 	}
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
-	// Since the transaction may not be commited, don't update alloc
 	var id int64
 	if alloc.available > 0 {
 		id, alloc.next, alloc.available = alloc.next, alloc.next+1, alloc.available-1
 		return id, nil
 	}
+	// Since the transaction may not be commited, don't update alloc
 	return reserveIDLocked(qe /*grab=*/, 1, adap)
 }
