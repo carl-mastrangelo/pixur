@@ -29,7 +29,7 @@ func validateAndNormalizeText(text, fieldname string, min, max int64, validate t
 	if sts := validateUtf8(text, fieldname); sts != nil {
 		return "", sts
 	}
-	newtext := normalizeUnicodeTextUnsafe(text)
+	newtext := normalizeUnicodeTextPrevalidated(text)
 	// validate length again, as normalization can expand text.
 	if sts := validateMaxLength(newtext, fieldname, min, max); sts != nil {
 		return "", sts
@@ -60,10 +60,10 @@ func normalizeUnicodeText(text, fieldname string) (string, status.S) {
 	if sts := validateUtf8(text, fieldname); sts != nil {
 		return "", sts
 	}
-	return normalizeUnicodeTextUnsafe(text), nil
+	return normalizeUnicodeTextPrevalidated(text), nil
 }
 
-func normalizeUnicodeTextUnsafe(text string) string {
+func normalizeUnicodeTextPrevalidated(text string) string {
 	return norm.NFC.String(text)
 }
 

@@ -95,12 +95,12 @@ func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
 	}
 
 	unattachedTagNames := findUnattachedTagNames(attachedTags, newTagNames)
-	existingTags, unknownNames, sts := findExistingTagsByName(j, unattachedTagNames)
+	unattachedExistingTags, unknownNames, sts := findExistingTagsByName(j, unattachedTagNames)
 	if sts != nil {
 		return sts
 	}
 
-	if sts := updateExistingTags(j, existingTags, now); sts != nil {
+	if sts := updateExistingTags(j, unattachedExistingTags, now); sts != nil {
 		return sts
 	}
 	newTags, sts := createNewTags(j, unknownNames, now)
@@ -108,8 +108,8 @@ func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
 		return sts
 	}
 
-	existingTags = append(existingTags, newTags...)
-	if _, sts := createPicTags(j, existingTags, picID, now, userID); sts != nil {
+	unattachedExistingTags = append(unattachedExistingTags, newTags...)
+	if _, sts := createPicTags(j, unattachedExistingTags, picID, now, userID); sts != nil {
 		return sts
 	}
 
@@ -245,7 +245,7 @@ func cleanTagNames(rawTagNames []string, minTagLen, maxTagLen int64) ([]tagNameA
 		if sts := validateUtf8(rawtagname, "tag"); sts != nil {
 			return nil, sts
 		}
-		normalrawtagname := normalizeUnicodeTextUnsafe(rawtagname)
+		normalrawtagname := normalizeUnicodeTextPrevalidated(rawtagname)
 		trimmednormaltagname := strings.TrimSpace(normalrawtagname)
 
 		if sts := validateMaxLength(trimmednormaltagname, "tag", minTagLen, maxTagLen); sts != nil {
