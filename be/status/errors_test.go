@@ -2,6 +2,7 @@ package status
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -49,4 +50,15 @@ func TestStatusSuppressed(t *testing.T) {
 
 	s8 := WithSuppressed(s7, errors.New("i feel bad"))
 	t.Log(s8)
+}
+
+func TestStatus_removeEmptyStack(t *testing.T) {
+	var s []*status
+	for i := 0; i < 2; i++ {
+		s = append(s, Internal(nil, "foo").(*status))
+	}
+	s[0].cause = s[1]
+	if strings.Contains(s[0].String(), "(.:0)") {
+		t.Error("empty stack", s[0])
+	}
 }

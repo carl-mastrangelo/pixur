@@ -140,21 +140,22 @@ func (s *status) writeAll(b *strings.Builder, enclosingTrace []uintptr, caption,
 				break
 			}
 		}
-
-		frames := runtime.CallersFrames(s.stack[:len(s.stack)-c])
-		for {
-			f, more := frames.Next()
-			b.WriteRune('\n')
-			b.WriteString(prefix)
-			b.WriteString("\tat ")
-			b.WriteString(f.Function)
-			b.WriteRune('(')
-			b.WriteString(filepath.Base(f.File))
-			b.WriteRune(':')
-			b.WriteString(strconv.Itoa(f.Line))
-			b.WriteRune(')')
-			if !more {
-				break
+		if len(s.stack) != c {
+			frames := runtime.CallersFrames(s.stack[:len(s.stack)-c])
+			for {
+				f, more := frames.Next()
+				b.WriteRune('\n')
+				b.WriteString(prefix)
+				b.WriteString("\tat ")
+				b.WriteString(f.Function)
+				b.WriteRune('(')
+				b.WriteString(filepath.Base(f.File))
+				b.WriteRune(':')
+				b.WriteString(strconv.Itoa(f.Line))
+				b.WriteRune(')')
+				if !more {
+					break
+				}
 			}
 		}
 		if c != 0 {
