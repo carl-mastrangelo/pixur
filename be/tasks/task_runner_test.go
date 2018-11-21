@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -312,5 +313,159 @@ func TestTaskRunnerRunTaskOnce_failsRetryable_earlyCancel(t *testing.T) {
 	}
 	if task.runCount != 1 {
 		t.Error("ran task", task.runCount)
+	}
+}
+
+func TestTaskRunnerRetryAdapter_emptyNotRetryable(t *testing.T) {
+	retry := &taskRetryAdapter{}
+
+	if _, ok := retry.Next(); ok {
+		t.Error("should not be retryable")
+	}
+}
+
+func TestTaskRunnerRetryAdapter_maxTries(t *testing.T) {
+	retry := &taskRetryAdapter{
+		maxTries: 5,
+	}
+
+	tries := 0
+	for i := 0; i < 10; i++ {
+		if _, ok := retry.Next(); ok {
+			tries++
+		}
+	}
+
+	if tries != 5 {
+		t.Error("wrong tries", tries, 5)
+	}
+}
+
+func TestTaskRunnerRetryAdapter_noJitterForFirst(t *testing.T) {
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		initialDelay: time.Second,
+		rng: func() *rand.Rand {
+			t.Fatal("should not be called!")
+			return nil
+		},
+	}
+
+	retry.Next()
+}
+
+func TestTaskRunnerRetryAdapter_JitterForSecond(t *testing.T) {
+	rngCall := 0
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		initialDelay: time.Second,
+		rng: func() *rand.Rand {
+			rngCall++
+			return nil
+		},
+	}
+
+	retry.Next()
+	retry.Next()
+
+	if rngCall != 1 {
+		t.Error("rng not used")
+	}
+}
+
+func TestTaskRunnerRetryAdapter_nilRngResult(t *testing.T) {
+	rngCall := 0
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		multiplier:   1,
+		initialDelay: time.Second,
+		rng: func() *rand.Rand {
+			rngCall++
+			return nil
+		},
+	}
+
+	retry.Next()
+	retry.Next()
+	retry.Next()
+
+	if rngCall != 2 {
+		t.Error("rng used wrong", rngCall)
+	}
+}
+
+func TestTaskRunnerRetryAdapter_nilRngResultUnusedIfRnPresent(t *testing.T) {
+	rn := rand.New(rand.NewSource(0))
+
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		initialDelay: time.Second,
+		rng: func() *rand.Rand {
+			t.Fatal("should not be called!")
+			return nil
+		},
+		rn: rn,
+	}
+
+	retry.Next()
+	retry.Next()
+	retry.Next()
+}
+
+func TestTaskRunnerRetryAdapter_multiply(t *testing.T) {
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		multiplier:   2,
+		initialDelay: time.Second,
+		rng: func() *rand.Rand {
+			return nil
+		},
+	}
+
+	delay1, ok1 := retry.Next()
+	delay2, ok2 := retry.Next()
+	delay3, ok3 := retry.Next()
+	if !ok1 || !ok2 || !ok3 {
+		t.Fatal(ok1, ok2, ok3)
+	}
+	if have, want := delay1, time.Second; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := delay2, 2*time.Second; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := delay3, 4*time.Second; have != want {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestTaskRunnerRetryAdapter_jitter(t *testing.T) {
+	rn := rand.New(rand.NewSource(0))
+	rn1 := rn.Float64()
+	rn2 := rn.Float64()
+	rn = rand.New(rand.NewSource(0))
+	retry := &taskRetryAdapter{
+		maxTries:     5,
+		multiplier:   3,
+		jitter:       0.5,
+		initialDelay: time.Second,
+		rn:           rn,
+	}
+
+	delay1, ok1 := retry.Next()
+	delay2, ok2 := retry.Next()
+	delay3, ok3 := retry.Next()
+	if !ok1 || !ok2 || !ok3 {
+		t.Fatal(ok1, ok2, ok3)
+	}
+	if have, want := delay1, time.Second; have != want {
+		t.Error("have", have, "want", want)
+	}
+
+	if have, want := delay2, time.Duration((3*(1+(rn1*2-1)*.5))*float64(delay1)); have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := delay3, time.Duration((3*(1+(rn2*2-1)*.5))*float64(delay2)); have != want {
+		t.Error("have", have, "want", want)
 	}
 }

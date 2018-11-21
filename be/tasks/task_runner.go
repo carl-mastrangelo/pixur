@@ -77,7 +77,17 @@ func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 	if r != nil && r.run != nil {
 		sts = r.run(ctx, task)
 	}
-	sts = runTask(ctx, task, now, rng, logger)
+	runOnce := func(nextBackoff time.Duration) (bool, bool, []status.S) {
+		return runTaskOnce(ctx, task, nextBackoff, now)
+	}
+	retry := &taskRetryAdapter{
+		maxTries:     taskMaxRetries,
+		initialDelay: taskInitialBackoffDelay,
+		rng:          rng,
+		multiplier:   taskBackoffMultiplier,
+		jitter:       taskBackoffJitter,
+	}
+	sts = runTask(runOnce, retry, logger)
 	if sts != nil {
 		failureTasksCounter.Add(1)
 	} else {
@@ -94,23 +104,25 @@ func stsSliceToErrSlice(ss []status.S) []error {
 	return es
 }
 
+type onceRunner func(nextBackoff time.Duration) (success, retry bool, stss []status.S)
+
 // TODO: test
-func runTask(
-	ctx context.Context, task Task, now func() time.Time, rng func() *rand.Rand, logger *log.Logger) (
-	stscap status.S) {
+func runTask(runOnce onceRunner, retry *taskRetryAdapter, logger *log.Logger) (stscap status.S) {
 	var stss []status.S
 	defer func() {
 		if stscap == nil && len(stss) != 0 && logger != nil {
-			warnsts := status.Unknownf(nil, "Encountered %d errors while running %T", len(stss), task)
+			warnsts := status.Unknownf(nil, "Encountered %d errors runing task", len(stss))
 			warnsts = status.WithSuppressed(warnsts, stsSliceToErrSlice(stss)...)
 			logger.Println(warnsts)
 		}
 	}()
 
-	backoff := taskInitialBackoffDelay
-	var rn *rand.Rand
-	for i := 0; i < taskMaxRetries; i++ {
-		success, retry, failures := runTaskOnce(ctx, task, backoff, now)
+	for {
+		backoff, proceed := retry.Next()
+		if !proceed {
+			break
+		}
+		success, retry, failures := runOnce(backoff)
 		if success {
 			return nil
 		}
@@ -119,14 +131,47 @@ func runTask(
 			break
 		}
 		retryTasksCounter.Add(1)
-		backoff = time.Duration(float64(backoff) * taskBackoffMultiplier)
-		if rn == nil {
-			rn = rng()
-		}
-		backoff +=
-			time.Duration((rn.Float64()*taskBackoffJitter*2 - taskBackoffJitter) * float64(backoff))
 	}
 	return status.WithSuppressed(stss[0], stsSliceToErrSlice(stss[1:])...)
+}
+
+type taskRetryAdapter struct {
+	currentTry, maxTries         int
+	currentBackoff, initialDelay time.Duration
+	rng                          func() *rand.Rand
+	rn                           *rand.Rand
+	multiplier, jitter           float64
+}
+
+func (r *taskRetryAdapter) Next() (time.Duration, bool) {
+	if r.currentTry >= r.maxTries {
+		return 0, false
+	}
+	const maxInt = int((^uint(0)) >> 1)
+	if r.maxTries != maxInt {
+		r.currentTry++
+	}
+	if r.currentBackoff == 0 {
+		r.currentBackoff = r.initialDelay
+		return r.currentBackoff, true
+	}
+	back := float64(r.currentBackoff) * r.multiplier
+	var uniform float64
+	if r.rng != nil && r.rn == nil {
+		r.rn = r.rng()
+	}
+	if r.rn != nil {
+		uniform = r.rn.Float64()
+	} else {
+		uniform = 0.5
+	}
+	back += (uniform*2 - 1) * r.jitter * back
+	if back > float64(math.MaxInt64) {
+		r.currentBackoff = time.Duration(math.MaxInt64)
+	} else {
+		r.currentBackoff = time.Duration(back)
+	}
+	return r.currentBackoff, true
 }
 
 func runTaskOnce(ctx context.Context, task Task, nextBackoff time.Duration, now func() time.Time) (
