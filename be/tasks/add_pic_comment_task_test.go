@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	anypb "github.com/golang/protobuf/ptypes/any"
 	wpb "github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/grpc/codes"
 
@@ -152,7 +153,7 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
-		t.Error("expected non-nil status")
+		t.Fatal("expected non-nil status")
 	}
 	if have, want := sts.Code(), codes.NotFound; have != want {
 		t.Error("have", have, "want", want)
@@ -178,7 +179,36 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
-		t.Error("expected non-nil status")
+		t.Fatal("expected non-nil status")
+	}
+	if have, want := sts.Code(), codes.PermissionDenied; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "missing cap"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestAddPicCommentTaskWork_MissingPermissionExt(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_COMMENT_CREATE)
+	u.Update()
+	p := c.CreatePic()
+
+	task := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Text:  "hi",
+		Beg:   c.DB(),
+		Now:   time.Now,
+		Ext:   map[string]*anypb.Any{"foo": nil},
+	}
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("expected non-nil status")
 	}
 	if have, want := sts.Code(), codes.PermissionDenied; have != want {
 		t.Error("have", have, "want", want)

@@ -66,6 +66,12 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		userID = u.UserId
 	}
 
+	if len(t.Ext) != 0 {
+		if sts := validateCapability(u, conf, schema.User_PIC_COMMENT_EXTENSION_CREATE); sts != nil {
+			return sts
+		}
+	}
+
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},
 	})
