@@ -19,6 +19,9 @@ type LookupPicTask struct {
 	// If true, check if the user is allowed to read extended pic info.  The data will be included
 	// regardless of if this is set, and the caller should remove the extended data.
 	CheckReadPicExtCap bool
+	// If true, check if the user is allowed to read extended comment info.  The data will be included
+	// regardless of if this is set, and the caller should remove the extended data.
+	CheckReadPicCommentExtCap bool
 
 	// Results
 	Pic            *schema.Pic
@@ -43,6 +46,11 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	if t.CheckReadPicExtCap {
 		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_READ); sts != nil {
+			return sts
+		}
+	}
+	if t.CheckReadPicCommentExtCap {
+		if sts := validateCapability(u, conf, schema.User_PIC_COMMENT_EXTENSION_READ); sts != nil {
 			return sts
 		}
 	}

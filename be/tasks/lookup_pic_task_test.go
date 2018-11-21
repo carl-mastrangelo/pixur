@@ -126,6 +126,61 @@ func TestLookupPicTask_succeedsOnPresentPicExtCap(t *testing.T) {
 	}
 }
 
+func TestLookupPicTask_failsOnMissingPicCommentExtCap(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+
+	task := &LookupPicTask{
+		Beg:                       c.DB(),
+		PicID:                     p.Pic.PicId,
+		CheckReadPicCommentExtCap: true,
+	}
+
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+
+	if have, want := sts.Code(), codes.PermissionDenied; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "missing cap"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestLookupPicTask_succeedsOnPresentPicCommentExtCap(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	p := c.CreatePic()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_COMMENT_EXTENSION_READ)
+	u.Update()
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+
+	task := &LookupPicTask{
+		Beg:                       c.DB(),
+		PicID:                     p.Pic.PicId,
+		CheckReadPicCommentExtCap: true,
+	}
+
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
 func TestLookupPicTask_failsOnMissingPic(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
