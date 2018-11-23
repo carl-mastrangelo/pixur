@@ -50,26 +50,26 @@ func TestValidateEncoding(t *testing.T) {
 		"\uF8FF",                               // private use
 	}
 	invalid := []string{
-		string([]byte{0xC0, 0x00}),
+		string([]byte{0xCC, 0x00}),
 		string([]byte{0xC2}),
 		string([]byte{0xF7, 0xBF, 0xBF, 0xBF}), // over max codepoint
 		string([]byte{0xED, 0xa0, 0x80}),       // surrogate
 	}
 	for _, s := range valid {
-		sts := validateEncoding(s)
+		sts := validateEncoding(s, "field")
 		if sts != nil {
 			t.Error("failed on", s, sts)
 		}
 	}
 	for _, s := range invalid {
-		sts := validateEncoding(s)
+		sts := validateEncoding(s, "field")
 		if sts == nil {
 			t.Fatal("expected error", s)
 		}
 		if have, want := sts.Code(), codes.InvalidArgument; have != want {
 			t.Error("have", have, "want", want, "for", s)
 		}
-		if have, want := sts.Message(), "bad utf8"; !strings.Contains(have, want) {
+		if have, want := sts.Message(), "utf8 text"; !strings.Contains(have, want) {
 			t.Error("have", have, "want", want, "for", s)
 		}
 	}
@@ -94,33 +94,96 @@ func TestValidateCodepoints(t *testing.T) {
 		string([]byte{0xF7, 0xBF, 0xBF, 0xBF}), // over max codepoint
 	}
 	for _, s := range valid {
-		sts := validateCodepoints(s)
+		sts := validateCodepoints(s, "field")
 		if sts != nil {
 			t.Error("failed on", s, sts)
 		}
 	}
 	for i, s := range invalid {
-		sts := validateCodepoints(s)
+		sts := validateCodepoints(s, "field")
 		if sts == nil {
 			t.Fatal("expected error", i, s)
 		}
 		if have, want := sts.Code(), codes.InvalidArgument; have != want {
 			t.Error("have", have, "want", want, "for", i, s)
 		}
-		if have, want := sts.Message(), "unsupported code point"; !strings.Contains(have, want) {
+		if have, want := sts.Message(), "unsupported char"; !strings.Contains(have, want) {
 			t.Error("have", have, "want", want, "for", i, s)
 		}
 	}
 	for i, s := range badutf8 {
-		sts := validateCodepoints(s)
+		sts := validateCodepoints(s, "field")
 		if sts == nil {
 			t.Fatal("expected error", i, s)
 		}
 		if have, want := sts.Code(), codes.Internal; have != want {
 			t.Error("have", have, "want", want, "for", i, s)
 		}
-		if have, want := sts.Message(), "bad utf8 encoding"; !strings.Contains(have, want) {
+		if have, want := sts.Message(), "utf8 text"; !strings.Contains(have, want) {
 			t.Error("have", have, "want", want, "for", i, s)
 		}
+	}
+}
+
+func TestValidateMaxBytes_tooShort(t *testing.T) {
+	sts := validateMaxBytes("a", "field", 2, 2)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "too short"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestValidateMaxBytes_tooLong(t *testing.T) {
+	sts := validateMaxBytes("a", "field", 0, 0)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "too long"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestToCanonical_failsInvalidUtf8(t *testing.T) {
+	_, sts := toCanonical(string([]byte{0xCC, 0x00}), "field")
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "utf8 text"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestToCanonical_expanding(t *testing.T) {
+	// From http://unicode.org/faq/normalization.html
+	// Some text can expand when being normalized.  This case goes from
+	// 4 bytes to 12 bytes in UTF-8.
+	s, sts := toCanonical("\U0001D160", "field") // 𝅘𝅥𝅮
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if len(s) != 12 {
+		t.Fatal("did not normalize", []byte(s))
+	}
+}
+
+func TestToCanonical(t *testing.T) {
+	// From http://unicode.org/reports/tr15/
+	s, sts := toCanonical("A\u030A", "field")
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if s != "\u00C5" {
+		t.Fatal("did not normalize")
 	}
 }
