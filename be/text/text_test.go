@@ -7,10 +7,11 @@ import (
 
 	"golang.org/x/text/unicode/rangetable"
 	"google.golang.org/grpc/codes"
+
+	"pixur.org/pixur/be/status"
 )
 
-// TODO: check this for casefold equiv
-//0041+0301+0328 = 0041+0328+0301
+// There is justification for several of the test symbols used here, but not in each function.
 
 func TestAllowedCodePointsExclusive(t *testing.T) {
 	allowedcc, _ := buildCc()
@@ -125,6 +126,13 @@ func TestValidateCodepoints(t *testing.T) {
 	}
 }
 
+func TestValidateMaxBytes(t *testing.T) {
+	sts := validateMaxBytes("a", "field", 1, 1)
+	if sts != nil {
+		t.Error(sts)
+	}
+}
+
 func TestValidateMaxBytes_tooShort(t *testing.T) {
 	sts := validateMaxBytes("a", "field", 2, 2)
 	if sts == nil {
@@ -151,8 +159,8 @@ func TestValidateMaxBytes_tooLong(t *testing.T) {
 	}
 }
 
-func TestToCanonical_failsInvalidUtf8(t *testing.T) {
-	_, sts := toCanonical(string([]byte{0xCC, 0x00}), "field")
+func TestToNFC_failsInvalidUtf8(t *testing.T) {
+	_, sts := toNFC(string([]byte{0xCC, 0x00}), "field")
 	if sts == nil {
 		t.Fatal(sts)
 	}
@@ -164,11 +172,11 @@ func TestToCanonical_failsInvalidUtf8(t *testing.T) {
 	}
 }
 
-func TestToCanonical_expanding(t *testing.T) {
+func TestToNFC_expanding(t *testing.T) {
 	// From http://unicode.org/faq/normalization.html
 	// Some text can expand when being normalized.  This case goes from
 	// 4 bytes to 12 bytes in UTF-8.
-	s, sts := toCanonical("\U0001D160", "field") // 𝅘𝅥𝅮
+	s, sts := toNFC("\U0001D160", "field") // 𝅘𝅥𝅮
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -177,13 +185,162 @@ func TestToCanonical_expanding(t *testing.T) {
 	}
 }
 
-func TestToCanonical(t *testing.T) {
+func TestToNFC(t *testing.T) {
 	// From http://unicode.org/reports/tr15/
-	s, sts := toCanonical("A\u030A", "field")
+	s, sts := toNFC("A\u030A", "field")
 	if sts != nil {
 		t.Fatal(sts)
 	}
 	if s != "\u00C5" {
 		t.Fatal("did not normalize")
+	}
+}
+
+func TestToNFC_norms(t *testing.T) {
+	s1, sts := toNFC("\u0041\u0301\u0328", "field")
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	s2, sts := toNFC("\u0041\u0328\u0301", "field")
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if s1 != s2 {
+		t.Fatal("did not normalize", s1, s2)
+	}
+}
+
+func TestDefaultValidateAndNormalize_normalizes(t *testing.T) {
+	valid := func(_, _ string) error { return nil }
+	s, sts := defaultValidateAndNormalize("A\u030A", "field", 0, 3, valid)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if s != "\u00C5" {
+		t.Fatal("did not normalize")
+	}
+}
+
+func TestDefaultValidateAndNormalize_validatorFails(t *testing.T) {
+	invalid := func(_, _ string) error { return status.InvalidArgument(nil, "expected") }
+	_, sts := defaultValidateAndNormalize("a", "field", 0, 1, invalid)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "expected"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_tooShortFails(t *testing.T) {
+	valid := func(_, _ string) error { return nil }
+	_, sts := defaultValidateAndNormalize("\U0001D160", "field", 5, 11, valid)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "too short"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_invalidUtf8Fails(t *testing.T) {
+	valid := func(_, _ string) error { return nil }
+	_, sts := defaultValidateAndNormalize(string([]byte{0xCC, 0x00}), "field", 2, 11, valid)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "utf8 text"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_tooLongAfterNormFails(t *testing.T) {
+	valid := func(_, _ string) error { return nil }
+	_, sts := defaultValidateAndNormalize("\U0001D160", "field", 4, 11, valid)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "too long"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_tooShortAfterNormFails(t *testing.T) {
+	valid := func(_, _ string) error { return nil }
+	_, sts := defaultValidateAndNormalize("A\u030A", "field", 3, 12, valid)
+	if sts == nil {
+		t.Fatal(sts)
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "too short"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_nonGraphicFails(t *testing.T) {
+	_, sts := defaultValidateAndNormalize("\u0000", "field", 0, 1)
+	if sts == nil {
+		t.Fatal("expected an error")
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "unsupported char"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestDefaultValidateAndNormalize_singleCodepointEmojiWorks(t *testing.T) {
+	_, sts := defaultValidateAndNormalize("😺😇😊😳😈☠👁", "field", 1, 100)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
+func TestDefaultValidateAndNormalize_multiCodepointEmojiFails(t *testing.T) {
+	// Man shrugging, per https://unicode.org/emoji/charts/full-emoji-list.html
+	_, sts := defaultValidateAndNormalize("\U0001F937\u200D\u2642\uFE0F", "field", 1, 100)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
+func TestDefaultValidateAndNormalize_commonWhitespaceWorks(t *testing.T) {
+	_, sts := defaultValidateAndNormalize("\r\n\t ", "field", 1, 100)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
+func TestDefaultValidateAndNormalize_plainTextWorks(t *testing.T) {
+	_, sts := defaultValidateAndNormalize("The quick brown fox jumps over the lazy dog", "field", 1, 100)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+}
+
+func TestDefaultValidateAndNormalize_customValidator(t *testing.T) {
+	_, sts := defaultValidateAndNormalize("\r\n", "field", 1, 100, func(_, _ string) error {
+		return status.InvalidArgument(nil, "unsupported whitespace")
+	})
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "unsupported whitespace"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
 	}
 }

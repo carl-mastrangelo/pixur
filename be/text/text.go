@@ -12,6 +12,12 @@ import (
 
 const UnicodeVersion = unicode.Version
 
+// TextValidator validates some text
+type TextValidator func(text, fieldname string) error
+
+// TextNormalizer normalizes some text
+type TextNormalizer func(text, fieldname string) (string, error)
+
 func buildCc() (allowed, notallowed *unicode.RangeTable) {
 	ccallowed := &unicode.RangeTable{
 		R16: []unicode.Range16{
@@ -47,6 +53,8 @@ func init() {
 	notAllowedRange = rangetable.Merge(ncc, unicode.Co, unicode.Cs, unicode.Noncharacter_Code_Point)
 }
 
+var _ TextValidator = ValidateEncoding
+
 // ValidateEncoding ensures that the given string is valid UTF-8.
 func ValidateEncoding(text, fieldname string) error {
 	return validateEncoding(text, fieldname)
@@ -58,6 +66,8 @@ func validateEncoding(text, fieldname string) status.S {
 	}
 	return nil
 }
+
+var _ TextValidator = ValidateCodepoints
 
 // ValidateCodepoints ensures that the string only contains reasonable characters.  By default,
 // Unicode classes Cc (controls), Co (private use), Cs (surrogates), and Noncharacters are
@@ -100,6 +110,13 @@ func validateCodepointUnsafe(i int, r rune, fieldname string) status.S {
 	return nil
 }
 
+// MaxBytesValidator produces a TextValidator that checks text length in bytes.
+func MaxBytesValidator(min, max int64) TextValidator {
+	return func(text, fieldname string) error {
+		return ValidateMaxBytes(text, fieldname, min, max)
+	}
+}
+
 // ValidateMaxBytes ensures that the string is bounded by min and max, inclusive.
 func ValidateMaxBytes(text, fieldname string, min, max int64) error {
 	return validateMaxBytes(text, fieldname, min, max)
@@ -114,21 +131,75 @@ func validateMaxBytes(text, fieldname string, min, max int64) status.S {
 	return nil
 }
 
-// ToCanonical normalizes text to NFC, suitable for storage and transmission.
-func ToCanonical(text, fieldname string) (string, error) {
-	return toCanonical(text, fieldname)
+var _ TextNormalizer = ToNFC
+
+// ToNFC normalizes text to NFC, suitable for storage and transmission.
+func ToNFC(text, fieldname string) (string, error) {
+	return toNFC(text, fieldname)
 }
 
-func toCanonical(text, fieldname string) (string, status.S) {
+func toNFC(text, fieldname string) (string, status.S) {
 	if sts := validateEncoding(text, fieldname); sts != nil {
 		return "", sts
 	}
 	if sts := validateCodepoints(text, fieldname); sts != nil {
 		return "", sts
 	}
-	return toCanonicalPrevalidated(text), nil
+	return toNFCUnsafe(text), nil
 }
 
-func toCanonicalPrevalidated(text string) string {
+var _ TextNormalizer = ToNFCUnsafe
+
+// ToNFCUnsafe converts prevalidated text into NFC.  Text *must* have been previously
+// validated in order to use this function.  This never returns a non-nil error, and ignores the
+// fieldname
+func ToNFCUnsafe(text, fieldname string) (string, error) {
+	return toNFCUnsafe(text), nil
+}
+
+func toNFCUnsafe(text string) string {
 	return norm.NFC.String(text)
+}
+
+// ValidateAndNormalize validates text, normalizes it, and then revalidates it.
+func ValidateAndNormalize(
+	text, fieldname string, textnorm TextNormalizer, validators ...TextValidator) (string, error) {
+	return validateAndNormalize(text, fieldname, textnorm, validators, validators)
+}
+
+func validateAndNormalize(
+	text, fieldname string, tn TextNormalizer, prevalid []TextValidator, postvalid []TextValidator) (
+	string, status.S) {
+	for _, v := range prevalid {
+		if err := v(text, fieldname); err != nil {
+			return "", status.From(err)
+		}
+	}
+	newtext, err := tn(text, fieldname)
+	if err != nil {
+		return "", status.From(err)
+	}
+	for _, v := range postvalid {
+		if err := v(newtext, fieldname); err != nil {
+			return "", status.From(err)
+		}
+	}
+	return newtext, nil
+}
+
+// DefaultValidateAndNormalize performs regular normalization.  Use this.
+func DefaultValidateAndNormalize(
+	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, error) {
+	return defaultValidateAndNormalize(text, fieldname, minbytes, maxbytes, extra...)
+}
+
+func defaultValidateAndNormalize(
+	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, status.S) {
+
+	validlength := MaxBytesValidator(minbytes, maxbytes)
+	prevalid := append([]TextValidator{validlength, ValidateEncoding, ValidateCodepoints}, extra...)
+	// Since we control the normalizer, we don't have to revalidate as much.
+	postvalid := append([]TextValidator{validlength}, extra...)
+
+	return validateAndNormalize(text, fieldname, ToNFCUnsafe, prevalid, postvalid)
 }
