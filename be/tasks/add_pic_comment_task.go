@@ -62,7 +62,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	var userID int64
+	userID := schema.AnonymousUserID
 	if u != nil {
 		userID = u.UserId
 	}

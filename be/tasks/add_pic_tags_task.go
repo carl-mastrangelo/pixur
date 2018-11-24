@@ -38,6 +38,11 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
+	userID := schema.AnonymousUserID
+	if u != nil {
+		// TODO: test
+		userID = u.UserId
+	}
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicID},
@@ -73,7 +78,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	upsertedTagIds, sts :=
-		upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId, minTagLen, maxTagLen)
+		upsertTags(j, t.TagNames, p.PicId, t.Now(), userID, minTagLen, maxTagLen)
 	if sts != nil {
 		return sts
 	}
