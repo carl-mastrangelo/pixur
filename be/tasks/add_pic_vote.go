@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	anypb "github.com/golang/protobuf/ptypes/any"
+
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
@@ -18,6 +20,8 @@ type AddPicVoteTask struct {
 	// Inputs
 	PicID int64
 	Vote  schema.PicVote_Vote
+	// Ext is additional extra data associated with this vote.
+	Ext map[string]*anypb.Any
 
 	// Outs
 	PicVote *schema.PicVote
@@ -37,6 +41,23 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	u, sts := requireCapability(ctx, j, schema.User_PIC_VOTE_CREATE)
 	if sts != nil {
 		return sts
+	}
+	userID := schema.AnonymousUserID
+	if u == nil {
+		return status.Unauthenticated(nil, "anonymous users can't vote")
+	} else {
+		userID = u.UserId
+	}
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+
+	if len(t.Ext) != 0 {
+		if sts := validateCapability(u, conf, schema.User_PIC_VOTE_EXTENSION_CREATE); sts != nil {
+			return sts
+		}
 	}
 
 	pics, err := j.FindPics(db.Opts{
@@ -58,7 +79,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	pvs, err := j.FindPicVotes(db.Opts{
 		Prefix: tab.PicVotesPrimary{
 			PicId:  &t.PicID,
-			UserId: &u.UserId,
+			UserId: &userID,
 		},
 		Lock: db.LockWrite,
 	})
@@ -72,8 +93,9 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	now := t.Now()
 	pv := &schema.PicVote{
 		PicId:  p.PicId,
-		UserId: u.UserId,
+		UserId: userID,
 		Vote:   t.Vote,
+		Ext:    t.Ext,
 	}
 	pv.SetCreatedTime(now)
 	pv.SetModifiedTime(now)
@@ -94,6 +116,66 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		p.SetModifiedTime(now)
 		if err := j.UpdatePic(p); err != nil {
 			return status.Internal(err, "can't update pic")
+		}
+	}
+
+	// only create events if the pic was updated.
+	if pic_updated {
+		createdTs := schema.UserEventCreatedTsCol(pv.CreatedTs)
+		next := func(uid int64) (int64, status.S) {
+			return nextUserEventIndex(j, uid, createdTs)
+		}
+		var iues []*schema.UserEvent
+		var oue *schema.UserEvent
+		if userID != schema.AnonymousUserID {
+			idx, sts := next(userID)
+			if sts != nil {
+				return sts
+			}
+			oue = &schema.UserEvent{
+				UserId:     userID,
+				Index:      idx,
+				CreatedTs:  pv.CreatedTs,
+				ModifiedTs: pv.ModifiedTs,
+				Evt: &schema.UserEvent_OutgoingUpsertPicVote_{
+					OutgoingUpsertPicVote: &schema.UserEvent_OutgoingUpsertPicVote{
+						PicId: p.PicId,
+					},
+				},
+			}
+		}
+		// The file source list promises that there are no duplicate userIDs
+		for _, fs := range p.Source {
+			if fs.UserId != schema.AnonymousUserID && fs.UserId != userID {
+				idx, sts := next(fs.UserId)
+				if sts != nil {
+					return sts
+				}
+				iues = append(iues, &schema.UserEvent{
+					UserId:     fs.UserId,
+					Index:      idx,
+					CreatedTs:  pv.CreatedTs,
+					ModifiedTs: pv.ModifiedTs,
+					Evt: &schema.UserEvent_IncomingUpsertPicVote_{
+						IncomingUpsertPicVote: &schema.UserEvent_IncomingUpsertPicVote{
+							PicId:         p.PicId,
+							SubjectUserId: userID,
+						},
+					},
+				})
+			}
+		}
+
+		// In the future, these notifications could be done outside of the transaction.
+		if oue != nil {
+			if err := j.InsertUserEvent(oue); err != nil {
+				return status.Internal(err, "can't create outgoing user event")
+			}
+		}
+		for _, iue := range iues {
+			if err := j.InsertUserEvent(iue); err != nil {
+				return status.Internal(err, "can't create incoming user event")
+			}
 		}
 	}
 
