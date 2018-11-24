@@ -609,10 +609,8 @@ func TestAddPicVote_Notification_AnonAuthor_PicParent(t *testing.T) {
 	}
 }
 
-// TODO: reenable
 // Checks to see a next index is used.
 func TestAddPicVote_Notification_Author_PicParent_ExistingEvents(t *testing.T) {
-
 	c := Container(t)
 	defer c.Close()
 
@@ -689,5 +687,266 @@ func TestAddPicVote_Notification_Author_PicParent_ExistingEvents(t *testing.T) {
 
 	if found != 3 {
 		t.Error("missing events", ues)
+	}
+}
+
+func TestAddPicVote_Notification_Author_AnonPicParent_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_VOTE_CREATE)
+	u.Update()
+	p := c.CreatePic()
+	for _, s := range p.Pic.Source {
+		s.UserId = schema.AnonymousUserID
+	}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 0 {
+		t.Fatal("wrong number of events", ues)
+	}
+}
+
+func TestAddPicVote_Notification_AnonAuthor_AnonPicParent_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	conf := schema.GetDefaultConfiguration()
+	conf.AnonymousCapability.Capability =
+		append(conf.AnonymousCapability.Capability, schema.User_PIC_VOTE_CREATE)
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
+	p := c.CreatePic()
+	for _, s := range p.Pic.Source {
+		s.UserId = schema.AnonymousUserID
+	}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 0 {
+		t.Fatal("wrong number of events", ues)
+	}
+}
+
+func TestAddPicVote_Notification_Author_PicParent_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_VOTE_CREATE)
+	u.Update()
+	p := c.CreatePic()
+	u2 := c.CreateUser()
+	p.Pic.Source = []*schema.Pic_FileSource{{
+		UserId: u2.User.UserId,
+	}}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 0 {
+		t.Fatal("wrong number of events", ues)
+	}
+}
+
+func TestAddPicVote_Notification_Author_AuthorPicParent_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_VOTE_CREATE)
+	u.Update()
+	p := c.CreatePic()
+	p.Pic.Source = []*schema.Pic_FileSource{{
+		UserId: u.User.UserId,
+	}}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 0 {
+		t.Fatal("wrong number of events", ues)
+	}
+}
+
+func TestAddPicVote_Notification_AnonAuthor_PicParent_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	conf := schema.GetDefaultConfiguration()
+	conf.AnonymousCapability.Capability =
+		append(conf.AnonymousCapability.Capability, schema.User_PIC_VOTE_CREATE)
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
+	p := c.CreatePic()
+	u2 := c.CreateUser()
+	p.Pic.Source = []*schema.Pic_FileSource{{
+		UserId: u2.User.UserId,
+	}}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 0 {
+		t.Fatal("wrong number of events", ues)
+	}
+}
+
+// Checks to see a next index is used.
+func TestAddPicVote_Notification_Author_PicParent_ExistingEvents_Neutral(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u1 := c.CreateUser()
+	u1.User.Capability = append(u1.User.Capability, schema.User_PIC_VOTE_CREATE)
+	u1.Update()
+
+	p := c.CreatePic()
+	u2 := c.CreateUser()
+	p.Pic.Source = []*schema.Pic_FileSource{{
+		UserId: u2.User.UserId,
+	}}
+	p.Update()
+
+	tm := time.Now()
+	now := func() time.Time { return tm }
+
+	c.AutoJob(func(j *tab.Job) error {
+		return j.InsertUserEvent(&schema.UserEvent{
+			UserId:     u2.User.UserId,
+			CreatedTs:  schema.ToTspb(now()),
+			ModifiedTs: schema.ToTspb(now()),
+			Evt: &schema.UserEvent_IncomingUpsertPicVote_{
+				IncomingUpsertPicVote: &schema.UserEvent_IncomingUpsertPicVote{
+					PicId:         p.Pic.PicId,
+					SubjectUserId: u1.User.UserId,
+				},
+			},
+		})
+	})
+
+	task := &AddPicVoteTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   now,
+		Vote:  schema.PicVote_NEUTRAL,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	j := c.Job()
+	defer j.Rollback()
+
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ues) != 1 {
+		t.Fatal("wrong number of events", ues)
 	}
 }
