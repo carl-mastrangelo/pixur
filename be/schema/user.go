@@ -3,10 +3,8 @@ package schema
 import (
 	"time"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/unicode/norm"
-
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/text"
 )
 
 func (u *User) IdCol() int64 {
@@ -19,7 +17,11 @@ func (u *User) IdentCol() string {
 
 // UserUniqueIdent normalizes an identity for uniqueness constraints
 func UserUniqueIdent(s string) string {
-	return cases.Fold().String(norm.NFKC.String(s))
+	u, err := text.ToCaselessNFKC(s, "ident")
+	if err != nil {
+		panic(err)
+	}
+	return u
 }
 
 func (u *User) SetCreatedTime(now time.Time) {

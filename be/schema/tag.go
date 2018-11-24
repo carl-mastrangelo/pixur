@@ -3,8 +3,7 @@ package schema
 import (
 	"time"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/unicode/norm"
+	"pixur.org/pixur/be/text"
 )
 
 func (t *Tag) IdCol() int64 {
@@ -17,7 +16,11 @@ func (t *Tag) NameCol() string {
 
 // TagUniqueName normalizes a name for uniqueness constraints
 func TagUniqueName(s string) string {
-	return cases.Fold().String(norm.NFKC.String(s))
+	u, err := text.ToCaselessNFKC(s, "tag")
+	if err != nil {
+		panic(err)
+	}
+	return u
 }
 
 func (t *Tag) SetCreatedTime(now time.Time) {
