@@ -47,6 +47,10 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	p := pics[0]
 
+	if err := j.DeletePic(tab.KeyForPic(p)); err != nil {
+		return status.Internal(err, "can't delete pic")
+	}
+
 	pis, err := j.FindPicIdents(db.Opts{
 		Prefix: tab.PicIdentsPrimary{PicId: &t.PicID},
 		Lock:   db.LockWrite,
@@ -56,12 +60,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	for _, pi := range pis {
-		err := j.DeletePicIdent(tab.PicIdentsPrimary{
-			PicId: &pi.PicId,
-			Type:  &pi.Type,
-			Value: &pi.Value,
-		})
-		if err != nil {
+		if err := j.DeletePicIdent(tab.KeyForPicIdent(pi)); err != nil {
 			return status.Internal(err, "can't delete pic ident")
 		}
 	}
@@ -75,11 +74,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	for _, pt := range pts {
-		err := j.DeletePicTag(tab.PicTagsPrimary{
-			PicId: &pt.PicId,
-			TagId: &pt.TagId,
-		})
-		if err != nil {
+		if err := j.DeletePicTag(tab.KeyForPicTag(pt)); err != nil {
 			return status.Internal(err, "can't delete pic tag")
 		}
 	}
@@ -109,10 +104,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 				return status.Internal(err, "can't update tag")
 			}
 		} else {
-			err := j.DeleteTag(tab.TagsPrimary{
-				Id: &t.TagId,
-			})
-			if err != nil {
+			if err := j.DeleteTag(tab.KeyForTag(t)); err != nil {
 				return status.Internal(err, "can't delete tag")
 			}
 		}
@@ -127,12 +119,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	for _, pc := range pcs {
-
-		err := j.DeletePicComment(tab.PicCommentsPrimary{
-			PicId:     &pc.PicId,
-			CommentId: &pc.CommentId,
-		})
-		if err != nil {
+		if err := j.DeletePicComment(tab.KeyForPicComment(pc)); err != nil {
 			return status.Internal(err, "can't delete pic comment")
 		}
 	}
@@ -146,21 +133,11 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	for _, pv := range pvs {
-		err := j.DeletePicVote(tab.PicVotesPrimary{
-			PicId:  &pv.PicId,
-			UserId: &pv.UserId,
-		})
-		if err != nil {
+		if err := j.DeletePicVote(tab.KeyForPicVote(pv)); err != nil {
 			return status.Internal(err, "can't delete pic vote")
 		}
 	}
 
-	err = j.DeletePic(tab.PicsPrimary{
-		Id: &t.PicID,
-	})
-	if err != nil {
-		return status.Internal(err, "can't delete pic")
-	}
 	if err := j.Commit(); err != nil {
 		return status.Internal(err, "Unable to Commit")
 	}
@@ -172,7 +149,6 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		defer status.ReplaceOrSuppress(&stscap, status.DataLoss(err, "unable to delete pic data", oldpath))
 	}
 
-	// this would be a good place for addSuppressed
 	for _, th := range p.Thumbnail {
 		oldthumbpath, sts := schema.PicFileThumbnailPath(t.PixPath, p.PicId, th.Index, th.Mime)
 		if sts != nil {
@@ -181,6 +157,8 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 			defer status.ReplaceOrSuppress(&stscap, status.DataLoss(err, "unable to delete pic data", oldthumbpath))
 		}
 	}
+
+	// TODO: purge any user events that contain the PicID
 
 	return nil
 }
