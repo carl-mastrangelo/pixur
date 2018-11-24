@@ -431,7 +431,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 		}
 	}
 
-	if sts := upsertTags(j, tagNames, p.PicId, now, userID, minTagLen, maxTagLen); sts != nil {
+	if _, sts := upsertTags(j, tagNames, p.PicId, now, userID, minTagLen, maxTagLen); sts != nil {
 		return sts
 	}
 

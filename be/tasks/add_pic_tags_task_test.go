@@ -25,7 +25,7 @@ func TestUpsertTags(t *testing.T) {
 
 	now := time.Now()
 	tagNames := []string{attachedTag.Tag.Name, unattachedTag.Tag.Name, "missing"}
-	err := upsertTags(j, tagNames, pic.Pic.PicId, now, -1, 1, 64)
+	tagIds, err := upsertTags(j, tagNames, pic.Pic.PicId, now, -1, 1, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,6 +36,12 @@ func TestUpsertTags(t *testing.T) {
 	}
 	if len(allTags) != 3 || len(allPicTags) != 3 {
 		t.Fatal("not all tags created", allTags, allPicTags)
+	}
+
+	for _, tagName := range tagNames {
+		if _, present := tagIds[tagName]; !present {
+			t.Error("missing tag id in output", tagName)
+		}
 	}
 }
 
@@ -94,7 +100,7 @@ func TestCreateNewTags(t *testing.T) {
 
 	now := time.Now()
 
-	newTags, err := createNewTags(j, []tagNameAndUniq{{name: "A", uniq: "a"}}, now)
+	newTags, err := createNewTags(j, []tagNameAndUniq{{name: "A", orig: "A", uniq: "a"}}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +130,7 @@ func TestCreateNewTags_CantCreate(t *testing.T) {
 
 	now := time.Now()
 
-	_, sts := createNewTags(j, []tagNameAndUniq{{name: "A", uniq: "a"}}, now)
+	_, sts := createNewTags(j, []tagNameAndUniq{{name: "A", orig: "A", uniq: "a"}}, now)
 	// It could fail for the id allocator or tag creation, so just check the code.
 	if sts.Code() != codes.Internal {
 		t.Fatal(sts)
@@ -184,8 +190,8 @@ func TestFindExistingTagsByName_AllFound(t *testing.T) {
 	defer j.Rollback()
 
 	existing := []tagNameAndUniq{
-		{name: tag2.Tag.Name, uniq: schema.TagUniqueName(tag2.Tag.Name)},
-		{name: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
+		{name: tag2.Tag.Name, orig: tag2.Tag.Name, uniq: schema.TagUniqueName(tag2.Tag.Name)},
+		{name: tag1.Tag.Name, orig: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
 	}
 
 	tags, unknown, err := findExistingTagsByName(j, existing)
@@ -214,8 +220,8 @@ func TestFindExistingTagsByName_SomeFound(t *testing.T) {
 	defer j.Rollback()
 
 	existing := []tagNameAndUniq{
-		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
-		{name: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
+		{name: "Missing", orig: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: tag1.Tag.Name, orig: tag1.Tag.Name, uniq: schema.TagUniqueName(tag1.Tag.Name)},
 	}
 
 	tags, unknown, err := findExistingTagsByName(j, existing)
@@ -241,8 +247,8 @@ func TestFindExistingTagsByName_NoneFound(t *testing.T) {
 	defer j.Rollback()
 
 	existing := []tagNameAndUniq{
-		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
-		{name: "othertag", uniq: schema.TagUniqueName("othertag")},
+		{name: "Missing", orig: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: "othertag", orig: "othertag", uniq: schema.TagUniqueName("othertag")},
 	}
 
 	tags, unknown, err := findExistingTagsByName(j, existing)
@@ -264,7 +270,7 @@ func TestFindUnattachedTagNames_AllNew(t *testing.T) {
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	newnames := []tagNameAndUniq{
-		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: "Missing", orig: "Missing", uniq: schema.TagUniqueName("Missing")},
 	}
 
 	names := findUnattachedTagNames(tags, newnames)
@@ -279,8 +285,8 @@ func TestFindUnattachedTagNames_SomeNew(t *testing.T) {
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	newnames := []tagNameAndUniq{
-		{name: "Missing", uniq: schema.TagUniqueName("Missing")},
-		{name: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
+		{name: "Missing", orig: "Missing", uniq: schema.TagUniqueName("Missing")},
+		{name: tags[0].Name, orig: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
 	}
 
 	names := findUnattachedTagNames(tags, newnames)
@@ -295,8 +301,8 @@ func TestFindUnattachedTagNames_NoneNew(t *testing.T) {
 	tags := []*schema.Tag{c.CreateTag().Tag, c.CreateTag().Tag}
 
 	newnames := []tagNameAndUniq{
-		{name: tags[1].Name, uniq: schema.TagUniqueName(tags[1].Name)},
-		{name: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
+		{name: tags[1].Name, orig: tags[1].Name, uniq: schema.TagUniqueName(tags[1].Name)},
+		{name: tags[0].Name, orig: tags[0].Name, uniq: schema.TagUniqueName(tags[0].Name)},
 	}
 
 	names := findUnattachedTagNames(tags, newnames)

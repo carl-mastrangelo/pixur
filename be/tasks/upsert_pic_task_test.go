@@ -803,7 +803,7 @@ func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
 
 	ts, _ := tp.Tags()
 	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "Blooper" {
-		t.Error("bad tags", ts)
+		t.Error("bad tags", len(ts), ts)
 	}
 }
 

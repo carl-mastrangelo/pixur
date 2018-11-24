@@ -21,6 +21,9 @@ type AddPicTagsTask struct {
 	// Inputs
 	PicID    int64
 	TagNames []string
+
+	// Outputs
+	TagNameToTagId map[string]int64 // all keys from TagNames are present, and no extras.
 }
 
 // TODO: add tests
@@ -69,52 +72,85 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		maxTagLen = math.MaxInt64
 	}
 
-	if sts := upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId, minTagLen, maxTagLen); sts != nil {
+	upsertedTagIds, sts :=
+		upsertTags(j, t.TagNames, p.PicId, t.Now(), u.UserId, minTagLen, maxTagLen)
+	if sts != nil {
 		return sts
 	}
 
 	if err := j.Commit(); err != nil {
 		return status.Internal(err, "can't commit job")
 	}
+
+	t.TagNameToTagId = upsertedTagIds
 	return nil
 }
 
 type tagNameAndUniq struct {
-	name, uniq string
+	name, orig, uniq string
 }
 
 func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
-	userID, minTagLen, maxTagLen int64) status.S {
+	userID, minTagLen, maxTagLen int64) (map[string]int64, status.S) {
 	newTagNames, sts := cleanTagNames(rawTags, minTagLen, maxTagLen)
 	if sts != nil {
-		return sts
+		return nil, sts
 	}
-
 	attachedTags, _, sts := findAttachedPicTags(j, picID)
 	if sts != nil {
-		return sts
+		return nil, sts
 	}
 
 	unattachedTagNames := findUnattachedTagNames(attachedTags, newTagNames)
 	unattachedExistingTags, unknownNames, sts := findExistingTagsByName(j, unattachedTagNames)
 	if sts != nil {
-		return sts
+		return nil, sts
 	}
 
 	if sts := updateExistingTags(j, unattachedExistingTags, now); sts != nil {
-		return sts
+		return nil, sts
 	}
 	newTags, sts := createNewTags(j, unknownNames, now)
 	if sts != nil {
-		return sts
+		return nil, sts
 	}
 
 	unattachedExistingTags = append(unattachedExistingTags, newTags...)
 	if _, sts := createPicTags(j, unattachedExistingTags, picID, now, userID); sts != nil {
-		return sts
+		return nil, sts
 	}
 
-	return nil
+	return buildTagIdList(newTagNames, attachedTags, unattachedExistingTags)
+}
+
+func buildTagIdList(providedTagNames []tagNameAndUniq, existing, created []*schema.Tag) (
+	map[string]int64, status.S) {
+	tagMap := make(map[string]int64, len(existing)+len(created))
+	for _, t := range existing {
+		uniq := schema.TagUniqueName(t.Name)
+		if _, present := tagMap[uniq]; present {
+			return nil, status.Internalf(nil, "duplicte tag %v", t)
+		}
+		tagMap[uniq] = t.TagId
+	}
+	for _, t := range created {
+		uniq := schema.TagUniqueName(t.Name)
+		if _, present := tagMap[uniq]; present {
+			return nil, status.Internalf(nil, "duplicte tag %v", t)
+		}
+		tagMap[uniq] = t.TagId
+	}
+	nameMap := make(map[string]int64, len(providedTagNames))
+	for _, providedTagName := range providedTagNames {
+		if tagId, present := tagMap[providedTagName.uniq]; !present {
+			return nil, status.Internal(nil, "tag missing", providedTagName.orig)
+		} else if _, present = nameMap[providedTagName.uniq]; present {
+			return nil, status.Internal(nil, "duplicate tag", providedTagName.orig)
+		} else {
+			nameMap[providedTagName.orig] = tagId
+		}
+	}
+	return nameMap, nil
 }
 
 func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicTag, status.S) {
@@ -239,22 +275,20 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, u
 
 func cleanTagNames(rawTagNames []string, minTagLen, maxTagLen int64) ([]tagNameAndUniq, status.S) {
 	validtagnames := make([]tagNameAndUniq, 0, len(rawTagNames))
-	defaultValidator := text.DefaultValidator(minTagLen, maxTagLen)
-	var norm text.TextNormalizer = func(txt, fieldname string) (string, error) {
-		if newtext, err := text.ToNFC(txt, fieldname); err != nil {
-			return "", err
-		} else {
-			return strings.TrimSpace(newtext), nil
-		}
-	}
+	validators :=
+		[]text.TextValidator{text.DefaultValidator(minTagLen, maxTagLen), text.ValidateNoNewlines}
+	normalizers := []text.TextNormalizer{text.ToNFC, func(txt, _ string) (string, error) {
+		return strings.TrimSpace(txt), nil
+	}}
 	for _, rawtagname := range rawTagNames {
 		trimmednormaltagname, err :=
-			text.ValidateAndNormalize(rawtagname, "tag", norm, defaultValidator, text.ValidateNoNewlines)
+			text.ValidateAndNormalizeMulti(rawtagname, "tag", normalizers, validators...)
 		if err != nil {
 			return nil, status.From(err)
 		}
 		validtagnames = append(validtagnames, tagNameAndUniq{
 			name: trimmednormaltagname,
+			orig: rawtagname,
 			uniq: schema.TagUniqueName(trimmednormaltagname),
 		})
 	}
@@ -270,7 +304,8 @@ func validateNoDuplicateTags(tagNames []tagNameAndUniq) status.S {
 	var seen = make(map[string]int, len(tagNames))
 	for i, tn := range tagNames {
 		if pos, present := seen[tn.uniq]; present {
-			return status.InvalidArgumentf(nil, "duplicate tag '%s' at position %d and %d", tn.name, pos, i)
+			return status.InvalidArgumentf(
+				nil, "duplicate tag '%s' at position %d and %d", tn.orig, pos, i)
 		}
 		seen[tn.uniq] = i
 	}
