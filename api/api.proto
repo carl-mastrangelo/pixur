@@ -183,6 +183,10 @@ message Capability {
     PIC_TAG_EXTENSION_CREATE = 19;
     // Can this user read arbitrary extension data on a pic tag? 
     PIC_TAG_EXTENSION_READ = 20;
+    // Can this user create arbitrary extension data on a pic vote? 
+    PIC_VOTE_EXTENSION_CREATE = 21;
+    // Can this user read arbitrary extension data on a pic vote? 
+    PIC_VOTE_EXTENSION_READ = 22;
   }
 }
 
