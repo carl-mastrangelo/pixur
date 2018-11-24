@@ -110,11 +110,13 @@ var SqlTables = map[string][]string{
 
 			"\"user_id\" bigint NOT NULL, " +
 
+			"\"index\" bigint NOT NULL, " +
+
 			"\"data\" bytea NOT NULL, " +
 
-			"UNIQUE(\"user_id\",\"pic_id\"), " +
+			"UNIQUE(\"user_id\",\"pic_id\",\"index\"), " +
 
-			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
+			"PRIMARY KEY(\"pic_id\",\"user_id\",\"index\")" +
 
 			");",
 
@@ -235,11 +237,13 @@ var SqlTables = map[string][]string{
 
 			"`user_id` bigint(20) NOT NULL, " +
 
+			"`index` bigint(20) NOT NULL, " +
+
 			"`data` blob NOT NULL, " +
 
-			"UNIQUE(`user_id`,`pic_id`), " +
+			"UNIQUE(`user_id`,`pic_id`,`index`), " +
 
-			"PRIMARY KEY(`pic_id`,`user_id`)" +
+			"PRIMARY KEY(`pic_id`,`user_id`,`index`)" +
 
 			");",
 
@@ -360,11 +364,13 @@ var SqlTables = map[string][]string{
 
 			"\"user_id\" bigint NOT NULL, " +
 
+			"\"index\" bigint NOT NULL, " +
+
 			"\"data\" bytea NOT NULL, " +
 
-			"UNIQUE(\"user_id\",\"pic_id\"), " +
+			"UNIQUE(\"user_id\",\"pic_id\",\"index\"), " +
 
-			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
+			"PRIMARY KEY(\"pic_id\",\"user_id\",\"index\")" +
 
 			");",
 
@@ -485,11 +491,13 @@ var SqlTables = map[string][]string{
 
 			"\"user_id\" integer NOT NULL, " +
 
+			"\"index\" integer NOT NULL, " +
+
 			"\"data\" blob NOT NULL, " +
 
-			"UNIQUE(\"user_id\",\"pic_id\"), " +
+			"UNIQUE(\"user_id\",\"pic_id\",\"index\"), " +
 
-			"PRIMARY KEY(\"pic_id\",\"user_id\")" +
+			"PRIMARY KEY(\"pic_id\",\"user_id\",\"index\")" +
 
 			");",
 
@@ -1541,13 +1549,15 @@ type PicVotesPrimary struct {
 	PicId *int64
 
 	UserId *int64
+
+	Index *int64
 }
 
 func (_ PicVotesPrimary) Unique() {}
 
 var _ db.UniqueIdx = PicVotesPrimary{}
 
-var colsPicVotesPrimary = []string{"pic_id", "user_id"}
+var colsPicVotesPrimary = []string{"pic_id", "user_id", "index"}
 
 func (idx PicVotesPrimary) Cols() []string {
 	return colsPicVotesPrimary
@@ -1574,6 +1584,15 @@ func (idx PicVotesPrimary) Vals() (vals []interface{}) {
 		done = true
 	}
 
+	if idx.Index != nil {
+		if done {
+			panic("Extra value Index")
+		}
+		vals = append(vals, *idx.Index)
+	} else {
+		done = true
+	}
+
 	return
 }
 
@@ -1581,13 +1600,15 @@ type PicVotesUserId struct {
 	UserId *int64
 
 	PicId *int64
+
+	Index *int64
 }
 
 func (_ PicVotesUserId) Unique() {}
 
 var _ db.UniqueIdx = PicVotesUserId{}
 
-var colsPicVotesUserId = []string{"user_id", "pic_id"}
+var colsPicVotesUserId = []string{"user_id", "pic_id", "index"}
 
 func (idx PicVotesUserId) Cols() []string {
 	return colsPicVotesUserId
@@ -1614,6 +1635,15 @@ func (idx PicVotesUserId) Vals() (vals []interface{}) {
 		done = true
 	}
 
+	if idx.Index != nil {
+		if done {
+			panic("Extra value Index")
+		}
+		vals = append(vals, *idx.Index)
+	} else {
+		done = true
+	}
+
 	return
 }
 
@@ -1623,15 +1653,19 @@ func KeyForPicVote(pb *schema.PicVote) PicVotesPrimary {
 
 	UserId := pb.UserIdCol()
 
+	Index := pb.IndexCol()
+
 	return PicVotesPrimary{
 
 		PicId: &PicId,
 
 		UserId: &UserId,
+
+		Index: &Index,
 	}
 }
 
-var colsPicVotes = []string{"pic_id", "user_id", "data"}
+var colsPicVotes = []string{"pic_id", "user_id", "index", "data"}
 
 func (j *Job) ScanPicVotes(opts db.Opts, cb func(*schema.PicVote) error) error {
 	return db.Scan(j.tx, "PicVotes", opts, func(data []byte) error {
@@ -1655,6 +1689,8 @@ var _ interface{ PicIdCol() int64 } = (*schema.PicVote)(nil)
 
 var _ interface{ UserIdCol() int64 } = (*schema.PicVote)(nil)
 
+var _ interface{ IndexCol() int64 } = (*schema.PicVote)(nil)
+
 func (j *Job) InsertPicVote(pb *schema.PicVote) error {
 	return j.InsertPicVoteRow(&PicVoteRow{
 		Data: pb,
@@ -1662,6 +1698,8 @@ func (j *Job) InsertPicVote(pb *schema.PicVote) error {
 		PicId: pb.PicIdCol(),
 
 		UserId: pb.UserIdCol(),
+
+		Index: pb.IndexCol(),
 	})
 }
 
@@ -1671,6 +1709,8 @@ func (j *Job) InsertPicVoteRow(row *PicVoteRow) error {
 	vals = append(vals, row.PicId)
 
 	vals = append(vals, row.UserId)
+
+	vals = append(vals, row.Index)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err
@@ -1685,6 +1725,8 @@ var _ interface{ PicIdCol() int64 } = (*schema.PicVote)(nil)
 
 var _ interface{ UserIdCol() int64 } = (*schema.PicVote)(nil)
 
+var _ interface{ IndexCol() int64 } = (*schema.PicVote)(nil)
+
 func (j *Job) UpdatePicVote(pb *schema.PicVote) error {
 	return j.UpdatePicVoteRow(&PicVoteRow{
 		Data: pb,
@@ -1692,6 +1734,8 @@ func (j *Job) UpdatePicVote(pb *schema.PicVote) error {
 		PicId: pb.PicIdCol(),
 
 		UserId: pb.UserIdCol(),
+
+		Index: pb.IndexCol(),
 	})
 }
 
@@ -1703,6 +1747,8 @@ func (j *Job) UpdatePicVoteRow(row *PicVoteRow) error {
 	vals = append(vals, row.PicId)
 
 	vals = append(vals, row.UserId)
+
+	vals = append(vals, row.Index)
 
 	if val, err := proto.Marshal(row.Data); err != nil {
 		return err

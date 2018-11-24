@@ -141,18 +141,22 @@ message PicVoteRow {
       key_type: PRIMARY
       col: "pic_id"
       col: "user_id"
+      col: "index"
     }
     key: {
       name: "UserId"
       key_type: UNIQUE
       col: "user_id"
       col: "pic_id"
+      col: "index"
     }
   };
 
   int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
 
   int64 user_id = 2 [(pixur.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  
+  int64 index = 4 [(pixur.db.model.field_opts) = {col_fn: "IndexCol"}];
 
   pixur.PicVote data = 3;
 }

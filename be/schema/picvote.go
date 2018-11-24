@@ -12,6 +12,10 @@ func (pv *PicVote) UserIdCol() int64 {
 	return pv.UserId
 }
 
+func (pv *PicVote) IndexCol() int64 {
+	return pv.Index
+}
+
 func (pv *PicVote) SetCreatedTime(now time.Time) {
 	pv.CreatedTs = ToTspb(now)
 }

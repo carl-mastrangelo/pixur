@@ -191,7 +191,7 @@ func TestAddPicVoteTask_BadVoteDir(t *testing.T) {
 	}
 }
 
-func TestAddPicVoteTask_NoAnonymous(t *testing.T) {
+func TestAddPicVoteTask_AnonymousAllowed(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -208,15 +208,105 @@ func TestAddPicVoteTask_NoAnonymous(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	sts := new(TaskRunner).Run(ctx, task)
-	if sts == nil {
-		t.Fatal("expected non-nil status")
+
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
 	}
-	if have, want := sts.Code(), codes.Unauthenticated; have != want {
-		t.Error("have", have, "want", want)
+
+	then := schema.ToTime(p.Pic.ModifiedTs)
+	p.Refresh()
+
+	if p.Pic.VoteUp != 1 || p.Pic.VoteDown != 0 {
+		t.Error("wrong vote count", p.Pic)
 	}
-	if have, want := sts.Message(), "anonymous user"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
+	if schema.ToTime(p.Pic.ModifiedTs).Before(then) {
+		t.Error("modified time not updated")
+	}
+
+	if task.PicVote == nil {
+		t.Fatal("no vote created")
+	}
+
+	if task.PicVote.CreatedTs == nil || !proto.Equal(task.PicVote.CreatedTs, task.PicVote.ModifiedTs) {
+		t.Error("wrong timestamps", task.PicVote)
+	}
+
+	expected := &schema.PicVote{
+		PicId:  p.Pic.PicId,
+		UserId: schema.AnonymousUserID,
+		Vote:   schema.PicVote_UP,
+	}
+	task.PicVote.CreatedTs = nil
+	task.PicVote.ModifiedTs = nil
+
+	if !proto.Equal(expected, task.PicVote) {
+		t.Error("have", task.PicVote, "want", expected)
+	}
+}
+
+func TestAddPicVoteTask_AnonymousAllowed_DoubleVote(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	conf := schema.GetDefaultConfiguration()
+	conf.AnonymousCapability.Capability =
+		append(conf.AnonymousCapability.Capability, schema.User_PIC_VOTE_CREATE)
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
+	p := c.CreatePic()
+
+	task1 := &AddPicVoteTask{
+		Vote:  schema.PicVote_UP,
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task1); sts != nil {
+		t.Fatal(sts)
+	}
+
+	task2 := &AddPicVoteTask{
+		Vote:  schema.PicVote_DOWN,
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+	}
+
+	if sts := new(TaskRunner).Run(ctx, task2); sts != nil {
+		t.Fatal(sts)
+	}
+
+	then := schema.ToTime(p.Pic.ModifiedTs)
+	p.Refresh()
+
+	if p.Pic.VoteUp != 1 || p.Pic.VoteDown != 1 {
+		t.Error("wrong vote count", p.Pic)
+	}
+	if schema.ToTime(p.Pic.ModifiedTs).Before(then) {
+		t.Error("modified time not updated")
+	}
+
+	if task2.PicVote == nil {
+		t.Fatal("no vote created")
+	}
+
+	if task2.PicVote.CreatedTs == nil ||
+		!proto.Equal(task2.PicVote.CreatedTs, task2.PicVote.ModifiedTs) {
+		t.Error("wrong timestamps", task2.PicVote)
+	}
+
+	expected := &schema.PicVote{
+		PicId:  p.Pic.PicId,
+		UserId: schema.AnonymousUserID,
+		Index:  1,
+		Vote:   schema.PicVote_DOWN,
+	}
+	task2.PicVote.CreatedTs = nil
+	task2.PicVote.ModifiedTs = nil
+
+	if !proto.Equal(expected, task2.PicVote) {
+		t.Error("have", task2.PicVote, "want", expected)
 	}
 }
 
@@ -274,9 +364,7 @@ func TestAddPicVote_Notification_Author_AnonPicParent(t *testing.T) {
 	}
 }
 
-// TODO: reenable
 func TestAddPicVote_Notification_AnonAuthor_AnonPicParent(t *testing.T) {
-	t.Skip("Currently unsupported")
 	c := Container(t)
 	defer c.Close()
 
@@ -456,9 +544,7 @@ func TestAddPicVote_Notification_Author_AuthorPicParent(t *testing.T) {
 	}
 }
 
-// TODO: reenable
 func TestAddPicVote_Notification_AnonAuthor_PicParent(t *testing.T) {
-	t.Skip("unsupported")
 	c := Container(t)
 	defer c.Close()
 

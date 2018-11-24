@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"math"
 	"time"
 
 	anypb "github.com/golang/protobuf/ptypes/any"
@@ -43,9 +44,8 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		return sts
 	}
 	userID := schema.AnonymousUserID
-	if u == nil {
-		return status.Unauthenticated(nil, "anonymous users can't vote")
-	} else {
+	picVoteIndex := int64(0)
+	if u != nil {
 		userID = u.UserId
 	}
 
@@ -86,14 +86,28 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if err != nil {
 		return status.Internal(err, "can't find pic votes")
 	}
-	if len(pvs) != 0 {
-		return status.AlreadyExists(nil, "can't double vote")
+	if userID != schema.AnonymousUserID {
+		if len(pvs) != 0 {
+			return status.AlreadyExists(nil, "can't double vote")
+		}
+	} else {
+		biggest := int64(-1)
+		for _, pv := range pvs {
+			if pv.Index > biggest {
+				biggest = pv.Index
+			}
+		}
+		if biggest == math.MaxInt64 {
+			return status.Internal(nil, "overflow of pic vote index")
+		}
+		picVoteIndex = biggest + 1
 	}
 
 	now := t.Now()
 	pv := &schema.PicVote{
 		PicId:  p.PicId,
 		UserId: userID,
+		Index:  picVoteIndex,
 		Vote:   t.Vote,
 		Ext:    t.Ext,
 	}
