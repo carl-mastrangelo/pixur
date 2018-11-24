@@ -164,7 +164,7 @@ var _ TextNormalizer = ToNFCUnsafe
 
 // ToNFCUnsafe converts prevalidated text into NFC.  Text *must* have been previously
 // validated in order to use this function.  This never returns a non-nil error, and ignores the
-// fieldname
+// fieldname.
 func ToNFCUnsafe(text, fieldname string) (string, error) {
 	return toNFCUnsafe(text), nil
 }
@@ -187,21 +187,41 @@ func validate(text, fieldname string, validators []TextValidator) status.S {
 	return nil
 }
 
+// Normalize normalizes text.
+func Normalize(text, fieldname string, normalizers ...TextNormalizer) (string, error) {
+	return normalize(text, fieldname, normalizers)
+}
+
+func normalize(text, fieldname string, normalizers []TextNormalizer) (string, status.S) {
+	for _, n := range normalizers {
+		var err error
+		if text, err = n(text, fieldname); err != nil {
+			return "", status.From(err)
+		}
+	}
+	return text, nil
+}
+
 // ValidateAndNormalize validates text, normalizes it, and then revalidates it.
 func ValidateAndNormalize(
 	text, fieldname string, textnorm TextNormalizer, validators ...TextValidator) (string, error) {
-	return validateAndNormalize(text, fieldname, textnorm, validators, validators)
+	return validateAndNormalize(text, fieldname, []TextNormalizer{textnorm}, validators, validators)
 }
 
-func validateAndNormalize(
-	text, fieldname string, tn TextNormalizer, prevalid []TextValidator, postvalid []TextValidator) (
-	string, status.S) {
+// ValidateAndNormalize validates text, normalizes it, and then revalidates it.
+func ValidateAndNormalizeMulti(
+	text, fieldname string, textnorms []TextNormalizer, validators ...TextValidator) (string, error) {
+	return validateAndNormalize(text, fieldname, textnorms, validators, validators)
+}
+
+func validateAndNormalize(text, fieldname string, ns []TextNormalizer, prevalid []TextValidator,
+	postvalid []TextValidator) (string, status.S) {
 	if sts := validate(text, fieldname, prevalid); sts != nil {
 		return "", sts
 	}
-	newtext, err := tn(text, fieldname)
-	if err != nil {
-		return "", status.From(err)
+	newtext, sts := normalize(text, fieldname, ns)
+	if sts != nil {
+		return "", sts
 	}
 	if sts := validate(newtext, fieldname, postvalid); sts != nil {
 		return "", sts
@@ -219,7 +239,7 @@ func defaultValidateAndNormalize(text, fieldname string, minbytes, maxbytes int6
 	unsafePre, extra []TextValidator) (string, status.S) {
 	pre, post := defaultValidators(minbytes, maxbytes)
 	pre, post = append(append(pre, unsafePre...), extra...), append(post, extra...)
-	return validateAndNormalize(text, fieldname, ToNFCUnsafe, pre, post)
+	return validateAndNormalize(text, fieldname, []TextNormalizer{ToNFCUnsafe}, pre, post)
 }
 
 // DefaultValidator produces a TextValidator that checks for the default validation
