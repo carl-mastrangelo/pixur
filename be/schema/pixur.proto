@@ -298,6 +298,10 @@ message User {
     PIC_COMMENT_EXTENSION_CREATE = 17;
     // Can this user read arbitrary extension data on a comment? 
     PIC_COMMENT_EXTENSION_READ = 18;
+    // Can this user create arbitrary extension data on a pic tag? 
+    PIC_TAG_EXTENSION_CREATE = 19;
+    // Can this user read arbitrary extension data on a pic tag? 
+    PIC_TAG_EXTENSION_READ = 20;
   }
 
   repeated Capability capability = 7;
