@@ -196,13 +196,13 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 
 	task := &CreateUserTask{
 		Beg:    c.DB(),
-		Ident:  "👨‍🦲",
+		Ident:  "\n",
 		Secret: "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "unprintable rune")
+	expected := status.InvalidArgument(nil, "unsupported newline")
 	compareStatus(t, sts, expected)
 }
 

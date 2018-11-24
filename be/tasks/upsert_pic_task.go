@@ -23,6 +23,7 @@ import (
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/text"
 )
 
 type readerAtReadSeeker interface {
@@ -148,10 +149,12 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 	var validFileName string
 	if len(t.Header.Name) != 0 {
-		validFileName, sts =
-			validateAndNormalizePrintText(t.Header.Name, "filename", minFileNameLen, maxFileNameLen)
-		if sts != nil {
-			return sts
+		var err error
+		// TODO: trim whitespace
+		validFileName, err = text.DefaultValidateNoNewlineAndNormalize(
+			t.Header.Name, "filename", minFileNameLen, maxFileNameLen)
+		if err != nil {
+			return status.From(err)
 		}
 	}
 	// TODO: test this
@@ -607,13 +610,13 @@ func (t *UpsertPicTask) prepareFile(
 
 // TODO: add tests
 func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.URL, status.S) {
-	normalrawurl, sts := validateAndNormalizePrintText(rawurl, "url", minUrlLen, maxUrlLen)
-	if sts != nil {
-		return nil, sts
-	}
-	u, err := url.Parse(normalrawurl)
+	normrawurl, err := text.DefaultValidateNoNewlineAndNormalize(rawurl, "url", minUrlLen, maxUrlLen)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't parse", normalrawurl)
+		return nil, status.From(err)
+	}
+	u, err := url.Parse(normrawurl)
+	if err != nil {
+		return nil, status.InvalidArgument(err, "Can't parse", normrawurl)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, status.InvalidArgument(nil, "Can't use non HTTP")

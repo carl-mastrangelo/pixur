@@ -48,9 +48,20 @@ func buildCc() (allowed, notallowed *unicode.RangeTable) {
 
 var notAllowedRange *unicode.RangeTable
 
+var noNewlineRange *unicode.RangeTable
+
 func init() {
 	_, ncc := buildCc()
 	notAllowedRange = rangetable.Merge(ncc, unicode.Co, unicode.Cs, unicode.Noncharacter_Code_Point)
+	
+	noNewline := &unicode.RangeTable{
+		R16: []unicode.Range16{
+			{Lo: 0x0a, Hi: 0x0a, Stride: 1}, // \r
+			{Lo: 0x0d, Hi: 0x0d, Stride: 1}, // \n
+		},
+		LatinOffset: 2,
+	}
+	noNewlineRange = rangetable.Merge(noNewline, unicode.Zl, unicode.Zp)
 }
 
 var _ TextValidator = ValidateEncoding
@@ -161,6 +172,20 @@ func toNFCUnsafe(text string) string {
 	return norm.NFC.String(text)
 }
 
+// Validate validates text.
+func Validate(text, fieldname string, validators ...TextValidator) error {
+	return validate(text, fieldname, validators)
+}
+
+func validate(text, fieldname string, validators []TextValidator) status.S {
+	for _, v := range validators {
+		if err := v(text, fieldname); err != nil {
+			return status.From(err)
+		}
+	}
+	return nil
+}
+
 // ValidateAndNormalize validates text, normalizes it, and then revalidates it.
 func ValidateAndNormalize(
 	text, fieldname string, textnorm TextNormalizer, validators ...TextValidator) (string, error) {
@@ -170,24 +195,20 @@ func ValidateAndNormalize(
 func validateAndNormalize(
 	text, fieldname string, tn TextNormalizer, prevalid []TextValidator, postvalid []TextValidator) (
 	string, status.S) {
-	for _, v := range prevalid {
-		if err := v(text, fieldname); err != nil {
-			return "", status.From(err)
-		}
+	if sts := validate(text, fieldname, prevalid); sts != nil {
+		return "", sts
 	}
 	newtext, err := tn(text, fieldname)
 	if err != nil {
 		return "", status.From(err)
 	}
-	for _, v := range postvalid {
-		if err := v(newtext, fieldname); err != nil {
-			return "", status.From(err)
-		}
+	if sts := validate(newtext, fieldname, postvalid); sts != nil {
+		return "", sts
 	}
 	return newtext, nil
 }
 
-// DefaultValidateAndNormalize performs regular normalization.  Use this.
+// DefaultValidateAndNormalize performs regular normalization.  Use this by default.
 func DefaultValidateAndNormalize(
 	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, error) {
 	return defaultValidateAndNormalize(text, fieldname, minbytes, maxbytes, extra...)
@@ -196,10 +217,78 @@ func DefaultValidateAndNormalize(
 func defaultValidateAndNormalize(
 	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, status.S) {
 
-	validlength := MaxBytesValidator(minbytes, maxbytes)
-	prevalid := append([]TextValidator{validlength, ValidateEncoding, ValidateCodepoints}, extra...)
+	prevalid := append([]TextValidator{DefaultValidator(minbytes, maxbytes)}, extra...)
 	// Since we control the normalizer, we don't have to revalidate as much.
-	postvalid := append([]TextValidator{validlength}, extra...)
+	postvalid := append([]TextValidator{MaxBytesValidator(minbytes, maxbytes)}, extra...)
 
 	return validateAndNormalize(text, fieldname, ToNFCUnsafe, prevalid, postvalid)
 }
+
+// DefaultValidator produces a TextValidator that checks for the default validation
+func DefaultValidator(min, max int64) TextValidator {
+	return func(text, fieldname string) error {
+		return DefaultValidate(text, fieldname, min, max)
+	}
+}
+
+// DefaultValidate performs regular validation.  Use this by default
+func DefaultValidate(text, fieldname string, minbytes, maxbytes int64) error {
+	return defaultValidate(text, fieldname, minbytes, maxbytes)
+}
+
+func defaultValidate(text, fieldname string, minbytes, maxbytes int64) status.S {
+	return validate(text, fieldname,
+		[]TextValidator{MaxBytesValidator(minbytes, maxbytes), ValidateEncoding, ValidateCodepoints})
+}
+
+// ValidateNoNewlines ensures there are no newlines or other vertical spacing characters in 
+// the string.  This includes \r, \n, and Unicode classes Zl, and Zp.
+func ValidateNoNewlines(text, fieldname string) error {
+  return validateNoNewlines(text, fieldname)
+}
+
+func validateNoNewlines(text, fieldname string) status.S {
+	if sts := validateEncoding(text, fieldname); sts != nil {
+		return sts
+	}
+	if sts := validateCodepoints(text, fieldname); sts != nil {
+		return sts
+	}
+	return validateNoNewlinesUnsafe(text, fieldname)
+}
+
+// ValidateNoNewlinesUnsafe ensures there are no newlines or other vertical spacing characters in 
+// the string.  This includes \r, \n, and Unicode classes Zl, and Zp.  Text *must* have been 
+// previously validated in order to use this function.
+func ValidateNoNewlinesUnsafe(text, fieldname string) error {
+  return validateNoNewlinesUnsafe(text, fieldname)
+}
+
+// TODO: test
+func validateNoNewlinesUnsafe(text, fieldname string) status.S {
+  for i, r := range text {
+    if unicode.Is(noNewlineRange, r) {
+      return status.InvalidArgumentf(nil, "unsupported newline %U in %s at pos %d", r, fieldname, i)
+    }
+  }
+  return nil
+}
+
+// DefaultValidateNoNewlineAndNormalize performs regular normalization and fails on Newlines.
+func DefaultValidateNoNewlineAndNormalize(
+	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, error) {
+	return defaultValidateNoNewlineAndNormalize(text, fieldname, minbytes, maxbytes, extra...)
+}
+
+func defaultValidateNoNewlineAndNormalize(
+	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, status.S) {
+
+	prevalid := append(
+	[]TextValidator{DefaultValidator(minbytes, maxbytes), ValidateNoNewlinesUnsafe}, extra...)
+	// Since we control the normalizer, we don't have to revalidate as much.
+	postvalid := append([]TextValidator{MaxBytesValidator(minbytes, maxbytes)}, extra...)
+
+	return validateAndNormalize(text, fieldname, ToNFCUnsafe, prevalid, postvalid)
+}
+
+

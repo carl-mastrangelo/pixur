@@ -10,6 +10,7 @@ import (
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/text"
 )
 
 type AddPicTagsTask struct {
@@ -238,21 +239,19 @@ func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, u
 
 func cleanTagNames(rawTagNames []string, minTagLen, maxTagLen int64) ([]tagNameAndUniq, status.S) {
 	validtagnames := make([]tagNameAndUniq, 0, len(rawTagNames))
+	defaultValidator := text.DefaultValidator(minTagLen, maxTagLen)
+	var norm text.TextNormalizer = func(txt, fieldname string) (string, error) {
+		if newtext, err := text.ToNFC(txt, fieldname); err != nil {
+			return "", err
+		} else {
+			return strings.TrimSpace(newtext), nil
+		}
+	}
 	for _, rawtagname := range rawTagNames {
-		if sts := validateMaxLength(rawtagname, "tag", minTagLen, maxTagLen); sts != nil {
-			return nil, sts
-		}
-		if sts := validateUtf8(rawtagname, "tag"); sts != nil {
-			return nil, sts
-		}
-		normalrawtagname := normalizeUnicodeTextPrevalidated(rawtagname)
-		trimmednormaltagname := strings.TrimSpace(normalrawtagname)
-
-		if sts := validateMaxLength(trimmednormaltagname, "tag", minTagLen, maxTagLen); sts != nil {
-			return nil, sts
-		}
-		if sts := validateGraphicText(trimmednormaltagname, "tag"); sts != nil {
-			return nil, sts
+		trimmednormaltagname, err :=
+			text.ValidateAndNormalize(rawtagname, "tag", norm, defaultValidator, text.ValidateNoNewlines)
+		if err != nil {
+			return nil, status.From(err)
 		}
 		validtagnames = append(validtagnames, tagNameAndUniq{
 			name: trimmednormaltagname,

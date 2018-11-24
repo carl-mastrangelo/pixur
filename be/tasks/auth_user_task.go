@@ -13,6 +13,7 @@ import (
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/text"
 )
 
 type AuthUserTask struct {
@@ -71,9 +72,10 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		} else {
 			maxIdentLen = math.MaxInt64
 		}
-		ident, sts := validateAndNormalizePrintText(t.Ident, "ident", minIdentLen, maxIdentLen)
-		if sts != nil {
-			return sts
+		ident, err :=
+			text.DefaultValidateNoNewlineAndNormalize(t.Ident, "ident", minIdentLen, maxIdentLen)
+		if err != nil {
+			return status.From(err)
 		}
 		keyident := schema.UserUniqueIdent(ident)
 		users, err := j.FindUsers(db.Opts{

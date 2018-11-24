@@ -11,6 +11,7 @@ import (
 	"pixur.org/pixur/be/schema/db"
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/text"
 )
 
 type AddPicCommentTask struct {
@@ -52,9 +53,9 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	} else {
 		maxCommentLen = math.MaxInt64
 	}
-	text, sts := validateAndNormalizeGraphicText(t.Text, "comment", minCommentLen, maxCommentLen)
-	if sts != nil {
-		return sts
+	txt, err := text.DefaultValidateAndNormalize(t.Text, "comment", minCommentLen, maxCommentLen)
+	if err != nil {
+		return status.From(err)
 	}
 
 	u, sts := requireCapability(ctx, j, schema.User_PIC_COMMENT_CREATE)
@@ -110,7 +111,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		PicId:           p.PicId,
 		CommentId:       commentID,
 		CommentParentId: t.CommentParentID,
-		Text:            text,
+		Text:            txt,
 		UserId:          userID,
 		Ext:             t.Ext,
 	}
