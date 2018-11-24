@@ -1,9 +1,10 @@
-package text
+package text // import "pixur.org/pixur/be/text"
 
 import (
 	"unicode"
 	"unicode/utf8"
 
+	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/text/unicode/rangetable"
 
@@ -53,7 +54,7 @@ var noNewlineRange *unicode.RangeTable
 func init() {
 	_, ncc := buildCc()
 	notAllowedRange = rangetable.Merge(ncc, unicode.Co, unicode.Cs, unicode.Noncharacter_Code_Point)
-	
+
 	noNewline := &unicode.RangeTable{
 		R16: []unicode.Range16{
 			{Lo: 0x0a, Hi: 0x0a, Stride: 1}, // \r
@@ -211,17 +212,14 @@ func validateAndNormalize(
 // DefaultValidateAndNormalize performs regular normalization.  Use this by default.
 func DefaultValidateAndNormalize(
 	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, error) {
-	return defaultValidateAndNormalize(text, fieldname, minbytes, maxbytes, extra...)
+	return defaultValidateAndNormalize(text, fieldname, minbytes, maxbytes, nil, extra)
 }
 
-func defaultValidateAndNormalize(
-	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, status.S) {
-
-	prevalid := append([]TextValidator{DefaultValidator(minbytes, maxbytes)}, extra...)
-	// Since we control the normalizer, we don't have to revalidate as much.
-	postvalid := append([]TextValidator{MaxBytesValidator(minbytes, maxbytes)}, extra...)
-
-	return validateAndNormalize(text, fieldname, ToNFCUnsafe, prevalid, postvalid)
+func defaultValidateAndNormalize(text, fieldname string, minbytes, maxbytes int64,
+	unsafePre, extra []TextValidator) (string, status.S) {
+	pre, post := defaultValidators(minbytes, maxbytes)
+	pre, post = append(append(pre, unsafePre...), extra...), append(post, extra...)
+	return validateAndNormalize(text, fieldname, ToNFCUnsafe, pre, post)
 }
 
 // DefaultValidator produces a TextValidator that checks for the default validation
@@ -237,14 +235,23 @@ func DefaultValidate(text, fieldname string, minbytes, maxbytes int64) error {
 }
 
 func defaultValidate(text, fieldname string, minbytes, maxbytes int64) status.S {
-	return validate(text, fieldname,
-		[]TextValidator{MaxBytesValidator(minbytes, maxbytes), ValidateEncoding, ValidateCodepoints})
+	prevalid, _ := defaultValidators(minbytes, maxbytes)
+	return validate(text, fieldname, prevalid)
 }
 
-// ValidateNoNewlines ensures there are no newlines or other vertical spacing characters in 
-// the string.  This includes \r, \n, and Unicode classes Zl, and Zp.
+// defaultValidators builds all the default validatos.  post is always a subsequence pre.
+func defaultValidators(min, max int64, unsafePre ...TextValidator) (pre, post []TextValidator) {
+	post = append(post, MaxBytesValidator(min, max))
+	pre = append(pre, post...)
+	pre = append(pre, ValidateEncoding, ValidateCodepoints)
+	pre = append(pre, unsafePre...)
+	return
+}
+
+// ValidateNoNewlines ensures there are no newlines or other vertical spacing characters in
+// the string.  This includes \r, \n, and Unicode classes Zl and Zp.
 func ValidateNoNewlines(text, fieldname string) error {
-  return validateNoNewlines(text, fieldname)
+	return validateNoNewlines(text, fieldname)
 }
 
 func validateNoNewlines(text, fieldname string) status.S {
@@ -257,38 +264,58 @@ func validateNoNewlines(text, fieldname string) status.S {
 	return validateNoNewlinesUnsafe(text, fieldname)
 }
 
-// ValidateNoNewlinesUnsafe ensures there are no newlines or other vertical spacing characters in 
-// the string.  This includes \r, \n, and Unicode classes Zl, and Zp.  Text *must* have been 
+// ValidateNoNewlinesUnsafe ensures there are no newlines or other vertical spacing characters in
+// the string.  This includes \r, \n, and Unicode classes Zl, and Zp.  Text *must* have been
 // previously validated in order to use this function.
 func ValidateNoNewlinesUnsafe(text, fieldname string) error {
-  return validateNoNewlinesUnsafe(text, fieldname)
+	return validateNoNewlinesUnsafe(text, fieldname)
 }
 
-// TODO: test
 func validateNoNewlinesUnsafe(text, fieldname string) status.S {
-  for i, r := range text {
-    if unicode.Is(noNewlineRange, r) {
-      return status.InvalidArgumentf(nil, "unsupported newline %U in %s at pos %d", r, fieldname, i)
-    }
-  }
-  return nil
+	for i, r := range text {
+		if unicode.Is(noNewlineRange, r) {
+			return status.InvalidArgumentf(nil, "unsupported newline %U in %s at pos %d", r, fieldname, i)
+		}
+	}
+	return nil
 }
 
 // DefaultValidateNoNewlineAndNormalize performs regular normalization and fails on Newlines.
 func DefaultValidateNoNewlineAndNormalize(
 	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, error) {
-	return defaultValidateNoNewlineAndNormalize(text, fieldname, minbytes, maxbytes, extra...)
+	unsafePre := []TextValidator{ValidateNoNewlinesUnsafe}
+	return defaultValidateAndNormalize(text, fieldname, minbytes, maxbytes, unsafePre, extra)
 }
 
-func defaultValidateNoNewlineAndNormalize(
-	text, fieldname string, minbytes, maxbytes int64, extra ...TextValidator) (string, status.S) {
+var _ TextNormalizer = ToCaselessNFKC
 
-	prevalid := append(
-	[]TextValidator{DefaultValidator(minbytes, maxbytes), ValidateNoNewlinesUnsafe}, extra...)
-	// Since we control the normalizer, we don't have to revalidate as much.
-	postvalid := append([]TextValidator{MaxBytesValidator(minbytes, maxbytes)}, extra...)
-
-	return validateAndNormalize(text, fieldname, ToNFCUnsafe, prevalid, postvalid)
+// ToCaselessCompatible normalizes to NFKC and casefolds text for comparison.
+func ToCaselessNFKC(text, fieldname string) (string, error) {
+	return toCaselessNFKC(text, fieldname)
 }
 
+func toCaselessNFKC(text, fieldname string) (string, status.S) {
+	if sts := validateEncoding(text, fieldname); sts != nil {
+		return "", sts
+	}
+	if sts := validateCodepoints(text, fieldname); sts != nil {
+		return "", sts
+	}
+	return toCaselessNFKCUnsafe(text), nil
+}
 
+var _ TextNormalizer = ToCaselessNFKCUnsafe
+
+// ToCaselessNFKCUnsafe converts prevalidated text into caseless NFKC.  Text *must* have been
+// previously validated in order to use this function.  This never returns a non-nil error, and
+// ignores the fieldname.
+func ToCaselessNFKCUnsafe(text, fieldname string) (string, error) {
+	return toCaselessNFKCUnsafe(text), nil
+}
+
+// toCaselessNFKCUnsafe implements caseless compatibility matching in Unicode 11.0, Ch 3, D146.
+func toCaselessNFKCUnsafe(text string) string {
+	fold, data := cases.Fold(), []byte(text)
+	// TR 15 Section 7 says NFKC(NFKD(x)) == NFKC(x), so the outer most NFKD becomes an NFKC
+	return string(norm.NFKC.Bytes(fold.Bytes(norm.NFKD.Bytes(fold.Bytes(norm.NFD.Bytes(data))))))
+}
