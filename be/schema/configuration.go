@@ -105,4 +105,7 @@ var defaultConfiguration = &Configuration{
 	EnablePicCommentSelfReply: &wpb.BoolValue{
 		Value: true,
 	},
+	EnablePicCommentSiblingReply: &wpb.BoolValue{
+		Value: false,
+	},
 }

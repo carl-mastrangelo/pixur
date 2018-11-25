@@ -91,7 +91,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	var commentParent *schema.PicComment
 	if t.CommentParentID != 0 {
 		comments, err := j.FindPicComments(db.Opts{
-			Prefix: tab.PicCommentsPrimary{&t.PicID, &t.CommentParentID},
+			Prefix: tab.PicCommentsPrimary{PicId: &t.PicID, CommentId: &t.CommentParentID},
 		})
 		if err != nil {
 			return status.Internal(err, "can't lookup comment")
@@ -104,6 +104,21 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		if conf.EnablePicCommentSelfReply != nil && !conf.EnablePicCommentSelfReply.Value {
 			if userID == commentParent.UserId && userID != schema.AnonymousUserID {
 				return status.InvalidArgument(nil, "can't self reply")
+			}
+		}
+	}
+	if conf.EnablePicCommentSiblingReply != nil && !conf.EnablePicCommentSiblingReply.Value {
+		if userID != schema.AnonymousUserID {
+			comments, err := j.FindPicComments(db.Opts{
+				Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+			})
+			if err != nil {
+				return status.Internal(err, "can't lookup comments")
+			}
+			for _, c := range comments {
+				if c.CommentParentId == t.CommentParentID && c.UserId == userID {
+					return status.InvalidArgument(nil, "can't double reply")
+				}
 			}
 		}
 	}
