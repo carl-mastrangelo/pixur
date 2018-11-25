@@ -77,6 +77,9 @@ var defaultConfiguration = &Configuration{
 	},
 	AnonymousCapability: &Configuration_CapabilitySet{
 		Capability: []User_Capability{
+			User_PIC_READ,
+			User_PIC_INDEX,
+			User_PIC_UPDATE_VIEW_COUNTER,
 			User_USER_CREATE,
 		},
 	},
