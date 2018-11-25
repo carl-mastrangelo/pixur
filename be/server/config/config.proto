@@ -1,9 +1,10 @@
 syntax = "proto3";
 
-package pixur;
+package pixur.be.server;
 
-option go_package = "config";
+import "api/api.proto";
 
+option go_package = "pixur.org/pixur/be/server/config;config";
 
 // Config describes server configuration.
 message Config {
@@ -24,5 +25,7 @@ message Config {
 	string token_secret = 5;
 	string session_private_key_path = 6;
 	string session_public_key_path = 7;
+	
+	pixur.api.BackendConfiguration backend_configuration = 10;
 }
 

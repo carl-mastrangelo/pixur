@@ -9,7 +9,8 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRequest) (*api.AddPicCommentResponse, status.S) {
+func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRequest) (
+	*api.AddPicCommentResponse, status.S) {
 	var picID schema.Varint
 	if req.PicId != "" {
 		if err := picID.DecodeAll(req.PicId); err != nil {
@@ -32,8 +33,8 @@ func (s *serv) handleAddPicComment(ctx context.Context, req *api.AddPicCommentRe
 		CommentParentID: int64(commentParentID),
 		Text:            req.Text,
 	}
-	if err := s.runner.Run(ctx, task); err != nil {
-		return nil, err
+	if sts := s.runner.Run(ctx, task); sts != nil {
+		return nil, sts
 	}
 
 	return &api.AddPicCommentResponse{

@@ -121,3 +121,77 @@ func apiPicVote(src *schema.PicVote) *api.PicVote {
 		ModifiedTime: src.ModifiedTs,
 	}
 }
+
+// TODO: test this
+func apiConfig(src *schema.Configuration) *api.BackendConfiguration {
+	var anonymousCapability, newUserCapability *api.BackendConfiguration_CapabilitySet
+	if src.AnonymousCapability != nil {
+		anonymousCapability = &api.BackendConfiguration_CapabilitySet{
+			Capability: apiCaps(nil, src.AnonymousCapability.Capability),
+		}
+	}
+	if src.NewUserCapability != nil {
+		newUserCapability = &api.BackendConfiguration_CapabilitySet{
+			Capability: apiCaps(nil, src.NewUserCapability.Capability),
+		}
+	}
+
+	return &api.BackendConfiguration{
+		MinCommentLength:     src.MinCommentLength,
+		MaxCommentLength:     src.MaxCommentLength,
+		MinIdentLength:       src.MinIdentLength,
+		MaxIdentLength:       src.MaxIdentLength,
+		MinFileNameLength:    src.MinFileNameLength,
+		MaxFileNameLength:    src.MaxFileNameLength,
+		MinUrlLength:         src.MinUrlLength,
+		MaxUrlLength:         src.MaxUrlLength,
+		MinTagLength:         src.MinTagLength,
+		MaxTagLength:         src.MaxTagLength,
+		AnonymousCapability:  anonymousCapability,
+		NewUserCapability:    newUserCapability,
+		DefaultFindIndexPics: src.DefaultFindIndexPics,
+		MaxFindIndexPics:     src.MaxFindIndexPics,
+		MaxWebmDuration:      src.MaxWebmDuration,
+	}
+}
+
+// TODO: test this
+func beConfig(src *api.BackendConfiguration) *schema.Configuration {
+	var anonymousCapability, newUserCapability *schema.Configuration_CapabilitySet
+	if src.AnonymousCapability != nil {
+		anonymousCapability = &schema.Configuration_CapabilitySet{
+			Capability: beCaps(nil, src.AnonymousCapability.Capability),
+		}
+	}
+	if src.NewUserCapability != nil {
+		newUserCapability = &schema.Configuration_CapabilitySet{
+			Capability: beCaps(nil, src.NewUserCapability.Capability),
+		}
+	}
+
+	return &schema.Configuration{
+		MinCommentLength:     src.MinCommentLength,
+		MaxCommentLength:     src.MaxCommentLength,
+		MinIdentLength:       src.MinIdentLength,
+		MaxIdentLength:       src.MaxIdentLength,
+		MinFileNameLength:    src.MinFileNameLength,
+		MaxFileNameLength:    src.MaxFileNameLength,
+		MinUrlLength:         src.MinUrlLength,
+		MaxUrlLength:         src.MaxUrlLength,
+		MinTagLength:         src.MinTagLength,
+		MaxTagLength:         src.MaxTagLength,
+		AnonymousCapability:  anonymousCapability,
+		NewUserCapability:    newUserCapability,
+		DefaultFindIndexPics: src.DefaultFindIndexPics,
+		MaxFindIndexPics:     src.MaxFindIndexPics,
+		MaxWebmDuration:      src.MaxWebmDuration,
+	}
+}
+
+// TODO: test this
+func beCaps(dst []schema.User_Capability, srcs []api.Capability_Cap) []schema.User_Capability {
+	for _, src := range srcs {
+		dst = append(dst, apischemacapmap[src])
+	}
+	return dst
+}

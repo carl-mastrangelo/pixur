@@ -1,6 +1,7 @@
 package server // import "pixur.org/pixur/be/server"
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -103,12 +104,13 @@ func (s *Server) setup(c *config.Config) error {
 		s.tokenSecret = []byte(c.TokenSecret)
 	}
 
-	opts, cb := handlers.HandlersInit(&handlers.ServerConfig{
-		DB:          db,
-		PixPath:     s.pixPath,
-		TokenSecret: s.tokenSecret,
-		PrivateKey:  s.privateKey,
-		PublicKey:   s.publicKey,
+	opts, cb := handlers.HandlersInit(context.TODO(), &handlers.ServerConfig{
+		DB:                   db,
+		PixPath:              s.pixPath,
+		TokenSecret:          s.tokenSecret,
+		PrivateKey:           s.privateKey,
+		PublicKey:            s.publicKey,
+		BackendConfiguration: c.BackendConfiguration,
 	})
 	s.s = grpc.NewServer(opts...)
 	cb(s.s)

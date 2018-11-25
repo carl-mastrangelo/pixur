@@ -13,15 +13,17 @@ var apischemacapmap = make(map[api.Capability_Cap]schema.User_Capability)
 var schemaapicapmap = make(map[schema.User_Capability]api.Capability_Cap)
 
 func init() {
-	if len(schema.User_Capability_name) != len(api.Capability_Cap_name) {
-		panic("cap mismatch")
-	}
 	for num, name := range schema.User_Capability_name {
 		if capname, ok := api.Capability_Cap_name[num]; !ok || capname != name {
-			panic("cap mismatch")
+			panic("cap mismatch " + name)
+		}
+		schemaapicapmap[schema.User_Capability(num)] = api.Capability_Cap(num)
+	}
+	for num, name := range api.Capability_Cap_name {
+		if capname, ok := schema.User_Capability_name[num]; !ok || capname != name {
+			panic("cap mismatch " + name)
 		}
 		apischemacapmap[api.Capability_Cap(num)] = schema.User_Capability(num)
-		schemaapicapmap[schema.User_Capability(num)] = api.Capability_Cap(num)
 	}
 }
 

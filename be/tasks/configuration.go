@@ -31,6 +31,9 @@ var (
 
 type LoadConfigurationTask struct {
 	Beg db.Beginner
+
+	// If non-nil, this will override any other configuration that might be used.
+	Config *schema.Configuration
 }
 
 func (t *LoadConfigurationTask) Run(ctx context.Context) (stscap status.S) {
@@ -40,7 +43,11 @@ func (t *LoadConfigurationTask) Run(ctx context.Context) (stscap status.S) {
 
 	_configLoadLock.Lock()
 	old := _siteConfiguration.Load()
-	_siteConfiguration.Store(schema.GetDefaultConfiguration())
+	if t.Config != nil {
+		_siteConfiguration.Store(t.Config)
+	} else {
+		_siteConfiguration.Store(schema.GetDefaultConfiguration())
+	}
 	_configLoadLock.Unlock()
 	if old == nil {
 		close(_configLoading)

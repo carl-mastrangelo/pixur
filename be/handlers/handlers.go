@@ -146,21 +146,27 @@ func (s *serv) ReadPicFile(rps api.PixurService_ReadPicFileServer) error {
 }
 
 type ServerConfig struct {
-	DB          db.DB
-	PixPath     string
-	TokenSecret []byte
-	PrivateKey  *rsa.PrivateKey
-	PublicKey   *rsa.PublicKey
-	Secure      bool
+	DB                   db.DB
+	PixPath              string
+	TokenSecret          []byte
+	PrivateKey           *rsa.PrivateKey
+	PublicKey            *rsa.PublicKey
+	Secure               bool
+	BackendConfiguration *api.BackendConfiguration
 }
 
-func HandlersInit(c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
+func HandlersInit(ctx context.Context, c *ServerConfig) ([]grpc.ServerOption, func(*grpc.Server)) {
 
 	now := time.Now
 	initPwtCoder(c, now)
 
 	// TODO: don't be so hacky!  This should probably come from a file, or the db itself.
-	sts := new(tasks.TaskRunner).Run(context.TODO(), &tasks.LoadConfigurationTask{Beg: c.DB})
+	task := &tasks.LoadConfigurationTask{
+		Beg: c.DB,
+
+		Config: beConfig(c.BackendConfiguration),
+	}
+	sts := new(tasks.TaskRunner).Run(ctx, task)
 	if sts != nil {
 		panic(sts)
 	}

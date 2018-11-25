@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pixur.api;
 
-option go_package = "api";
+option go_package = "pixur.org/pixur/api;api";
 option java_package = "org.pixur.api";
 option java_string_check_utf8 = true;
 option java_multiple_files = true;
@@ -11,6 +11,7 @@ import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 message Pic {
   // id is the unique identifier for the pic, in varint form
@@ -187,6 +188,45 @@ message Capability {
     PIC_VOTE_EXTENSION_CREATE = 21;
     // Can this user read arbitrary extension data on a pic vote? 
     PIC_VOTE_EXTENSION_READ = 22;
+  }
+}
+
+// BackendConfiguration is the backend configuration used by Pixur.  All fields are optional 
+// unless explicitly called out.
+message BackendConfiguration {
+  // the minimum comment length in bytes.
+  google.protobuf.Int64Value min_comment_length = 1;
+  // the maximum comment length in bytes.
+  google.protobuf.Int64Value max_comment_length = 2;
+  // the minimum ident length for a user in bytes.
+  google.protobuf.Int64Value min_ident_length = 3;
+  // the maximum ident length for a user in bytes.
+  google.protobuf.Int64Value max_ident_length = 4;
+  // the minimum file name length in bytes.
+  google.protobuf.Int64Value min_file_name_length = 5;
+  // the maximum file name length in bytes.
+  google.protobuf.Int64Value max_file_name_length = 6;
+  // the minimum url length for pic upsert in bytes.
+  google.protobuf.Int64Value min_url_length = 7;
+  // the maximum url length for pic upsert in bytes.
+  google.protobuf.Int64Value max_url_length = 8;
+  // the minimum tag length in bytes.
+  google.protobuf.Int64Value min_tag_length = 9;
+  // the maximum tag length in bytes.
+  google.protobuf.Int64Value max_tag_length = 10;
+  // the capabilities of the anonymous user.
+  CapabilitySet anonymous_capability = 11;
+  // the capabilities of a newly created user.
+  CapabilitySet new_user_capability = 12;
+  // the default number of index pics to return
+  google.protobuf.Int64Value default_find_index_pics = 13;
+  // the max number of index pics to return
+  google.protobuf.Int64Value max_find_index_pics = 14;
+  // the max duration a WEBM pic can be
+  google.protobuf.Duration max_webm_duration = 15;
+
+  message CapabilitySet {
+    repeated Capability.Cap capability = 1;
   }
 }
 
@@ -509,7 +549,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181124 // AUTO UPDATED BY generate.go
+    api_version: 20181125 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
