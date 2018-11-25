@@ -43,11 +43,9 @@ func (t *LoadConfigurationTask) Run(ctx context.Context) (stscap status.S) {
 
 	_configLoadLock.Lock()
 	old := _siteConfiguration.Load()
-	if t.Config != nil {
-		_siteConfiguration.Store(t.Config)
-	} else {
-		_siteConfiguration.Store(schema.GetDefaultConfiguration())
-	}
+	newconf := schema.GetDefaultConfiguration()
+	schema.MergeConfiguration(newconf, t.Config)
+	_siteConfiguration.Store(newconf)
 	_configLoadLock.Unlock()
 	if old == nil {
 		close(_configLoading)
@@ -61,9 +59,7 @@ func GetConfiguration(ctx context.Context) (*schema.Configuration, status.S) {
 	}
 	for {
 		if conf := _siteConfiguration.Load(); conf != nil {
-			combo := schema.GetDefaultConfiguration()
-			proto.Merge(combo, conf.(*schema.Configuration))
-			return combo, nil
+			return proto.Clone(conf.(proto.Message)).(*schema.Configuration), nil
 		}
 		select {
 		case <-ctx.Done():

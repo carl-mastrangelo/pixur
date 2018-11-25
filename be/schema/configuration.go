@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -8,9 +9,39 @@ import (
 	wpb "github.com/golang/protobuf/ptypes/wrappers"
 )
 
+var configurationFieldIds []int
+
+func init() {
+	typ := reflect.TypeOf(Configuration{})
+	for i := 0; i < typ.NumField(); i++ {
+		sf := typ.Field(i)
+		if _, ok := sf.Tag.Lookup("protobuf"); ok {
+			configurationFieldIds = append(configurationFieldIds, i)
+		}
+	}
+}
+
 // GetDefaultConfiguration returns a copy of the default configuration.  All fields are set.
 func GetDefaultConfiguration() *Configuration {
 	return proto.Clone(defaultConfiguration).(*Configuration)
+}
+
+// MergeConfiguration merges two configuration values.  Unknown fields are dropped.  Unlike
+// proto.Merge, only top level fields are considered.
+func MergeConfiguration(dst, src *Configuration) {
+	srcvalp := reflect.ValueOf(src)
+	if srcvalp.IsNil() {
+		return
+	}
+	dstval, srcval := reflect.Indirect(reflect.ValueOf(dst)), reflect.Indirect(srcvalp)
+	for _, id := range configurationFieldIds {
+		dstf, srcf := dstval.Field(id), srcval.Field(id)
+		if srcf.IsNil() {
+			continue
+		}
+		dstf.Set(srcf)
+	}
+	return
 }
 
 var defaultConfiguration = &Configuration{
