@@ -50,6 +50,9 @@ func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 		ctx, tracetask = trace.NewTask(ctx, fmt.Sprintf("%T", task))
 		defer tracetask.End()
 	}
+	if r != nil && r.run != nil {
+		return r.run(ctx, task)
+	}
 	totalTasksCounter.Add(1)
 	var logger *log.Logger
 	if r != nil && r.logger != nil {
@@ -73,10 +76,6 @@ func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 		}
 	}
 
-	var sts status.S
-	if r != nil && r.run != nil {
-		sts = r.run(ctx, task)
-	}
 	runOnce := func(nextBackoff time.Duration) (bool, bool, []status.S) {
 		return runTaskOnce(ctx, task, nextBackoff, now)
 	}
@@ -87,7 +86,7 @@ func (r *TaskRunner) Run(ctx context.Context, task Task) status.S {
 		multiplier:   taskBackoffMultiplier,
 		jitter:       taskBackoffJitter,
 	}
-	sts = runTask(runOnce, retry, logger)
+	sts := runTask(runOnce, retry, logger)
 	if sts != nil {
 		failureTasksCounter.Add(1)
 	} else {
