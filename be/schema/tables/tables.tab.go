@@ -148,6 +148,26 @@ var SqlTables = map[string][]string{
 
 			");",
 
+		"CREATE TABLE \"CustomData\" (" +
+
+			"\"key_type\" bigint NOT NULL, " +
+
+			"\"key1\" bigint NOT NULL, " +
+
+			"\"key2\" bigint NOT NULL, " +
+
+			"\"key3\" bigint NOT NULL, " +
+
+			"\"key4\" bigint NOT NULL, " +
+
+			"\"key5\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"key_type\",\"key1\",\"key2\",\"key3\",\"key4\",\"key5\")" +
+
+			");",
+
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
 	},
 
@@ -272,6 +292,26 @@ var SqlTables = map[string][]string{
 			"`data` blob NOT NULL, " +
 
 			"PRIMARY KEY(`user_id`,`created_ts`,`index`)" +
+
+			");",
+
+		"CREATE TABLE `CustomData` (" +
+
+			"`key_type` bigint(20) NOT NULL, " +
+
+			"`key1` bigint(20) NOT NULL, " +
+
+			"`key2` bigint(20) NOT NULL, " +
+
+			"`key3` bigint(20) NOT NULL, " +
+
+			"`key4` bigint(20) NOT NULL, " +
+
+			"`key5` bigint(20) NOT NULL, " +
+
+			"`data` blob NOT NULL, " +
+
+			"PRIMARY KEY(`key_type`,`key1`,`key2`,`key3`,`key4`,`key5`)" +
 
 			");",
 
@@ -402,6 +442,26 @@ var SqlTables = map[string][]string{
 
 			");",
 
+		"CREATE TABLE \"CustomData\" (" +
+
+			"\"key_type\" bigint NOT NULL, " +
+
+			"\"key1\" bigint NOT NULL, " +
+
+			"\"key2\" bigint NOT NULL, " +
+
+			"\"key3\" bigint NOT NULL, " +
+
+			"\"key4\" bigint NOT NULL, " +
+
+			"\"key5\" bigint NOT NULL, " +
+
+			"\"data\" bytea NOT NULL, " +
+
+			"PRIMARY KEY(\"key_type\",\"key1\",\"key2\",\"key3\",\"key4\",\"key5\")" +
+
+			");",
+
 		"CREATE TABLE \"_SequenceTable\" (\"the_sequence\" bigint NOT NULL);",
 	},
 
@@ -526,6 +586,26 @@ var SqlTables = map[string][]string{
 			"\"data\" blob NOT NULL, " +
 
 			"PRIMARY KEY(\"user_id\",\"created_ts\",\"index\")" +
+
+			");",
+
+		"CREATE TABLE \"CustomData\" (" +
+
+			"\"key_type\" integer NOT NULL, " +
+
+			"\"key1\" integer NOT NULL, " +
+
+			"\"key2\" integer NOT NULL, " +
+
+			"\"key3\" integer NOT NULL, " +
+
+			"\"key4\" integer NOT NULL, " +
+
+			"\"key5\" integer NOT NULL, " +
+
+			"\"data\" blob NOT NULL, " +
+
+			"PRIMARY KEY(\"key_type\",\"key1\",\"key2\",\"key3\",\"key4\",\"key5\")" +
 
 			");",
 
@@ -2082,4 +2162,252 @@ func (j *Job) UpdateUserEventRow(row *UserEventRow) error {
 
 func (j *Job) DeleteUserEvent(key UserEventsPrimary) error {
 	return db.Delete(j.tx, "UserEvents", key, j.adap)
+}
+
+type CustomDataPrimary struct {
+	KeyType *int64
+
+	Key1 *int64
+
+	Key2 *int64
+
+	Key3 *int64
+
+	Key4 *int64
+
+	Key5 *int64
+}
+
+func (_ CustomDataPrimary) Unique() {}
+
+var _ db.UniqueIdx = CustomDataPrimary{}
+
+var colsCustomDataPrimary = []string{"key_type", "key1", "key2", "key3", "key4", "key5"}
+
+func (idx CustomDataPrimary) Cols() []string {
+	return colsCustomDataPrimary
+}
+
+func (idx CustomDataPrimary) Vals() (vals []interface{}) {
+	var done bool
+
+	if idx.KeyType != nil {
+		if done {
+			panic("Extra value KeyType")
+		}
+		vals = append(vals, *idx.KeyType)
+	} else {
+		done = true
+	}
+
+	if idx.Key1 != nil {
+		if done {
+			panic("Extra value Key1")
+		}
+		vals = append(vals, *idx.Key1)
+	} else {
+		done = true
+	}
+
+	if idx.Key2 != nil {
+		if done {
+			panic("Extra value Key2")
+		}
+		vals = append(vals, *idx.Key2)
+	} else {
+		done = true
+	}
+
+	if idx.Key3 != nil {
+		if done {
+			panic("Extra value Key3")
+		}
+		vals = append(vals, *idx.Key3)
+	} else {
+		done = true
+	}
+
+	if idx.Key4 != nil {
+		if done {
+			panic("Extra value Key4")
+		}
+		vals = append(vals, *idx.Key4)
+	} else {
+		done = true
+	}
+
+	if idx.Key5 != nil {
+		if done {
+			panic("Extra value Key5")
+		}
+		vals = append(vals, *idx.Key5)
+	} else {
+		done = true
+	}
+
+	return
+}
+
+func KeyForCustomData(pb *schema.CustomData) CustomDataPrimary {
+
+	KeyType := pb.KeyTypeCol()
+
+	Key1 := pb.Key1Col()
+
+	Key2 := pb.Key2Col()
+
+	Key3 := pb.Key3Col()
+
+	Key4 := pb.Key4Col()
+
+	Key5 := pb.Key5Col()
+
+	return CustomDataPrimary{
+
+		KeyType: &KeyType,
+
+		Key1: &Key1,
+
+		Key2: &Key2,
+
+		Key3: &Key3,
+
+		Key4: &Key4,
+
+		Key5: &Key5,
+	}
+}
+
+var colsCustomData = []string{"key_type", "key1", "key2", "key3", "key4", "key5", "data"}
+
+func (j *Job) ScanCustomData(opts db.Opts, cb func(*schema.CustomData) error) error {
+	return db.Scan(j.tx, "CustomData", opts, func(data []byte) error {
+		var pb schema.CustomData
+		if err := proto.Unmarshal(data, &pb); err != nil {
+			return err
+		}
+		return cb(&pb)
+	}, j.adap)
+}
+
+func (j *Job) FindCustomData(opts db.Opts) (rows []*schema.CustomData, err error) {
+	err = j.ScanCustomData(opts, func(data *schema.CustomData) error {
+		rows = append(rows, data)
+		return nil
+	})
+	return
+}
+
+var _ interface{ KeyTypeCol() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key1Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key2Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key3Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key4Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key5Col() int64 } = (*schema.CustomData)(nil)
+
+func (j *Job) InsertCustomData(pb *schema.CustomData) error {
+	return j.InsertCustomDataRow(&CustomDataRow{
+		Data: pb,
+
+		KeyType: pb.KeyTypeCol(),
+
+		Key1: pb.Key1Col(),
+
+		Key2: pb.Key2Col(),
+
+		Key3: pb.Key3Col(),
+
+		Key4: pb.Key4Col(),
+
+		Key5: pb.Key5Col(),
+	})
+}
+
+func (j *Job) InsertCustomDataRow(row *CustomDataRow) error {
+	var vals []interface{}
+
+	vals = append(vals, row.KeyType)
+
+	vals = append(vals, row.Key1)
+
+	vals = append(vals, row.Key2)
+
+	vals = append(vals, row.Key3)
+
+	vals = append(vals, row.Key4)
+
+	vals = append(vals, row.Key5)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Insert(j.tx, "CustomData", colsCustomData, vals, j.adap)
+}
+
+var _ interface{ KeyTypeCol() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key1Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key2Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key3Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key4Col() int64 } = (*schema.CustomData)(nil)
+
+var _ interface{ Key5Col() int64 } = (*schema.CustomData)(nil)
+
+func (j *Job) UpdateCustomData(pb *schema.CustomData) error {
+	return j.UpdateCustomDataRow(&CustomDataRow{
+		Data: pb,
+
+		KeyType: pb.KeyTypeCol(),
+
+		Key1: pb.Key1Col(),
+
+		Key2: pb.Key2Col(),
+
+		Key3: pb.Key3Col(),
+
+		Key4: pb.Key4Col(),
+
+		Key5: pb.Key5Col(),
+	})
+}
+
+func (j *Job) UpdateCustomDataRow(row *CustomDataRow) error {
+	key := KeyForCustomData(row.Data)
+
+	var vals []interface{}
+
+	vals = append(vals, row.KeyType)
+
+	vals = append(vals, row.Key1)
+
+	vals = append(vals, row.Key2)
+
+	vals = append(vals, row.Key3)
+
+	vals = append(vals, row.Key4)
+
+	vals = append(vals, row.Key5)
+
+	if val, err := proto.Marshal(row.Data); err != nil {
+		return err
+	} else {
+		vals = append(vals, val)
+	}
+
+	return db.Update(j.tx, "CustomData", colsCustomData, vals, key, j.adap)
+}
+
+func (j *Job) DeleteCustomData(key CustomDataPrimary) error {
+	return db.Delete(j.tx, "CustomData", key, j.adap)
 }

@@ -201,3 +201,32 @@ message UserEventRow {
 
   pixur.UserEvent data = 5;
 }
+
+message CustomDataRow {
+  option (pixur.db.model.tab_opts) = {
+    name: "CustomData"
+    key: {
+      key_type: PRIMARY
+      col: "key_type"
+      col: "key1"
+      col: "key2"
+      col: "key3"
+      col: "key4"
+      col: "key5"
+    }
+  };
+
+  int64 key_type = 1 [(pixur.db.model.field_opts) = {col_fn: "KeyTypeCol"}];
+
+  int64 key1 = 2 [(pixur.db.model.field_opts) = {col_fn: "Key1Col"}];
+
+  int64 key2 = 3 [(pixur.db.model.field_opts) = {col_fn: "Key2Col"}];
+  
+  int64 key3 = 4 [(pixur.db.model.field_opts) = {col_fn: "Key3Col"}];
+  
+  int64 key4 = 5 [(pixur.db.model.field_opts) = {col_fn: "Key4Col"}];
+  
+  int64 key5 = 6 [(pixur.db.model.field_opts) = {col_fn: "Key5Col"}];
+
+  pixur.CustomData data = 7;
+}

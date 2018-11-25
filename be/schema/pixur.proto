@@ -366,3 +366,20 @@ message Configuration {
   }
 }
 
+// CustomData is a free form message that can be used for experimental data.  It contains a 5-tuple
+// of long keys which are indexed as a prefix.  The keys must be unique.
+message CustomData {
+  // The key type.  Pixur reserves types 0-127, inclusive.
+  int64 key_type = 1;
+  int64 key1 = 2;
+  int64 key2 = 3;
+  int64 key3 = 4;
+  int64 key4 = 5;
+  int64 key5 = 6;
+  
+  google.protobuf.Timestamp created_ts = 7;
+  google.protobuf.Timestamp modified_ts = 8;
+
+  google.protobuf.Any data = 9;
+}
+
