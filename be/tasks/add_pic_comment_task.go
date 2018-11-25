@@ -100,6 +100,12 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 			return status.NotFound(nil, "can't find comment")
 		}
 		commentParent = comments[0]
+
+		if conf.EnablePicCommentSelfReply != nil && !conf.EnablePicCommentSelfReply.Value {
+			if userID == commentParent.UserId && userID != schema.AnonymousUserID {
+				return status.InvalidArgument(nil, "can't self reply")
+			}
+		}
 	}
 
 	commentID, err := j.AllocID()

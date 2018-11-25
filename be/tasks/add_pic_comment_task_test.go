@@ -349,6 +349,13 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_COMMENT_CREATE)
 	u.Update()
 
+	conf, sts := GetConfiguration(c.Ctx)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	conf.EnablePicCommentSelfReply = &wpb.BoolValue{Value: true}
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
@@ -357,7 +364,7 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx = CtxFromUserID(ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -390,6 +397,54 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 
 	if !proto.Equal(expected2, task2.PicComment) {
 		t.Error("have", task2.PicComment, "want", expected2)
+	}
+}
+
+func TestAddPicComment_SelfReplyDisallowed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_COMMENT_CREATE)
+	u.Update()
+
+	conf, sts := GetConfiguration(c.Ctx)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	conf.EnablePicCommentSelfReply = &wpb.BoolValue{Value: false}
+	ctx := CtxFromTestConfig(c.Ctx, conf)
+
+	p := c.CreatePic()
+
+	task := &AddPicCommentTask{
+		PicID: p.Pic.PicId,
+		Beg:   c.DB(),
+		Now:   time.Now,
+		Text:  "hi",
+	}
+	ctx = CtxFromUserID(ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	task2 := &AddPicCommentTask{
+		PicID:           p.Pic.PicId,
+		CommentParentID: task.PicComment.CommentId,
+		Beg:             c.DB(),
+		Now:             time.Now,
+		Text:            "hello",
+	}
+
+	sts = new(TaskRunner).Run(ctx, task2)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+	if have, want := sts.Code(), codes.InvalidArgument; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := sts.Message(), "self reply"; !strings.Contains(have, want) {
+		t.Error("have", have, "want", want)
 	}
 }
 

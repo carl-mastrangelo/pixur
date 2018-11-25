@@ -102,4 +102,7 @@ var defaultConfiguration = &Configuration{
 	},
 	// Ten minutes, with 1 second of leeway
 	MaxWebmDuration: ptypes.DurationProto(10*time.Minute + 1*time.Second),
+	EnablePicCommentSelfReply: &wpb.BoolValue{
+		Value: true,
+	},
 }

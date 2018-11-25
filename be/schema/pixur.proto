@@ -360,7 +360,9 @@ message Configuration {
   google.protobuf.Int64Value max_find_index_pics = 14;
   // the max duration a WEBM pic can be
   google.protobuf.Duration max_webm_duration = 15;
-
+  // allows users to reply to their own comments
+  google.protobuf.BoolValue enable_pic_comment_self_reply = 16;
+  
   message CapabilitySet {
     repeated User.Capability capability = 1;
   }
