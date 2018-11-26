@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package pixur.db.model;
+package pixur.be.schema.db.model;
 
-option go_package = "model";
+option go_package = "pixur.org/pixur/be/schema/db/model";
 
 import "google/protobuf/descriptor.proto";
 

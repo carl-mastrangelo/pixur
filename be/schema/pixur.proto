@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package pixur;
+package pixur.be.schema;
 
-option go_package = "schema";
+option go_package = "pixur.org/pixur/be/schema";
 
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";

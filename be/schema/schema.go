@@ -1,4 +1,4 @@
-//go:generate protoc pixur.proto --go_out=.
+//go:generate protoc pixur.proto --go_out=paths=source_relative:.
 
 package schema // import "pixur.org/pixur/be/schema"
 

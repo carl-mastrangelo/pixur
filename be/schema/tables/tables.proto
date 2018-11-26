@@ -1,16 +1,15 @@
 syntax = "proto3";
 
-package pixur.tables;
+package pixur.be.schema.tables;
 
-option go_package = "tables";
+option go_package = "pixur.org/pixur/be/schema/tables";
 
 import "pixur.org/pixur/be/schema/pixur.proto";
 import "pixur.org/pixur/be/schema/db/model/model.proto";
 
-
 message PicRow {
   // The indexes could probably be unique, but I don't want them as a constraint.
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "Pics"
     key: {
       key_type: PRIMARY
@@ -36,21 +35,21 @@ message PicRow {
     }
   };
 
-  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
+  int64 id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IdCol"}];
 
-  int64 index_order = 2 [(pixur.db.model.field_opts) = {col_fn: "IndexOrderCol"}];
+  int64 index_order = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IndexOrderCol"}];
 
   reserved 3;
   reserved "is_hidden";
 
-  int32 score_order = 5 [(pixur.db.model.field_opts) = {col_fn: "LowerScoreBound"}];
-  int32 sched_order = 6 [(pixur.db.model.field_opts) = {col_fn: "UpperScoreBound"}];
+  int32 score_order = 5 [(pixur.be.schema.db.model.field_opts) = {col_fn: "LowerScoreBound"}];
+  int32 sched_order = 6 [(pixur.be.schema.db.model.field_opts) = {col_fn: "UpperScoreBound"}];
 
-  pixur.Pic data = 4;
+  pixur.be.schema.Pic data = 4;
 }
 
 message TagRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "Tags"
     key: {
       key_type: PRIMARY
@@ -63,15 +62,15 @@ message TagRow {
     }
   };
 
-  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
+  int64 id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IdCol"}];
 
-  string name = 2 [(pixur.db.model.field_opts) = {col_fn: "NameCol"}];;
+  string name = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "NameCol"}];;
 
-  pixur.Tag data = 3;
+  pixur.be.schema.Tag data = 3;
 }
 
 message PicTagRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "PicTags"
     key: {
       key_type: PRIMARY
@@ -80,14 +79,14 @@ message PicTagRow {
     }
   };
 
-  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
-  int64 tag_id = 2 [(pixur.db.model.field_opts) = {col_fn: "TagIdCol"}];
+  int64 pic_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 tag_id = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "TagIdCol"}];
 
-  pixur.PicTag data = 3;
+  pixur.be.schema.PicTag data = 3;
 }
 
 message PicIdentRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "PicIdents"
     key: {
       key_type: PRIMARY
@@ -103,17 +102,17 @@ message PicIdentRow {
     }
   };
 
-  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 pic_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "PicIdCol"}];
 
-  pixur.PicIdent.Type type = 2 [(pixur.db.model.field_opts) = {col_fn: "TypeCol"}];
+  pixur.be.schema.PicIdent.Type type = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "TypeCol"}];
 
-  bytes value = 3 [(pixur.db.model.field_opts) = {col_fn: "ValueCol"}];
+  bytes value = 3 [(pixur.be.schema.db.model.field_opts) = {col_fn: "ValueCol"}];
 
-  pixur.PicIdent data = 4;
+  pixur.be.schema.PicIdent data = 4;
 }
 
 message PicCommentRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "PicComments"
     key: {
       key_type: PRIMARY
@@ -127,15 +126,15 @@ message PicCommentRow {
     }
   };
 
-  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 pic_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "PicIdCol"}];
 
-  int64 comment_id = 2 [(pixur.db.model.field_opts) = {col_fn: "CommentIdCol"}];
+  int64 comment_id = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "CommentIdCol"}];
 
-  pixur.PicComment data = 3;
+  pixur.be.schema.PicComment data = 3;
 }
 
 message PicVoteRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "PicVotes"
     key: {
       key_type: PRIMARY
@@ -152,17 +151,17 @@ message PicVoteRow {
     }
   };
 
-  int64 pic_id = 1 [(pixur.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 pic_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "PicIdCol"}];
 
-  int64 user_id = 2 [(pixur.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  int64 user_id = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "UserIdCol"}];
   
-  int64 index = 4 [(pixur.db.model.field_opts) = {col_fn: "IndexCol"}];
+  int64 index = 4 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IndexCol"}];
 
-  pixur.PicVote data = 3;
+  pixur.be.schema.PicVote data = 3;
 }
 
 message UserRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "Users"
     key: {
       key_type: PRIMARY
@@ -175,15 +174,15 @@ message UserRow {
     }
   };
 
-  int64 id = 1 [(pixur.db.model.field_opts) = {col_fn: "IdCol"}];
+  int64 id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IdCol"}];
 
-  string ident = 2 [(pixur.db.model.field_opts) = {col_fn: "IdentCol"}];
+  string ident = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IdentCol"}];
 
-  pixur.User data = 3;
+  pixur.be.schema.User data = 3;
 }
 
 message UserEventRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "UserEvents"
     key: {
       key_type: PRIMARY
@@ -193,17 +192,17 @@ message UserEventRow {
     }
   };
 
-  int64 user_id = 1 [(pixur.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  int64 user_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "UserIdCol"}];
 
-  int64 created_ts = 2 [(pixur.db.model.field_opts) = {col_fn: "CreatedTsCol"}];
+  int64 created_ts = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "CreatedTsCol"}];
 
-  int64 index = 3 [(pixur.db.model.field_opts) = {col_fn: "IndexCol"}];
+  int64 index = 3 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IndexCol"}];
 
-  pixur.UserEvent data = 5;
+  pixur.be.schema.UserEvent data = 5;
 }
 
 message CustomDataRow {
-  option (pixur.db.model.tab_opts) = {
+  option (pixur.be.schema.db.model.tab_opts) = {
     name: "CustomData"
     key: {
       key_type: PRIMARY
@@ -216,17 +215,17 @@ message CustomDataRow {
     }
   };
 
-  int64 key_type = 1 [(pixur.db.model.field_opts) = {col_fn: "KeyTypeCol"}];
+  int64 key_type = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "KeyTypeCol"}];
 
-  int64 key1 = 2 [(pixur.db.model.field_opts) = {col_fn: "Key1Col"}];
+  int64 key1 = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "Key1Col"}];
 
-  int64 key2 = 3 [(pixur.db.model.field_opts) = {col_fn: "Key2Col"}];
+  int64 key2 = 3 [(pixur.be.schema.db.model.field_opts) = {col_fn: "Key2Col"}];
   
-  int64 key3 = 4 [(pixur.db.model.field_opts) = {col_fn: "Key3Col"}];
+  int64 key3 = 4 [(pixur.be.schema.db.model.field_opts) = {col_fn: "Key3Col"}];
   
-  int64 key4 = 5 [(pixur.db.model.field_opts) = {col_fn: "Key4Col"}];
+  int64 key4 = 5 [(pixur.be.schema.db.model.field_opts) = {col_fn: "Key4Col"}];
   
-  int64 key5 = 6 [(pixur.db.model.field_opts) = {col_fn: "Key5Col"}];
+  int64 key5 = 6 [(pixur.be.schema.db.model.field_opts) = {col_fn: "Key5Col"}];
 
-  pixur.CustomData data = 7;
+  pixur.be.schema.CustomData data = 7;
 }

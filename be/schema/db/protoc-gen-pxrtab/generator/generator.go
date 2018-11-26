@@ -115,7 +115,12 @@ func (g *Generator) addProtoImports(srcName string) {
 		fd := g.protoNameMap[dep]
 		var shortName, dummyName string
 		if len(fd.MessageType) > 0 {
-			shortName = filepath.Base(fd.GetOptions().GetGoPackage())
+			pkg := fd.GetOptions().GetGoPackage()
+			if strings.ContainsRune(pkg, ';') {
+				shortName = strings.SplitN(pkg, ";", 2)[1]
+			} else {
+				shortName = filepath.Base(pkg)
+			}
 			dummyName = fmt.Sprintf("%s.%s{}", shortName, *fd.MessageType[0].Name)
 		} else {
 			shortName = "_"
@@ -142,7 +147,12 @@ func (g *Generator) generateFile(
 		g.protoNameMap[*fd.Name] = fd
 		g.protoPackageMap[*fd.Package] = fd
 		if *fd.Name == srcName {
-			g.args.Name = fd.GetOptions().GetGoPackage()
+			pkg := fd.GetOptions().GetGoPackage()
+			if strings.ContainsRune(pkg, ';') {
+				g.args.Name = strings.SplitN(pkg, ";", 2)[1]
+			} else {
+				g.args.Name = filepath.Base(pkg)
+			}
 		}
 
 		for _, msg := range fd.MessageType {
@@ -392,7 +402,16 @@ func (g *Generator) typeNameToGoName(fqProtoName string) string {
 	}
 	if best != "" {
 		msg := strings.TrimPrefix(fqProtoName, "."+best+".")
-		if pack := g.protoPackageMap[best].GetOptions().GetGoPackage(); pack != g.args.Name {
+		var pack string
+
+		pkg := g.protoPackageMap[best].GetOptions().GetGoPackage()
+		if strings.ContainsRune(pkg, ';') {
+			pack = strings.SplitN(pkg, ";", 2)[1]
+		} else {
+			pack = filepath.Base(pkg)
+		}
+
+		if pack != g.args.Name {
 			return pack + "." + strings.Join(strings.Split(msg, "."), "_")
 		}
 		return strings.Join(strings.Split(msg, "."), "_")
