@@ -13,14 +13,14 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func run() error {
-	db, err := sdb.Open(config.Conf.DbName, config.Conf.DbConfig)
+func run(ctx context.Context) error {
+	db, err := sdb.Open(ctx, config.Conf.DbName, config.Conf.DbConfig)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	j, err := tab.NewJob(context.Background(), db)
+	j, err := tab.NewJob(ctx, db)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 func main() {
 	flag.Parse()
 
-	if err := run(); err != nil {
+	if err := run(context.Background()); err != nil {
 		log.Println(err.(stringer).String())
 	}
 }

@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"runtime/trace"
 	"strconv"
 	"strings"
 
@@ -15,11 +17,14 @@ var _ DBAdapter = &postgresAdapter{}
 
 type postgresAdapter struct{}
 
-func (a *postgresAdapter) Open(dataSourceName string) (DB, error) {
-	return a.open(dataSourceName)
+func (a *postgresAdapter) Open(ctx context.Context, dataSourceName string) (DB, error) {
+	return a.open(ctx, dataSourceName)
 }
 
-func (a *postgresAdapter) open(dataSourceName string) (*dbWrapper, status.S) {
+func (a *postgresAdapter) open(ctx context.Context, dataSourceName string) (*dbWrapper, status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlOpen").End()
+	}
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
 		return nil, status.Unknown(&sqlError{
@@ -46,11 +51,11 @@ func (a *postgresAdapter) open(dataSourceName string) (*dbWrapper, status.S) {
 	}, nil
 }
 
-func (a *postgresAdapter) OpenForTest() (DB, error) {
-	return a.openForTest()
+func (a *postgresAdapter) OpenForTest(ctx context.Context) (DB, error) {
+	return a.openForTest(ctx)
 }
 
-func (a *postgresAdapter) openForTest() (*dbWrapper, status.S) {
+func (a *postgresAdapter) openForTest(ctx context.Context) (*dbWrapper, status.S) {
 	panic("not implemented")
 }
 

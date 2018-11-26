@@ -27,8 +27,8 @@ type Server struct {
 	privateKey  *rsa.PrivateKey
 }
 
-func (s *Server) setup(c *config.Config) error {
-	db, err := sdb.Open(c.DbName, c.DbConfig)
+func (s *Server) setup(ctx context.Context, c *config.Config) error {
+	db, err := sdb.Open(ctx, c.DbName, c.DbConfig)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (s *Server) setup(c *config.Config) error {
 		s.tokenSecret = []byte(c.TokenSecret)
 	}
 
-	opts, cb := handlers.HandlersInit(context.TODO(), &handlers.ServerConfig{
+	opts, cb := handlers.HandlersInit(ctx, &handlers.ServerConfig{
 		DB:                   db,
 		PixPath:              s.pixPath,
 		TokenSecret:          s.tokenSecret,
@@ -123,8 +123,8 @@ func (s *Server) setup(c *config.Config) error {
 	return nil
 }
 
-func (s *Server) StartAndWait(c *config.Config) error {
-	if err := s.setup(c); err != nil {
+func (s *Server) StartAndWait(ctx context.Context, c *config.Config) error {
+	if err := s.setup(ctx, c); err != nil {
 		return err
 	}
 	return s.s.Serve(s.ln)

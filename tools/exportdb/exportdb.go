@@ -17,25 +17,24 @@ var (
 	initDestTables = flag.Bool("dest_inittables", false, "create tables before exporting")
 )
 
-func export() error {
-	olddb, err := sdb.Open(beconfig.Conf.DbName, beconfig.Conf.DbConfig)
+func export(ctx context.Context) error {
+	olddb, err := sdb.Open(ctx, beconfig.Conf.DbName, beconfig.Conf.DbConfig)
 	if err != nil {
 		return err
 	}
 	defer olddb.Close()
 
-	oldj, err := tab.NewJob(context.Background(), olddb)
+	oldj, err := tab.NewJob(ctx, olddb)
 	if err != nil {
 		return err
 	}
 	defer oldj.Rollback()
 
-	newdb, err := sdb.Open(*destDbName, *destDbConfig)
+	newdb, err := sdb.Open(ctx, *destDbName, *destDbConfig)
 	if err != nil {
 		return err
 	}
 	defer newdb.Close()
-	ctx := context.Background()
 	if *initDestTables {
 		if err := newdb.InitSchema(ctx, tab.SqlTables[*destDbName]); err != nil {
 			return err
@@ -119,7 +118,7 @@ func export() error {
 func main() {
 	flag.Parse()
 
-	if err := export(); err != nil {
+	if err := export(context.Background()); err != nil {
 		log.Println(err)
 	}
 }

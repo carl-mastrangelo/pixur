@@ -1,6 +1,7 @@
 package main // import "pixur.org/pixur/be"
 
 import (
+	"context"
 	"flag"
 
 	"github.com/golang/glog"
@@ -15,5 +16,5 @@ func main() {
 
 	s := new(server.Server)
 
-	glog.Fatal(s.StartAndWait(config.Conf))
+	glog.Fatal(s.StartAndWait(context.Background(), config.Conf))
 }

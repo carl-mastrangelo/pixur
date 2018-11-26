@@ -149,7 +149,7 @@ func readbool(r *bufio.Reader, def bool) bool {
 	}
 }
 
-func run(args []string) error {
+func run(ctx context.Context, args []string) error {
 	fmt.Println("Initializing Pixur installation")
 	fmt.Println()
 	r := bufio.NewReader(os.Stdin)
@@ -212,13 +212,12 @@ func run(args []string) error {
 		beconf = beconfig.Conf
 	}
 	fmt.Println("Opening Database " + beconf.DbConfig)
-	db, err := sdb.Open(beconf.DbName, beconf.DbConfig)
+	db, err := sdb.Open(ctx, beconf.DbName, beconf.DbConfig)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	ctx := context.Background()
 	fmt.Println("Create initial tables? (default: y)")
 	if y := readbool(r, true); y {
 		var stmts []string
@@ -279,7 +278,7 @@ func run(args []string) error {
 }
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	if err := run(context.Background(), os.Args[1:]); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}

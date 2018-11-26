@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"runtime/trace"
 	"strings"
 	"sync"
 
@@ -30,11 +31,14 @@ const (
 	codeUniqueViolationError = "23505"
 )
 
-func (a *cockroachAdapter) Open(dataSourceName string) (DB, error) {
-	return a.open(dataSourceName)
+func (a *cockroachAdapter) Open(ctx context.Context, dataSourceName string) (DB, error) {
+	return a.open(ctx, dataSourceName)
 }
 
-func (a *cockroachAdapter) open(dataSourceName string) (*dbWrapper, status.S) {
+func (a *cockroachAdapter) open(ctx context.Context, dataSourceName string) (*dbWrapper, status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlOpen").End()
+	}
 	db, err := sql.Open(cockroachSqlDriverName, dataSourceName)
 	if err != nil {
 		return nil, status.Unknown(&sqlError{
@@ -134,11 +138,14 @@ var (
 	cockroachTestServActive, cockroachTestServTotal int
 )
 
-func (a *cockroachAdapter) OpenForTest() (DB, error) {
-	return a.openForTest()
+func (a *cockroachAdapter) OpenForTest(ctx context.Context) (DB, error) {
+	return a.openForTest(ctx)
 }
 
-func (a *cockroachAdapter) openForTest() (_ *cockroachTestDB, stscap status.S) {
+func (a *cockroachAdapter) openForTest(ctx context.Context) (_ *cockroachTestDB, stscap status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlTestOpen").End()
+	}
 	cockroachTestServLock.Lock()
 	defer cockroachTestServLock.Unlock()
 
@@ -185,7 +192,7 @@ func (a *cockroachAdapter) openForTest() (_ *cockroachTestDB, stscap status.S) {
 	}
 
 	dsn += " dbname=" + dbName
-	db, sts := a.open(dsn)
+	db, sts := a.open(ctx, dsn)
 	if sts != nil {
 		return nil, sts
 	}

@@ -56,20 +56,20 @@ type Retryable interface {
 
 // Open is the main entry point to the db package.  adapterName is one of the registered types.
 // dataSourceName is the connection information to initiate the db.
-func Open(adapterName, dataSourceName string) (DB, error) {
+func Open(ctx context.Context, adapterName, dataSourceName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
 		return nil, status.InvalidArgument(nil, "no adapter", adapterName)
 	}
-	return adapter.Open(dataSourceName)
+	return adapter.Open(ctx, dataSourceName)
 }
 
-func OpenForTest(adapterName string) (DB, error) {
+func OpenForTest(ctx context.Context, adapterName string) (DB, error) {
 	adapter, present := adapters[adapterName]
 	if !present {
 		return nil, status.InvalidArgument(nil, "no adapter", adapterName)
 	}
-	return adapter.OpenForTest()
+	return adapter.OpenForTest(ctx)
 }
 
 var adapters = make(map[string]DBAdapter)
@@ -107,8 +107,8 @@ type DBAdapter interface {
 	// Is this database inherently serial?
 	SingleTx() bool
 
-	Open(dataSourceName string) (DB, error)
-	OpenForTest() (DB, error)
+	Open(ctx context.Context, dataSourceName string) (DB, error)
+	OpenForTest(context.Context) (DB, error)
 
 	// Can the given error be retried?
 	RetryableErr(error) bool

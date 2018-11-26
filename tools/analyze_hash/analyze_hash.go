@@ -64,8 +64,8 @@ func (id *imgDiffs) Pop() interface{} {
 	return x
 }
 
-func run() error {
-	db, err := sdb.Open(config.Conf.DbName, config.Conf.DbConfig)
+func run(ctx context.Context) error {
+	db, err := sdb.Open(ctx, config.Conf.DbName, config.Conf.DbConfig)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func getIdents(db sdb.DB) ([]*schema.PicIdent, error) {
 
 func main() {
 	flag.Parse()
-	if err := run(); err != nil {
+	if err := run(context.Background()); err != nil {
 		log.Println(err)
 	}
 }

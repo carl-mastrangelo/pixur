@@ -17,21 +17,23 @@ func main() {
 	flag.Parse()
 	defer glog.Flush()
 
+	ctx := context.Background()
+
 	errs := make(chan error)
 
 	go func() {
 		s := new(beserver.Server)
-		errs <- s.StartAndWait(beconfig.Conf)
+		errs <- s.StartAndWait(ctx, beconfig.Conf)
 	}()
 
 	go func() {
 		s := new(feserver.Server)
 		fehandlers.RegisterAll(s)
-		if err := s.Init(context.Background(), feconfig.Conf); err != nil {
+		if err := s.Init(ctx, feconfig.Conf); err != nil {
 			errs <- err
 			return
 		}
-		errs <- s.ListenAndServe(context.Background(), nil)
+		errs <- s.ListenAndServe(ctx, nil)
 	}()
 
 	glog.Fatal(<-errs)

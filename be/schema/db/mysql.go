@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"runtime/trace"
 	"strings"
 	"sync"
 
@@ -19,11 +21,15 @@ var _ DBAdapter = &mysqlAdapter{}
 
 type mysqlAdapter struct{}
 
-func (a *mysqlAdapter) Open(dataSourceName string) (DB, error) {
-	return a.open(dataSourceName)
+func (a *mysqlAdapter) Open(ctx context.Context, dataSourceName string) (DB, error) {
+	return a.open(ctx, dataSourceName)
 }
 
-func (a *mysqlAdapter) open(dataSourceName string) (_ *dbWrapper, stscap status.S) {
+func (a *mysqlAdapter) open(ctx context.Context, dataSourceName string) (
+	_ *dbWrapper, stscap status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlOpen").End()
+	}
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
 		return nil, status.Unknown(&sqlError{
@@ -57,11 +63,14 @@ func (_ *mysqlAdapter) SingleTx() bool {
 	return false
 }
 
-func (a *mysqlAdapter) OpenForTest() (DB, error) {
-	return a.openForTest()
+func (a *mysqlAdapter) OpenForTest(ctx context.Context) (DB, error) {
+	return a.openForTest(ctx)
 }
 
-func (a *mysqlAdapter) openForTest() (_ *mysqlTestDB, stscap status.S) {
+func (a *mysqlAdapter) openForTest(ctx context.Context) (_ *mysqlTestDB, stscap status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlTestOpen").End()
+	}
 	mysqlTestServLock.Lock()
 	defer mysqlTestServLock.Unlock()
 	if mysqlTestServ == nil {
@@ -114,7 +123,7 @@ func (a *mysqlAdapter) openForTest() (_ *mysqlTestDB, stscap status.S) {
 		}, "can't close db")
 	}
 
-	db, sts := a.open("unix(" + mysqlTestServ.socket + ")/" + dbName)
+	db, sts := a.open(ctx, "unix("+mysqlTestServ.socket+")/"+dbName)
 	if sts != nil {
 		return nil, sts
 	}

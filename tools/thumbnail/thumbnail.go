@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
@@ -14,14 +15,14 @@ var (
 	outfile = flag.String("out", "", "The destination file to write a thumbnail to")
 )
 
-func run(in, out string) status.S {
+func run(ctx context.Context, in, out string) status.S {
 	fin, err := os.Open(in)
 	if err != nil {
 		return status.InvalidArgument(err, "can't open file")
 	}
 	defer fin.Close()
 
-	im, sts := imaging.ReadImage(fin)
+	im, sts := imaging.ReadImage(ctx, fin)
 	if sts != nil {
 		return sts
 	}
@@ -47,7 +48,7 @@ func run(in, out string) status.S {
 
 func main() {
 	flag.Parse()
-	if sts := run(*infile, *outfile); sts != nil {
+	if sts := run(context.Background(), *infile, *outfile); sts != nil {
 		log.Println(sts)
 		os.Exit(1)
 	}

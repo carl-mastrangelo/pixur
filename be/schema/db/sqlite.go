@@ -1,11 +1,13 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"strings"
 
 	sqlite3 "github.com/mattn/go-sqlite3"
@@ -24,11 +26,14 @@ var _ DBAdapter = &sqlite3Adapter{}
 
 type sqlite3Adapter struct{}
 
-func (a *sqlite3Adapter) Open(dataSourceName string) (DB, error) {
-	return a.open(dataSourceName)
+func (a *sqlite3Adapter) Open(ctx context.Context, dataSourceName string) (DB, error) {
+	return a.open(ctx, dataSourceName)
 }
 
-func (a *sqlite3Adapter) open(dataSourceName string) (*dbWrapper, status.S) {
+func (a *sqlite3Adapter) open(ctx context.Context, dataSourceName string) (*dbWrapper, status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlOpen").End()
+	}
 	db, err := sql.Open(a.Name(), dataSourceName)
 	if err != nil {
 		return nil, status.Unknown(&sqlError{
@@ -59,11 +64,14 @@ func (_ *sqlite3Adapter) SingleTx() bool {
 	return true
 }
 
-func (a *sqlite3Adapter) OpenForTest() (DB, error) {
-	return a.openForTest()
+func (a *sqlite3Adapter) OpenForTest(ctx context.Context) (DB, error) {
+	return a.openForTest(ctx)
 }
 
-func (a *sqlite3Adapter) openForTest() (_ *sqlite3TestDB, stscap status.S) {
+func (a *sqlite3Adapter) openForTest(ctx context.Context) (_ *sqlite3TestDB, stscap status.S) {
+	if trace.IsEnabled() {
+		defer trace.StartRegion(ctx, "SqlTestOpen").End()
+	}
 	// Can't use :memory: since they have a habit of sharing the same memory
 	testdir, err := ioutil.TempDir("", "sqlitepixurtest")
 	if err != nil {
@@ -77,7 +85,7 @@ func (a *sqlite3Adapter) openForTest() (_ *sqlite3TestDB, stscap status.S) {
 		}
 	}()
 	loc := filepath.Join(testdir, "db.sqlite")
-	db, sts := a.open(loc)
+	db, sts := a.open(ctx, loc)
 	if sts != nil {
 		return nil, sts
 	}

@@ -54,7 +54,7 @@ var allDbs []db.DB
 
 func (c *TestContainer) DB() db.DB {
 	if c.db == nil {
-		db, err := db.OpenForTest(sqlAdapterName)
+		db, err := db.OpenForTest(c.Ctx, sqlAdapterName)
 		if err != nil {
 			c.T.Fatal(err)
 		}
@@ -643,7 +643,7 @@ func runTests(m *testing.M) int {
 	}()
 
 	// Open a dummy db to keep the server alive during tests
-	db, err := db.OpenForTest(sqlAdapterName)
+	db, err := db.OpenForTest(context.Background(), sqlAdapterName)
 	if err != nil {
 		panic(err)
 	}
