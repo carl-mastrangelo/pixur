@@ -4,9 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"runtime/trace"
 	"strings"
 
@@ -72,33 +69,22 @@ func (a *sqlite3Adapter) openForTest(ctx context.Context) (_ *sqlite3TestDB, sts
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, "SqlTestOpen").End()
 	}
-	// Can't use :memory: since they have a habit of sharing the same memory
-	testdir, err := ioutil.TempDir("", "sqlitepixurtest")
-	if err != nil {
-		return nil, status.Internal(err, "can't create temp dir")
-	}
-	defer func() {
-		if stscap != nil {
-			if err := os.RemoveAll(testdir); err != nil {
-				stscap = status.WithSuppressed(stscap, err)
-			}
-		}
-	}()
-	loc := filepath.Join(testdir, "db.sqlite")
-	db, sts := a.open(ctx, loc)
+	db, sts := a.open(ctx, ":memory:")
 	if sts != nil {
 		return nil, sts
 	}
+	// If more than one connection is made, it reuses ":memory:", which creates a completely new
+	// database.  Fix this by making every DB a single connection.  Since sqlite can only have
+	// one transaction at a time anyways, this is probably okay.
+	db.db.SetMaxOpenConns(1)
 
 	return &sqlite3TestDB{
 		dbWrapper: db,
-		testdir:   testdir,
 	}, nil
 }
 
 type sqlite3TestDB struct {
 	*dbWrapper
-	testdir string
 }
 
 func (stdb *sqlite3TestDB) Close() error {
@@ -106,13 +92,7 @@ func (stdb *sqlite3TestDB) Close() error {
 }
 
 func (stdb *sqlite3TestDB) _close() status.S {
-	sts := stdb.dbWrapper._close()
-
-	if err := os.RemoveAll(stdb.testdir); err != nil {
-		status.ReplaceOrSuppress(&sts, status.Internal(err, "can't remove test dir"))
-	}
-
-	return sts
+	return stdb.dbWrapper._close()
 }
 
 func (_ *sqlite3Adapter) Quote(ident string) string {
