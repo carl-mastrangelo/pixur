@@ -959,11 +959,12 @@ func TestMergeAddsSource(t *testing.T) {
 
 	p := c.CreatePic()
 
+	u := c.CreateUser()
+
 	j := c.Job()
 	defer j.Rollback()
 
 	now := time.Now()
-	u := c.CreateUser()
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/",
 		UserId:    u.User.UserId,
@@ -1054,12 +1055,12 @@ func TestMergeIgnoresEmptySource(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
+	u := c.CreateUser()
 
 	j := c.Job()
 	defer j.Rollback()
 
 	now := time.Now()
-	u := c.CreateUser()
 	pfs := &schema.Pic_FileSource{
 		Url:       "",
 		UserId:    u.User.UserId,
@@ -1086,12 +1087,9 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
-
-	j := c.Job()
-	defer j.Rollback()
+	u := c.CreateUser()
 
 	now := time.Now()
-	u := c.CreateUser()
 	pfs := &schema.Pic_FileSource{
 		Url:       "",
 		UserId:    u.User.UserId,
@@ -1099,6 +1097,9 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	}
 	p.Pic.Source = nil
 	p.Update()
+
+	j := c.Job()
+	defer j.Rollback()
 
 	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
 	if err != nil {
@@ -1270,11 +1271,12 @@ func TestFindExistingPic_Exists(t *testing.T) {
 	defer c.Close()
 
 	existingPic := c.CreatePic()
+	digest := existingPic.Md5()
 
 	j := c.Job()
 	defer j.Rollback()
 
-	p, err := findExistingPic(j, schema.PicIdent_MD5, existingPic.Md5())
+	p, err := findExistingPic(j, schema.PicIdent_MD5, digest)
 	if err != nil {
 		t.Fatal(err)
 	}
