@@ -1,28 +1,54 @@
 package tasks
 
 import (
+	"context"
 	"sync"
 	"testing"
 
 	"pixur.org/pixur/be/schema/db"
+	"pixur.org/pixur/be/status"
 )
 
-// Rather than have schema/db depend on a live database, do the id allocator tests here.
+var _ Task = (fakeIdAllocTask)(nil)
 
+type fakeIdAllocTask func() error
+
+func (t fakeIdAllocTask) Run(context.Context) status.S {
+	if err := t(); err != nil {
+		return status.From(err)
+	}
+	return nil
+}
+
+func runIDAllocTest(c *TestContainer, fn func() error) {
+	c.T.Helper()
+	idAllocTaskRunner := &TaskRunner{
+		logger: silentLogger,
+	}
+	if sts := idAllocTaskRunner.Run(c.Ctx, fakeIdAllocTask(fn)); sts != nil {
+		c.T.Fatal(sts)
+	}
+}
+
+// Rather than have schema/db depend on a live database, do the id allocator tests here.
 func TestAllocDBSerial(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 1
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 1
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
-		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
-		if err != nil {
-			t.Fatal(err)
-		}
-		ids[num]++
+		runIDAllocTest(c, func() error {
+			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
+			if err != nil {
+				return err
+			}
+			ids[num]++
+			return nil
+		})
 	}
 	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
@@ -37,7 +63,8 @@ func TestAllocDBSerial(t *testing.T) {
 func TestAllocDBParallel(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 1
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 1
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
@@ -47,11 +74,14 @@ func TestAllocDBParallel(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
-			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
-			if err != nil {
-				t.Fatal(err)
-			}
-			idschan <- num
+			runIDAllocTest(c, func() error {
+				num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
+				if err != nil {
+					return err
+				}
+				idschan <- num
+				return nil
+			})
 		}()
 	}
 	wg.Wait()
@@ -74,17 +104,21 @@ func TestAllocDBParallel(t *testing.T) {
 func TestAllocDBSerialMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 10
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
-		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
-		if err != nil {
-			t.Fatal(err)
-		}
-		ids[num]++
+		runIDAllocTest(c, func() error {
+			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
+			if err != nil {
+				return err
+			}
+			ids[num]++
+			return nil
+		})
 	}
 	if len(ids) != 100 {
 		t.Error("wrong number of ids", len(ids))
@@ -99,7 +133,8 @@ func TestAllocDBSerialMulti(t *testing.T) {
 func TestAllocDBParallelMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 10
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
@@ -109,11 +144,14 @@ func TestAllocDBParallelMulti(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			defer wg.Done()
-			num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
-			if err != nil {
-				t.Fatal(err)
-			}
-			idschan <- num
+			runIDAllocTest(c, func() error {
+				num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
+				if err != nil {
+					return err
+				}
+				idschan <- num
+				return nil
+			})
 		}()
 	}
 	wg.Wait()
@@ -164,7 +202,8 @@ func TestAllocJobSerial(t *testing.T) {
 func TestAllocMixed(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.AllocatorGrab = 10
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
 	d := c.DB()
@@ -212,7 +251,8 @@ func TestAllocMixed(t *testing.T) {
 func BenchmarkAllocDBSerial(b *testing.B) {
 	c := Container(b)
 	defer c.Close()
-	db.AllocatorGrab = 1
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 1
 
 	d := c.DB()
 	ids := make(map[int64]struct{}, b.N)
@@ -236,7 +276,8 @@ func BenchmarkAllocDBSerial(b *testing.B) {
 func BenchmarkAllocDBSerialMulti(b *testing.B) {
 	c := Container(b)
 	defer c.Close()
-	db.AllocatorGrab = 100
+	db.IDLowWaterMark = 1
+	db.IDHighWaterMark = 100
 
 	d := c.DB()
 	ids := make(map[int64]struct{}, b.N)
