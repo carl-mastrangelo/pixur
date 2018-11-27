@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,40 @@ import (
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/status"
 )
+
+func TestAddPicTags_TagsCollapsed(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_TAG_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+
+	tt := c.CreateTag()
+	if strings.ToUpper(tt.Tag.Name) == tt.Tag.Name {
+		t.Fatal("already upper", tt.Tag.Name)
+	}
+
+	task := &AddPicTagsTask{
+		Beg: c.DB(),
+		Now: func() time.Time { return time.Unix(100, 0) },
+
+		PicID:    p.Pic.PicId,
+		TagNames: []string{"  Blooper  ", strings.ToUpper(tt.Tag.Name)},
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	ts, _ := p.Tags()
+	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "Blooper" {
+		t.Error("bad tags", len(ts), ts)
+	}
+}
 
 func TestUpsertTags(t *testing.T) {
 	c := Container(t)
