@@ -382,7 +382,6 @@ message UpsertPicRequest {
 	// backend already has a pic with a matching md5_hash, it may not use
 	// either data or url (at least one must still be specified, though).
 	bytes md5_hash = 4;
-	repeated string tag = 5;
 }
 
 message UpsertPicResponse {
@@ -553,7 +552,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181125 // AUTO UPDATED BY generate.go
+    api_version: 20181126 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

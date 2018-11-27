@@ -64,7 +64,6 @@ func (h *upsertPicHandler) upsert(w http.ResponseWriter, r *http.Request) {
 		Name:    filename,
 		Data:    data,
 		Md5Hash: md5Hash,
-		Tag:     r.PostForm[h.pt.pr.Tag()],
 	})
 
 	if sts != nil {
