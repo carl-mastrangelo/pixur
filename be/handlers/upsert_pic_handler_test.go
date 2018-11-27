@@ -59,7 +59,6 @@ func TestUpsertPic(t *testing.T) {
 		Data:    []byte("a"),
 		Name:    "bar",
 		Md5Hash: []byte("0123456789abcdef"),
-		Tag:     []string{"blah"},
 	})
 	if sts != nil {
 		t.Fatal(sts)
@@ -76,9 +75,6 @@ func TestUpsertPic(t *testing.T) {
 	if taskCap.HTTPClient == nil || taskCap.TempFile == nil || taskCap.Rename == nil ||
 		taskCap.MkdirAll == nil || taskCap.Now == nil {
 		t.Error("deps are nil", taskCap)
-	}
-	if len(taskCap.TagNames) != 1 || taskCap.TagNames[0] != "blah" {
-		t.Error("bad tag names", taskCap.TagNames)
 	}
 	if have, want := ctxCap, context.Background(); have != want {
 		t.Error("have", have, "want", want)

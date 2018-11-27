@@ -40,21 +40,19 @@ func (t *CreateCustomDataTask) Run(ctx context.Context) (stscap status.S) {
 	return nil
 }
 
-func createCustomData(j *tab.Job, keyType, key1, key2, key3, key4, key5 int64, now time.Time,
-	data *anypb.Any) (*schema.CustomData, status.S) {
-
+func createCustomData(j *tab.Job, keyType, k1, k2, k3, k4, k5 int64, now time.Time, d *anypb.Any) (
+	*schema.CustomData, status.S) {
 	ts := schema.ToTspb(now)
-
 	cd := &schema.CustomData{
 		KeyType:    keyType,
-		Key1:       key1,
-		Key2:       key2,
-		Key3:       key3,
-		Key4:       key4,
-		Key5:       key5,
+		Key1:       k1,
+		Key2:       k2,
+		Key3:       k3,
+		Key4:       k4,
+		Key5:       k5,
 		CreatedTs:  ts,
 		ModifiedTs: ts,
-		Data:       data,
+		Data:       d,
 	}
 	if err := j.InsertCustomData(cd); err != nil {
 		return nil, status.Internal(err, "can't create custom data")

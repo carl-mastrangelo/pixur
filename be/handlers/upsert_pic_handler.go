@@ -55,7 +55,6 @@ func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (
 		Header: tasks.FileHeader{
 			Name: req.Name,
 		},
-		TagNames: req.Tag,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

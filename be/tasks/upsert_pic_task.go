@@ -51,8 +51,7 @@ type UpsertPicTask struct {
 
 	// Header is the name (and size) of the file.  Currently only the Name is used.  If the name is
 	// absent, UpsertPicTask will try to derive a name automatically from the FileURL.
-	Header   FileHeader
-	TagNames []string
+	Header FileHeader
 
 	// Ext is additional extra data associated with this pic.  If a key is present in both the
 	// new pic and the existing pic, Upsert will fail.
@@ -98,6 +97,10 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		return sts
+	}
+	var userID = schema.AnonymousUserID
+	if u != nil {
+		userID = u.UserId
 	}
 
 	conf, sts := GetConfiguration(ctx)
@@ -161,23 +164,11 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 
 	pfs := &schema.Pic_FileSource{
 		CreatedTs: schema.ToTspb(now),
-		UserId:    u.UserId,
+		UserId:    userID,
 		Name:      validFileName,
 	}
 	if furl != nil {
 		pfs.Url = furl.String()
-	}
-
-	var minTagLen, maxTagLen int64
-	if conf.MinTagLength != nil {
-		minTagLen = conf.MinTagLength.Value
-	} else {
-		minTagLen = math.MinInt64
-	}
-	if conf.MaxTagLength != nil {
-		maxTagLen = conf.MaxTagLength.Value
-	} else {
-		maxTagLen = math.MaxInt64
 	}
 
 	// TODO: change md5 hash to:
@@ -199,7 +190,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 				// Fallthrough.  We still need to download, and then remerge.
 			} else {
 				t.CreatedPic = p
-				return mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
+				return mergePic(j, p, now, pfs, userID, ext)
 			}
 		}
 	}
@@ -266,7 +257,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			//  fall through, picture needs to be undeleted.
 		} else {
 			t.CreatedPic = p
-			return mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen)
+			return mergePic(j, p, now, pfs, userID, ext)
 		}
 	} else {
 		picID, err := j.AllocID()
@@ -344,7 +335,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		AnimationInfo: imfanim,
 	})
 
-	if sts := mergePic(j, p, now, pfs, ext, t.TagNames, u.UserId, minTagLen, maxTagLen); sts != nil {
+	if sts := mergePic(j, p, now, pfs, userID, ext); sts != nil {
 		return sts
 	}
 
@@ -421,36 +412,56 @@ func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
 	}
 }
 
-func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource,
-	ext map[string]*any.Any, tagNames []string, userID, minTagLen, maxTagLen int64) status.S {
-	p.SetModifiedTime(now)
-	if ds := p.GetDeletionStatus(); ds != nil {
+func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource, userID int64,
+	ext map[string]*any.Any) status.S {
+	tim := schema.ToTspb(now)
+	p.ModifiedTs = tim
+	if ds := p.DeletionStatus; ds != nil {
 		if ds.Temporary {
 			// If the pic was soft deleted, it stays deleted, unless it was temporary.
 			p.DeletionStatus = nil
 		}
 	}
 
-	if _, sts := upsertTags(j, tagNames, p.PicId, now, userID, minTagLen, maxTagLen); sts != nil {
-		return sts
-	}
-
-	// ignore sources from the same user after the first one
-	userFirstSource := true
-	if userID != schema.AnonymousUserID {
-		for _, s := range p.Source {
-			if s.UserId == userID {
-				userFirstSource = false
-				break
-			}
+	pfsExists := false
+	for _, s := range p.Source {
+		// Ignore pfs.Name and pfs.Referrer as those aren't sources.
+		if s.Url == pfs.Url {
+			pfsExists = true
+			break
+		}
+		// At most one (non-anonymous) user can be in a source.
+		// ignore sources from the same user after the first one
+		if s.UserId != schema.AnonymousUserID && s.UserId == pfs.UserId {
+			pfsExists = true
+			break
 		}
 	}
-	if userFirstSource {
-		// Okay, it's their first time uploading, let's consider adding it.
-		if pfs.Url != "" || len(p.Source) == 0 {
-			// Only accept the source if new information is being added, or there isn't any already.
-			// Ignore pfs.Name and pfs.Referrer as those aren't sources.
-			p.Source = append(p.Source, pfs)
+	if !pfsExists {
+		// Only accept the source if new information is being added, or there isn't any already.
+		p.Source = append(p.Source, pfs)
+
+		// Also, only give notification if they added something new.
+		if userID != schema.AnonymousUserID {
+			createdTs := schema.UserEventCreatedTsCol(tim)
+			idx, sts := nextUserEventIndex(j, userID, createdTs)
+			if sts != nil {
+				return sts
+			}
+			oue := &schema.UserEvent{
+				UserId:     userID,
+				Index:      idx,
+				CreatedTs:  tim,
+				ModifiedTs: tim,
+				Evt: &schema.UserEvent_UpsertPic_{
+					UpsertPic: &schema.UserEvent_UpsertPic{
+						PicId: p.PicId,
+					},
+				},
+			}
+			if err := j.InsertUserEvent(oue); err != nil {
+				return status.Internal(err, "can't create user event")
+			}
 		}
 	}
 	if len(ext) != 0 && len(p.Ext) == 0 {

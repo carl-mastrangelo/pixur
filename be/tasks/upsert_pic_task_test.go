@@ -77,10 +77,9 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 	defer f.Close()
 
 	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      time.Now,
-		File:     f,
-		TagNames: []string{"tag"},
+		Beg:  c.DB(),
+		Now:  time.Now,
+		File: f,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, -1)
@@ -107,10 +106,9 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 	defer f.Close()
 
 	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      time.Now,
-		File:     f,
-		TagNames: []string{"tag"},
+		Beg:  c.DB(),
+		Now:  time.Now,
+		File: f,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -146,11 +144,10 @@ func TestUpsertPicTask_MissingPicExtCap(t *testing.T) {
 	ext := map[string]*any.Any{"foo": a}
 
 	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      time.Now,
-		File:     f,
-		TagNames: []string{"tag"},
-		Ext:      ext,
+		Beg:  c.DB(),
+		Now:  time.Now,
+		File: f,
+		Ext:  ext,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -195,9 +192,8 @@ func TestUpsertPicTask_PresentPicExtCap(t *testing.T) {
 		Remove:   os.Remove,
 		Now:      time.Now,
 
-		File:     f,
-		TagNames: []string{"tag"},
-		Ext:      ext,
+		File: f,
+		Ext:  ext,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -216,6 +212,8 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
+	p.Pic.Source = nil
+	p.Update()
 	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
 	if sts != nil {
 		t.Fatal(sts)
@@ -229,11 +227,13 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 	md5Hash := p.Md5()
 
 	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      func() time.Time { return time.Unix(100, 0) },
-		File:     f,
-		Md5Hash:  md5Hash,
-		TagNames: []string{"tag"},
+		Beg:     c.DB(),
+		Now:     func() time.Time { return time.Unix(100, 0) },
+		File:    f,
+		Md5Hash: md5Hash,
+		Header: FileHeader{
+			Name: "orig",
+		},
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -241,11 +241,10 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	ts, pts := p.Tags()
-	if len(ts) != 1 || len(pts) != 1 {
+	p.Refresh()
+	if len(p.Pic.Source) != 1 || p.Pic.Source[0].Name != "orig" {
 		t.Fatal("Pic not merged")
 	}
-	p.Refresh()
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Not updated")
 	}
@@ -282,11 +281,10 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 	md5Hash := p.Md5()
 
 	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      func() time.Time { return time.Unix(100, 0) },
-		File:     f,
-		Md5Hash:  md5Hash,
-		TagNames: []string{"tag"},
+		Beg:     c.DB(),
+		Now:     func() time.Time { return time.Unix(100, 0) },
+		File:    f,
+		Md5Hash: md5Hash,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -350,9 +348,8 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		Rename:   os.Rename,
 		Remove:   os.Remove,
 
-		File:     f,
-		Md5Hash:  md5Hash,
-		TagNames: []string{"tag"},
+		File:    f,
+		Md5Hash: md5Hash,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -425,9 +422,8 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
 
-		File:     f,
-		Md5Hash:  md5Hash,
-		TagNames: []string{"tag"},
+		File:    f,
+		Md5Hash: md5Hash,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -458,8 +454,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		Rename:   os.Rename,
 
 		// empty
-		File:     c.TempFile(),
-		TagNames: []string{"tag"},
+		File: c.TempFile(),
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -477,6 +472,8 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 	u.Update()
 
 	p := c.CreatePic()
+	p.Pic.Source = nil
+	p.Update()
 	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
 	if sts != nil {
 		t.Fatal(sts)
@@ -495,8 +492,10 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 		MkdirAll: os.MkdirAll,
 		Rename:   os.Rename,
 
-		File:     f,
-		TagNames: []string{"tag"},
+		File: f,
+		Header: FileHeader{
+			Name: "orig",
+		},
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -504,11 +503,11 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	ts, pts := p.Tags()
-	if len(ts) != 1 || len(pts) != 1 {
+	p.Refresh()
+	if len(p.Pic.Source) != 1 || p.Pic.Source[0].Name != "orig" {
 		t.Fatal("Pic not merged")
 	}
-	p.Refresh()
+
 	if !p.Pic.GetModifiedTime().Equal(time.Unix(100, 0)) {
 		t.Fatal("Not updated")
 	}
@@ -551,8 +550,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 		Rename:   os.Rename,
 		Remove:   os.Remove,
 
-		File:     f,
-		TagNames: []string{"tag"},
+		File: f,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -614,8 +612,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		Rename:   os.Rename,
 		Remove:   os.Remove,
 
-		File:     f,
-		TagNames: []string{"tag"},
+		File: f,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -678,8 +675,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 		Rename:   os.Rename,
 		Remove:   os.Remove,
 
-		File:     f,
-		TagNames: []string{"tag"},
+		File: f,
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -757,53 +753,16 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 	if len(tp.Idents()) != 3+1 {
 		t.Fatal("Not all idents created")
 	}
-}
 
-func TestUpsertPicTask_TagsCollapsed(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
+	j := c.Job()
+	defer j.Rollback()
 
-	u := c.CreateUser()
-	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
-	u.Update()
-
-	f := c.TempFile()
-	defer f.Close()
-	img := image.NewGray(image.Rect(0, 0, 8, 10))
-	if err := gif.Encode(f, img, &gif.Options{}); err != nil {
+	ues, err := j.FindUserEvents(db.Opts{})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
-		t.Fatal(err)
-	}
-	tt := c.CreateTag()
-	if strings.ToUpper(tt.Tag.Name) == tt.Tag.Name {
-		t.Fatal("already upper", tt.Tag.Name)
-	}
-
-	task := &UpsertPicTask{
-		Beg:      c.DB(),
-		Now:      func() time.Time { return time.Unix(100, 0) },
-		PixPath:  c.TempDir(),
-		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
-		MkdirAll: os.MkdirAll,
-		Rename:   os.Rename,
-		Remove:   os.Remove,
-
-		File:     f,
-		TagNames: []string{"  Blooper  ", strings.ToUpper(tt.Tag.Name)},
-	}
-
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
-	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
-		t.Fatal(sts)
-	}
-
-	tp := c.WrapPic(task.CreatedPic)
-
-	ts, _ := tp.Tags()
-	if len(ts) != 2 || ts[0].Tag.Name != tt.Tag.Name || ts[1].Tag.Name != "Blooper" {
-		t.Error("bad tags", len(ts), ts)
+	if len(ues) != 1 || ues[0].UserId != u.User.UserId {
+		t.Error("bad number of user events", ues)
 	}
 }
 
@@ -816,7 +775,6 @@ func TestMerge(t *testing.T) {
 	now := time.Now()
 	userID := int64(-1)
 
-	tagNames := []string{"a", "b"}
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
 		UserId:    userID,
@@ -835,7 +793,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, pfs, ext, tagNames, userID, 1, 64)
+	err = mergePic(j, p.Pic, now, pfs, userID, ext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,10 +805,6 @@ func TestMerge(t *testing.T) {
 	p.Refresh()
 	if !now.Equal(schema.ToTime(p.Pic.ModifiedTs)) {
 		t.Fatal("Modified time not updated", now, schema.ToTime(p.Pic.ModifiedTs))
-	}
-	ts, pts := p.Tags()
-	if len(ts) != 2 || len(pts) != 2 {
-		t.Fatal("Tags not made", ts, pts)
 	}
 	if !proto.Equal(pfs, p.Pic.Source[1]) {
 		t.Error("sources don't match", p.Pic.Source, "want", pfs)
@@ -874,7 +828,6 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 		Name:      "Name",
 		CreatedTs: schema.ToTspb(now),
 	}
-	tagNames := []string{"a", "b"}
 	a, err := ptypes.MarshalAny(pfs)
 	if err != nil {
 		t.Fatal(err)
@@ -890,7 +843,7 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	sts := mergePic(j, p.Pic, now, pfs, ext, tagNames, userID, 1, 64)
+	sts := mergePic(j, p.Pic, now, pfs, userID, ext)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -912,7 +865,7 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1, 1, 64)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), -1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -938,7 +891,7 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), nil, nil, -1, 1, 64)
+	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), -1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -971,7 +924,7 @@ func TestMergeAddsSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
+	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1003,7 +956,7 @@ func TestMergeIgnoresDuplicateSource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID, 1, 64)
+	err := mergePic(j, p.Pic, now, pfs, userID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1035,7 +988,7 @@ func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, userID, 1, 64)
+	err := mergePic(j, p.Pic, now, pfs, userID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1067,7 +1020,7 @@ func TestMergeIgnoresEmptySource(t *testing.T) {
 		CreatedTs: schema.ToTspb(now),
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
+	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1101,7 +1054,7 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, now, pfs, nil, nil, u.User.UserId, 1, 64)
+	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
