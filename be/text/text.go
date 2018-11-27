@@ -1,3 +1,4 @@
+// Package text implements text processing and validation.
 package text // import "pixur.org/pixur/be/text"
 
 import (

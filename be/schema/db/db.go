@@ -1,3 +1,4 @@
+// Package db includes database functionality for Pixur.
 package db // import "pixur.org/pixur/be/schema/db"
 
 import (

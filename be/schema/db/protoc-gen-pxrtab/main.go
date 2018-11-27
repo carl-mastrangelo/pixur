@@ -1,4 +1,5 @@
-package main
+// protoc-grn-pxrtab is a protoc plugin for generating Pixur tables.
+package main // import "pixur.org/pixur/be/schema/db/protoc-gen-pxrtab"
 
 import (
 	"log"

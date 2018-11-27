@@ -1,3 +1,4 @@
+// This program is a simple implementation of the Pixur backend.
 package main // import "pixur.org/pixur/be"
 
 import (

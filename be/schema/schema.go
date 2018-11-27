@@ -1,5 +1,6 @@
 //go:generate protoc pixur.proto --go_out=paths=source_relative:.
 
+// Package schema includes all the backend data types and helper functions for Pixur.
 package schema // import "pixur.org/pixur/be/schema"
 
 import (
