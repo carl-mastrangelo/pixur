@@ -241,12 +241,17 @@ message UserEvent {
     int64 comment_id = 1;
     int64 pic_id = 2;
   }
+  
+  message UpsertPic {
+    int64 pic_id = 1;
+  }
 
   oneof evt {
     OutgoingUpsertPicVote outgoing_upsert_pic_vote = 5;
     IncomingUpsertPicVote incoming_upsert_pic_vote = 6;
     OutgoingPicComment outgoing_pic_comment = 7;
     IncomingPicComment incoming_pic_comment = 8;
+    UpsertPic upsert_pic = 9;
   }
 }
 
