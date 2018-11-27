@@ -638,26 +638,34 @@ type JobBeginner interface {
 }
 
 func NewJob(ctx context.Context, beg JobBeginner) (*Job, error) {
+	adap := beg.Adapter()
+	var alloc *db.IDAlloc
+	if all, ok := beg.(db.IDAllocatable); ok {
+		alloc = all.IDAllocator()
+		if err := db.PreallocateIDs(ctx, beg, alloc, adap); err != nil {
+			return nil, err
+		}
+	}
 	tx, err := beg.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	j := &Job{
-		ctx:  ctx,
-		beg:  beg,
-		tx:   tx,
-		adap: beg.Adapter(),
+		ctx:   ctx,
+		tx:    tx,
+		alloc: alloc,
+		adap:  adap,
 	}
 	runtime.SetFinalizer(j, jobCloser)
 	return j, nil
 }
 
 type Job struct {
-	ctx  context.Context
-	beg  db.Beginner
-	tx   db.QuerierExecutorCommitter
-	adap db.DBAdapter
-	done bool
+	ctx   context.Context
+	tx    db.QuerierExecutorCommitter
+	adap  db.DBAdapter
+	alloc *db.IDAlloc
+	done  bool
 }
 
 func (j *Job) Commit() error {
@@ -685,13 +693,8 @@ var jobCloser = func(j *Job) {
 	}
 }
 
-var alloc db.IDAlloc
-
 func (j *Job) AllocID() (int64, error) {
-	if j.adap.SingleTx() {
-		return db.AllocIDJob(j.ctx, j.tx, &alloc, j.adap)
-	}
-	return db.AllocID(j.ctx, j.beg, &alloc, j.adap)
+	return db.AllocIDJob(j.ctx, j.tx, j.alloc, j.adap)
 }
 
 type PicsPrimary struct {

@@ -60,11 +60,12 @@ func TestUnclosedJobLogs(t *testing.T) {
 	}
 
 	db := make(fakeDB)
-	j, err := NewJob(context.Background(), db)
-	if err != nil {
+	oldmark := sdb.IDLowWaterMark
+	sdb.IDLowWaterMark = 0
+	if _, err := NewJob(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
-	_ = j
+	sdb.IDLowWaterMark = oldmark
 	runtime.GC()
 
 	select {

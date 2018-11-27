@@ -12,8 +12,9 @@ import (
 type sqlpreprocessor func(string) string
 
 type dbWrapper struct {
-	adap DBAdapter
-	db   *sql.DB
+	adap  DBAdapter
+	db    *sql.DB
+	alloc IDAlloc
 	// sqlpreprocessor modifies the sql strings just before they are passed to database/sql
 	// may be nil
 	pp sqlpreprocessor
@@ -21,6 +22,10 @@ type dbWrapper struct {
 
 func (w *dbWrapper) Adapter() DBAdapter {
 	return w.adap
+}
+
+func (w *dbWrapper) IDAllocator() *IDAlloc {
+	return &w.alloc
 }
 
 var _ Retryable = &sqlError{}
