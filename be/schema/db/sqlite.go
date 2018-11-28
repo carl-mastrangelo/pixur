@@ -57,10 +57,6 @@ func (_ *sqlite3Adapter) Name() string {
 	return "sqlite3"
 }
 
-func (_ *sqlite3Adapter) SingleTx() bool {
-	return true
-}
-
 func (a *sqlite3Adapter) OpenForTest(ctx context.Context) (DB, error) {
 	return a.openForTest(ctx)
 }

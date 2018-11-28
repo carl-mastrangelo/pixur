@@ -69,10 +69,6 @@ func (_ *cockroachAdapter) Name() string {
 	return "cockroach"
 }
 
-func (_ *cockroachAdapter) SingleTx() bool {
-	return false
-}
-
 // same as postgresqlAdapter.Quote
 func (_ *cockroachAdapter) Quote(ident string) string {
 	if strings.ContainsAny(ident, "\"\x00") {

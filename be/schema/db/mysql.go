@@ -59,10 +59,6 @@ func (_ *mysqlAdapter) Name() string {
 	return "mysql"
 }
 
-func (_ *mysqlAdapter) SingleTx() bool {
-	return false
-}
-
 func (a *mysqlAdapter) OpenForTest(ctx context.Context) (DB, error) {
 	return a.openForTest(ctx)
 }

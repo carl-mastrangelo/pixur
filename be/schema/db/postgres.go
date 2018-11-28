@@ -63,10 +63,6 @@ func (_ *postgresAdapter) Name() string {
 	return "postgres"
 }
 
-func (_ *postgresAdapter) SingleTx() bool {
-	return false
-}
-
 func (_ *postgresAdapter) Quote(ident string) string {
 	if strings.ContainsAny(ident, "\"\x00") {
 		panic(fmt.Sprintf("Invalid identifier %#v", ident))

@@ -111,8 +111,6 @@ type DBAdapter interface {
 	IntType() string
 	BigIntType() string
 	BlobType() string
-	// Is this database inherently serial?
-	SingleTx() bool
 
 	Open(ctx context.Context, dataSourceName string) (DB, error)
 	OpenForTest(context.Context) (DB, error)
