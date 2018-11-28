@@ -12,6 +12,8 @@ import (
 	sdb "pixur.org/pixur/be/schema/db"
 )
 
+var _ sdb.DB = (fakeDB)(nil)
+
 type fakeDB chan struct{}
 
 func (db fakeDB) Begin(_ context.Context) (sdb.QuerierExecutorCommitter, error) {
@@ -47,6 +49,12 @@ func (db fakeDB) Adapter() sdb.DBAdapter {
 	return nil
 }
 
+func (db fakeDB) IDAllocator() *sdb.IDAlloc {
+	alloc := new(sdb.IDAlloc)
+	alloc.SetWatermark(0, 0)
+	return alloc
+}
+
 func TestUnclosedJobLogs(t *testing.T) {
 	done := make(chan struct{})
 	oldJobCloser := jobCloser
@@ -60,12 +68,9 @@ func TestUnclosedJobLogs(t *testing.T) {
 	}
 
 	db := make(fakeDB)
-	oldmark := sdb.IDLowWaterMark
-	sdb.IDLowWaterMark = 0
 	if _, err := NewJob(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
-	sdb.IDLowWaterMark = oldmark
 	runtime.GC()
 
 	select {

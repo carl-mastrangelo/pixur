@@ -34,10 +34,9 @@ func runIDAllocTest(c *TestContainer, fn func() error) {
 func TestAllocDBSerial(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 1
 
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 1)
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
@@ -63,10 +62,9 @@ func TestAllocDBSerial(t *testing.T) {
 func TestAllocDBParallel(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 1
 
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 1)
 	d := c.DB()
 	idschan := make(chan int64, 100)
 	var wg sync.WaitGroup
@@ -104,10 +102,9 @@ func TestAllocDBParallel(t *testing.T) {
 func TestAllocDBSerialMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 10)
 	d := c.DB()
 	ids := make(map[int64]int, 100)
 	for i := 0; i < 100; i++ {
@@ -133,10 +130,9 @@ func TestAllocDBSerialMulti(t *testing.T) {
 func TestAllocDBParallelMulti(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 10)
 	d := c.DB()
 	idschan := make(chan int64, 100)
 	var wg sync.WaitGroup
@@ -202,10 +198,9 @@ func TestAllocJobSerial(t *testing.T) {
 func TestAllocMixed(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 10
 
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 10)
 	d := c.DB()
 	num0, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
 	if err != nil {
@@ -251,14 +246,13 @@ func TestAllocMixed(t *testing.T) {
 func BenchmarkAllocDBSerial(b *testing.B) {
 	c := Container(b)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 1
 
 	d := c.DB()
 	ids := make(map[int64]struct{}, b.N)
 
 	b.ResetTimer()
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 1)
 
 	for i := 0; i < b.N; i++ {
 		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())
@@ -276,14 +270,13 @@ func BenchmarkAllocDBSerial(b *testing.B) {
 func BenchmarkAllocDBSerialMulti(b *testing.B) {
 	c := Container(b)
 	defer c.Close()
-	db.IDLowWaterMark = 1
-	db.IDHighWaterMark = 100
 
 	d := c.DB()
 	ids := make(map[int64]struct{}, b.N)
 
 	b.ResetTimer()
 	alloc := new(db.IDAlloc)
+	alloc.SetWatermark(1, 100)
 
 	for i := 0; i < b.N; i++ {
 		num, err := db.AllocID(c.Ctx, d, alloc, d.Adapter())

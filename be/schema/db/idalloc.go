@@ -14,10 +14,37 @@ type idRange struct {
 	next, available int64
 }
 
+// IDAlloc is an id allocator
 type IDAlloc struct {
-	idrs  []*idRange
-	total int64
-	lock  sync.Mutex
+	idrs         []*idRange
+	total        int64
+	lowat, hiwat *int64
+	lock         sync.Mutex
+}
+
+// GetWatermark returns the low and high watermark.  See SetWatermark.
+func (alloc *IDAlloc) GetWatermark() (lo, hi int64) {
+	alloc.lock.Lock()
+	defer alloc.lock.Unlock()
+
+	return alloc.getWatermarkLocked()
+}
+
+func (alloc *IDAlloc) getWatermarkLocked() (lo, hi int64) {
+	if alloc.lowat == nil || alloc.hiwat == nil {
+		return DefaultIDLowWaterMark, DefaultIDHighWaterMark
+	}
+	return *alloc.lowat, *alloc.hiwat
+}
+
+// SetWatermark sets the low and high watermark for ID allocation.  See PreallocateIDs.
+func (alloc *IDAlloc) SetWatermark(newlo, newhi int64) {
+	if newlo > newhi {
+		panic("bad watermarks")
+	}
+	alloc.lock.Lock()
+	defer alloc.lock.Unlock()
+	alloc.lowat, alloc.hiwat = &newlo, &newhi
 }
 
 const (
@@ -25,16 +52,13 @@ const (
 	SequenceColName   = "the_sequence"
 )
 
-// DefaultAllocatorGrab determines how many IDs will be grabbed at a time. If the number is too high
+// Watermarks determines how many IDs will be grabbed at a time. If the number is too high
 // program restarts will waste ID space.  Additionally, IDs will become less monotonic if there are
 // multiple servers.  If the number is too low, it will make a lot more queries than necessary.
 const (
 	DefaultIDLowWaterMark  = 1
 	DefaultIDHighWaterMark = 10
 )
-
-var IDLowWaterMark int64 = DefaultIDLowWaterMark
-var IDHighWaterMark int64 = DefaultIDHighWaterMark
 
 type querierExecutor interface {
 	Querier
@@ -83,7 +107,9 @@ func reserveIDs(qe querierExecutor, grab int64, adap DBAdapter) (int64, status.S
 	return num, nil
 }
 
-// PreallocateIDs attempts to fill the cache in IDAlloc.   It is best effort.
+// PreallocateIDs attempts to fill the cache in IDAlloc.  It is best effort.  If the number
+// of cached IDs goes below the low watermark, PreallocateIDs will attempt to get more. It will
+// attempt to refill up to the high watermark.
 func PreallocateIDs(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAdapter) error {
 	return preallocateIDs(ctx, beg, alloc, adap)
 }
@@ -94,7 +120,8 @@ func preallocateIDs(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAd
 		defer trace.StartRegion(ctx, "PreallocateIDs").End()
 	}
 	alloc.lock.Lock()
-	if alloc.total >= IDLowWaterMark {
+	lowat, hiwat := alloc.getWatermarkLocked()
+	if alloc.total >= lowat {
 		alloc.lock.Unlock()
 		return nil
 	}
@@ -110,12 +137,13 @@ func preallocateIDs(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAd
 	}()
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
+	lowat, hiwat = alloc.getWatermarkLocked()
 	available := alloc.total
-	if available >= IDLowWaterMark {
+	if available >= lowat {
 		return nil
 	}
 
-	grab := IDHighWaterMark - available
+	grab := hiwat - available
 	next, sts := reserveIDs(qec, grab, adap)
 	if sts != nil {
 		return sts
