@@ -45,28 +45,18 @@ type UpsertPicTask struct {
 	Remove   func(name string) error
 
 	// Inputs
-	FileURL string
-	File    readerAtReadSeeker
-	Md5Hash []byte
-
-	// Header is the name (and size) of the file.  Currently only the Name is used.  If the name is
-	// absent, UpsertPicTask will try to derive a name automatically from the FileURL.
-	Header FileHeader
+	FileURL, FileURLReferrer string
+	File                     readerAtReadSeeker
+	Md5Hash                  []byte
+	// If the name is absent, UpsertPicTask will try to derive a name automatically from the FileURL.
+	FileName string
 
 	// Ext is additional extra data associated with this pic.  If a key is present in both the
 	// new pic and the existing pic, Upsert will fail.
 	Ext map[string]*any.Any
 
-	// TODO: eventually take the Referer[sic].  This is to pass to HTTPClient when retrieving the
-	// pic.
-
 	// Results
 	CreatedPic *schema.Pic
-}
-
-type FileHeader struct {
-	Name string
-	Size int64
 }
 
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
@@ -93,7 +83,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	return nil
 }
 
-func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
+func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap status.S) {
 	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		return sts
@@ -114,61 +104,36 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 		}
 		ext = t.Ext
 	}
-	var minUrlLen, maxUrlLen int64
-	if conf.MinUrlLength != nil {
-		minUrlLen = conf.MinUrlLength.Value
-	} else {
-		minUrlLen = math.MinInt64
-	}
-	if conf.MaxUrlLength != nil {
-		maxUrlLen = conf.MaxUrlLength.Value
-	} else {
-		maxUrlLen = math.MaxInt64
-	}
 
-	var furl *url.URL
+	var loc, ref *url.URL
 	if t.FileURL != "" {
-		fu, sts := validateAndNormalizeURL(t.FileURL, minUrlLen, maxUrlLen)
-		if sts != nil {
+		minUrlLen, maxUrlLen := confUrlLen(conf)
+		if fu, sts := validateAndNormalizeURL(t.FileURL, minUrlLen, maxUrlLen); sts != nil {
 			return sts
+		} else {
+			fu.Fragment = ""
+			loc = fu
 		}
-		furl = fu
-	} else if t.File == nil {
-		return status.InvalidArgument(nil, "No pic specified")
-	}
-	now := t.Now()
-
-	var minFileNameLen, maxFileNameLen int64
-	if conf.MinFileNameLength != nil {
-		minFileNameLen = conf.MinFileNameLength.Value
-	} else {
-		minFileNameLen = math.MinInt64
-	}
-	if conf.MaxFileNameLength != nil {
-		maxFileNameLen = conf.MaxFileNameLength.Value
-	} else {
-		maxFileNameLen = math.MaxInt64
+		if t.FileURLReferrer != "" {
+			if fu, sts := validateAndNormalizeURL(t.FileURLReferrer, minUrlLen, maxUrlLen); sts != nil {
+				return sts
+			} else {
+				// leave fragment in place
+				ref = fu
+			}
+		}
 	}
 
-	var validFileName string
-	if len(t.Header.Name) != 0 {
-		var err error
+	minFileNameLen, maxFileNameLen := confFileNameLen(conf)
+	var filenames []string
+	if len(t.FileName) > 0 {
 		// TODO: trim whitespace
-		validFileName, err = text.DefaultValidateNoNewlineAndNormalize(
-			t.Header.Name, "filename", minFileNameLen, maxFileNameLen)
-		if err != nil {
+		if name, err := text.DefaultValidateNoNewlineAndNormalize(
+			t.FileName, "filename", minFileNameLen, maxFileNameLen); err != nil {
 			return status.From(err)
+		} else {
+			filenames = append(filenames, name)
 		}
-	}
-	// TODO: test this
-
-	pfs := &schema.Pic_FileSource{
-		CreatedTs: schema.ToTspb(now),
-		UserId:    userID,
-		Name:      validFileName,
-	}
-	if furl != nil {
-		pfs.Url = furl.String()
 	}
 
 	// TODO: change md5 hash to:
@@ -177,35 +142,59 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	// If present, verify md5 sum after download
 	// Also, asser md5 has is the right length before doing queries.
 
-	if len(t.Md5Hash) != 0 {
-		p, sts := findExistingPic(j, schema.PicIdent_MD5, t.Md5Hash)
+	var f *os.File
+	var size int64
+	var fileCleanup func(*status.S)
+	if t.File != nil {
+		var sts status.S
+		if f, fileCleanup, size, sts = t.prepareLocalFile(ctx, t.File); sts != nil {
+			return sts
+		}
+	} else if loc != nil {
+		var dispositionName string
+		var sts status.S
+		f, fileCleanup, size, dispositionName, sts = t.prepareRemoteFile(ctx, loc, ref)
 		if sts != nil {
 			return sts
 		}
-		if p != nil {
-			if p.HardDeleted() {
-				if !p.GetDeletionStatus().Temporary {
-					return status.InvalidArgument(nil, "Can't upload deleted pic.")
-				}
-				// Fallthrough.  We still need to download, and then remerge.
+		if int64(len(dispositionName)) >= minFileNameLen {
+			if name, err := text.DefaultValidateNoNewlineAndNormalize(
+				dispositionName, "disposition", minFileNameLen, maxFileNameLen); err != nil {
+				_ = err // TODO: log this
 			} else {
-				t.CreatedPic = p
-				return mergePic(j, p, now, pfs, userID, ext)
+				filenames = append(filenames, name)
 			}
 		}
+	} else {
+		return status.InvalidArgument(nil, "no pic specified")
+	}
+	destroyTempFile := true
+	defer func() {
+		if destroyTempFile {
+			fileCleanup(&stscap)
+		}
+	}()
+
+	now := t.Now()
+	nowts := schema.ToTspb(now)
+	// TODO: test this
+	pfs := &schema.Pic_FileSource{
+		CreatedTs: nowts,
+		UserId:    userID,
+	}
+	if loc != nil {
+		furl := loc.String()
+		pfs.Url = furl
+		if ref != nil {
+			pfs.Referrer = ref.String()
+		}
+	}
+	if len(filenames) != 0 {
+		pfs.Name = filenames[0]
 	}
 
-	f, fh, sts := t.prepareFile(ctx, t.File, t.Header, furl)
-	if sts != nil {
-		return sts
-	}
-	// after preparing the f, fh, is authoritative.
-	pfs.Name = fh.Name
-	// on success, the name of f will change and it won't be removed.
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	hashes, sts := generatePicHashes(io.NewSectionReader(f, 0, fh.Size), md5.New, sha1.New, sha512.New512_256)
+	hashes, sts :=
+		generatePicHashes(io.NewSectionReader(f, 0, size), md5.New, sha1.New, sha512.New512_256)
 	if sts != nil {
 		// TODO: test this case
 		return sts
@@ -214,7 +203,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
 		return status.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
-	im, sts := imaging.ReadImage(ctx, io.NewSectionReader(f, 0, fh.Size))
+	im, sts := imaging.ReadImage(ctx, io.NewSectionReader(f, 0, size))
 	if sts != nil {
 		return sts
 	}
@@ -270,7 +259,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 			PicId: picID,
 			File: &schema.Pic_File{
 				Index:         0, // always 0 for main pic
-				Size:          fh.Size,
+				Size:          size,
 				Mime:          schema.Pic_File_Mime(immime),
 				Width:         int64(width),
 				Height:        int64(height),
@@ -342,19 +331,38 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	if err := t.MkdirAll(schema.PicBaseDir(t.PixPath, p.PicId), 0770); err != nil {
 		return status.Internal(err, "Can't prepare pic dir")
 	}
-	if err := f.Close(); err != nil {
-		return status.Internalf(err, "Can't close %v", f.Name())
-	}
+
 	newpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
 	if sts != nil {
 		return sts
 	}
+
+	destroyTempFile = false
+	if err := f.Close(); err != nil {
+		sts := status.Internalf(err, "Can't close %v", f.Name())
+		if err2 := t.Remove(f.Name()); err2 != nil {
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove"))
+		}
+		return sts
+	}
 	if err := t.Rename(f.Name(), newpath); err != nil {
-		return status.Internalf(err, "Can't rename %v to %v", f.Name(), newpath)
+		sts := status.Internalf(err, "Can't rename %v to %v", f.Name(), newpath)
+		if err2 := t.Remove(f.Name()); err2 != nil {
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove"))
+		}
+		return sts
 	}
 	if err := ft.Close(); err != nil {
 		return status.Internalf(err, "Can't close %v", ft.Name())
 	}
+	destroyNewFile := true
+	defer func() {
+		if destroyNewFile {
+			if err := t.Remove(newpath); err != nil {
+				status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't remove", newpath))
+			}
+		}
+	}()
 
 	lastthumbnail := p.Thumbnail[len(p.Thumbnail)-1]
 	// TODO: by luck the format created by imaging and the mime type decided by thumbnail are the
@@ -376,8 +384,39 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) status.S {
 	}
 
 	t.CreatedPic = p
+	destroyNewFile = false
 
 	return nil
+}
+
+func confUrlLen(conf *schema.Configuration) (int64, int64) {
+	var minUrlLen, maxUrlLen int64
+	if conf.MinUrlLength != nil {
+		minUrlLen = conf.MinUrlLength.Value
+	} else {
+		minUrlLen = math.MinInt64
+	}
+	if conf.MaxUrlLength != nil {
+		maxUrlLen = conf.MaxUrlLength.Value
+	} else {
+		maxUrlLen = math.MaxInt64
+	}
+	return minUrlLen, maxUrlLen
+}
+
+func confFileNameLen(conf *schema.Configuration) (int64, int64) {
+	var minFileNameLen, maxFileNameLen int64
+	if conf.MinFileNameLength != nil {
+		minFileNameLen = conf.MinFileNameLength.Value
+	} else {
+		minFileNameLen = math.MinInt64
+	}
+	if conf.MaxFileNameLength != nil {
+		maxFileNameLen = conf.MaxFileNameLength.Value
+	} else {
+		maxFileNameLen = math.MaxInt64
+	}
+	return minFileNameLen, maxFileNameLen
 }
 
 // TODO: test
@@ -556,67 +595,72 @@ func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status
 	return nil
 }
 
-// prepareFile prepares the file for image processing.
-// The name in fh and the url must be validated previously.
-func (t *UpsertPicTask) prepareFile(
-	ctx context.Context, fd readerAtReadSeeker, fh FileHeader, u *url.URL) (
-	_ *os.File, _ *FileHeader, stscap status.S) {
-	f, err := t.TempFile(t.PixPath, "__")
+// TODO: test
+func (t *UpsertPicTask) prepareLocalFile(ctx context.Context, r io.ReadSeeker) (
+	_ *os.File, _ func(*status.S), _ int64, stscap status.S) {
+	off, err := r.Seek(0, io.SeekCurrent)
 	if err != nil {
-		return nil, nil, status.Internal(err, "Can't create tempfile")
+		return nil, nil, 0, status.Internal(err, "can't seek")
 	}
 	defer func() {
-		if stscap != nil {
-			if err := f.Close(); err != nil {
-				stscap = status.WithSuppressed(stscap, status.Internal(err, "can't close file"))
-			}
-			if err := t.Remove(f.Name()); err != nil {
-				stscap = status.WithSuppressed(stscap, status.Internal(err, "can't remove file", f.Name()))
-			}
+		if _, err := r.Seek(off, io.SeekStart); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't seek"))
 		}
 	}()
 
-	var h *FileHeader
-	if fd == nil {
-		if header, sts := t.downloadFile(ctx, f, u); sts != nil {
-			return nil, nil, sts
-		} else {
-			h = header
-		}
-	} else {
-		off, err := fd.Seek(0, os.SEEK_CUR)
+	var size int64
+	f, cleanup, sts := t.prepareFile(func(w io.Writer) status.S {
+		n, err := io.Copy(w, r)
 		if err != nil {
-			return nil, nil, status.Internal(err, "can't seek")
+			return status.Internal(err, "can't copy file")
 		}
-		defer func() {
-			if _, err := fd.Seek(off, os.SEEK_SET); err != nil {
-				status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't seek"))
-			}
-		}()
+		size = n
+		return nil
+	})
+	if sts != nil {
+		return nil, nil, 0, sts
+	}
+	return f, cleanup, size, nil
+}
 
-		// TODO: maybe extract the filename from the url, if not provided in FileHeader
-		// Make sure to copy the file to pixPath, to make sure it's on the right partition.
-		// Also get a copy of the size.  We don't want to move the file if it is on the
-		// same partition, because then we can't retry the task on failure.
-		if n, err := io.Copy(f, fd); err != nil {
-			return nil, nil, status.Internal(err, "Can't save file")
-		} else {
-			h = &FileHeader{
-				Size: n,
-			}
+// TODO: test
+func (t *UpsertPicTask) prepareFile(move func(io.Writer) status.S) (
+	_ *os.File, _ func(*status.S), stscap status.S) {
+	f, cleanup, sts := t.tempFile()
+	if sts != nil {
+		return nil, nil, sts
+	}
+	destroy := true
+	defer func() {
+		if destroy {
+			cleanup(&stscap)
 		}
+	}()
+	if sts := move(f); sts != nil {
+		return nil, nil, sts
 	}
-	// Provided header name takes precedence
-	if fh.Name != "" {
-		h.Name = fh.Name
-	}
-
 	// The file is now local.  Sync it, since external programs might read it.
 	if err := f.Sync(); err != nil {
-		return nil, nil, status.Internal(err, "Can't sync file")
+		return nil, nil, status.Internal(err, "can't sync file")
 	}
+	destroy = false
+	return f, cleanup, nil
+}
 
-	return f, h, nil
+// TODO: test
+func (t *UpsertPicTask) tempFile() (*os.File, func(*status.S), status.S) {
+	f, err := t.TempFile(t.PixPath, "__")
+	if err != nil {
+		return nil, nil, status.Internal(err, "can't create tempfile")
+	}
+	return f, func(stscap *status.S) {
+		if err := f.Close(); err != nil {
+			status.ReplaceOrSuppress(stscap, status.Internal(err, "can't close tempfile", f.Name()))
+		}
+		if err := t.Remove(f.Name()); err != nil {
+			status.ReplaceOrSuppress(stscap, status.Internal(err, "can't remove tempfile", f.Name()))
+		}
+	}, nil
 }
 
 // TODO: add tests
@@ -625,65 +669,84 @@ func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.UR
 	if err != nil {
 		return nil, status.From(err)
 	}
-	u, err := url.Parse(normrawurl)
+	loc, err := url.Parse(normrawurl)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't parse", normrawurl)
+		return nil, status.InvalidArgument(err, "can't parse", normrawurl)
 	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return nil, status.InvalidArgument(nil, "Can't use non HTTP")
+	if loc.Scheme != "http" && loc.Scheme != "https" {
+		return nil, status.InvalidArgument(nil, "can't use non HTTP")
 	}
-	if u.User != nil {
-		return nil, status.InvalidArgument(nil, "Can't provide userinfo")
+	if loc.User != nil {
+		return nil, status.InvalidArgument(nil, "can't provide userinfo")
 	}
-	u.Fragment = ""
 
-	return u, nil
+	return loc, nil
 }
 
-func (t *UpsertPicTask) downloadFile(ctx context.Context, f *os.File, u *url.URL) (
-	_ *FileHeader, stscap status.S) {
-	if u == nil {
-		return nil, status.InvalidArgument(nil, "Missing URL")
+// TODO: test
+func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL) (
+	_ *os.File, _ func(*status.S), _ int64, _ string, stscap status.S) {
+	if loc == nil {
+		return nil, nil, 0, "", status.InvalidArgument(nil, "missing URL")
 	}
 
-	// TODO: make sure this isn't reading from ourself
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, loc.String(), nil)
 	if err != nil {
 		// if this fails, it's probably our fault
-		return nil, status.Internal(err, "Can't create request")
+		return nil, nil, 0, "", status.Internal(err, "can't create request")
+	}
+	if ref != nil {
+		req.Header.Add("Referer", ref.String())
 	}
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
-		return nil, status.InvalidArgument(err, "Can't download", u)
+		return nil, nil, 0, "", status.InvalidArgument(err, "can't download", loc)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close url req", u))
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close url req", loc))
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		// todo: log the response and headers
-		return nil, status.InvalidArgumentf(nil, "Can't download %s [%d]", u, resp.StatusCode)
+		// TODO: log the response and headers
+		return nil, nil, 0, "",
+			status.InvalidArgumentf(nil, "Can't download %s [%d]", loc, resp.StatusCode)
 	}
 
-	bytesRead, err := io.Copy(f, resp.Body)
-	// This could either be because the remote hung up or a file error on our side.  Assume that
-	// our system is okay, making this an InvalidArgument
-	if err != nil {
-		return nil, status.InvalidArgumentf(err, "Can't copy downloaded file")
+	// TODO: log error
+	rawname, _ := parseContentDispositionName(resp.Header.Get("Content-Disposition"))
+
+	var size int64
+	f, cleanup, sts := t.prepareFile(func(w io.Writer) status.S {
+		n, err := io.Copy(w, resp.Body)
+		if err != nil {
+			// This could either be because the remote hung up or a file error on our side.  Assume that
+			// our system is okay, making this an InvalidArgument
+			return status.InvalidArgument(err, "can't copy file", loc)
+		}
+		size = n
+		return nil
+	})
+	if sts != nil {
+		return nil, nil, 0, "", sts
 	}
-	header := &FileHeader{
-		Size: bytesRead,
-	}
+	return f, cleanup, size, rawname, nil
+}
+
+// TODO: test
+func parseUrlName(loc *url.URL) (string, status.S) {
 	// Can happen for a url that is a dir like http://foo.com/
-	if base := path.Base(u.Path); base != "." {
-		// url was previously validated, so the same should be ok.
-		header.Name = base
+	if base := path.Base(loc.Path); base != "." {
+		return base, nil
 	}
-	// TODO: support Content-disposition, and validate
-	return header, nil
+	return "", nil
+}
+
+// TODO: implement
+func parseContentDispositionName(value string) (string, status.S) {
+	return "", nil
 }
 
 func generatePicHashes(f io.Reader, fns ...func() hash.Hash) ([][]byte, status.S) {
