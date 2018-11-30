@@ -302,8 +302,6 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 		}
 
 		switch *f.Type {
-		case descriptor.FieldDescriptorProto_TYPE_FIXED32:
-			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SFIXED32:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SINT32:
@@ -315,8 +313,6 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 			col.GoType = g.typeNameToGoName(*f.TypeName)
 			col.SqlType = SqlIntType
 		case descriptor.FieldDescriptorProto_TYPE_FIXED64:
-			fallthrough
-		case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
 			fallthrough
 		case descriptor.FieldDescriptorProto_TYPE_SINT64:
 			fallthrough
@@ -336,6 +332,18 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 		case descriptor.FieldDescriptorProto_TYPE_BYTES:
 			col.GoType = "[]byte"
 			col.SqlType = SqlBlobType
+		case descriptor.FieldDescriptorProto_TYPE_FIXED32:
+			fallthrough
+		case descriptor.FieldDescriptorProto_TYPE_SFIXED64:
+			fallthrough
+		case descriptor.FieldDescriptorProto_TYPE_FLOAT:
+			fallthrough
+		case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
+			fallthrough
+		case descriptor.FieldDescriptorProto_TYPE_UINT32:
+			fallthrough
+		case descriptor.FieldDescriptorProto_TYPE_UINT64:
+			fallthrough
 		default:
 			return fmt.Errorf("No type for %s", f.Type)
 		}
@@ -359,8 +367,13 @@ func (g *Generator) addTable(msg *descriptor.DescriptorProto, opts *model.TableO
 			Name: k.Name,
 		}
 		for _, c := range k.Col {
-			if _, present := colNames[c]; !present {
+			tplCol, present := colNames[c]
+			if !present {
 				return fmt.Errorf("Unknown col on table %s", t.Name)
+			}
+			sqlType := tplCol.SqlType
+			if sqlType != SqlIntType && sqlType != SqlBigIntType && sqlType != SqlBlobType {
+				return fmt.Errorf("Unsupported col %v type for index on table %s", tplCol.SqlName, t.Name)
 			}
 			idx.Columns = append(idx.Columns, colNames[c])
 		}
