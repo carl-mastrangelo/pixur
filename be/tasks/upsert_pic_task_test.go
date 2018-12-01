@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/gif"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,105 @@ import (
 	tab "pixur.org/pixur/be/schema/tables"
 	"pixur.org/pixur/be/status"
 )
+
+func TestUpsertPicTask_URL(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	for _, ident := range p.Idents() {
+		c.AutoJob(func(j *tab.Job) error {
+			return j.DeletePicIdent(tab.KeyForPicIdent(ident.PicIdent))
+		})
+	}
+	c.AutoJob(func(j *tab.Job) error {
+		return j.DeletePic(tab.KeyForPic(p.Pic))
+	})
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("content-disposition", `attachment;
+                          filename="EURO rates";
+                          filename*=Utf-8''%e2%82%ac%20rates`)
+		if _, err := io.Copy(w, f); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	serv := httptest.NewServer(http.HandlerFunc(handler))
+	defer serv.Close()
+
+	now := time.Unix(100, 0)
+	nowts := schema.ToTspb(now)
+
+	task := &UpsertPicTask{
+		Beg:        c.DB(),
+		Now:        func() time.Time { return now },
+		PixPath:    c.TempDir(),
+		TempFile:   func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll:   os.MkdirAll,
+		Rename:     os.Rename,
+		Remove:     os.Remove,
+		HTTPClient: http.DefaultClient,
+
+		FileURL:         serv.URL,
+		FileURLReferrer: "http://bogo/#ref",
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+
+	if task.CreatedPic == nil {
+		t.Fatal("no pic")
+	}
+	expected := &schema.Pic{
+		PicId: task.CreatedPic.PicId,
+		File: &schema.Pic_File{
+			CreatedTs:  nowts,
+			ModifiedTs: nowts,
+			Size:       task.CreatedPic.File.Size,
+			Mime:       schema.Pic_File_PNG,
+			Width:      8,
+			Height:     1,
+		},
+		CreatedTs:  nowts,
+		ModifiedTs: nowts,
+		Source: []*schema.Pic_FileSource{{
+			Url:       serv.URL,
+			Referrer:  "http://bogo/#ref",
+			CreatedTs: nowts,
+			UserId:    u.User.UserId,
+			Name:      "€ rates",
+		}},
+		Thumbnail: []*schema.Pic_File{{
+			Size:       task.CreatedPic.Thumbnail[0].Size,
+			CreatedTs:  nowts,
+			ModifiedTs: nowts,
+			Mime:       schema.Pic_File_JPEG,
+			Width:      task.CreatedPic.Thumbnail[0].Width,
+			Height:     task.CreatedPic.Thumbnail[0].Height,
+		}},
+	}
+	if !proto.Equal(expected, task.CreatedPic) {
+		t.Error("not equal", expected, task.CreatedPic)
+	}
+}
 
 func TestUpsertPicTask_CantBegin(t *testing.T) {
 	c := Container(t)
