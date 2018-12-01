@@ -2,6 +2,7 @@
 package text // import "pixur.org/pixur/be/text"
 
 import (
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -172,6 +173,34 @@ func ToNFCUnsafe(text, fieldname string) (string, error) {
 
 func toNFCUnsafe(text string) string {
 	return norm.NFC.String(text)
+}
+
+var _ TextNormalizer = TrimSpace
+
+// TrimSpace removes leading and trailing whitespace.
+func TrimSpace(text, fieldname string) (string, error) {
+	return trimSpace(text, fieldname)
+}
+
+func trimSpace(text, fieldname string) (string, status.S) {
+	if sts := validateEncoding(text, fieldname); sts != nil {
+		return "", sts
+	}
+	if sts := validateCodepoints(text, fieldname); sts != nil {
+		return "", sts
+	}
+	return trimSpaceUnsafe(text, fieldname)
+}
+
+// TrimSpaceUnsafe removes leading and trailing whitespace. Text *must* have been previously
+// validated in order to use this function.  This never returns a non-nil error, and ignores the
+// fieldname.
+func TrimSpaceUnsafe(text, fieldname string) (string, error) {
+	return trimSpace(text, fieldname)
+}
+
+func trimSpaceUnsafe(text, fieldname string) (string, status.S) {
+	return strings.TrimSpace(text), nil
 }
 
 // Validate validates text.

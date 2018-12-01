@@ -210,6 +210,16 @@ func TestToNFC_norms(t *testing.T) {
 	}
 }
 
+func TestTrimSpace(t *testing.T) {
+	s, sts := trimSpace("\r\ndata data  ", "field")
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if s != "data data" {
+		t.Fatal("did not trim whitespace")
+	}
+}
+
 func TestDefaultValidateAndNormalize_normalizes(t *testing.T) {
 	valid := []TextValidator{func(_, _ string) error { return nil }}
 	s, sts := defaultValidateAndNormalize("A\u030A", "field", 0, 3, nil, valid)
