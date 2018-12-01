@@ -9,7 +9,9 @@ import (
 	"hash"
 	"io"
 	"math"
+	"mime"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"os"
 	"path"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	any "github.com/golang/protobuf/ptypes/any"
+	tspb "github.com/golang/protobuf/ptypes/timestamp"
 
 	"pixur.org/pixur/be/imaging"
 	"pixur.org/pixur/be/schema"
@@ -55,35 +58,19 @@ type UpsertPicTask struct {
 	// new pic and the existing pic, Upsert will fail.
 	Ext map[string]*any.Any
 
-	// Results
+	// Results, only one will be set
 	CreatedPic *schema.Pic
 }
 
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
+	// destroy outputs incase this is a retry
+	t.CreatedPic = nil
 	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
 
-	if sts := t.runInternal(ctx, j); sts != nil {
-		// Don't delete old pics, as the commit may have actually succeeded.  A cron job will clean
-		// this up.
-		t.CreatedPic = nil
-		return sts
-	}
-
-	// TODO: Check if this delete the original pic on a failed merge.
-	if err := j.Commit(); err != nil {
-		// Don't delete old pics, as the commit may have actually succeeded.  A cron job will clean
-		// this up.
-		t.CreatedPic = nil
-		return status.Internal(err, "can't commit job")
-	}
-	return nil
-}
-
-func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap status.S) {
 	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
 		return sts
@@ -106,33 +93,21 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 	}
 
 	var loc, ref *url.URL
-	if t.FileURL != "" {
-		minUrlLen, maxUrlLen := confUrlLen(conf)
-		if fu, sts := validateAndNormalizeURL(t.FileURL, minUrlLen, maxUrlLen); sts != nil {
-			return sts
-		} else {
-			fu.Fragment = ""
-			loc = fu
-		}
-		if t.FileURLReferrer != "" {
-			if fu, sts := validateAndNormalizeURL(t.FileURLReferrer, minUrlLen, maxUrlLen); sts != nil {
-				return sts
-			} else {
-				// leave fragment in place
-				ref = fu
-			}
-		}
+	var urlsts status.S
+	if loc, ref, urlsts = checkUrls(t.FileURL, t.FileURLReferrer, conf); urlsts != nil {
+		return urlsts
 	}
 
 	minFileNameLen, maxFileNameLen := confFileNameLen(conf)
+	checkFileName := func(name, field string) (string, status.S) {
+		return validateAndNormalizeFileName(name, field, minFileNameLen, maxFileNameLen)
+	}
 	var filenames []string
 	if len(t.FileName) > 0 {
-		// TODO: trim whitespace
-		if name, err := text.DefaultValidateNoNewlineAndNormalize(
-			t.FileName, "filename", minFileNameLen, maxFileNameLen); err != nil {
-			return status.From(err)
-		} else {
+		if name, sts := checkFileName(t.FileName, "filename"); sts == nil {
 			filenames = append(filenames, name)
+		} else {
+			return sts
 		}
 	}
 
@@ -151,19 +126,31 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 			return sts
 		}
 	} else if loc != nil {
-		var dispositionName string
+		var disName *dispositionName
 		var sts status.S
-		f, fileCleanup, size, dispositionName, sts = t.prepareRemoteFile(ctx, loc, ref)
+		f, fileCleanup, size, disName, sts = t.prepareRemoteFile(ctx, loc, ref)
 		if sts != nil {
 			return sts
 		}
-		if int64(len(dispositionName)) >= minFileNameLen {
-			if name, err := text.DefaultValidateNoNewlineAndNormalize(
-				dispositionName, "disposition", minFileNameLen, maxFileNameLen); err != nil {
-				_ = err // TODO: log this
+		if disName != nil {
+			if disName.sts == nil {
+				if name, sts := checkFileName(disName.name, "disposition"); sts == nil {
+					filenames = append(filenames, name)
+				} else {
+					_ = sts // TODO: log this
+				}
 			} else {
-				filenames = append(filenames, name)
+				_ = disName.sts // TODO: log this
 			}
+		}
+		if rawurlname, sts := parseUrlName(loc); sts == nil {
+			if name, sts := checkFileName(rawurlname, "urlname"); sts == nil {
+				filenames = append(filenames, name)
+			} else {
+				_ = sts // TODO: log this
+			}
+		} else {
+			_ = sts // TODO: log this
 		}
 	} else {
 		return status.InvalidArgument(nil, "no pic specified")
@@ -183,11 +170,10 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 		UserId:    userID,
 	}
 	if loc != nil {
-		furl := loc.String()
-		pfs.Url = furl
-		if ref != nil {
-			pfs.Referrer = ref.String()
-		}
+		pfs.Url = loc.String()
+	}
+	if ref != nil {
+		pfs.Referrer = ref.String()
 	}
 	if len(filenames) != 0 {
 		pfs.Name = filenames[0]
@@ -201,7 +187,7 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 	}
 	md5Hash, sha1Hash, sha512_256Hash := hashes[0], hashes[1], hashes[2]
 	if len(t.Md5Hash) != 0 && !bytes.Equal(t.Md5Hash, md5Hash) {
-		return status.InvalidArgumentf(nil, "Md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
+		return status.InvalidArgumentf(nil, "md5 hash mismatch %x != %x", t.Md5Hash, md5Hash)
 	}
 	im, sts := imaging.ReadImage(ctx, io.NewSectionReader(f, 0, size))
 	if sts != nil {
@@ -232,28 +218,32 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 		}
 	}
 
-	// Still double check that the sha1 hash is not in use, even if the md5 one was
-	// checked up at the beginning of the function.
-	p, sts := findExistingPic(j, schema.PicIdent_SHA1, sha1Hash)
+	p, sts := findExistingPic(j, schema.PicIdent_SHA512_256, sha512_256Hash)
 	if sts != nil {
 		return sts
 	}
 	if p != nil {
 		if p.HardDeleted() {
-			if !p.GetDeletionStatus().Temporary {
-				return status.InvalidArgument(nil, "Can't upload deleted pic.")
+			ds := p.DeletionStatus
+			if !ds.Temporary {
+				return status.InvalidArgument(nil, "can't upload deleted pic")
 			}
 			//  fall through, picture needs to be undeleted.
 		} else {
+			if sts := mergePic(j, p, nowts, pfs, userID, ext); sts != nil {
+				return sts
+			}
+			if err := j.Commit(); err != nil {
+				return status.Internal(err, "can't commit")
+			}
 			t.CreatedPic = p
-			return mergePic(j, p, now, pfs, userID, ext)
+			return nil
 		}
 	} else {
 		picID, err := j.AllocID()
 		if err != nil {
 			return status.Internal(err, "can't allocate id")
 		}
-
 		width, height := im.Dimensions()
 		p = &schema.Pic{
 			PicId: picID,
@@ -264,16 +254,14 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 				Width:         int64(width),
 				Height:        int64(height),
 				AnimationInfo: imanim,
+				CreatedTs:     nowts,
+				ModifiedTs:    nowts,
 			},
-			// ModifiedTime is set in mergePic
+			CreatedTs:  nowts,
+			ModifiedTs: nowts,
 		}
-		p.SetCreatedTime(now)
-		p.File.CreatedTs = p.CreatedTs
-		// Just reuse Created Time
-		p.File.ModifiedTs = p.File.CreatedTs
-
 		if err := j.InsertPic(p); err != nil {
-			return status.Internal(err, "Can't insert")
+			return status.Internal(err, "can't insert")
 		}
 		if sts := insertPicHashes(j, p.PicId, md5Hash, sha1Hash, sha512_256Hash); sts != nil {
 			return sts
@@ -283,77 +271,81 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 		}
 	}
 
-	ft, err := t.TempFile(t.PixPath, "__")
-	if err != nil {
-		return status.Internal(err, "Can't create tempfile")
-	}
-	defer t.Remove(ft.Name())
-	defer ft.Close()
-
 	thumb, sts := im.Thumbnail()
 	if sts != nil {
 		return sts
 	}
-	if sts := thumb.Write(ft); sts != nil {
+	defer thumb.Close()
+	imtmime, sts := imageFormatToMime(thumb.Format())
+	if sts != nil {
 		return sts
 	}
+	var imtanim *schema.AnimationInfo
+	if dur, sts := thumb.Duration(); sts != nil {
+		return sts
+	} else if dur != nil {
+		imtanim = &schema.AnimationInfo{
+			Duration: ptypes.DurationProto(*dur),
+		}
+	}
+	ft, cleanupThumbnail, sts := t.prepareFile(func(w io.Writer) status.S {
+		if sts := thumb.Write(w); sts != nil {
+			return sts
+		}
+		return nil
+	})
+	if sts != nil {
+		return sts
+	}
+	destroyTempThumbFile := true
+	defer func() {
+		if destroyTempThumbFile {
+			cleanupThumbnail(&stscap)
+		}
+	}()
 
 	thumbfi, err := ft.Stat()
 	if err != nil {
 		return status.Internal(err, "unable to stat thumbnail")
 	}
-	imfmime, sts := imageFormatToMime(thumb.Format())
-	if sts != nil {
-		return sts
-	}
-	var imfanim *schema.AnimationInfo
-	if dur, sts := thumb.Duration(); sts != nil {
-		return sts
-	} else if dur != nil {
-		imfanim = &schema.AnimationInfo{
-			Duration: ptypes.DurationProto(*dur),
-		}
-	}
+
 	twidth, theight := thumb.Dimensions()
 	p.Thumbnail = append(p.Thumbnail, &schema.Pic_File{
 		Index:         nextThumbnailIndex(p.Thumbnail),
 		Size:          thumbfi.Size(),
-		Mime:          imfmime,
+		Mime:          imtmime,
 		Width:         int64(twidth),
 		Height:        int64(theight),
-		AnimationInfo: imfanim,
+		AnimationInfo: imtanim,
+		CreatedTs:     nowts,
+		ModifiedTs:    nowts,
 	})
 
-	if sts := mergePic(j, p, now, pfs, userID, ext); sts != nil {
+	if sts := mergePic(j, p, nowts, pfs, userID, ext); sts != nil {
 		return sts
 	}
 
 	if err := t.MkdirAll(schema.PicBaseDir(t.PixPath, p.PicId), 0770); err != nil {
 		return status.Internal(err, "Can't prepare pic dir")
 	}
-
 	newpath, sts := schema.PicFilePath(t.PixPath, p.PicId, p.File.Mime)
 	if sts != nil {
 		return sts
 	}
-
 	destroyTempFile = false
 	if err := f.Close(); err != nil {
-		sts := status.Internalf(err, "Can't close %v", f.Name())
+		sts := status.Internal(err, "can't close", f.Name())
 		if err2 := t.Remove(f.Name()); err2 != nil {
-			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove"))
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", f.Name()))
 		}
 		return sts
 	}
 	if err := t.Rename(f.Name(), newpath); err != nil {
-		sts := status.Internalf(err, "Can't rename %v to %v", f.Name(), newpath)
+		sts := status.Internalf(err, "can't rename %v to %v", f.Name(), newpath)
 		if err2 := t.Remove(f.Name()); err2 != nil {
-			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove"))
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", f.Name()))
 		}
 		return sts
-	}
-	if err := ft.Close(); err != nil {
-		return status.Internalf(err, "Can't close %v", ft.Name())
 	}
 	destroyNewFile := true
 	defer func() {
@@ -365,27 +357,45 @@ func (t *UpsertPicTask) runInternal(ctx context.Context, j *tab.Job) (stscap sta
 	}()
 
 	lastthumbnail := p.Thumbnail[len(p.Thumbnail)-1]
-	// TODO: by luck the format created by imaging and the mime type decided by thumbnail are the
-	// same.  Thumbnails should be made into proper rows with their own mime type.
 	newthumbpath, sts := schema.PicFileThumbnailPath(
 		t.PixPath, p.PicId, lastthumbnail.Index, lastthumbnail.Mime)
 	if sts != nil {
 		return sts
 	}
-	if err := t.Rename(ft.Name(), newthumbpath); err != nil {
-		sts := status.Internalf(err, "Can't rename %v to %v", ft.Name(), newthumbpath)
+	destroyTempThumbFile = false
+	if err := ft.Close(); err != nil {
+		sts := status.Internal(err, "can't close", ft.Name())
 		if err2 := t.Remove(ft.Name()); err2 != nil {
-			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove temp thumbnail"))
-		}
-		if err2 := t.Remove(newpath); err2 != nil {
-			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove pic", newpath))
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", ft.Name()))
 		}
 		return sts
 	}
+	if err := t.Rename(ft.Name(), newthumbpath); err != nil {
+		sts := status.Internalf(err, "can't rename %v to %v", ft.Name(), newthumbpath)
+		if err2 := t.Remove(ft.Name()); err2 != nil {
+			sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", ft.Name()))
+		}
+		return sts
+	}
+	destroyNewThumbnail := true
+	defer func() {
+		if destroyNewThumbnail {
+			if err := t.Remove(newthumbpath); err != nil {
+				status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't remove", newthumbpath))
+			}
+		}
+	}()
+
+	// Keep the files, even if commit fails.  It's possible the commit actually succeeded, in which
+	// case deleting the files would be corruption.  Better to have occasional bad files in the
+	// directory than data corruption.
+	destroyNewFile = false
+	destroyNewThumbnail = false
+	if err := j.Commit(); err != nil {
+		return status.Internal(err, "can't commit")
+	}
 
 	t.CreatedPic = p
-	destroyNewFile = false
-
 	return nil
 }
 
@@ -424,7 +434,7 @@ func nextThumbnailIndex(pfs []*schema.Pic_File) int64 {
 	used := make(map[int64]bool)
 	for _, pf := range pfs {
 		if used[pf.Index] {
-			panic("Index already used")
+			panic("index already used")
 		}
 		used[pf.Index] = true
 	}
@@ -447,14 +457,13 @@ func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
 	case f.IsWebm():
 		return schema.Pic_File_WEBM, nil
 	default:
-		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "Unknown image type", f)
+		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "unknown image type", f)
 	}
 }
 
-func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSource, userID int64,
-	ext map[string]*any.Any) status.S {
-	tim := schema.ToTspb(now)
-	p.ModifiedTs = tim
+func mergePic(j *tab.Job, p *schema.Pic, nowts *tspb.Timestamp, pfs *schema.Pic_FileSource,
+	userID int64, ext map[string]*any.Any) status.S {
+	p.ModifiedTs = nowts
 	if ds := p.DeletionStatus; ds != nil {
 		if ds.Temporary {
 			// If the pic was soft deleted, it stays deleted, unless it was temporary.
@@ -482,7 +491,7 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 
 		// Also, only give notification if they added something new.
 		if userID != schema.AnonymousUserID {
-			createdTs := schema.UserEventCreatedTsCol(tim)
+			createdTs := schema.UserEventCreatedTsCol(nowts)
 			idx, sts := nextUserEventIndex(j, userID, createdTs)
 			if sts != nil {
 				return sts
@@ -490,8 +499,8 @@ func mergePic(j *tab.Job, p *schema.Pic, now time.Time, pfs *schema.Pic_FileSour
 			oue := &schema.UserEvent{
 				UserId:     userID,
 				Index:      idx,
-				CreatedTs:  tim,
-				ModifiedTs: tim,
+				CreatedTs:  nowts,
+				ModifiedTs: nowts,
 				Evt: &schema.UserEvent_UpsertPic_{
 					UpsertPic: &schema.UserEvent_UpsertPic{
 						PicId: p.PicId,
@@ -663,9 +672,23 @@ func (t *UpsertPicTask) tempFile() (*os.File, func(*status.S), status.S) {
 	}, nil
 }
 
+func validateAndNormalizeFileName(
+	rawname, field string, minNameLen, maxNameLen int64) (string, status.S) {
+	validators :=
+		[]text.TextValidator{text.DefaultValidator(minNameLen, maxNameLen), text.ValidateNoNewlines}
+	normalizers := []text.TextNormalizer{text.ToNFC, text.TrimSpace}
+	name, err := text.ValidateAndNormalizeMulti(rawname, field, normalizers, validators...)
+	if err != nil {
+		return "", status.From(err)
+	}
+	return name, nil
+}
+
 // TODO: add tests
-func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.URL, status.S) {
-	normrawurl, err := text.DefaultValidateNoNewlineAndNormalize(rawurl, "url", minUrlLen, maxUrlLen)
+// validateAndNormalizeURL validates that a URL is acceptable, normalizes it, and parses it as a
+// *url.URL.  It is guaranteed that the String() of the URL is valid and normalized.
+func validateAndNormalizeURL(rawurl string, minLen, maxLen int64) (*url.URL, status.S) {
+	normrawurl, err := text.DefaultValidateNoNewlineAndNormalize(rawurl, "url", minLen, maxLen)
 	if err != nil {
 		return nil, status.From(err)
 	}
@@ -674,25 +697,31 @@ func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.UR
 		return nil, status.InvalidArgument(err, "can't parse", normrawurl)
 	}
 	if loc.Scheme != "http" && loc.Scheme != "https" {
-		return nil, status.InvalidArgument(nil, "can't use non HTTP")
+		return nil, status.InvalidArgument(nil, "can't use non-HTTP")
 	}
 	if loc.User != nil {
 		return nil, status.InvalidArgument(nil, "can't provide userinfo")
+	}
+	if rturl, err :=
+		text.DefaultValidateNoNewlineAndNormalize(loc.String(), "url", minLen, maxLen); err != nil {
+		return nil, status.InvalidArgument(err, "can't reparse", loc.String())
+	} else if rturl != loc.String() {
+		return nil, status.InvalidArgument(err, "can't normalize url", loc.String(), "!=", rturl)
 	}
 
 	return loc, nil
 }
 
 func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL) (
-	_ *os.File, _ func(*status.S), _ int64, _ string, stscap status.S) {
+	_ *os.File, _ func(*status.S), _ int64, _ *dispositionName, stscap status.S) {
 	if loc == nil {
-		return nil, nil, 0, "", status.InvalidArgument(nil, "missing URL")
+		return nil, nil, 0, nil, status.InvalidArgument(nil, "missing URL")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, loc.String(), nil)
 	if err != nil {
 		// if this fails, it's probably our fault
-		return nil, nil, 0, "", status.Internal(err, "can't create request")
+		return nil, nil, 0, nil, status.Internal(err, "can't create request")
 	}
 	if ref != nil {
 		ref2 := *ref
@@ -702,7 +731,7 @@ func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
 	if err != nil {
-		return nil, nil, 0, "", status.InvalidArgument(err, "can't download", loc)
+		return nil, nil, 0, nil, status.InvalidArgument(err, "can't download", loc)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -712,28 +741,25 @@ func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL
 
 	if resp.StatusCode != http.StatusOK {
 		// TODO: log the response and headers
-		return nil, nil, 0, "",
+		return nil, nil, 0, nil,
 			status.InvalidArgumentf(nil, "can't download %s [%d]", loc, resp.StatusCode)
 	}
 
-	// TODO: log error
-	rawname, _ := parseContentDispositionName(resp.Header.Get("Content-Disposition"))
-
 	var size int64
 	f, cleanup, sts := t.prepareFile(func(w io.Writer) status.S {
-		n, err := io.Copy(w, resp.Body)
-		if err != nil {
+		if n, err := io.Copy(w, resp.Body); err != nil {
 			// This could either be because the remote hung up or a file error on our side.  Assume that
 			// our system is okay, making this an InvalidArgument
 			return status.InvalidArgument(err, "can't copy file", loc)
+		} else {
+			size = n
+			return nil
 		}
-		size = n
-		return nil
 	})
 	if sts != nil {
-		return nil, nil, 0, "", sts
+		return nil, nil, 0, nil, sts
 	}
-	return f, cleanup, size, rawname, nil
+	return f, cleanup, size, parseContentDisposition(resp.Header), nil
 }
 
 func parseUrlName(loc *url.URL) (string, status.S) {
@@ -748,9 +774,59 @@ func parseUrlName(loc *url.URL) (string, status.S) {
 	return "", nil
 }
 
-// TODO: implement
-func parseContentDispositionName(value string) (string, status.S) {
-	return "", nil
+type dispositionName struct {
+	name string
+	sts  status.S
+}
+
+func parseContentDisposition(h http.Header) *dispositionName {
+	key := textproto.CanonicalMIMEHeaderKey("Content-Disposition")
+	values, present := h[key]
+	if !present {
+		return nil
+	}
+	if len(values) == 0 {
+		return nil
+	}
+	_, params, err := mime.ParseMediaType(values[0])
+	if err != nil {
+		return &dispositionName{
+			sts: status.InvalidArgument(err, "can't parse content disposition"),
+		}
+	}
+	if name, present := params["filename"]; present {
+		return &dispositionName{
+			name: name,
+		}
+	}
+	return nil
+}
+
+func checkUrls(furl, furlref string, conf *schema.Configuration) (*url.URL, *url.URL, status.S) {
+	var loc, ref *url.URL
+	if furl != "" {
+		minUrlLen, maxUrlLen := confUrlLen(conf)
+		if fu, sts := validateAndNormalizeURL(furl, minUrlLen, maxUrlLen); sts != nil {
+			return nil, nil, sts
+		} else {
+			fu.Fragment = ""
+			// double check it's still valid.
+			if fu2, sts := validateAndNormalizeURL(fu.String(), minUrlLen, maxUrlLen); sts != nil {
+				return nil, nil, sts
+			} else {
+				loc = fu2
+			}
+		}
+		if furlref != "" {
+			if fu, sts := validateAndNormalizeURL(furlref, minUrlLen, maxUrlLen); sts != nil {
+				return nil, nil, sts
+			} else {
+				// leave fragment in place
+				ref = fu
+			}
+		}
+	}
+	return loc, ref, nil
 }
 
 func generatePicHashes(f io.Reader, fns ...func() hash.Hash) ([][]byte, status.S) {
@@ -763,7 +839,7 @@ func generatePicHashes(f io.Reader, fns ...func() hash.Hash) ([][]byte, status.S
 		ws[i] = h // Go lacks contravariance, so we have to do this.
 	}
 	if _, err := io.Copy(io.MultiWriter(ws...), f); err != nil {
-		return nil, status.Internal(err, "Can't copy")
+		return nil, status.Internal(err, "can't copy")
 	}
 	sums := make([][]byte, len(hs))
 	for i, h := range hs {

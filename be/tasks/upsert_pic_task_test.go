@@ -556,7 +556,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
-	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
+	expected := status.InvalidArgument(nil, "can't upload deleted pic")
 	compareStatus(t, sts, expected)
 
 	p.Refresh()
@@ -774,13 +774,14 @@ func TestMerge(t *testing.T) {
 	p := c.CreatePic()
 	p.Update()
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	userID := int64(-1)
 
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
 		UserId:    userID,
 		Name:      "Name",
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 	a, err := ptypes.MarshalAny(pfs)
 	if err != nil {
@@ -794,7 +795,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, now, pfs, userID, ext)
+	err = mergePic(j, p.Pic, nowts, pfs, userID, ext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -822,12 +823,13 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	p := c.CreatePic()
 	p.Update()
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	userID := int64(-1)
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
 		UserId:    userID,
 		Name:      "Name",
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 	a, err := ptypes.MarshalAny(pfs)
 	if err != nil {
@@ -844,7 +846,7 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	sts := mergePic(j, p.Pic, now, pfs, userID, ext)
+	sts := mergePic(j, p.Pic, nowts, pfs, userID, ext)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -866,7 +868,10 @@ func TestMergeClearsTempDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), -1, nil)
+	now := time.Now()
+	nowts := schema.ToTspb(now)
+
+	err := mergePic(j, p.Pic, nowts, new(schema.Pic_FileSource), -1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -892,7 +897,10 @@ func TestMergeLeavesDeletionStatus(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, time.Now(), new(schema.Pic_FileSource), -1, nil)
+	now := time.Now()
+	nowts := schema.ToTspb(now)
+
+	err := mergePic(j, p.Pic, nowts, new(schema.Pic_FileSource), -1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -919,13 +927,14 @@ func TestMergeAddsSource(t *testing.T) {
 	defer j.Rollback()
 
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/",
 		UserId:    u.User.UserId,
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -950,14 +959,15 @@ func TestMergeIgnoresDuplicateSource(t *testing.T) {
 	defer j.Rollback()
 
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	userID := p.Pic.Source[0].UserId
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/bar/unique",
 		UserId:    userID,
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, userID, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, userID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -982,14 +992,15 @@ func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
 	defer j.Rollback()
 
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	userID := schema.AnonymousUserID
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/bar/unique",
 		UserId:    userID,
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, userID, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, userID, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1015,13 +1026,14 @@ func TestMergeIgnoresEmptySource(t *testing.T) {
 	defer j.Rollback()
 
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	pfs := &schema.Pic_FileSource{
 		Url:       "",
 		UserId:    u.User.UserId,
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1044,10 +1056,11 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	u := c.CreateUser()
 
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	pfs := &schema.Pic_FileSource{
 		Url:       "",
 		UserId:    u.User.UserId,
-		CreatedTs: schema.ToTspb(now),
+		CreatedTs: nowts,
 	}
 	p.Pic.Source = nil
 	p.Update()
@@ -1055,7 +1068,7 @@ func TestMergeIgnoresEmptySourceExceptForFirst(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	err := mergePic(j, p.Pic, now, pfs, u.User.UserId, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, u.User.UserId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1546,6 +1559,7 @@ func TestUpsertPicTask_prepareRemoteFile(t *testing.T) {
 		if r.Referer() != "http://foo.com/bar" {
 			t.Fatal("bad referrer", r.Referer())
 		}
+		w.Header().Set("Content-disposition", "attachment; filename=\"baz.jpg\"")
 		if _, err := w.Write([]byte("good")); err != nil {
 			t.Fatal(err)
 		}
@@ -1579,8 +1593,8 @@ func TestUpsertPicTask_prepareRemoteFile(t *testing.T) {
 	if size != 4 {
 		t.Error("bad size", size)
 	}
-	if disponame != "" {
-		t.Error("bad content disposition name", "")
+	if disponame == nil || disponame.name != "baz.jpg" {
+		t.Error("bad content disposition name", disponame)
 	}
 }
 
@@ -1653,7 +1667,7 @@ func TestGeneratePicHashesError(t *testing.T) {
 		err: fmt.Errorf("bad"),
 	}
 	_, sts := generatePicHashes(r, md5.New, sha1.New, sha512.New512_256)
-	expected := status.Internal(nil, "Can't copy")
+	expected := status.Internal(nil, "can't copy")
 	compareStatus(t, sts, expected)
 }
 
@@ -1673,7 +1687,7 @@ func TestValidateURL_CantParse(t *testing.T) {
 
 func TestValidateURL_BadScheme(t *testing.T) {
 	_, sts := validateAndNormalizeURL("file:///etc/passwd", 0, 50)
-	expected := status.InvalidArgument(nil, "can't use non HTTP")
+	expected := status.InvalidArgument(nil, "can't use non-HTTP")
 	compareStatus(t, sts, expected)
 }
 
