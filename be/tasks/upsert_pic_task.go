@@ -683,7 +683,6 @@ func validateAndNormalizeURL(rawurl string, minUrlLen, maxUrlLen int64) (*url.UR
 	return loc, nil
 }
 
-// TODO: test
 func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL) (
 	_ *os.File, _ func(*status.S), _ int64, _ string, stscap status.S) {
 	if loc == nil {
@@ -696,7 +695,9 @@ func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL
 		return nil, nil, 0, "", status.Internal(err, "can't create request")
 	}
 	if ref != nil {
-		req.Header.Add("Referer", ref.String())
+		ref2 := *ref
+		ref2.Fragment = ""
+		req.Header.Add("Referer", ref2.String())
 	}
 	req = req.WithContext(ctx)
 	resp, err := t.HTTPClient.Do(req)
@@ -712,7 +713,7 @@ func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL
 	if resp.StatusCode != http.StatusOK {
 		// TODO: log the response and headers
 		return nil, nil, 0, "",
-			status.InvalidArgumentf(nil, "Can't download %s [%d]", loc, resp.StatusCode)
+			status.InvalidArgumentf(nil, "can't download %s [%d]", loc, resp.StatusCode)
 	}
 
 	// TODO: log error
@@ -735,12 +736,15 @@ func (t *UpsertPicTask) prepareRemoteFile(ctx context.Context, loc, ref *url.URL
 	return f, cleanup, size, rawname, nil
 }
 
-// TODO: test
 func parseUrlName(loc *url.URL) (string, status.S) {
-	// Can happen for a url that is a dir like http://foo.com/
+	if len(loc.Path) > 0 && loc.Path[len(loc.Path)-1] == '/' {
+		return "", nil
+	}
+	// Can happen for a url that is a dir like http://foo.com
 	if base := path.Base(loc.Path); base != "." {
 		return base, nil
 	}
+
 	return "", nil
 }
 

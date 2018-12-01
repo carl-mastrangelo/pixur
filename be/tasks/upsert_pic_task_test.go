@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"image"
 	"image/gif"
-	_ "io/ioutil"
+	"io/ioutil"
 	"net/http"
-	_ "net/http/httptest"
-	_ "net/url"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -1451,51 +1451,26 @@ func TestInsertPerceptualHash_Failure(t *testing.T) {
 	}
 }
 
-/*
-func TestDownloadFile_BadURL(t *testing.T) {
+func TestUpsertPicTask_prepareRemoteFile_badAddress(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	f, err := ioutil.TempFile(c.TempDir(), "")
+	task := &UpsertPicTask{
+		HTTPClient: http.DefaultClient,
+		TempFile:   func(_, _ string) (*os.File, error) { return ioutil.TempFile(c.TempDir(), "") },
+		Remove:     os.Remove,
+		PixPath:    c.TempDir(),
+	}
+	loc, err := url.Parse("http://")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	task := &UpsertPicTask{
-		HTTPClient: http.DefaultClient,
-	}
-	_, sts := task.downloadFile(c.Ctx, f, nil)
-	expected := status.InvalidArgument(nil, "Missing URL")
+	_, _, _, _, sts := task.prepareRemoteFile(c.Ctx, loc, nil)
+	expected := status.InvalidArgument(nil, "can't download http:")
 	compareStatus(t, sts, expected)
 }
-*/
-/*
-func TestDownloadFile_BadAddress(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
 
-	f, err := ioutil.TempFile(c.TempDir(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	task := &UpsertPicTask{
-		HTTPClient: http.DefaultClient,
-	}
-	uu, _ := url.Parse("http://")
-	_, sts := task.downloadFile(c.Ctx, f, uu)
-	expected := status.InvalidArgument(nil, "Can't download http:")
-	compareStatus(t, sts, expected)
-}
-*/
-
-/*
-
-func TestDownloadFile_BadStatus(t *testing.T) {
+func TestUpsertPicTask_prepareRemoteFile_badStatus(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -1506,27 +1481,23 @@ func TestDownloadFile_BadStatus(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.TempDir(), "")
+	task := &UpsertPicTask{
+		HTTPClient: http.DefaultClient,
+		TempFile:   func(_, _ string) (*os.File, error) { return ioutil.TempFile(c.TempDir(), "") },
+		Remove:     os.Remove,
+		PixPath:    c.TempDir(),
+	}
+	loc, err := url.Parse(serv.URL + "/foo/bar.jpg?ignore=true#content")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	task := &UpsertPicTask{
-		HTTPClient: http.DefaultClient,
-	}
-	uu, _ := url.Parse(serv.URL)
-	_, sts := task.downloadFile(c.Ctx, f, uu)
-	expected := status.InvalidArgumentf(nil,
-		"Can't download %s [%d]", serv.URL, http.StatusBadRequest)
+	_, _, _, _, sts := task.prepareRemoteFile(c.Ctx, loc, nil)
+	expected := status.InvalidArgument(nil, "can't download")
 
 	compareStatus(t, sts, expected)
 }
-*/
 
-/*
-func TestDownloadFile_BadTransfer(t *testing.T) {
+func TestUpsertPicTask_prepareRemoteFile_badTransfer(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -1548,22 +1519,33 @@ func TestDownloadFile_BadTransfer(t *testing.T) {
 
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		TempFile:   func(_, _ string) (*os.File, error) { return ioutil.TempFile(c.TempDir(), "") },
+		Remove:     os.Remove,
+		PixPath:    c.TempDir(),
 	}
-	uu, _ := url.Parse(serv.URL)
-	_, sts := task.downloadFile(c.Ctx, f, uu)
-	expected := status.InvalidArgument(nil, "Can't copy downloaded file")
+	loc, err := url.Parse(serv.URL + "/foo/bar.jpg?ignore=true#content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, _, sts := task.prepareRemoteFile(c.Ctx, loc, nil)
+	expected := status.InvalidArgument(nil, "can't copy file")
 
 	compareStatus(t, sts, expected)
 }
-*/
 
-/*
-
-func TestDownloadFile(t *testing.T) {
+func TestUpsertPicTask_prepareRemoteFile(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
+	ref, err := url.Parse("http://foo.com/bar#baz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Referer() != "http://foo.com/bar" {
+			t.Fatal("bad referrer", r.Referer())
+		}
 		if _, err := w.Write([]byte("good")); err != nil {
 			t.Fatal(err)
 		}
@@ -1572,24 +1554,21 @@ func TestDownloadFile(t *testing.T) {
 	serv := httptest.NewServer(http.HandlerFunc(handler))
 	defer serv.Close()
 
-	f, err := ioutil.TempFile(c.TempDir(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
 	task := &UpsertPicTask{
 		HTTPClient: http.DefaultClient,
+		TempFile:   func(_, _ string) (*os.File, error) { return ioutil.TempFile(c.TempDir(), "") },
+		Remove:     os.Remove,
+		PixPath:    c.TempDir(),
 	}
-	uu, _ := url.Parse(serv.URL + "/foo/bar.jpg?ignore=true#content")
-	fh, err := task.downloadFile(c.Ctx, f, uu)
+	loc, err := url.Parse(serv.URL + "/foo/bar.jpg?ignore=true#content")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Sync(); err != nil {
-		t.Fatal(err)
+	f, cleanup, size, disponame, sts := task.prepareRemoteFile(c.Ctx, loc, ref)
+	if sts != nil {
+		t.Fatal(sts)
 	}
+	defer cleanup(new(status.S))
 	data, err := ioutil.ReadFile(f.Name())
 	if err != nil {
 		t.Fatal(err)
@@ -1597,55 +1576,41 @@ func TestDownloadFile(t *testing.T) {
 	if string(data) != "good" {
 		t.Fatal("File contents wrong", string(data))
 	}
-	expectedHeader := FileHeader{
-		Name: "bar.jpg",
-		Size: 4,
+	if size != 4 {
+		t.Error("bad size", size)
 	}
-	if *fh != expectedHeader {
-		t.Fatal(*fh, expectedHeader)
+	if disponame != "" {
+		t.Error("bad content disposition name", "")
 	}
 }
 
-*/
-
-/*
-
-func TestDownloadFile_DirectoryURL(t *testing.T) {
-	c := Container(t)
-	defer c.Close()
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write([]byte("good")); err != nil {
-			t.Fatal(err)
+func TestUpsertPicTask_parseUrlName(t *testing.T) {
+	maps := [][2]string{
+		{"http://foo.com", ""},
+		{"http://foo.com/", ""},
+		{"http://foo.com/.", ""},
+		{"http://foo.com/.bar", ".bar"},
+		{"http://foo.com/bar.baz", "bar.baz"},
+		{"http://foo.com/bar", "bar"},
+		{"http://foo.com/bar/", ""},
+		{"http://foo.com/bar/%20", " "},
+		{"http://foo.com/download.php?picid=23#args", "download.php"},
+		{"http://foo.com/%20/%EC%9C%84%ED%82%A4%EB%B0%B1%EA%B3%BC", "위키백과"},
+	}
+	for i, m := range maps {
+		loc, err := url.Parse(m[0])
+		if err != nil {
+			t.Fatal(i, err)
+		}
+		name, sts := parseUrlName(loc)
+		if sts != nil {
+			t.Fatal(i, sts)
+		}
+		if name != m[1] {
+			t.Error(i, "url", m[0], name, "should be", m[1])
 		}
 	}
-
-	serv := httptest.NewServer(http.HandlerFunc(handler))
-	defer serv.Close()
-
-	f, err := ioutil.TempFile(c.TempDir(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
-
-	task := &UpsertPicTask{
-		HTTPClient: http.DefaultClient,
-	}
-	uu, _ := url.Parse(serv.URL)
-	fh, err := task.downloadFile(c.Ctx, f, uu)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedHeader := FileHeader{
-		Size: 4,
-	}
-	if *fh != expectedHeader {
-		t.Fatal(*fh, expectedHeader)
-	}
 }
-*/
 
 func TestGeneratePicHashes(t *testing.T) {
 	testMd5 := "e99a18c428cb38d5f260853678922e03"
