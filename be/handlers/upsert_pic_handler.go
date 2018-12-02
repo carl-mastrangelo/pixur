@@ -49,10 +49,11 @@ func (s *serv) handleUpsertPic(ctx context.Context, req *api.UpsertPicRequest) (
 		Now:        s.now,
 		Remove:     os.Remove,
 
-		FileURL:  req.Url,
-		File:     file,
-		Md5Hash:  req.Md5Hash,
-		FileName: req.Name,
+		FileURL:         req.Url,
+		FileURLReferrer: req.Referrer,
+		File:            file,
+		Md5Hash:         req.Md5Hash,
+		FileName:        req.Name,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

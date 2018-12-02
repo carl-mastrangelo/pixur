@@ -55,10 +55,11 @@ func TestUpsertPic(t *testing.T) {
 		now:    time.Now,
 	}
 	res, sts := s.handleUpsertPic(context.Background(), &api.UpsertPicRequest{
-		Url:     "http://foo/",
-		Data:    []byte("a"),
-		Name:    "bar",
-		Md5Hash: []byte("0123456789abcdef"),
+		Url:      "http://foo/",
+		Referrer: "http://bar/",
+		Data:     []byte("a"),
+		Name:     "bar",
+		Md5Hash:  []byte("0123456789abcdef"),
 	})
 	if sts != nil {
 		t.Fatal(sts)
@@ -67,6 +68,9 @@ func TestUpsertPic(t *testing.T) {
 		t.Fatal("task didn't run")
 	}
 	if have, want := taskCap.FileURL, "http://foo/"; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := taskCap.FileURLReferrer, "http://bar/"; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if taskCap.File == nil {
