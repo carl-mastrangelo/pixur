@@ -674,8 +674,32 @@ func (t *UpsertPicTask) tempFile() (*os.File, func(*status.S), status.S) {
 
 func validateAndNormalizeFileName(
 	rawname, field string, minNameLen, maxNameLen int64) (string, status.S) {
-	validators :=
-		[]text.TextValidator{text.DefaultValidator(minNameLen, maxNameLen), text.ValidateNoNewlines}
+	var forbidSpecialChars text.TextValidator = func(text, field string) error {
+		for _, r := range text {
+			switch r {
+			case '/':
+				fallthrough
+			case '\\':
+				fallthrough
+			case 0:
+				return status.InvalidArgumentf(nil, "invalid rune %U in %s", r, field)
+			default:
+			}
+		}
+		return nil
+	}
+	var isBaseName text.TextValidator = func(text, field string) error {
+		if path.Base(text) != text {
+			return status.InvalidArgumentf(nil, "invalid base name %s", field)
+		}
+		return nil
+	}
+	validators := []text.TextValidator{
+		text.DefaultValidator(minNameLen, maxNameLen),
+		text.ValidateNoNewlines,
+		forbidSpecialChars,
+		isBaseName,
+	}
 	normalizers := []text.TextNormalizer{text.ToNFC, text.TrimSpace}
 	name, err := text.ValidateAndNormalizeMulti(rawname, field, normalizers, validators...)
 	if err != nil {

@@ -128,6 +128,49 @@ func TestUpsertPicTask_URL(t *testing.T) {
 	}
 }
 
+func TestUpsertPicTask_BadFileName(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_CREATE)
+	u.Update()
+
+	p := c.CreatePic()
+	path, sts := schema.PicFilePath(c.TempDir(), p.Pic.PicId, p.Pic.File.Mime)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	now := time.Unix(100, 0)
+
+	task := &UpsertPicTask{
+		Beg:      c.DB(),
+		Now:      func() time.Time { return now },
+		PixPath:  c.TempDir(),
+		TempFile: func(dir, prefix string) (*os.File, error) { return c.TempFile(), nil },
+		MkdirAll: os.MkdirAll,
+		Rename:   os.Rename,
+		Remove:   os.Remove,
+
+		File:     f,
+		FileName: "/root",
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts = new(TaskRunner).Run(ctx, task)
+	if sts == nil {
+		t.Fatal("expected error")
+	}
+	expected := status.InvalidArgument(nil, "invalid rune")
+	compareStatus(t, sts, expected)
+}
+
 func TestUpsertPicTask_CantBegin(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
