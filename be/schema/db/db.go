@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"pixur.org/pixur/be/status"
@@ -128,11 +129,14 @@ const (
 )
 
 type Opts struct {
-	Prefix      Idx
-	Start, Stop Idx
-	Lock        Lock
-	Reverse     bool
-	Limit       int
+	Prefix Idx
+	// At most one of StartInc and StartEx may be set
+	StartInc, StartEx Idx
+	// At most one of StopInc and StopEx may be set
+	StopInc, StopEx Idx
+	Lock            Lock
+	Reverse         bool
+	Limit           int
 }
 
 type Idx interface {
@@ -192,7 +196,10 @@ func localScan(
 		adap: adap,
 	}
 
-	query, queryArgs := s.buildScan()
+	query, queryArgs, sts := s.buildScan()
+	if sts != nil {
+		return sts
+	}
 	rows, err := q.Query(query, queryArgs...)
 	if err != nil {
 		return status.From(err)
@@ -219,27 +226,41 @@ func localScan(
 	return nil
 }
 
-func (s *scanStmt) buildScan() (string, []interface{}) {
-	fmt.Fprintf(s.buf, "SELECT %s FROM %s", s.adap.Quote("data"), s.adap.Quote(s.name))
-
-	if s.opts.Prefix != nil && (s.opts.Start != nil || s.opts.Stop != nil) {
-		panic("only Prefix or Start|Stop may be specified")
-	}
+func (s *scanStmt) buildScan() (string, []interface{}, status.S) {
+	s.buf.WriteString("SELECT ")
+	s.buf.WriteString(s.adap.Quote("data"))
+	s.buf.WriteString(" FROM ")
+	s.buf.WriteString(s.adap.Quote(s.name))
 	if s.opts.Prefix != nil {
-		s.appendPrefix()
-	} else if s.opts.Start != nil || s.opts.Stop != nil {
-		s.appendRange()
+		if s.opts.StartInc != nil || s.opts.StartEx != nil {
+			return "", nil, status.Internal(nil, "can't specify Start with Prefix")
+		}
+		if s.opts.StopInc != nil || s.opts.StopEx != nil {
+			return "", nil, status.Internal(nil, "can't specify Stop with Prefix")
+		}
+		if sts := s.appendPrefix(); sts != nil {
+			return "", nil, sts
+		}
+	} else if s.opts.StartInc != nil || s.opts.StartEx != nil ||
+		s.opts.StopInc != nil || s.opts.StopEx != nil {
+		if sts := s.appendRange(); sts != nil {
+			return "", nil, sts
+		}
 	}
-
 	if s.opts.Limit > 0 {
-		fmt.Fprintf(s.buf, " LIMIT %d", s.opts.Limit)
+		s.buf.WriteString(" LIMIT ")
+		s.buf.WriteString(strconv.FormatInt(int64(s.opts.Limit), 10))
+	} else if s.opts.Limit < 0 {
+		return "", nil, status.Internal(nil, "can't use negative limit", s.opts.Limit)
 	}
-	s.appendLock()
+	if sts := s.appendLock(); sts != nil {
+		return "", nil, sts
+	}
 	s.buf.WriteRune(';')
-	return s.buf.String(), s.args
+	return s.buf.String(), s.args, nil
 }
 
-func (s *scanStmt) appendPrefix() {
+func (s *scanStmt) appendPrefix() status.S {
 	cols, vals := s.opts.Prefix.Cols(), s.opts.Prefix.Vals()
 	if len(vals) != 0 {
 		s.buf.WriteString(" WHERE ")
@@ -247,31 +268,59 @@ func (s *scanStmt) appendPrefix() {
 			if i != 0 {
 				s.buf.WriteString(" AND ")
 			}
-			fmt.Fprintf(s.buf, "%s = ?", s.adap.Quote(cols[i]))
+			s.buf.WriteString(s.adap.Quote(cols[i]))
+			s.buf.WriteString(" = ?")
 			s.args = append(s.args, vals[i])
 		}
 	}
 	if sortCols := cols[len(vals):]; len(sortCols) != 0 {
 		s.appendOrder(sortCols)
 	}
+	return nil
 }
 
-func (s *scanStmt) appendRange() {
+func (s *scanStmt) appendRange() status.S {
 	var (
 		startCols, stopCols []string
 		startVals, stopVals []interface{}
+		startInc, stopInc   bool
 	)
-	if s.opts.Start != nil {
-		startCols, startVals = s.opts.Start.Cols(), s.opts.Start.Vals()
+	if s.opts.StartInc != nil || s.opts.StartEx != nil {
+		if s.opts.StartInc != nil && s.opts.StartEx != nil {
+			return status.Internal(nil, "can't set StartInc and StartEx")
+		}
+		if s.opts.StartInc != nil {
+			startCols, startVals = s.opts.StartInc.Cols(), s.opts.StartInc.Vals()
+			startInc = true
+		} else {
+			startCols, startVals = s.opts.StartEx.Cols(), s.opts.StartEx.Vals()
+			startInc = false
+		}
 	}
-	if s.opts.Stop != nil {
-		stopCols, stopVals = s.opts.Stop.Cols(), s.opts.Stop.Vals()
+	if s.opts.StopInc != nil || s.opts.StopEx != nil {
+		if s.opts.StopInc != nil && s.opts.StopEx != nil {
+			return status.Internal(nil, "can't set StopInc and StopEx")
+		}
+		if s.opts.StopInc != nil {
+			stopCols, stopVals = s.opts.StopInc.Cols(), s.opts.StopInc.Vals()
+			stopInc = true
+		} else {
+			stopCols, stopVals = s.opts.StopEx.Cols(), s.opts.StopEx.Vals()
+			stopInc = false
+		}
 	}
 	if len(startVals) != 0 || len(stopVals) != 0 {
 		s.buf.WriteString(" WHERE ")
 	}
 	if len(startVals) != 0 {
-		startStmt, startArgs := buildStart(startCols, startVals, s.adap)
+		midop, lastop := ">", ">"
+		if startInc {
+			lastop = ">="
+		}
+		startStmt, startArgs, sts := buildRange(startCols, startVals, midop, lastop, s.adap)
+		if sts != nil {
+			return sts
+		}
 		s.args = append(s.args, startArgs...)
 		s.buf.WriteString(startStmt)
 	}
@@ -279,7 +328,14 @@ func (s *scanStmt) appendRange() {
 		s.buf.WriteString(" AND ")
 	}
 	if len(stopVals) != 0 {
-		stopStmt, stopArgs := buildStop(stopCols, stopVals, s.adap)
+		midop, lastop := "<", "<"
+		if stopInc {
+			lastop = "<="
+		}
+		stopStmt, stopArgs, sts := buildRange(stopCols, stopVals, midop, lastop, s.adap)
+		if sts != nil {
+			return sts
+		}
 		s.args = append(s.args, stopArgs...)
 		s.buf.WriteString(stopStmt)
 	}
@@ -288,16 +344,16 @@ func (s *scanStmt) appendRange() {
 	} else {
 		s.appendOrder(stopCols)
 	}
+	return nil
 }
 
 func (s *scanStmt) appendOrder(cols []string) {
 	s.buf.WriteString(" ORDER BY ")
-
 	var order string
-	if !s.opts.Reverse {
-		order = " ASC"
-	} else {
+	if s.opts.Reverse {
 		order = " DESC"
+	} else {
+		order = " ASC"
 	}
 	for i, col := range cols {
 		if i != 0 {
@@ -308,32 +364,44 @@ func (s *scanStmt) appendOrder(cols []string) {
 	}
 }
 
-func (s *scanStmt) appendLock() {
+func (s *scanStmt) appendLock() status.S {
+	// TODO: make LockStmt return sts if ther is a failure.
 	s.adap.LockStmt(s.buf, s.opts.Lock)
+	return nil
 }
 
 type Columns []string
 
-func (cols Columns) String() string {
-	panic("fix quote function")
-	var parts []string
-	for _, col := range cols {
-		parts = append(parts /*quoteIdentifier(*/, col /*)*/)
-	}
-	return strings.Join(parts, ", ")
-}
-
-func buildStart(cols []string, vals []interface{}, adap DBAdapter) (string, []interface{}) {
+// Disjunctive normal form, you nerd!
+//
+// 1, 2, 3 arg inclusive start scans look like:
+// ((A >= ?))
+// ((A > ?) OR (A = ? AND B >= ?))
+// ((A > ?) OR (A = ? AND B > ?) OR (A = ? AND B = ? AND C >= ?))
+//
+// 1, 2, 3 arg exclusive start scans look like:
+// ((A > ?))
+// ((A > ?) OR (A = ? AND B > ?))
+// ((A > ?) OR (A = ? AND B > ?) OR (A = ? AND B = ? AND C > ?))
+//
+// 1, 2, 3 arg inclusive stop scans look like:
+// ((A <= ?))
+// ((A < ?) OR (A = ? AND B <= ?))
+// ((A < ?) OR (A = ? AND B < ?) OR (A = ? AND B = ? AND C <= ?))
+//
+// 1, 2, 3 arg exclusive stop scans look like:
+// ((A < ?))
+// ((A < ?) OR (A = ? AND B < ?))
+// ((A < ?) OR (A = ? AND B < ?) OR (A = ? AND B = ? AND C < ?))
+//
+// The interior comparsions operators could be equal to last operators, but that would make each
+// group of ANDs overlap in scope.  This probably isn't a problem.
+func buildRange(cols []string, vals []interface{}, midop, lastop string, adap DBAdapter) (
+	string, []interface{}, status.S) {
 	if len(vals) > len(cols) {
-		panic("More vals than cols")
+		return "", nil, status.Internal(nil, "more vals than cols")
 	}
 	var args []interface{}
-	// Disjunctive normal form, you nerd!
-	// Start always has the last argument be a ">="
-	// 1, 2, 3 arg scans look like:
-	// ((A >= ?))
-	// ((A > ?) OR (A = ? AND B >= ?))
-	// ((A > ?) OR (A = ? AND B > ?) OR (A = ? AND B = ? AND C >= ?))
 	var ors []string
 	for i := 0; i < len(vals); i++ {
 		var ands []string
@@ -342,38 +410,14 @@ func buildStart(cols []string, vals []interface{}, adap DBAdapter) (string, []in
 			args = append(args, vals[k])
 		}
 		if i == len(vals)-1 {
-			ands = append(ands, adap.Quote(cols[i])+" >= ?")
+			ands = append(ands, adap.Quote(cols[i])+" "+lastop+" ?")
 		} else {
-			ands = append(ands, adap.Quote(cols[i])+" > ?")
+			ands = append(ands, adap.Quote(cols[i])+" "+midop+" ?")
 		}
 		args = append(args, vals[i])
 		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
 	}
-	return "(" + strings.Join(ors, " OR ") + ")", args
-}
-
-func buildStop(cols []string, vals []interface{}, adap DBAdapter) (string, []interface{}) {
-	if len(vals) > len(cols) {
-		panic("More vals than cols")
-	}
-	var args []interface{}
-	// Stop always has the last argument be a "<"
-	// 1, 2, 3 arg scans look like:
-	// ((A < ?))
-	// ((A < ?) OR (A = ? AND B < ?))
-	// ((A < ?) OR (A = ? AND B < ?) OR (A = ? AND B = ? AND C < ?))
-	var ors []string
-	for i := 0; i < len(vals); i++ {
-		var ands []string
-		for k := 0; k < i; k++ {
-			ands = append(ands, adap.Quote(cols[k])+" = ?")
-			args = append(args, vals[k])
-		}
-		ands = append(ands, adap.Quote(cols[i])+" < ?")
-		args = append(args, vals[i])
-		ors = append(ors, "("+strings.Join(ands, " AND ")+")")
-	}
-	return "(" + strings.Join(ors, " OR ") + ")", args
+	return "(" + strings.Join(ors, " OR ") + ")", args, nil
 }
 
 const (

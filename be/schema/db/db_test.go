@@ -114,8 +114,7 @@ func TestScanQueryEmpty(t *testing.T) {
 	}, testAdap)
 
 	if err != nil {
-		t.Log("Unexpected error", err)
-		t.Fail()
+		t.Error("Unexpected error", err)
 	}
 }
 
@@ -148,21 +147,17 @@ func TestScanQueryOneRow(t *testing.T) {
 	}, testAdap)
 
 	if err != nil {
-		t.Log("Unexpected error", err)
-		t.Fail()
+		t.Error("Unexpected error", err)
 	}
 	if len(dataCap) != 1 || !bytes.Equal(dataCap[0], []byte("bar")) {
-		t.Log("Wrong rows", dataCap)
-		t.Fail()
+		t.Error("Wrong rows", dataCap)
 	}
 
 	if exec.query != `SELECT "data" FROM "foo";` {
-		t.Log("Wrong query", exec.query)
-		t.Fail()
+		t.Error("Wrong query", exec.query)
 	}
 	if len(exec.args) != 0 {
-		t.Log("Wrong args", exec.args)
-		t.Fail()
+		t.Error("Wrong args", exec.args)
 	}
 }
 
@@ -179,13 +174,11 @@ func TestScanQueryMultiRow(t *testing.T) {
 	}, testAdap)
 
 	if err != nil {
-		t.Log("Unexpected error", err)
-		t.Fail()
+		t.Error("Unexpected error", err)
 	}
 	if len(dataCap) != 2 || !bytes.Equal(dataCap[0], []byte("bar")) ||
 		!bytes.Equal(dataCap[1], []byte("baz")) {
-		t.Log("Wrong rows", dataCap)
-		t.Fail()
+		t.Error("Wrong rows", dataCap)
 	}
 }
 
@@ -261,14 +254,15 @@ func TestBuildScan(t *testing.T) {
 		adap: testAdap,
 	}
 
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "foo" FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 0 {
-		t.Log("Should have no args", args)
-		t.Fail()
+		t.Error("Should have no args", args)
 	}
 }
 
@@ -277,21 +271,22 @@ func TestBuildScanStart(t *testing.T) {
 		name: "foo",
 		buf:  new(strings.Builder),
 		opts: Opts{
-			Start: &testIdx{
+			StartInc: &testIdx{
 				cols: []string{"bar"},
 				vals: []interface{}{1},
 			},
 		},
 		adap: testAdap,
 	}
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" ASC FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 1 || args[0] != 1 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -300,7 +295,7 @@ func TestBuildScanStop(t *testing.T) {
 		name: "foo",
 		buf:  new(strings.Builder),
 		opts: Opts{
-			Stop: &testIdx{
+			StopEx: &testIdx{
 				cols: []string{"bar"},
 				vals: []interface{}{1},
 			},
@@ -308,14 +303,15 @@ func TestBuildScanStop(t *testing.T) {
 		adap: testAdap,
 	}
 
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" < ?)) ORDER BY "bar" ASC FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 1 || args[0] != 1 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -324,26 +320,27 @@ func TestBuildScanStartStop(t *testing.T) {
 		name: "foo",
 		buf:  new(strings.Builder),
 		opts: Opts{
-			Start: &testIdx{
+			StartInc: &testIdx{
 				cols: []string{"bar"},
 				vals: []interface{}{1},
 			},
-			Stop: &testIdx{
+			StopEx: &testIdx{
 				cols: []string{"baz"},
 				vals: []interface{}{2},
 			},
 		},
 		adap: testAdap,
 	}
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) AND (("baz" < ?))`+
 		` ORDER BY "bar" ASC FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 2 || args[0] != 1 || args[1] != 2 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -359,15 +356,16 @@ func TestBuildScanPrefix(t *testing.T) {
 		},
 		adap: testAdap,
 	}
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "tab" WHERE "foo" = ? AND "bar" = ?`+
 		` ORDER BY "baz" ASC, "qux" ASC FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 2 || args[0] != true || args[1] != 2 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -383,14 +381,15 @@ func TestBuildScanPrefixNoVals(t *testing.T) {
 		},
 		adap: testAdap,
 	}
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "tab" ORDER BY "foo" ASC, "bar" ASC FOR SHARE;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 0 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -399,7 +398,7 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 		name: "foo",
 		buf:  new(strings.Builder),
 		opts: Opts{
-			Start: &testIdx{
+			StartInc: &testIdx{
 				cols: []string{"bar"},
 				vals: []interface{}{1},
 			},
@@ -409,14 +408,15 @@ func TestBuildScanLimitReverseLock(t *testing.T) {
 		},
 		adap: testAdap,
 	}
-	query, args := s.buildScan()
+	query, args, sts := s.buildScan()
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if query != `SELECT "data" FROM "foo" WHERE (("bar" >= ?)) ORDER BY "bar" DESC LIMIT 1;` {
-		t.Log("Bad Query", query)
-		t.Fail()
+		t.Error("Bad Query", query)
 	}
 	if len(args) != 1 || args[0] != 1 {
-		t.Log("Wrong args", args)
-		t.Fail()
+		t.Error("Wrong args", args)
 	}
 }
 
@@ -435,12 +435,10 @@ func TestAppendPrefix(t *testing.T) {
 	s.appendPrefix()
 	stmt := s.buf.String()
 	if stmt != ` WHERE "foo" = ? ORDER BY "bar" ASC` {
-		t.Log("Bad Stmt", stmt)
-		t.Fail()
+		t.Error("Bad Stmt", stmt)
 	}
 	if len(s.args) != 1 || s.args[0] != 1 {
-		t.Log("Args didn't match", s.args)
-		t.Fail()
+		t.Error("Args didn't match", s.args)
 	}
 }
 
@@ -459,12 +457,10 @@ func TestAppendPrefixAll(t *testing.T) {
 	s.appendPrefix()
 	stmt := s.buf.String()
 	if stmt != ` WHERE "foo" = ? AND "bar" = ?` {
-		t.Log("Bad Stmt", stmt)
-		t.Fail()
+		t.Error("Bad Stmt", stmt)
 	}
 	if len(s.args) != 2 || s.args[0] != 1 || s.args[1] != 2 {
-		t.Log("Args didn't match", s.args)
-		t.Fail()
+		t.Error("Args didn't match", s.args)
 	}
 }
 
@@ -476,8 +472,7 @@ func TestAppendOrder(t *testing.T) {
 	s.appendOrder([]string{"bar", "baz"})
 	stmt := s.buf.String()
 	if stmt != ` ORDER BY "bar" ASC, "baz" ASC` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 }
 
@@ -493,82 +488,167 @@ func TestBuildOrderStmtReverse(t *testing.T) {
 
 	stmt := s.buf.String()
 	if stmt != ` ORDER BY "foo" DESC` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 }
 
-func TestBuildStopOneVal(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1}, testAdap)
+func TestBuildStopExOneVal(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1}, "<", "<", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" < ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 1 || args[0] != 1 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
 	}
 }
 
-func TestBuildStopTwoVals(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B"}, []interface{}{1, 2}, testAdap)
+func TestBuildStopIncOneVal(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1}, "<", "<=", testAdap)
+	if stmt != `(("A" <= ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStopExTwoVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1, 2}, "<", "<", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
 	}
 }
 
-func TestBuildStopThreeVals(t *testing.T) {
-	stmt, args := buildStop([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, testAdap)
+func TestBuildStopIncTwoVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1, 2}, "<", "<=", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if stmt != `(("A" < ?) OR ("A" = ? AND "B" <= ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStopExThreeVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, "<", "<", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?) OR ("A" = ? AND "B" = ? AND "C" < ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
 		args[3] != 1 || args[4] != 2 || args[5] != 3 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
 	}
 }
 
-func TestBuildStartOneVal(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1}, testAdap)
+func TestBuildStopIncThreeVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, "<", "<=", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if stmt != `(("A" < ?) OR ("A" = ? AND "B" < ?) OR ("A" = ? AND "B" = ? AND "C" <= ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
+		args[3] != 1 || args[4] != 2 || args[5] != 3 {
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStartIncOneVal(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1}, ">", ">=", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" >= ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 1 || args[0] != 1 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
 	}
 }
 
-func TestBuildStartTwoVals(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B"}, []interface{}{1, 2}, testAdap)
+func TestBuildStartExOneVal(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1}, ">", ">", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if stmt != `(("A" > ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if len(args) != 1 || args[0] != 1 {
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStartIncTwoVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1, 2}, ">", ">=", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" > ?) OR ("A" = ? AND "B" >= ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
 	}
 }
 
-func TestBuildStartThreeVals(t *testing.T) {
-	stmt, args := buildStart([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, testAdap)
+func TestBuildStartExTwoVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B"}, []interface{}{1, 2}, ">", ">", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if stmt != `(("A" > ?) OR ("A" = ? AND "B" > ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if len(args) != 3 || args[0] != 1 || args[1] != 1 || args[2] != 2 {
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStartIncThreeVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, ">", ">=", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
 	if stmt != `(("A" > ?) OR ("A" = ? AND "B" > ?) OR ("A" = ? AND "B" = ? AND "C" >= ?))` {
-		t.Log("Statement didn't match", stmt)
-		t.Fail()
+		t.Error("Statement didn't match", stmt)
 	}
 	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
 		args[3] != 1 || args[4] != 2 || args[5] != 3 {
-		t.Log("Args didn't match", args)
-		t.Fail()
+		t.Error("Args didn't match", args)
+	}
+}
+
+func TestBuildStartExThreeVals(t *testing.T) {
+	stmt, args, sts := buildRange([]string{"A", "B", "C"}, []interface{}{1, 2, 3}, ">", ">", testAdap)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+	if stmt != `(("A" > ?) OR ("A" = ? AND "B" > ?) OR ("A" = ? AND "B" = ? AND "C" > ?))` {
+		t.Error("Statement didn't match", stmt)
+	}
+	if len(args) != 6 || args[0] != 1 || args[1] != 1 || args[2] != 2 ||
+		args[3] != 1 || args[4] != 2 || args[5] != 3 {
+		t.Error("Args didn't match", args)
 	}
 }
 
@@ -594,12 +674,10 @@ func TestInsertOneVal(t *testing.T) {
 	Insert(exec, "Foo", []string{"bar"}, []interface{}{1}, testAdap)
 
 	if exec.query != `INSERT INTO "Foo" ("bar") VALUES (?);` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 1 || exec.args[0] != 1 {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -609,12 +687,10 @@ func TestInsertMultiVal(t *testing.T) {
 	Insert(exec, "Foo", []string{"bar", "baz"}, []interface{}{1, true}, testAdap)
 
 	if exec.query != `INSERT INTO "Foo" ("bar", "baz") VALUES (?, ?);` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != true {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -645,16 +721,13 @@ func TestDeleteOneCol(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Delete(exec, "Foo", idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 1 || exec.args[0] != 1 {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -665,16 +738,13 @@ func TestDeleteMultiCols(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Delete(exec, "Foo", idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `DELETE FROM "Foo" WHERE "bar" = ? AND "baz" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != true {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -723,16 +793,13 @@ func TestUpdateOneColOneIdxCol(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 2 || exec.args[0] != 1 || exec.args[1] != 2 {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -745,16 +812,13 @@ func TestUpdateOneColMultiIdxCol(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `UPDATE "Foo" SET "foo" = ? WHERE "bar" = ? AND "baz" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 3 || exec.args[0] != 1 || exec.args[1] != 2 || exec.args[2] != false {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -767,16 +831,13 @@ func TestUpdateMultiColOneIdxCol(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 3 || exec.args[0] != 1 || exec.args[1] != true || exec.args[2] != 2 {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -789,17 +850,14 @@ func TestUpdateMultiColMultiIdxCol(t *testing.T) {
 	}
 	exec := &execCap{}
 	if err := Update(exec, "Foo", cols, vals, idx, testAdap); err != nil {
-		t.Log(err)
-		t.Fail()
+		t.Error(err)
 	}
 	if exec.query != `UPDATE "Foo" SET "foo" = ?, "bar" = ? WHERE "baz" = ? AND "qux" = ?;` {
-		t.Log("Query didn't match", exec.query)
-		t.Fail()
+		t.Error("Query didn't match", exec.query)
 	}
 	if len(exec.args) != 4 ||
 		exec.args[0] != 1 || exec.args[1] != true || exec.args[2] != 2 || exec.args[3] != false {
-		t.Log("Args didn't match", exec.args)
-		t.Fail()
+		t.Error("Args didn't match", exec.args)
 	}
 }
 
@@ -852,8 +910,7 @@ func TestAppendLock(t *testing.T) {
 		s.appendLock()
 		newQuery := s.buf.String()
 		if newQuery != tuple.query {
-			t.Logf("Mismatched query %s != %s", newQuery, tuple.query)
-			t.Fail()
+			t.Errorf("Mismatched query %s != %s", newQuery, tuple.query)
 		}
 	}
 }
