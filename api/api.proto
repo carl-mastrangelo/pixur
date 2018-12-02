@@ -77,6 +77,8 @@ message PicFile {
 message PicSource {
   // url is optional and is the location the pic came from.
   string url = 1;
+  // referrer is optional and is the location the pic was referred from.
+  string referrer = 3;
   // name is optional and the file name for this source.  It may be derived
   // from the url, from the content-disposition, or from the user who
   // upload the file.

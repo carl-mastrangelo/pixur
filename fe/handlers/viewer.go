@@ -10,6 +10,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/fe/server"
@@ -50,7 +52,24 @@ type viewerData struct {
 	Pic            *api.Pic
 	PicComment     *picComment
 	PicVote        *api.PicVote
+	PicTag         []*api.PicTag
 	DeletionReason []viewerDataDeletionReason
+}
+
+var _ collate.Lister = (*picTagsSortable)(nil)
+
+type picTagsSortable []*api.PicTag
+
+func (pts picTagsSortable) Len() int {
+	return len(pts)
+}
+
+func (pts picTagsSortable) Swap(i, k int) {
+	pts[i], pts[k] = pts[k], pts[i]
+}
+
+func (pts picTagsSortable) Bytes(i int) []byte {
+	return []byte(pts[i].Name)
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -119,10 +138,14 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	}
 	timesort(root.Child)
 
+	pts := picTagsSortable(details.PicTag)
+	collate.New(language.English, collate.Loose).Sort(pts)
+
 	data := viewerData{
 		paneData:   pd,
 		Pic:        details.Pic,
 		PicComment: root,
+		PicTag:     ([]*api.PicTag)(pts),
 		PicVote:    pv,
 	}
 	for k, v := range api.DeletionReason_name {
@@ -134,6 +157,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 			Value: k,
 		})
 	}
+
 	if err := viewerTpl.Execute(w, data); err != nil {
 		httpCleanupError(w, err)
 		return

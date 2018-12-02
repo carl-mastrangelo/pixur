@@ -13,7 +13,6 @@
   .viewer .pic {
     text-align: center;
     max-height: 768px;
-     
   }
   
   .viewer .pic img {
@@ -151,6 +150,34 @@
   <br>
   {{template "commentreply" .PicComment}}
   {{template "comment" .PicComment.Child}}
+  
+  {{if .PicTag}}
+  <h4>Tags</h4>
+  <ul>
+    {{range .PicTag}}
+      <li>{{.Name}}</li>
+    {{end}}
+  </ul>
+  {{end}}
+  
+  {{if .Pic.Source}}
+  <h4>Sources</h4>
+  <dl>
+    {{range .Pic.Source}}
+      <dt>Name: {{if .Name}}{{.Name}}{{else}}-{{end}}</dt>
+      <dd>URL: 
+        {{if .Url}}
+          {{if .Referrer}}<a href="{{.Referrer}}" rel="nofollow" target="_blank">{{.Url}}</a>
+          {{else}}
+          {{.Url}}
+          {{end}}
+        {{else}}
+        -
+        {{end}}
+      </dd>
+    {{end}}
+  </dl>
+  {{end}}
   
   <hr>
     {{if .Pic.PendingDeletion }}
