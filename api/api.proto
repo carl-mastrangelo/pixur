@@ -36,6 +36,8 @@ message Pic {
   
   PicFile file = 16;
   
+  repeated PicSource source = 18;
+  
   repeated PicFile thumbnail = 17;
 }
 
@@ -70,6 +72,15 @@ message PicFile {
 
   // the size in bytes of the file
   int64 size = 9;
+}
+
+message PicSource {
+  // url is optional and is the location the pic came from.
+  string url = 1;
+  // name is optional and the file name for this source.  It may be derived
+  // from the url, from the content-disposition, or from the user who
+  // upload the file.
+  string name = 2;
 }
 
 message PicTag {
@@ -369,6 +380,11 @@ message UpsertPicRequest {
   // Either url and/or data must be set.   If the data field is set along 
   // with the URL, the url is treated as regular metadata and not fetched.  
 	string url = 1;
+	// referrer is the referrer url used to fetch the resource.  If no data is 
+	// set, the url will be used to retrieve the data, along with the referrer
+	// being set in the request.  If data is set, referrer is treated as 
+	// additional metadata.  May not be used if url is not set.
+	string referrer = 5;
 	// name is an optional field indicating a reasonable file name for the pic.
 	// If name and url are set, the name field will override the name 
 	// automatically derived from the URL.
@@ -552,7 +568,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181126 // AUTO UPDATED BY generate.go
+    api_version: 20181202 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
