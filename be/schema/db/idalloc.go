@@ -121,7 +121,8 @@ func preallocateIDs(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAd
 	}
 	alloc.lock.Lock()
 	lowat, hiwat := alloc.getWatermarkLocked()
-	if alloc.total >= lowat {
+	available := alloc.total
+	if available >= lowat {
 		alloc.lock.Unlock()
 		return nil
 	}
@@ -138,11 +139,11 @@ func preallocateIDs(ctx context.Context, beg Beginner, alloc *IDAlloc, adap DBAd
 	alloc.lock.Lock()
 	defer alloc.lock.Unlock()
 	lowat, hiwat = alloc.getWatermarkLocked()
-	available := alloc.total
+	available = alloc.total
 	if available >= lowat {
 		return nil
 	}
-
+	// hiwat >= lowat > available
 	grab := hiwat - available
 	next, sts := reserveIDs(qec, grab, adap)
 	if sts != nil {
