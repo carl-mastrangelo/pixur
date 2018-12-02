@@ -52,8 +52,9 @@ func apiPic(src *schema.Pic) *api.Pic {
 
 	for _, s := range src.Source {
 		dst.Source = append(dst.Source, &api.PicSource{
-			Name: s.Name,
-			Url:  s.Url,
+			Name:     s.Name,
+			Url:      s.Url,
+			Referrer: s.Referrer,
 		})
 	}
 
