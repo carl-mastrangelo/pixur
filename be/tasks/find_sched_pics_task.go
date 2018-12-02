@@ -60,7 +60,7 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 
 	top := int32(schema.PicScoreMax)
 	ps, err := j.FindPics(db.Opts{
-		Stop:    tab.PicsSchedOrder{SchedOrder: &top},
+		StopInc: tab.PicsSchedOrder{SchedOrder: &top},
 		Reverse: true,
 		Limit:   int(int64(len(pvs)) + defaultIndexPics),
 	})

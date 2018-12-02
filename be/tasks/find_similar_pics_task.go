@@ -35,22 +35,22 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Start: tab.PicsPrimary{&t.PicID},
-		Limit: 1,
+		Prefix: tab.PicsPrimary{&t.PicID},
+		Limit:  1,
 	})
 	if err != nil {
 		return status.Internal(err, "can't lookup pic")
 	}
 	if len(pics) != 1 {
-		return status.InvalidArgument(nil, "can't lookup pic", len(pics))
+		return status.NotFound(nil, "can't lookup pic", len(pics))
 	}
 	pic := pics[0]
 
 	dctIdentType := schema.PicIdent_DCT_0
 
 	picIdents, err := j.FindPicIdents(db.Opts{
-		Start: tab.PicIdentsPrimary{PicId: &t.PicID, Type: &dctIdentType},
-		Limit: 1,
+		Prefix: tab.PicIdentsPrimary{PicId: &t.PicID, Type: &dctIdentType},
+		Limit:  1,
 	})
 	if err != nil {
 		return status.Internal(err, "can't lookup pic ident")
@@ -62,7 +62,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	match := binary.BigEndian.Uint64(targetIdent.Value)
 
 	scanOpts := db.Opts{
-		Start: tab.PicIdentsIdent{Type: &dctIdentType},
+		StartInc: tab.PicIdentsIdent{Type: &dctIdentType},
 	}
 	var similarPicIDs []int64
 

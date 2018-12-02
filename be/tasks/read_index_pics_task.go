@@ -45,18 +45,16 @@ func lookupStartPic(j *tab.Job, id int64, asc bool) (*schema.Pic, status.S) {
 	if asc {
 		opts = db.Opts{
 			Limit: 1,
-			Start: tab.PicsPrimary{
+			StartInc: tab.PicsPrimary{
 				Id: &id,
 			},
 		}
 	} else {
-		// Stop is exclusive, we want inclusive.
-		upperId := id + 1
 		opts = db.Opts{
 			Limit:   1,
 			Reverse: true,
-			Stop: tab.PicsPrimary{
-				Id: &upperId,
+			StopInc: tab.PicsPrimary{
+				Id: &id,
 			},
 		}
 	}
@@ -164,11 +162,11 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	opts := db.Opts{
 		Limit: int(overmax),
 		Lock:  db.LockNone,
-		Start: tab.PicsIndexOrder{
+		StartInc: tab.PicsIndexOrder{
 			IndexOrder: &minIndexOrder,
 			Id:         &minIndexOrderPicId,
 		},
-		Stop: tab.PicsIndexOrder{
+		StopEx: tab.PicsIndexOrder{
 			IndexOrder: &maxIndexOrder,
 			Id:         &maxIndexOrderPicId,
 		},
@@ -192,11 +190,11 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 		prevOpts := db.Opts{
 			Limit: 1,
 			Lock:  db.LockNone,
-			Start: tab.PicsIndexOrder{
+			StartInc: tab.PicsIndexOrder{
 				IndexOrder: &minIndexOrder,
 				Id:         &minIndexOrderPicId,
 			},
-			Stop: tab.PicsIndexOrder{
+			StopEx: tab.PicsIndexOrder{
 				IndexOrder: &maxIndexOrder,
 				Id:         &maxIndexOrderPicId,
 			},

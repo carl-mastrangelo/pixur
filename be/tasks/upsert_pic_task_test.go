@@ -1450,7 +1450,7 @@ func TestInsertPicHashes(t *testing.T) {
 	}
 
 	idents, err := j.FindPicIdents(db.Opts{
-		Start:   tab.PicIdentsPrimary{},
+		Prefix:  tab.PicIdentsPrimary{},
 		Reverse: true,
 	})
 	if err != nil {
