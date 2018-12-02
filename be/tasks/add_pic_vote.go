@@ -141,11 +141,13 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		}
 		var iues []*schema.UserEvent
 		var oue *schema.UserEvent
+		notifications := make(map[int64]bool)
 		if userID != schema.AnonymousUserID {
 			idx, sts := next(userID)
 			if sts != nil {
 				return sts
 			}
+			notifications[userID] = true
 			oue = &schema.UserEvent{
 				UserId:     userID,
 				Index:      idx,
@@ -158,13 +160,13 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 				},
 			}
 		}
-		// The file source list promises that there are no duplicate userIDs
 		for _, fs := range p.Source {
-			if fs.UserId != schema.AnonymousUserID && fs.UserId != userID {
+			if fs.UserId != schema.AnonymousUserID && !notifications[fs.UserId] {
 				idx, sts := next(fs.UserId)
 				if sts != nil {
 					return sts
 				}
+				notifications[fs.UserId] = true
 				iues = append(iues, &schema.UserEvent{
 					UserId:     fs.UserId,
 					Index:      idx,

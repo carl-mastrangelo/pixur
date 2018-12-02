@@ -484,7 +484,7 @@ type Pic_FileSource struct {
 	Referrer string `protobuf:"bytes,2,opt,name=referrer,proto3" json:"referrer,omitempty"`
 	// created_ts is the time the file source was added.
 	CreatedTs *timestamp.Timestamp `protobuf:"bytes,3,opt,name=created_ts,json=createdTs,proto3" json:"created_ts,omitempty"`
-	// If present, there is only one file_source per user_id.
+	// user_id is usually unique, but there may be occasional duplicates
 	UserId int64 `protobuf:"varint,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// name is optional and the file name for this source.  It may be derived
 	// from the url, from the content-disposition, or from the user who

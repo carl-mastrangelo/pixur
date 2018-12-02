@@ -152,11 +152,13 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 
 	var iues []*schema.UserEvent
 	var oue *schema.UserEvent
+	notifications := make(map[int64]bool)
 	if userID != schema.AnonymousUserID {
 		idx, sts := next(userID)
 		if sts != nil {
 			return sts
 		}
+		notifications[userID] = true
 		oue = &schema.UserEvent{
 			UserId:     userID,
 			Index:      idx,
@@ -171,11 +173,12 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}
 	if commentParent != nil && commentParent.UserId != schema.AnonymousUserID &&
-		(oue == nil || oue.UserId != commentParent.UserId) {
+		!notifications[commentParent.UserId] {
 		idx, sts := next(commentParent.UserId)
 		if sts != nil {
 			return sts
 		}
+		notifications[commentParent.UserId] = true
 		iues = append(iues, &schema.UserEvent{
 			UserId:     commentParent.UserId,
 			Index:      idx,
@@ -192,13 +195,13 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	// If we aren't notifying the parent comment because it doesn't exist, then create a notification
 	// for each of the "uploaders" of the pic.
 	if commentParent == nil {
-		// The file source list promises that there will be at most one, non-anonymous, user id
 		for _, fs := range p.Source {
-			if fs.UserId != schema.AnonymousUserID && (oue == nil || oue.UserId != fs.UserId) {
+			if fs.UserId != schema.AnonymousUserID && !notifications[fs.UserId] {
 				idx, sts := next(fs.UserId)
 				if sts != nil {
 					return sts
 				}
+				notifications[fs.UserId] = true
 				iues = append(iues, &schema.UserEvent{
 					UserId:     fs.UserId,
 					Index:      idx,

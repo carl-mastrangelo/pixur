@@ -62,7 +62,7 @@ message Pic {
     string referrer = 2;
     // created_ts is the time the file source was added.
     google.protobuf.Timestamp created_ts = 3;
-    // If present, there is only one file_source per user_id.
+    // user_id is usually unique, but there may be occasional duplicates
     int64 user_id = 4;
     // name is optional and the file name for this source.  It may be derived
     // from the url, from the content-disposition, or from the user who
