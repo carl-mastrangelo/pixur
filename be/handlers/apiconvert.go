@@ -130,6 +130,72 @@ func apiPicVote(src *schema.PicVote) *api.PicVote {
 	}
 }
 
+func apiUserEvent(
+	src *schema.UserEvent, commentIdToCommentParentId map[int64]int64) *api.UserEvent {
+	dst := &api.UserEvent{
+		UserId: schema.Varint(src.UserId).Encode(),
+		UserEventId: schema.Varint(src.UserId).Encode() +
+			schema.Varint(schema.UserEventCreatedTsCol(src.CreatedTs)).Encode(),
+		CreatedTime: src.CreatedTs,
+	}
+	if src.Index != 0 {
+		dst.UserEventId += schema.Varint(src.Index).Encode()
+	}
+	switch evt := src.Evt.(type) {
+	case *schema.UserEvent_OutgoingUpsertPicVote_:
+		dst.Evt = &api.UserEvent_OutgoingUpsertPicVote_{
+			OutgoingUpsertPicVote: &api.UserEvent_OutgoingUpsertPicVote{
+				PicId: schema.Varint(evt.OutgoingUpsertPicVote.PicId).Encode(),
+			},
+		}
+	case *schema.UserEvent_IncomingUpsertPicVote_:
+		var subjectUserId string
+		if evt.IncomingUpsertPicVote.SubjectUserId != schema.AnonymousUserID {
+			subjectUserId = schema.Varint(evt.IncomingUpsertPicVote.SubjectUserId).Encode()
+		}
+		dst.Evt = &api.UserEvent_IncomingUpsertPicVote_{
+			IncomingUpsertPicVote: &api.UserEvent_IncomingUpsertPicVote{
+				PicId:         schema.Varint(evt.IncomingUpsertPicVote.PicId).Encode(),
+				SubjectUserId: subjectUserId,
+			},
+		}
+	case *schema.UserEvent_OutgoingPicComment_:
+		dst.Evt = &api.UserEvent_OutgoingPicComment_{
+			OutgoingPicComment: &api.UserEvent_OutgoingPicComment{
+				PicId:     schema.Varint(evt.OutgoingPicComment.PicId).Encode(),
+				CommentId: schema.Varint(evt.OutgoingPicComment.CommentId).Encode(),
+			},
+		}
+	case *schema.UserEvent_IncomingPicComment_:
+		var commentParentId string
+		if cpid := commentIdToCommentParentId[evt.IncomingPicComment.CommentId]; cpid != schema.NoCommentParentID {
+			commentParentId = schema.Varint(cpid).Encode()
+		}
+		dst.Evt = &api.UserEvent_IncomingPicComment_{
+			IncomingPicComment: &api.UserEvent_IncomingPicComment{
+				PicId:           schema.Varint(evt.IncomingPicComment.PicId).Encode(),
+				CommentId:       schema.Varint(evt.IncomingPicComment.CommentId).Encode(),
+				CommentParentId: commentParentId,
+			},
+		}
+	case *schema.UserEvent_UpsertPic_:
+		dst.Evt = &api.UserEvent_UpsertPic_{
+			UpsertPic: &api.UserEvent_UpsertPic{
+				PicId: schema.Varint(evt.UpsertPic.PicId).Encode(),
+			},
+		}
+	}
+	return dst
+}
+
+func apiUserEvents(dst []*api.UserEvent, srcs []*schema.UserEvent,
+	commentIdToCommentParentId map[int64]int64) []*api.UserEvent {
+	for _, src := range srcs {
+		dst = append(dst, apiUserEvent(src, commentIdToCommentParentId))
+	}
+	return dst
+}
+
 // TODO: test this
 func apiConfig(src *schema.Configuration) *api.BackendConfiguration {
 	var anonymousCapability, newUserCapability *api.BackendConfiguration_CapabilitySet

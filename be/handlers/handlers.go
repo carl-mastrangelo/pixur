@@ -93,6 +93,10 @@ func (s *serv) FindSimilarPics(ctx oldctx.Context, req *api.FindSimilarPicsReque
 	return s.handleFindSimilarPics(ctx, req)
 }
 
+func (s *serv) FindUserEvents(ctx oldctx.Context, req *api.FindUserEventsRequest) (*api.FindUserEventsResponse, error) {
+	return s.handleFindUserEvents(ctx, req)
+}
+
 func (s *serv) GetRefreshToken(ctx oldctx.Context, req *api.GetRefreshTokenRequest) (*api.GetRefreshTokenResponse, error) {
 	return s.handleGetRefreshToken(ctx, req)
 }

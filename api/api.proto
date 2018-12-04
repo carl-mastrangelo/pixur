@@ -247,6 +247,58 @@ message BackendConfiguration {
   }
 }
 
+message UserEvent {
+  string user_id = 1;
+  string user_event_id = 2;
+  
+  // created_time is when the user event was created.
+  google.protobuf.Timestamp created_time = 3;
+  
+  // IncomingUpsertPicVote represents sending a vote on a pic another user made.  If a user
+  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
+  message OutgoingUpsertPicVote {
+    string pic_id = 1;
+  }
+
+  // IncomingUpsertPicVote represents receiving a vote on a pic they made.  If a user
+  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
+  message IncomingUpsertPicVote {
+    string pic_id = 1;
+    // The user who made the vote.  May be absent
+    string subject_user_id = 2;
+  }
+
+  // OutgoingPicComment represents commenting on someone else's pic.  If a user comments on
+  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
+  message OutgoingPicComment {
+    string pic_id = 1;
+    // comment_id is the comment that this user created.
+    string comment_id = 2;
+  }
+
+  // IncomingPicComment represents commenting on someone else's pic.  If a user comments on
+  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
+  message IncomingPicComment {
+    string pic_id = 1;
+    // comment_id is the newly created child comment, **not** the one owned by user_id.  The
+    // comment_parent_id of the given comment is owned by user_id.
+    string comment_id = 2;
+    string comment_parent_id = 3;
+  }
+  
+  message UpsertPic {
+    string pic_id = 1;
+  }
+
+  oneof evt {
+    OutgoingUpsertPicVote outgoing_upsert_pic_vote = 4;
+    IncomingUpsertPicVote incoming_upsert_pic_vote = 5;
+    OutgoingPicComment outgoing_pic_comment = 6;
+    IncomingPicComment incoming_pic_comment = 7;
+    UpsertPic upsert_pic = 8;
+  }
+}
+
 message LookupUserRequest {
   // if absent, assumed to come from auth token
   string user_id = 1;
@@ -542,6 +594,23 @@ message LookupPicExtensionResponse {
   map<string, google.protobuf.Any> ext = 1;
 }
 
+message FindUserEventsRequest {
+  // Optional.  Uses auth token if not specified.
+  string user_id = 1;
+  // Optional.  If present, specifies the starting user event id to scan for
+  string start_user_event_id = 2;
+  
+  bool ascending = 3;
+}
+
+message FindUserEventsResponse {
+  repeated UserEvent user_event = 1;
+  
+  string next_user_event_id = 2;
+  string prev_user_event_id = 3;
+}
+
+
 extend google.protobuf.ServiceOptions {
   ServiceOpts pixur_service_opts = 65537;
 }
@@ -570,7 +639,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181202 // AUTO UPDATED BY generate.go
+    api_version: 20181204 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
@@ -595,6 +664,10 @@ service PixurService {
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
+  
+  rpc FindUserEvents(FindUserEventsRequest) returns (FindUserEventsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   
