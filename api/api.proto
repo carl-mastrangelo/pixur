@@ -241,6 +241,10 @@ message BackendConfiguration {
   google.protobuf.BoolValue enable_pic_comment_self_reply = 16;
   // allows a single user to reply multiple times to one comment
   google.protobuf.BoolValue enable_pic_comment_sibling_reply = 17;
+  // the default number of user events to return
+  google.protobuf.Int64Value default_find_user_events = 18;
+  // the max number of user events to return
+  google.protobuf.Int64Value max_find_user_events = 19;
 
   message CapabilitySet {
     repeated Capability.Cap capability = 1;

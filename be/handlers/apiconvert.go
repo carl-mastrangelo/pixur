@@ -168,6 +168,7 @@ func apiUserEvent(
 		}
 	case *schema.UserEvent_IncomingPicComment_:
 		var commentParentId string
+		// TODO: implement
 		if cpid := commentIdToCommentParentId[evt.IncomingPicComment.CommentId]; cpid != schema.NoCommentParentID {
 			commentParentId = schema.Varint(cpid).Encode()
 		}
@@ -228,6 +229,8 @@ func apiConfig(src *schema.Configuration) *api.BackendConfiguration {
 		MaxWebmDuration:              src.MaxWebmDuration,
 		EnablePicCommentSelfReply:    src.EnablePicCommentSelfReply,
 		EnablePicCommentSiblingReply: src.EnablePicCommentSiblingReply,
+		DefaultFindUserEvents:        src.DefaultFindUserEvents,
+		MaxFindUserEvents:            src.MaxFindUserEvents,
 	}
 }
 
@@ -263,6 +266,8 @@ func beConfig(src *api.BackendConfiguration) *schema.Configuration {
 		MaxWebmDuration:              src.MaxWebmDuration,
 		EnablePicCommentSelfReply:    src.EnablePicCommentSelfReply,
 		EnablePicCommentSiblingReply: src.EnablePicCommentSiblingReply,
+		DefaultFindUserEvents:        src.DefaultFindUserEvents,
+		MaxFindUserEvents:            src.MaxFindUserEvents,
 	}
 }
 

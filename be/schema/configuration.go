@@ -108,4 +108,10 @@ var defaultConfiguration = &Configuration{
 	EnablePicCommentSiblingReply: &wpb.BoolValue{
 		Value: false,
 	},
+	DefaultFindUserEvents: &wpb.Int64Value{
+		Value: 10,
+	},
+	MaxFindUserEvents: &wpb.Int64Value{
+		Value: 100,
+	},
 }
