@@ -31,7 +31,9 @@ type userEditData struct {
 type userEventsData struct {
 	*paneData
 
-	UserEvents []*api.UserEvent
+	ObjectUserId string
+	Next, Prev   string
+	UserEvents   []*api.UserEvent
 }
 
 type capInfo struct {
@@ -54,9 +56,26 @@ func (h *userHandler) userEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var prevID string
+	var nextID string
+	if !isAsc {
+		nextID = resp.NextUserEventId
+		prevID = resp.PrevUserEventId
+	} else {
+		nextID = resp.PrevUserEventId
+		prevID = resp.NextUserEventId
+		for i := 0; i < len(resp.UserEvent)/2; i++ {
+			resp.UserEvent[i], resp.UserEvent[len(resp.UserEvent)-i-1] =
+				resp.UserEvent[len(resp.UserEvent)-i-1], resp.UserEvent[i]
+		}
+	}
+
 	data := &userEventsData{
-		paneData:   newPaneData(ctx, "Recent Activity", h.pt),
-		UserEvents: resp.UserEvent,
+		paneData:     newPaneData(ctx, "Recent Activity", h.pt),
+		UserEvents:   resp.UserEvent,
+		ObjectUserId: r.FormValue(h.pt.pr.UserId()),
+		Next:         nextID,
+		Prev:         prevID,
 	}
 	if err := h.userEventsTpl.Execute(w, data); err != nil {
 		httpError(w, err)

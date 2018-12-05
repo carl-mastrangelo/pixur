@@ -60,15 +60,11 @@ func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEvents
 	resp := &api.FindUserEventsResponse{
 		UserEvent: apiUserEvents(nil, task.UserEvents, nil),
 	}
-
-	/*
-		if task.NextID != 0 {
-			resp.NextPicId = schema.Varint(task.NextID).Encode()
-		}
-		if task.PrevID != 0 {
-			resp.PrevPicId = schema.Varint(task.PrevID).Encode()
-		}
-	*/
-
+	if task.NextUserID != 0 {
+		resp.NextUserEventId = apiUserEventId(task.NextUserID, task.NextCreatedTs, task.NextIndex)
+	}
+	if task.PrevUserID != 0 {
+		resp.PrevUserEventId = apiUserEventId(task.PrevUserID, task.PrevCreatedTs, task.PrevIndex)
+	}
 	return resp, nil
 }

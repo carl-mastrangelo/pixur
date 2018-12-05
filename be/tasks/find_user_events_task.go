@@ -14,12 +14,15 @@ type FindUserEventsTask struct {
 	Beg tab.JobBeginner
 
 	// Input
+	MaxUserEvents                           int64
 	ObjectUserID                            int64
 	StartUserID, StartCreatedTs, StartIndex int64
 	Ascending                               bool
 
 	// Output
-	UserEvents []*schema.UserEvent
+	UserEvents                           []*schema.UserEvent
+	NextUserID, NextCreatedTs, NextIndex int64
+	PrevUserID, PrevCreatedTs, PrevIndex int64
 }
 
 func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
@@ -72,10 +75,8 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		objectUser = us[0]
 	}
 
-	minUserId := objectUserId
 	minCreatedTs := int64(math.MinInt64)
 	minIndex := int64(0)
-	maxUserId := objectUserId
 	maxCreatedTs := int64(math.MaxInt64)
 	maxIndex := int64(math.MaxInt64)
 
@@ -84,27 +85,30 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 			return status.PermissionDenied(nil, "can't lookup user events for different user")
 		}
 		if t.Ascending {
-			minUserId = t.StartUserID
 			minCreatedTs = t.StartCreatedTs
 			minIndex = t.StartIndex
 		} else {
-			maxUserId = t.StartUserID
 			maxCreatedTs = t.StartCreatedTs
 			maxIndex = t.StartIndex
 		}
 	}
 
+	_, overmax, sts := getAndValidateMaxUserEvents(conf, t.MaxUserEvents)
+	if sts != nil {
+		return sts
+	}
+
 	ues, err := j.FindUserEvents(db.Opts{
 		Reverse: !t.Ascending,
-		Limit:   1000,
+		Limit:   int(overmax),
 		Lock:    db.LockNone,
 		StartInc: tab.UserEventsPrimary{
-			UserId:    &minUserId,
+			UserId:    &objectUserId,
 			CreatedTs: &minCreatedTs,
 			Index:     &minIndex,
 		},
 		StopInc: tab.UserEventsPrimary{
-			UserId:    &maxUserId,
+			UserId:    &objectUserId,
 			CreatedTs: &maxCreatedTs,
 			Index:     &maxIndex,
 		},
@@ -113,10 +117,68 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't find user events")
 	}
 
-	if err := j.Rollback(); err != nil {
-		return status.From(err)
+	revOpts := db.Opts{
+		Limit:   1,
+		Lock:    db.LockNone,
+		Reverse: t.Ascending,
 	}
-	t.UserEvents = ues
+	if t.Ascending {
+		maxCreatedTs, maxIndex = minCreatedTs, minIndex
+		minCreatedTs, minIndex = math.MinInt64, 0
+		revOpts.StartInc = tab.UserEventsPrimary{
+			UserId:    &objectUserId,
+			CreatedTs: &minCreatedTs,
+			Index:     &minIndex,
+		}
+		revOpts.StopEx = tab.UserEventsPrimary{
+			UserId:    &objectUserId,
+			CreatedTs: &maxCreatedTs,
+			Index:     &maxIndex,
+		}
+	} else {
+		minCreatedTs, minIndex = maxCreatedTs, maxIndex
+		maxCreatedTs, maxIndex = math.MaxInt64, math.MaxInt64
+		revOpts.StartEx = tab.UserEventsPrimary{
+			UserId:    &objectUserId,
+			CreatedTs: &minCreatedTs,
+			Index:     &minIndex,
+		}
+		revOpts.StopInc = tab.UserEventsPrimary{
+			UserId:    &objectUserId,
+			CreatedTs: &maxCreatedTs,
+			Index:     &maxIndex,
+		}
+	}
+
+	prevUes, err := j.FindUserEvents(revOpts)
+	if err != nil {
+		return status.Internal(err, "Unable to find prev user events")
+	}
+
+	if n := len(ues); n > 0 && int64(n) == overmax {
+		t.UserEvents = ues[:n-1]
+		k := tab.KeyForUserEvent(ues[n-1])
+		t.NextUserID, t.NextCreatedTs, t.NextIndex = *k.UserId, *k.CreatedTs, *k.Index
+	} else {
+		t.UserEvents = ues
+	}
+	if len(prevUes) > 0 {
+		k := tab.KeyForUserEvent(prevUes[0])
+		t.PrevUserID, t.PrevCreatedTs, t.PrevIndex = *k.UserId, *k.CreatedTs, *k.Index
+	}
 
 	return nil
+}
+
+func getAndValidateMaxUserEvents(conf *schema.Configuration, requestedMax int64) (
+	max, overmax int64, _ status.S) {
+	if requestedMax < 0 {
+		return 0, 0, status.InvalidArgument(nil, "negative max user events")
+	}
+	maxPics, overMaxPics := getMaxUserEvents(requestedMax, conf)
+	return maxPics, overMaxPics, nil
+}
+
+func getMaxUserEvents(requestedMax int64, conf *schema.Configuration) (max, overmax int64) {
+	return getMaxConf(requestedMax, conf.DefaultFindUserEvents, conf.MaxFindUserEvents)
 }

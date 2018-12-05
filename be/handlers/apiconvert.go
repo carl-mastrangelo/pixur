@@ -130,16 +130,22 @@ func apiPicVote(src *schema.PicVote) *api.PicVote {
 	}
 }
 
+func apiUserEventId(userId, createdTs, index int64) string {
+	var b []byte
+	b = schema.Varint(userId).Append(b)
+	b = schema.Varint(createdTs).Append(b)
+	if index != 0 {
+		b = schema.Varint(index).Append(b)
+	}
+	return string(b)
+}
+
 func apiUserEvent(
 	src *schema.UserEvent, commentIdToCommentParentId map[int64]int64) *api.UserEvent {
 	dst := &api.UserEvent{
-		UserId: schema.Varint(src.UserId).Encode(),
-		UserEventId: schema.Varint(src.UserId).Encode() +
-			schema.Varint(schema.UserEventCreatedTsCol(src.CreatedTs)).Encode(),
+		UserId:      schema.Varint(src.UserId).Encode(),
+		UserEventId: apiUserEventId(src.UserId, schema.UserEventCreatedTsCol(src.CreatedTs), src.Index),
 		CreatedTime: src.CreatedTs,
-	}
-	if src.Index != 0 {
-		dst.UserEventId += schema.Varint(src.Index).Encode()
 	}
 	switch evt := src.Evt.(type) {
 	case *schema.UserEvent_OutgoingUpsertPicVote_:
