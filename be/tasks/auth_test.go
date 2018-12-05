@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
+	"pixur.org/pixur/be/schema/db"
 )
 
 func TestLookupUserForAuthOrNil_succeeds(t *testing.T) {
@@ -21,7 +22,7 @@ func TestLookupUserForAuthOrNil_succeeds(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	actual, sts := lookupUserForAuthOrNil(ctx, j)
+	actual, sts := lookupUserForAuthOrNil(ctx, j, db.LockRead)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -38,7 +39,7 @@ func TestLookupUserForAuthOrNil_nilOnEmpty(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	actual, sts := lookupUserForAuthOrNil(context.Background(), j)
+	actual, sts := lookupUserForAuthOrNil(context.Background(), j, db.LockRead)
 	if sts != nil {
 		t.Fatal(sts)
 	}
@@ -57,7 +58,7 @@ func TestLookupUserForAuthOrNil_failsOnNoUser(t *testing.T) {
 
 	ctx := CtxFromUserID(context.Background(), -1)
 
-	_, sts := lookupUserForAuthOrNil(ctx, j)
+	_, sts := lookupUserForAuthOrNil(ctx, j, db.LockRead)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -80,7 +81,7 @@ func TestLookupUserForAuthOrNil_failsOnDbError(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, sts := lookupUserForAuthOrNil(ctx, j)
+	_, sts := lookupUserForAuthOrNil(ctx, j, db.LockRead)
 	if sts == nil {
 		t.Fatal("expected error")
 	}

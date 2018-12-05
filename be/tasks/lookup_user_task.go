@@ -35,7 +35,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 	defer revert(j, &stscap)
 
 	var objectUser *schema.User
-	if subjectUserID == t.ObjectUserID || t.ObjectUserID == 0 {
+	if subjectUserID == t.ObjectUserID || t.ObjectUserID == schema.AnonymousUserID {
 		// looking up self
 		su, sts := requireCapability(ctx, j, schema.User_USER_READ_SELF)
 		if sts != nil {

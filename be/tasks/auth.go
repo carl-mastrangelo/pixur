@@ -10,11 +10,11 @@ import (
 )
 
 // lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
-func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job) (*schema.User, status.S) {
+func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job, lk db.Lock) (*schema.User, status.S) {
 	if uid, ok := UserIDFromCtx(ctx); ok {
 		us, err := j.FindUsers(db.Opts{
 			Prefix: tab.UsersPrimary{&uid},
-			Lock:   db.LockNone,
+			Lock:   lk,
 		})
 		if err != nil {
 			return nil, status.Internal(err, "can't lookup user")
@@ -31,7 +31,7 @@ func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job) (*schema.User, stat
 // is no user, the anonymous user capabilities are used.
 func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
 	*schema.User, status.S) {
-	u, sts := lookupUserForAuthOrNil(ctx, j)
+	u, sts := lookupUserForAuthOrNil(ctx, j, db.LockNone)
 	if sts != nil {
 		return nil, sts
 	}
