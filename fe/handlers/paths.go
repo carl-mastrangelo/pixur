@@ -72,6 +72,24 @@ func (p *paths) UserEdit(userID string) *url.URL {
 	return p.User().ResolveReference(&u)
 }
 
+func (p *paths) UserEvents(userID, userEventID string, asc bool) *url.URL {
+	u := url.URL{Path: "activity"}
+	v := url.Values{}
+	if userID != "" {
+		v.Add(p.pr.UserId(), userID)
+	}
+	if userEventID != "" {
+		v.Add(p.pr.StartUserEventId(), userEventID)
+	}
+	if asc {
+		v.Set(p.pr.UserEventsAsc(), "")
+	}
+	if len(v) != 0 {
+		u.RawQuery = v.Encode()
+	}
+	return p.User().ResolveReference(&u)
+}
+
 func (p *paths) ActionDir() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "a/"})
 }

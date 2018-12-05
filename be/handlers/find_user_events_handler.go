@@ -6,6 +6,7 @@ import (
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/status"
+	"pixur.org/pixur/be/tasks"
 )
 
 // TODO: test
@@ -43,20 +44,21 @@ func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEvents
 		}
 	}
 
-	/*
-		var task = &tasks.ReadIndexPicsTask{
-			Beg:       s.db,
-			StartID:   int64(picID),
-			Ascending: req.Ascending,
-		}
+	var task = &tasks.FindUserEventsTask{
+		Beg:            s.db,
+		Ascending:      req.Ascending,
+		ObjectUserID:   int64(userID),
+		StartUserID:    int64(keyUserId),
+		StartCreatedTs: int64(keyCreatedTs),
+		StartIndex:     int64(keyIndex),
+	}
 
-		if sts := s.runner.Run(ctx, task); sts != nil {
-			return nil, sts
-		}
-	*/
+	if sts := s.runner.Run(ctx, task); sts != nil {
+		return nil, sts
+	}
 
 	resp := &api.FindUserEventsResponse{
-		UserEvent: apiUserEvents(nil, nil, nil),
+		UserEvent: apiUserEvents(nil, task.UserEvents, nil),
 	}
 
 	/*

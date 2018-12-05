@@ -51,6 +51,14 @@ func (p params) UserId() string {
 	return "user_id"
 }
 
+func (p params) StartUserEventId() string {
+	return "start_user_event_id"
+}
+
+func (p params) UserEventsAsc() string {
+	return "asc"
+}
+
 func (p params) Version() string {
 	return "version"
 }

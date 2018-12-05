@@ -12,9 +12,10 @@ import (
 )
 
 type userHandler struct {
-	pt          *paths
-	c           api.PixurServiceClient
-	userEditTpl *template.Template
+	pt            *paths
+	c             api.PixurServiceClient
+	userEditTpl   *template.Template
+	userEventsTpl *template.Template
 }
 
 type userEditData struct {
@@ -27,10 +28,40 @@ type userEditData struct {
 	Cap []capInfo
 }
 
+type userEventsData struct {
+	*paneData
+
+	UserEvents []*api.UserEvent
+}
+
 type capInfo struct {
 	Cap         api.Capability_Cap
 	Description string
 	Has         bool
+}
+
+func (h *userHandler) userEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userEventId := r.FormValue(h.pt.pr.StartUserEventId())
+	_, isAsc := r.Form[h.pt.pr.UserEventsAsc()]
+	resp, err := h.c.FindUserEvents(ctx, &api.FindUserEventsRequest{
+		UserId:           r.FormValue(h.pt.pr.UserId()),
+		StartUserEventId: userEventId,
+		Ascending:        isAsc,
+	})
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	data := &userEventsData{
+		paneData:   newPaneData(ctx, "Recent Activity", h.pt),
+		UserEvents: resp.UserEvent,
+	}
+	if err := h.userEventsTpl.Execute(w, data); err != nil {
+		httpError(w, err)
+		return
+	}
 }
 
 func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
@@ -225,12 +256,15 @@ func (h *userHandler) diffcaps(oldyes, oldno, newyes, newno []api.Capability_Cap
 func init() {
 	register(func(s *server.Server) error {
 		h := userHandler{
-			c:           s.Client,
-			pt:          &paths{r: s.HTTPRoot},
-			userEditTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
+			c:             s.Client,
+			pt:            &paths{r: s.HTTPRoot},
+			userEditTpl:   parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
+			userEventsTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEvents),
 		}
 
 		s.HTTPMux.Handle(h.pt.UserEdit("").Path, readWrapper(s)(http.HandlerFunc(h.static)))
+		s.HTTPMux.Handle(
+			h.pt.UserEvents("", "", false).Path, readWrapper(s)(http.HandlerFunc(h.userEvents)))
 		s.HTTPMux.Handle(h.pt.UpdateUserAction().Path, writeWrapper(s)(http.HandlerFunc(h.useredit)))
 		return nil
 	})
