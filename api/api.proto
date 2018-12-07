@@ -39,6 +39,9 @@ message Pic {
   repeated PicSource source = 18;
   
   repeated PicFile thumbnail = 17;
+  
+  // The user id of the first user who uploading this pic.  May be absent.
+  google.protobuf.StringValue first_user_id = 19;
 }
 
 message PicFile {
@@ -116,6 +119,9 @@ message PicComment {
   google.protobuf.Timestamp modified_time = 5;
   // version is the version of the tag.  It is used when updating the tag.
   sfixed64 version = 6;
+  
+  // The user id of comment author.  May be absent.
+  google.protobuf.StringValue user_id = 8;
 }
 
 message PicVote {
@@ -643,7 +649,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181204 // AUTO UPDATED BY generate.go
+    api_version: 20181207 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

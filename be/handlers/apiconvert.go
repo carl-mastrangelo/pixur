@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	wpb "github.com/golang/protobuf/ptypes/wrappers"
+
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
 )
@@ -56,6 +58,11 @@ func apiPic(src *schema.Pic) *api.Pic {
 			Url:      s.Url,
 			Referrer: s.Referrer,
 		})
+		if s.UserId != schema.AnonymousUserID && dst.FirstUserId != nil {
+			dst.FirstUserId = &wpb.StringValue{
+				Value: schema.Varint(s.UserId).Encode(),
+			}
+		}
 	}
 
 	return dst
@@ -97,6 +104,9 @@ func apiPicComment(src *schema.PicComment) *api.PicComment {
 		CreatedTime:     src.CreatedTs,
 		ModifiedTime:    src.ModifiedTs,
 		Version:         src.Version(),
+		UserId: &wpb.StringValue{
+			Value: schema.Varint(src.UserId).Encode(),
+		},
 	}
 }
 
