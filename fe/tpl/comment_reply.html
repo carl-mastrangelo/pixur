@@ -1,11 +1,10 @@
 {{define "commentreply" }}
-{{if .PicComment.CommentId }}
-<div>
-  {{.PicComment.CommentId}}: {{.PicComment.Text}}
-</div>
-{{end}}
 {{$pt := .Paths}}
 {{$pr := $pt.Params}}
+{{if .PicComment.CommentId }}
+{{template "commenttext" .PicComment}}
+{{.PicComment}}
+{{end}}
 <form action="{{$pt.CommentReply .PicComment.PicId .PicComment.CommentId}}" method="post">
   <textarea name="{{$pr.CommentText}}">{{.CommentText}}</textarea>
   <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
@@ -13,4 +12,14 @@
   <input type="hidden" name="{{$pr.CommentParentId}}" value="{{.PicComment.CommentId}}" />
   <input type="submit" value="Reply" />
 </form>
+{{end}}
+{{define "commenttext"}}
+{{$pt := .Paths}}
+{{$pr := $pt.Params}}
+<div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
+	{{if .UserId}}{{if .UserId.Value}}[<a 
+	  href="{{$pt.UserEvents .UserId.Value "" false}}"
+	  >?</a>] {{end}}{{end}}{{.CommentId}}:
+	{{.Text}}
+</div>
 {{end}}

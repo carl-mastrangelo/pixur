@@ -209,9 +209,7 @@
 	    {{- $pt := .Paths -}}
 	    {{- $pr := $pt.Params -}}
 	    <li>
-	      <div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
-	      	{{.CommentId}}: {{.Text}}
-	      </div>
+        {{template "commenttext" .}}
 	      <a href="{{$pt.CommentReply .PicId .CommentId}}">Reply</a>
 	      {{if .Child}}{{template "comment" .Child}}{{end}}
 	    </li>
