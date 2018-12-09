@@ -30,23 +30,21 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	subjectUserId, _ := UserIDFromCtx(ctx)
-	var perm schema.User_Capability
-	var objectUserId int64
-	if t.ObjectUserID == 0 || t.ObjectUserID == subjectUserId {
-		perm = schema.User_USER_READ_SELF
-	} else {
-		perm = schema.User_USER_READ_ALL
-	}
-
-	u, sts := requireCapability(ctx, j, perm)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserID)
 	if sts != nil {
 		return sts
 	}
-	if t.ObjectUserID == 0 {
-		objectUserId = u.UserId
-	} else {
-		objectUserId = t.ObjectUserID
+	neededCapability := schema.User_USER_READ_ALL
+	if su == ou {
+		neededCapability = schema.User_USER_READ_SELF
+	}
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(su, conf, neededCapability); sts != nil {
+		return sts
 	}
 
 	pics, err := j.FindPics(db.Opts{
@@ -63,7 +61,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	picVotes, err := j.FindPicVotes(db.Opts{
 		Prefix: tab.PicVotesPrimary{
 			PicId:  &t.PicID,
-			UserId: &objectUserId,
+			UserId: &ou.UserId,
 		},
 	})
 	if err != nil {

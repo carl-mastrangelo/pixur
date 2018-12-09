@@ -17,7 +17,7 @@ type FindSchedPicsTask struct {
 	Now func() time.Time
 
 	// Inputs
-	UserID int64
+	ObjectUserID int64
 
 	// Outs
 	Pics []*schema.Pic
@@ -31,13 +31,29 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	u, sts := requireCapability(ctx, j, schema.User_PIC_INDEX, schema.User_USER_READ_SELF)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserID)
 	if sts != nil {
+		return sts
+	}
+	if sts != nil {
+		return sts
+	}
+	neededCapability := []schema.User_Capability{schema.User_PIC_INDEX}
+	if su == ou {
+		neededCapability = append(neededCapability, schema.User_USER_READ_SELF)
+	} else {
+		neededCapability = append(neededCapability, schema.User_USER_READ_ALL)
+	}
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(su, conf, neededCapability...); sts != nil {
 		return sts
 	}
 
 	pvs, err := j.FindPicVotes(db.Opts{
-		Prefix: tab.PicVotesUserId{UserId: &u.UserId},
+		Prefix: tab.PicVotesUserId{UserId: &su.UserId},
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pic votes")
@@ -47,10 +63,6 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 		pvByPicId[pv.PicId] = struct{}{}
 	}
 
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
-	}
 	var defaultIndexPics int64
 	if conf.DefaultFindIndexPics != nil {
 		defaultIndexPics = conf.DefaultFindIndexPics.Value

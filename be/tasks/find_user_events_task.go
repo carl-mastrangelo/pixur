@@ -32,47 +32,21 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	subjectUser, sts := lookupUserForAuthOrNil(ctx, j, db.LockRead)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockRead, t.ObjectUserID)
 	if sts != nil {
 		return sts
 	}
-	var objectUserId int64
-	var objectUser *schema.User
-	var neededCapability schema.User_Capability
-	if subjectUser != nil {
-		if t.ObjectUserID == subjectUser.UserId || t.ObjectUserID == schema.AnonymousUserID {
-			neededCapability = schema.User_USER_READ_SELF
-			objectUserId = subjectUser.UserId
-			objectUser = subjectUser
-		} else {
-			neededCapability = schema.User_USER_READ_ALL
-			objectUserId = t.ObjectUserID
-		}
-	} else {
-		if t.ObjectUserID != schema.AnonymousUserID {
-			neededCapability = schema.User_USER_READ_ALL
-			objectUserId = t.ObjectUserID
-		} else {
-			return status.InvalidArgument(nil, "no user specified")
-		}
+	neededCapability := schema.User_USER_READ_ALL
+	if su == ou {
+		neededCapability = schema.User_USER_READ_SELF
 	}
+
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
 	}
-	if sts := validateCapability(subjectUser, conf, neededCapability); sts != nil {
+	if sts := validateCapability(su, conf, neededCapability); sts != nil {
 		return sts
-	}
-
-	if objectUser == nil {
-		us, err := j.FindUsers(db.Opts{Prefix: tab.UsersPrimary{&objectUserId}})
-		if err != nil {
-			return status.Internal(err, "can't find users")
-		}
-		if len(us) != 1 {
-			return status.InvalidArgument(nil, "can't lookup user")
-		}
-		objectUser = us[0]
 	}
 
 	minCreatedTs := int64(math.MinInt64)
@@ -81,7 +55,7 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	maxIndex := int64(math.MaxInt64)
 
 	if t.StartUserID != 0 || t.StartCreatedTs != 0 || t.StartIndex != 0 {
-		if objectUserId != t.StartUserID {
+		if ou.UserId != t.StartUserID {
 			return status.PermissionDenied(nil, "can't lookup user events for different user")
 		}
 		if t.Ascending {
@@ -103,12 +77,12 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		Limit:   int(overmax),
 		Lock:    db.LockNone,
 		StartInc: tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &minCreatedTs,
 			Index:     &minIndex,
 		},
 		StopInc: tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &maxCreatedTs,
 			Index:     &maxIndex,
 		},
@@ -126,12 +100,12 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		maxCreatedTs, maxIndex = minCreatedTs, minIndex
 		minCreatedTs, minIndex = math.MinInt64, 0
 		revOpts.StartInc = tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &minCreatedTs,
 			Index:     &minIndex,
 		}
 		revOpts.StopEx = tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &maxCreatedTs,
 			Index:     &maxIndex,
 		}
@@ -139,12 +113,12 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		minCreatedTs, minIndex = maxCreatedTs, maxIndex
 		maxCreatedTs, maxIndex = math.MaxInt64, math.MaxInt64
 		revOpts.StartEx = tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &minCreatedTs,
 			Index:     &minIndex,
 		}
 		revOpts.StopInc = tab.UserEventsPrimary{
-			UserId:    &objectUserId,
+			UserId:    &ou.UserId,
 			CreatedTs: &maxCreatedTs,
 			Index:     &maxIndex,
 		}

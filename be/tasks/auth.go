@@ -55,3 +55,58 @@ func validateCapability(
 	}
 	return schema.VerifyCapabilitySubset(have, caps...)
 }
+
+// deriveObjectUserId combines a requested object user id and a subject user.
+//  objectUserId +  subjectUser => objectUserId
+//  objectUserId + !subjectUser => objectUserId
+// !objectUserId +  subjectUser => subjectUser.UserId
+// !objectUserId + !subjectUser => error
+func deriveObjectUserId(objectUserId int64, subjectUser *schema.User) (int64, status.S) {
+	if objectUserId != schema.AnonymousUserID {
+		return objectUserId, nil
+	} else if subjectUser != nil {
+		return subjectUser.UserId, nil
+	} else {
+		return 0, status.InvalidArgument(nil, "no user specified")
+	}
+}
+
+// lookupObjectUser returns the user for objectUserId, or subjectUser if it has the same UserId
+func lookupObjectUser(
+	ctx context.Context, j *tab.Job, lk db.Lock, objectUserId int64, subjectUser *schema.User) (
+	*schema.User, status.S) {
+	objectUserId, sts := deriveObjectUserId(objectUserId, subjectUser)
+	if sts != nil {
+		return nil, sts
+	}
+	if subjectUser != nil && subjectUser.UserId == objectUserId {
+		return subjectUser, nil
+	}
+	us, err := j.FindUsers(db.Opts{
+		Prefix: tab.UsersPrimary{&objectUserId},
+		Lock:   lk,
+	})
+	if err != nil {
+		return nil, status.Internal(err, "can't lookup user")
+	}
+	if len(us) != 1 {
+		return nil, status.NotFound(nil, "can't lookup user")
+	}
+	return us[0], nil
+}
+
+// lookupSubjectObjectUsers finds the subject and object user, typically from task input.  The
+// subject user may be nil, but the object user will not be nil.  If the subject user has the
+// same user id as the object user, they will be identical pointers.
+func lookupSubjectObjectUsers(ctx context.Context, j *tab.Job, lk db.Lock, objectUserId int64) (
+	subjectUser, objectUser *schema.User, stscap status.S) {
+	su, sts := lookupUserForAuthOrNil(ctx, j, lk)
+	if sts != nil {
+		return nil, nil, sts
+	}
+	ou, sts := lookupObjectUser(ctx, j, lk, objectUserId, su)
+	if sts != nil {
+		return nil, nil, sts
+	}
+	return su, ou, sts
+}

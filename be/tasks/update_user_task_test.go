@@ -305,7 +305,7 @@ func TestUpdateUserTaskMissingObject(t *testing.T) {
 		t.Fatal("expected nil status", sts)
 	}
 
-	if have, want := sts.Code(), codes.Unauthenticated; have != want {
+	if have, want := sts.Code(), codes.NotFound; have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {
