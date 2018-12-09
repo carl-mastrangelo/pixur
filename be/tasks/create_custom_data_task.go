@@ -16,6 +16,7 @@ type CreateCustomDataTask struct {
 	Now func() time.Time
 
 	KeyType, Key1, Key2, Key3, Key4, Key5 int64
+	Capability                            []schema.User_Capability
 
 	Data *anypb.Any
 }
@@ -26,6 +27,10 @@ func (t *CreateCustomDataTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
+
+	if _, sts := requireCapability(ctx, j, t.Capability...); sts != nil {
+		return sts
+	}
 
 	now := t.Now()
 	_, sts := createCustomData(j, t.KeyType, t.Key1, t.Key2, t.Key3, t.Key4, t.Key5, now, t.Data)

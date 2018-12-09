@@ -12,8 +12,9 @@ import (
 type FindCustomDataTask struct {
 	Beg tab.JobBeginner
 
-	KeyType   int64
-	KeyPrefix []int64
+	KeyType    int64
+	KeyPrefix  []int64
+	Capability []schema.User_Capability
 
 	Data []*schema.CustomData
 }
@@ -24,6 +25,10 @@ func (t *FindCustomDataTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't create job")
 	}
 	defer revert(j, &stscap)
+
+	if _, sts := requireCapability(ctx, j, t.Capability...); sts != nil {
+		return sts
+	}
 
 	data, sts := findCustomData(j, db.LockNone, t.KeyType, t.KeyPrefix...)
 	if sts != nil {
