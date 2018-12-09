@@ -20,11 +20,6 @@ type IncrementViewCountTask struct {
 }
 
 func (t *IncrementViewCountTask) Run(ctx context.Context) (stscap status.S) {
-	userID, ok := UserIDFromCtx(ctx)
-	if !ok {
-		return status.Unauthenticated(nil, "no user provided")
-	}
-	_ = userID // TODO: use this
 	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
