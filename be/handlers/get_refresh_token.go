@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/api"
 	"pixur.org/pixur/be/schema"
@@ -43,11 +44,16 @@ func init() {
 func (s *serv) handleGetRefreshToken(
 	ctx context.Context, req *api.GetRefreshTokenRequest) (*api.GetRefreshTokenResponse, status.S) {
 
+	compareHashAndPassword := func(hashed, password []byte) error {
+		return bcrypt.CompareHashAndPassword(hashed, password)
+	}
+
 	var task = &tasks.AuthUserTask{
-		Beg:    s.db,
-		Now:    s.now,
-		Ident:  req.Ident,
-		Secret: req.Secret,
+		Beg:                    s.db,
+		Now:                    s.now,
+		CompareHashAndPassword: compareHashAndPassword,
+		Ident:                  req.Ident,
+		Secret:                 req.Secret,
 	}
 
 	if req.RefreshToken != "" {

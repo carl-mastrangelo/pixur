@@ -50,6 +50,9 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
+	if taskCap.CompareHashAndPassword == nil {
+		t.Error("no compare hash function")
+	}
 	if taskCap.Ident != "a" || taskCap.Secret != "b" {
 		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
 	}

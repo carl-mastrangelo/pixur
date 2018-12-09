@@ -29,13 +29,17 @@ func TestCreateUserWorkFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
 
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Now:    func() time.Time { return now },
-		Ident:  "email",
-		Secret: "secret",
-		Ext:    map[string]*any.Any{"key": userExt},
+		Beg:          c.DB(),
+		Now:          func() time.Time { return now },
+		HashPassword: hashPassword,
+		Ident:        "email",
+		Secret:       "secret",
+		Ext:          map[string]*any.Any{"key": userExt},
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -74,12 +78,17 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:        c.DB(),
-		Now:        func() time.Time { return now },
-		Ident:      "email",
-		Secret:     "secret",
-		Capability: []schema.User_Capability{schema.User_USER_CREATE},
+		Beg:          c.DB(),
+		Now:          func() time.Time { return now },
+		HashPassword: hashPassword,
+		Ident:        "email",
+		Secret:       "secret",
+		Capability:   []schema.User_Capability{schema.User_USER_CREATE},
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -107,10 +116,15 @@ func TestCreateUserAlreadyUsed(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Ident:  u.User.Ident,
-		Secret: "secret",
+		Beg:          c.DB(),
+		Ident:        u.User.Ident,
+		HashPassword: hashPassword,
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -128,10 +142,15 @@ func TestCreateUserAlreadyUsedDifferentCase(t *testing.T) {
 	u.User.Ident = "little"
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Ident:  "LITTLE",
-		Secret: "secret",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Ident:        "LITTLE",
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -148,10 +167,15 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Ident:  strings.Repeat("a", 22+1),
-		Secret: "secret",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Ident:        strings.Repeat("a", 22+1),
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -174,10 +198,15 @@ func TestCreateUserIdentBogusBytes(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Ident:  string([]byte{0xff}),
-		Secret: "secret",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Ident:        string([]byte{0xff}),
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -194,10 +223,15 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Ident:  "\n",
-		Secret: "secret",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Ident:        "\n",
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -214,9 +248,14 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:    c.DB(),
-		Secret: "secret",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Secret:       "secret",
 	}
 
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
@@ -233,9 +272,14 @@ func TestCreateUserEmptySecret(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_USER_CREATE)
 	u.Update()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg:   c.DB(),
-		Ident: "email",
+		Beg:          c.DB(),
+		HashPassword: hashPassword,
+		Ident:        "email",
 	}
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
@@ -249,8 +293,13 @@ func TestCreateUserCantBegin(t *testing.T) {
 	db := c.DB()
 	db.Close()
 
+	hashPassword := func(pw []byte) ([]byte, error) {
+		return bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)
+	}
+
 	task := &CreateUserTask{
-		Beg: db,
+		Beg:          db,
+		HashPassword: hashPassword,
 	}
 	ctx := CtxFromUserID(c.Ctx, -1)
 	sts := new(TaskRunner).Run(ctx, task)

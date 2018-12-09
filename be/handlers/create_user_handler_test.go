@@ -58,6 +58,9 @@ func TestCreateUser(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
+	if taskCap.HashPassword == nil {
+		t.Error("missing hash function")
+	}
 	if have, want := taskCap.Ident, "foo@bar.com"; have != want {
 		t.Error("have", have, "want", want)
 	}

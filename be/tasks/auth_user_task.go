@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -18,8 +17,9 @@ import (
 
 type AuthUserTask struct {
 	// Deps
-	Beg tab.JobBeginner
-	Now func() time.Time
+	Beg                    tab.JobBeginner
+	Now                    func() time.Time
+	CompareHashAndPassword func(hashed, password []byte) error
 	// TODO: GC tokens after a handler provided timeout
 
 	// Inputs
@@ -98,7 +98,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		}
 
 		// TODO: rate limit this.
-		if err := bcrypt.CompareHashAndPassword(user.Secret, []byte(t.Secret)); err != nil {
+		if err := t.CompareHashAndPassword(user.Secret, []byte(t.Secret)); err != nil {
 			return status.Unauthenticated(err, "can't lookup user")
 		}
 		user.NextTokenId++
@@ -137,7 +137,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "no user identifier provided")
 	}
 
-	sort.Sort(sort.Reverse(UserTokens(user.UserToken)))
+	sort.Sort(sort.Reverse(userTokens(user.UserToken)))
 	if len(user.UserToken) > maxUserTokens {
 		for i := maxUserTokens; i < len(user.UserToken); i++ {
 			// TODO: log deleted tokens?
@@ -165,13 +165,13 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	return nil
 }
 
-type UserTokens []*schema.UserToken
+type userTokens []*schema.UserToken
 
-func (uts UserTokens) Len() int {
+func (uts userTokens) Len() int {
 	return len(uts)
 }
 
-func (uts UserTokens) Less(i, k int) bool {
+func (uts userTokens) Less(i, k int) bool {
 	if uts[i].LastSeenTs.Seconds < uts[k].LastSeenTs.Seconds {
 		return true
 	} else if uts[i].LastSeenTs.Seconds == uts[k].LastSeenTs.Seconds {
@@ -180,6 +180,6 @@ func (uts UserTokens) Less(i, k int) bool {
 	return false
 }
 
-func (uts UserTokens) Swap(i, k int) {
+func (uts userTokens) Swap(i, k int) {
 	uts[k], uts[i] = uts[i], uts[k]
 }

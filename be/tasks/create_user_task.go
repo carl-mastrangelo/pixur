@@ -6,7 +6,6 @@ import (
 	"time"
 
 	any "github.com/golang/protobuf/ptypes/any"
-	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -21,8 +20,9 @@ const (
 
 type CreateUserTask struct {
 	// Deps
-	Beg tab.JobBeginner
-	Now func() time.Time
+	Beg          tab.JobBeginner
+	Now          func() time.Time
+	HashPassword func([]byte) ([]byte, error)
 
 	// Inputs
 	Ident  string
@@ -95,7 +95,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	// TODO: rate limit this.
-	hashed, err := bcrypt.GenerateFromPassword([]byte(t.Secret), bcrypt.DefaultCost)
+	hashed, err := t.HashPassword([]byte(t.Secret))
 	if err != nil {
 		return status.Internal(err, "can't generate password")
 	}

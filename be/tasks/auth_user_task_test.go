@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -19,7 +20,8 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	db := c.DB()
 	db.Close()
 	task := &AuthUserTask{
-		Beg: db,
+		Beg:                    db,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
 	}
 
 	sts := new(TaskRunner).Run(c.Ctx, task)
@@ -39,8 +41,9 @@ func TestAuthUserTaskFailsOnNoIdentifier(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		Beg: c.DB(),
-		Now: time.Now,
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
 	}
 
 	ctx := c.Ctx
@@ -63,9 +66,10 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 	id := c.ID()
 
 	task := &AuthUserTask{
-		Beg:    c.DB(),
-		Now:    time.Now,
-		UserID: id,
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		UserID:                 id,
 	}
 
 	ctx := c.Ctx
@@ -88,10 +92,11 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		Beg:     c.DB(),
-		Now:     time.Now,
-		UserID:  u.User.UserId,
-		TokenID: 0,
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		UserID:                 u.User.UserId,
+		TokenID:                0,
 	}
 
 	ctx := c.Ctx
@@ -120,10 +125,11 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		Beg:     c.DB(),
-		Now:     time.Now,
-		UserID:  u.User.UserId,
-		TokenID: 1,
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		UserID:                 u.User.UserId,
+		TokenID:                1,
 	}
 
 	ctx := c.Ctx
@@ -151,9 +157,10 @@ func TestAuthUserTaskFailsOnMissingUser_Ident(t *testing.T) {
 	defer c.Close()
 
 	task := &AuthUserTask{
-		Beg:   c.DB(),
-		Now:   time.Now,
-		Ident: "foo@bar.com",
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		Ident:                  "foo@bar.com",
 	}
 
 	ctx := c.Ctx
@@ -176,10 +183,11 @@ func TestAuthUserTaskFailsOnWrongSecret(t *testing.T) {
 	u := c.CreateUser()
 
 	task := &AuthUserTask{
-		Beg:    c.DB(),
-		Now:    time.Now,
-		Ident:  u.User.Ident,
-		Secret: "bogus",
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		Ident:                  u.User.Ident,
+		Secret:                 "bogus",
 	}
 
 	ctx := c.Ctx
@@ -213,10 +221,11 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 	u.Update()
 
 	task := &AuthUserTask{
-		Beg:    c.DB(),
-		Now:    time.Now,
-		Ident:  u.User.Ident,
-		Secret: "secret",
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		Ident:                  u.User.Ident,
+		Secret:                 "secret",
 	}
 
 	ctx := c.Ctx
@@ -273,10 +282,11 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 	u2.Update()
 
 	task := &AuthUserTask{
-		Beg:    c.DB(),
-		Now:    time.Now,
-		Ident:  u1.User.Ident,
-		Secret: "secret",
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		Ident:                  u1.User.Ident,
+		Secret:                 "secret",
 
 		// A seemingly good token
 		UserID:  u2.User.UserId,
@@ -320,10 +330,11 @@ func TestAuthUserTask_LowerIdentWorks(t *testing.T) {
 	u2.Update()
 
 	task := &AuthUserTask{
-		Beg:    c.DB(),
-		Now:    time.Now,
-		Ident:  "LITTLE",
-		Secret: "secret",
+		Beg:                    c.DB(),
+		Now:                    time.Now,
+		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
+		Ident:                  "LITTLE",
+		Secret:                 "secret",
 
 		// A seemingly good token
 		UserID:  u2.User.UserId,
