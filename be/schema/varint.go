@@ -8,9 +8,9 @@ import (
 
 const (
 	// bits per symbol
-	bits = 5
+	varbits = 5
 	// number of possible symbols
-	symbolCount = 1 << bits
+	symbolCount = 1 << varbits
 )
 
 var (
@@ -21,7 +21,7 @@ var (
 
 // Prefix counts.
 const (
-	prefixg = (1<<(bits*iota)-1)*symbolCount/(symbolCount-1) + (symbolCount / 2)
+	prefixg = (1<<(varbits*iota)-1)*symbolCount/(symbolCount-1) + (symbolCount / 2)
 	prefixh
 	prefixj
 	prefixk
@@ -223,7 +223,7 @@ func (v Varint) Append(dest []byte) []byte {
 	}
 	for i := len(suffix) - 1; i >= 1; i-- {
 		suffix[i] = encodeTable[n&(symbolCount-1)]
-		n >>= bits
+		n >>= varbits
 	}
 
 	return append(dest, suffix...)
@@ -268,7 +268,7 @@ func (v *Varint) DecodeBytes(raw []byte) (int, error) {
 		if val == 0 && raw[i] != '0' {
 			return 0, errInvalidSymbol
 		}
-		num = num<<5 + val
+		num = num<<varbits + val
 	}
 
 	*v = Varint(int64(num + prefixDecodeTable[raw[0]]))

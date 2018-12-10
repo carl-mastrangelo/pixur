@@ -1,6 +1,9 @@
 package schema
 
 import (
+	"fmt"
+	"math/bits"
+	"sort"
 	"time"
 
 	"pixur.org/pixur/be/status"
@@ -85,6 +88,97 @@ func VerifyCapabilitySubset(have []User_Capability, want ...User_Capability) sta
 	return nil
 }
 
+type CapSet struct {
+	c uint64
+	// sorted and unique
+	extra []User_Capability
+}
+
+func CapSetOf(caps ...User_Capability) *CapSet {
+	cs := new(CapSet)
+	for _, c := range caps {
+		cs.Add(c)
+	}
+	return cs
+}
+
+func (cs *CapSet) Has(c User_Capability) bool {
+	if c >= 0 && c < 64 {
+		return (cs.c & uint64(1<<uint64(c))) > 0
+	} else {
+		for _, ec := range cs.extra {
+			if ec == c {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func (cs *CapSet) Add(c User_Capability) {
+	if c >= 0 && c < 64 {
+		cs.c |= uint64(1 << uint64(c))
+	} else {
+		n := len(cs.extra)
+		i := sort.Search(n, func(k int) bool {
+			return cs.extra[k] >= c
+		})
+		if i < n && cs.extra[i] == c {
+			return
+		}
+		cs.extra = append(cs.extra, -1)
+		copy(cs.extra[i+1:], cs.extra[i:n])
+		cs.extra[i] = c
+	}
+}
+
+func (cs *CapSet) Size() int {
+	return bits.OnesCount64(cs.c) + len(cs.extra)
+}
+
+func (cs *CapSet) Slice() []User_Capability {
+	c := cs.c
+	dst := make([]User_Capability, 0, cs.Size())
+	for {
+		if trail := bits.TrailingZeros64(c); trail == 64 {
+			break
+		} else {
+			dst = append(dst, User_Capability(trail))
+			c &= ^(uint64(1) << uint64(trail))
+		}
+	}
+	dst = append(dst, cs.extra...)
+	return dst
+}
+
+func (cs *CapSet) String() string {
+	return fmt.Sprintf("%v", cs.Slice())
+}
+
+func CapIntersect(left, right *CapSet) (both, leftonly, rightonly *CapSet) {
+	both, leftonly, rightonly = new(CapSet), new(CapSet), new(CapSet)
+	both.c = left.c & right.c
+	leftonly.c, rightonly.c = left.c & ^both.c, right.c & ^both.c
+	li, ri, ln, rn := 0, 0, len(left.extra), len(right.extra)
+	for li < ln && ri < rn {
+		lv, rv := left.extra[li], right.extra[ri]
+		if lv == rv {
+			both.extra = append(both.extra, lv)
+			li++
+			ri++
+		} else if lv < rv {
+			leftonly.extra = append(leftonly.extra, lv)
+			li++
+		} else {
+			rightonly.extra = append(rightonly.extra, rv)
+			ri++
+		}
+	}
+	leftonly.extra = append(leftonly.extra, left.extra[li:]...)
+	rightonly.extra = append(rightonly.extra, right.extra[ri:]...)
+	return
+}
+
 // TODO: test
 func HasCapabilitySubset(have []User_Capability, want ...User_Capability) (
 	has bool, missing []User_Capability) {
@@ -97,29 +191,7 @@ func HasCapabilitySubset(have []User_Capability, want ...User_Capability) (
 
 func findMissingCapability(have []User_Capability, want []User_Capability) (
 	missing []User_Capability) {
-	const bits = 64
-	var havemask uint64
-	var havemap map[User_Capability]struct{}
-	for _, c := range have {
-		if c < bits {
-			havemask |= uint64(1) << uint(c)
-		} else {
-			if havemap == nil {
-				havemap = make(map[User_Capability]struct{})
-			}
-			havemap[c] = struct{}{}
-		}
-	}
-	for _, c := range want {
-		if c < bits {
-			if havemask&(uint64(1)<<uint(c)) == 0 {
-				missing = append(missing, c)
-			}
-		} else {
-			if _, ok := havemap[c]; !ok {
-				missing = append(missing, c)
-			}
-		}
-	}
-	return
+
+	_, _, right := CapIntersect(CapSetOf(have...), CapSetOf(want...))
+	return right.Slice()
 }
