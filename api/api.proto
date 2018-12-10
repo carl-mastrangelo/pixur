@@ -126,7 +126,8 @@ message PicComment {
 
 message PicVote {
   string pic_id = 1;
-  string user_id = 2;
+  // user_id is the user who created this vote.  May be absent if unknown or due to lack of access.
+  google.protobuf.StringValue user_id = 7;
 
   enum Vote {
     UNKNOWN = 0;
@@ -649,7 +650,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181207 // AUTO UPDATED BY generate.go
+    api_version: 20181210 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
