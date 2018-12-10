@@ -81,6 +81,7 @@ var defaultConfiguration = &Configuration{
 			User_PIC_INDEX,
 			User_PIC_UPDATE_VIEW_COUNTER,
 			User_USER_CREATE,
+			User_USER_READ_PUBLIC,
 		},
 	},
 	NewUserCapability: &Configuration_CapabilitySet{
@@ -92,6 +93,8 @@ var defaultConfiguration = &Configuration{
 			User_PIC_COMMENT_CREATE,
 			User_PIC_VOTE_CREATE,
 			User_USER_READ_SELF,
+			User_USER_READ_PICS,
+			User_USER_READ_PIC_COMMENT,
 		},
 	},
 	DefaultFindIndexPics: &wpb.Int64Value{

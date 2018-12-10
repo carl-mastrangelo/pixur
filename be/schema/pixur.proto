@@ -294,9 +294,13 @@ message User {
     USER_CREATE = 4;
     // Can this user modify capabilities?
     USER_UPDATE_CAPABILITY = 12;
-    // Can this user read information about themselves?
+    // Can this user read information about themselves?  This includes 
+    // everything from USER_READ_PUBLIC, as well as LastSeen, Version, Caps,
+    // and Incoming user events.  Also implies USER_READ_PICS, 
+    // USER_READ_PIC_TAG, USER_READ_PIC_COMMENT, and USER_READ_PIC_VOTE.
     USER_READ_SELF = 13;
-    // Can this user read infortmation about others?
+    // Can this user read infortmation about others?  This is the same as 
+    // USER_READ_SELF but for any user.
     USER_READ_ALL = 14;
     // Can this user create arbitrary extension data on a pic? 
     PIC_EXTENSION_CREATE = 15;
@@ -314,6 +318,22 @@ message User {
     PIC_VOTE_EXTENSION_CREATE = 21;
     // Can this user read arbitrary extension data on a pic vote? 
     PIC_VOTE_EXTENSION_READ = 22;
+    // Can this user read public information about other users?  Currently,
+    // public means user id, user name, and created time
+    USER_READ_PUBLIC = 23;
+    // Can this user read pics that other users have created?  Currently, 
+    // this is Pic.FileSource.User and UserEvents.UpsertPic.
+    USER_READ_PICS = 24;
+    // Can this user read pic tags that other users have created?  Currently, 
+    // this is PicTag.UserId.
+    USER_READ_PIC_TAG = 25;
+    // Can this user read pic comments that other users have created?  This
+    // implies that a user can see who else made comments.  
+    USER_READ_PIC_COMMENT = 26;
+    // Can this user read pic votes that other users have created?  This
+    // implies that a user can see who voted on a pic, and what votes they 
+    // have made.
+    USER_READ_PIC_VOTE = 27;
   }
 
   repeated Capability capability = 7;
