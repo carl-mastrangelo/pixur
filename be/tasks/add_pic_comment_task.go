@@ -28,7 +28,8 @@ type AddPicCommentTask struct {
 	Ext map[string]*any.Any
 
 	// Outs
-	PicComment *schema.PicComment
+	UnfilteredPicComment *schema.PicComment
+	PicComment           *schema.PicComment
 }
 
 func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
@@ -232,7 +233,8 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	if err := j.Commit(); err != nil {
 		return status.Internal(err, "can't commit job")
 	}
-	t.PicComment = pc
+	t.UnfilteredPicComment = pc
+	t.PicComment = filterPicComment(t.UnfilteredPicComment, u, conf)
 
 	// TODO: ratelimit
 	return nil
@@ -261,4 +263,51 @@ func nextUserEventIndex(j *tab.Job, userID, createdTs int64) (int64, status.S) {
 		return 0, status.Internal(nil, "overflow of user event index")
 	}
 	return biggest + 1, nil
+}
+
+func filterPicComment(
+	pc *schema.PicComment, su *schema.User, conf *schema.Configuration) *schema.PicComment {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+
+	return filterPicCommentInternal(pc, subjectUserId, cs)
+}
+
+func filterPicComments(
+	pcs []*schema.PicComment, su *schema.User, conf *schema.Configuration) []*schema.PicComment {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+	dst := make([]*schema.PicComment, 0, len(pcs))
+	for _, pc := range pcs {
+		dst = append(dst, filterPicCommentInternal(pc, subjectUserId, cs))
+	}
+	return dst
+}
+
+func filterPicCommentInternal(
+	pc *schema.PicComment, subjectUserId int64, cs *schema.CapSet) *schema.PicComment {
+	dpc := *pc
+	if !cs.Has(schema.User_PIC_COMMENT_EXTENSION_READ) {
+		dpc.Ext = nil
+	}
+	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_COMMENT)) {
+		if !(subjectUserId == dpc.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+			dpc.UserId = schema.AnonymousUserID
+		}
+	}
+	return &dpc
 }

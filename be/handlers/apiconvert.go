@@ -96,7 +96,7 @@ func apiPicCommentTree(dst []*api.PicComment, srcs ...*schema.PicComment) *api.P
 }
 
 func apiPicComment(src *schema.PicComment) *api.PicComment {
-	return &api.PicComment{
+	dst := &api.PicComment{
 		PicId:           schema.Varint(src.PicId).Encode(),
 		CommentId:       schema.Varint(src.CommentId).Encode(),
 		CommentParentId: schema.Varint(src.CommentParentId).Encode(),
@@ -104,10 +104,13 @@ func apiPicComment(src *schema.PicComment) *api.PicComment {
 		CreatedTime:     src.CreatedTs,
 		ModifiedTime:    src.ModifiedTs,
 		Version:         src.Version(),
-		UserId: &wpb.StringValue{
-			Value: schema.Varint(src.UserId).Encode(),
-		},
 	}
+	if src.UserId != schema.AnonymousUserID {
+		dst.UserId = &wpb.StringValue{
+			Value: schema.Varint(src.UserId).Encode(),
+		}
+	}
+	return dst
 }
 
 func apiUser(src *schema.User) *api.User {

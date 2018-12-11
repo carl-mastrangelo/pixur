@@ -226,7 +226,7 @@ func filterPic(p *schema.Pic, su *schema.User, conf *schema.Configuration) *sche
 		subjectUserId = schema.AnonymousUserID
 	}
 
-	return picFilterInternal(p, subjectUserId, cs)
+	return filterPicInternal(p, subjectUserId, cs)
 }
 
 func filterPics(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) []*schema.Pic {
@@ -241,13 +241,13 @@ func filterPics(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) [
 	}
 	dst := make([]*schema.Pic, 0, len(ps))
 	for _, p := range ps {
-		dst = append(dst, picFilterInternal(p, subjectUserId, cs))
+		dst = append(dst, filterPicInternal(p, subjectUserId, cs))
 	}
 	return dst
 }
 
 // TODO: test
-func picFilterInternal(p *schema.Pic, subjectUserId int64, cs *schema.CapSet) *schema.Pic {
+func filterPicInternal(p *schema.Pic, subjectUserId int64, cs *schema.CapSet) *schema.Pic {
 	dp := *p
 	if !cs.Has(schema.User_PIC_EXTENSION_READ) {
 		dp.Ext = nil

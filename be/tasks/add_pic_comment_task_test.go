@@ -36,7 +36,7 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if task.PicComment == nil {
+	if task.PicComment == nil || task.UnfilteredPicComment == nil {
 		t.Fatal("no comment created")
 	}
 
@@ -51,11 +51,11 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 		Text:      "hi",
 		CommentId: task.PicComment.CommentId,
 	}
-	task.PicComment.CreatedTs = nil
-	task.PicComment.ModifiedTs = nil
+	task.UnfilteredPicComment.CreatedTs = nil
+	task.UnfilteredPicComment.ModifiedTs = nil
 
-	if !proto.Equal(expected, task.PicComment) {
-		t.Error("have", task.PicComment, "want", expected)
+	if !proto.Equal(expected, task.UnfilteredPicComment) {
+		t.Error("have", task.UnfilteredPicComment, "want", expected)
 	}
 
 	j := c.Job()
@@ -112,7 +112,7 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if task.PicComment == nil {
+	if task.PicComment == nil || task.UnfilteredPicComment == nil {
 		t.Fatal("no comment created")
 	}
 
@@ -128,11 +128,11 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 		CommentId:       task.PicComment.CommentId,
 		CommentParentId: parent.PicComment.CommentId,
 	}
-	task.PicComment.CreatedTs = nil
-	task.PicComment.ModifiedTs = nil
+	task.UnfilteredPicComment.CreatedTs = nil
+	task.UnfilteredPicComment.ModifiedTs = nil
 
-	if !proto.Equal(expected, task.PicComment) {
-		t.Error("have", task.PicComment, "want", expected)
+	if !proto.Equal(expected, task.UnfilteredPicComment) {
+		t.Error("have", task.UnfilteredPicComment, "want", expected)
 	}
 }
 
@@ -392,11 +392,11 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 		CommentId:       task2.PicComment.CommentId,
 		CommentParentId: task.PicComment.CommentId,
 	}
-	task2.PicComment.CreatedTs = nil
-	task2.PicComment.ModifiedTs = nil
+	task2.UnfilteredPicComment.CreatedTs = nil
+	task2.UnfilteredPicComment.ModifiedTs = nil
 
-	if !proto.Equal(expected2, task2.PicComment) {
-		t.Error("have", task2.PicComment, "want", expected2)
+	if !proto.Equal(expected2, task2.UnfilteredPicComment) {
+		t.Error("have", task2.UnfilteredPicComment, "want", expected2)
 	}
 }
 
@@ -497,11 +497,11 @@ func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
 		Text:      "hello",
 		CommentId: task2.PicComment.CommentId,
 	}
-	task2.PicComment.CreatedTs = nil
-	task2.PicComment.ModifiedTs = nil
+	task2.UnfilteredPicComment.CreatedTs = nil
+	task2.UnfilteredPicComment.ModifiedTs = nil
 
-	if !proto.Equal(expected2, task2.PicComment) {
-		t.Error("have", task2.PicComment, "want", expected2)
+	if !proto.Equal(expected2, task2.UnfilteredPicComment) {
+		t.Error("have", task2.UnfilteredPicComment, "want", expected2)
 	}
 }
 

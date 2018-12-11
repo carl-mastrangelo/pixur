@@ -89,7 +89,8 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	t.UnfilteredPic = pics[0]
 	t.Pic = filterPic(t.UnfilteredPic, u, conf)
 	t.PicTags = picTags
-	t.PicCommentTree = buildCommentTree(picComments)
+	filteredPicComments := filterPicComments(picComments, u, conf)
+	t.PicCommentTree = buildCommentTree(filteredPicComments)
 
 	return nil
 }
