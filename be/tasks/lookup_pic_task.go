@@ -88,7 +88,7 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 
 	t.UnfilteredPic = pics[0]
 	t.Pic = filterPic(t.UnfilteredPic, u, conf)
-	t.PicTags = picTags
+	t.PicTags = filterPicTags(picTags, u, conf)
 	filteredPicComments := filterPicComments(picComments, u, conf)
 	t.PicCommentTree = buildCommentTree(filteredPicComments)
 
@@ -144,4 +144,51 @@ func buildCommentTree(pcs []*schema.PicComment) *PicCommentTree {
 	}
 
 	return root
+}
+
+func filterPicTag(
+	pt *schema.PicTag, su *schema.User, conf *schema.Configuration) *schema.PicTag {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+
+	return filterPicTagInternal(pt, subjectUserId, cs)
+}
+
+func filterPicTags(
+	pts []*schema.PicTag, su *schema.User, conf *schema.Configuration) []*schema.PicTag {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+	dst := make([]*schema.PicTag, 0, len(pts))
+	for _, pt := range pts {
+		dst = append(dst, filterPicTagInternal(pt, subjectUserId, cs))
+	}
+	return dst
+}
+
+func filterPicTagInternal(
+	pt *schema.PicTag, subjectUserId int64, cs *schema.CapSet) *schema.PicTag {
+	dpt := *pt
+	if !cs.Has(schema.User_PIC_TAG_EXTENSION_READ) {
+		dpt.Ext = nil
+	}
+	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_TAG)) {
+		if !(subjectUserId == dpt.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+			dpt.UserId = schema.AnonymousUserID
+		}
+	}
+	return &dpt
 }
