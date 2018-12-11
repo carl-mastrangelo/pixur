@@ -187,8 +187,11 @@ func TestReadIndexTaskWorkflow_userReadPics(t *testing.T) {
 	defer c.Close()
 
 	u := c.CreateUser()
-	u.User.Capability =
-		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_USER_READ_PICS)
+	u.User.Capability = append(
+		u.User.Capability,
+		schema.User_PIC_INDEX,
+		schema.User_USER_READ_PUBLIC,
+		schema.User_USER_READ_PICS)
 	u.Update()
 
 	p := c.CreatePic()

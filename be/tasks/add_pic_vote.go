@@ -246,10 +246,12 @@ func filterPicVoteInternal(
 	if !cs.Has(schema.User_PIC_VOTE_EXTENSION_READ) {
 		dpv.Ext = nil
 	}
-	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_VOTE)) {
-		if !(subjectUserId == dpv.UserId && cs.Has(schema.User_USER_READ_SELF)) {
-			dpv.UserId = schema.AnonymousUserID
-		}
+	switch {
+	case cs.Has(schema.User_USER_READ_ALL):
+	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_VOTE):
+	case subjectUserId == dpv.UserId && cs.Has(schema.User_USER_READ_SELF):
+	default:
+		dpv.UserId = schema.AnonymousUserID
 	}
 	return &dpv
 }

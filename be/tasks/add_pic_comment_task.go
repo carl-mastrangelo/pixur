@@ -304,10 +304,13 @@ func filterPicCommentInternal(
 	if !cs.Has(schema.User_PIC_COMMENT_EXTENSION_READ) {
 		dpc.Ext = nil
 	}
-	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_COMMENT)) {
-		if !(subjectUserId == dpc.UserId && cs.Has(schema.User_USER_READ_SELF)) {
-			dpc.UserId = schema.AnonymousUserID
-		}
+	switch {
+	case cs.Has(schema.User_USER_READ_ALL):
+	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_COMMENT):
+	case subjectUserId == dpc.UserId && cs.Has(schema.User_USER_READ_SELF):
+	default:
+		dpc.UserId = schema.AnonymousUserID
 	}
+
 	return &dpc
 }

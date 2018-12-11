@@ -252,16 +252,20 @@ func filterPicInternal(p *schema.Pic, subjectUserId int64, cs *schema.CapSet) *s
 	if !cs.Has(schema.User_PIC_EXTENSION_READ) {
 		dp.Ext = nil
 	}
-	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PICS)) {
+	switch {
+	case cs.Has(schema.User_USER_READ_ALL):
+	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PICS):
+	default:
 		dp.Source = nil
 		for _, s := range p.Source {
 			ds := *s
-			if !(subjectUserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+			switch {
+			case subjectUserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF):
+			default:
 				ds.UserId = schema.AnonymousUserID
 			}
 			dp.Source = append(dp.Source, &ds)
 		}
 	}
-
 	return &dp
 }

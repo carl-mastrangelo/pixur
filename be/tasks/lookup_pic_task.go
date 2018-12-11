@@ -185,10 +185,12 @@ func filterPicTagInternal(
 	if !cs.Has(schema.User_PIC_TAG_EXTENSION_READ) {
 		dpt.Ext = nil
 	}
-	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_TAG)) {
-		if !(subjectUserId == dpt.UserId && cs.Has(schema.User_USER_READ_SELF)) {
-			dpt.UserId = schema.AnonymousUserID
-		}
+	switch {
+	case cs.Has(schema.User_USER_READ_ALL):
+	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_TAG):
+	case subjectUserId == dpt.UserId && cs.Has(schema.User_USER_READ_SELF):
+	default:
+		dpt.UserId = schema.AnonymousUserID
 	}
 	return &dpt
 }
