@@ -93,6 +93,7 @@ var defaultConfiguration = &Configuration{
 			User_PIC_COMMENT_CREATE,
 			User_PIC_VOTE_CREATE,
 			User_USER_READ_SELF,
+			User_USER_READ_PUBLIC,
 			User_USER_READ_PICS,
 			User_USER_READ_PIC_COMMENT,
 		},
