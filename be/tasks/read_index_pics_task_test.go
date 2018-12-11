@@ -152,7 +152,112 @@ func TestReadIndexTaskWorkflow_validateExtCapPresent(t *testing.T) {
 	}
 
 	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Ext) != 1 {
-		t.Error(len(task.FilteredPics))
+		t.Error(task.FilteredPics)
+	}
+}
+
+func TestReadIndexTaskWorkflow_userReadAll(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_USER_READ_ALL)
+	u.Update()
+
+	p := c.CreatePic()
+
+	task := &ReadIndexPicsTask{
+		Beg: c.DB(),
+	}
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
+		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.FilteredPics)
+	}
+}
+
+func TestReadIndexTaskWorkflow_userReadPics(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_USER_READ_PICS)
+	u.Update()
+
+	p := c.CreatePic()
+
+	task := &ReadIndexPicsTask{
+		Beg: c.DB(),
+	}
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
+		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.FilteredPics)
+	}
+}
+
+func TestReadIndexTaskWorkflow_userReadSelf(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability =
+		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_USER_READ_SELF)
+	u.Update()
+
+	p := c.CreatePic()
+	p.Pic.Source[0].UserId = u.User.UserId
+	p.Update()
+
+	task := &ReadIndexPicsTask{
+		Beg: c.DB(),
+	}
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
+		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.FilteredPics)
+	}
+}
+
+func TestReadIndexTaskWorkflow_userLacksPermission(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
+	u.Update()
+
+	c.CreatePic()
+
+	task := &ReadIndexPicsTask{
+		Beg: c.DB(),
+	}
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	sts := new(TaskRunner).Run(ctx, task)
+	if sts != nil {
+		t.Fatal(sts)
+	}
+
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
+		task.FilteredPics[0].Source[0].UserId != schema.AnonymousUserID {
+		t.Error(task.FilteredPics)
 	}
 }
 
