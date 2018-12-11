@@ -1,3 +1,4 @@
+// This program is a simple implementation of the Pixur web frontend.
 package main // import "pixur.org/pixur/fe"
 
 import (

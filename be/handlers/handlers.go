@@ -1,3 +1,4 @@
+// Package handlers implements the Pixur backend gRPC API surface.
 package handlers // import "pixur.org/pixur/be/handlers"
 
 import (

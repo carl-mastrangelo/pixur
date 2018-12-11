@@ -1,3 +1,4 @@
+// This program turns a directory of HTML files into a Go source file.
 package main
 
 import (

@@ -1,4 +1,6 @@
-//go:generate protoc config.proto --go_out=.
+//go:generate protoc config.proto --go_out=paths=source_relative:.
+
+// Package config describes configuration for a frontend Pixur Server.
 package config // import "pixur.org/pixur/fe/server/config"
 
 import (

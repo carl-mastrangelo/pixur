@@ -1,3 +1,4 @@
+// Package status defines a full featured error type.
 package status // import "pixur.org/pixur/be/status"
 
 import (

@@ -1,3 +1,5 @@
+// Package handlers implements the HTTP endpoint processing and interacts
+// with the Pixur backend.
 package handlers // import "pixur.org/pixur/fe/handlers"
 
 import (

@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package pixur.fe;
+package pixur.fe.server;
 
-option go_package = "config";
+option go_package = "pixur.org/pixur/fe/server/config;config";
 
 
 // Config describes fe server configuration.

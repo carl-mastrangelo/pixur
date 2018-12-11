@@ -1,3 +1,4 @@
+// Package server is a library used for creating a Pixur backend server.
 package server // import "pixur.org/pixur/be/server"
 
 import (

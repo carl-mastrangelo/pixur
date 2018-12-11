@@ -1,3 +1,4 @@
+// Package tasks implements the core Pixur business logic.
 package tasks // import "pixur.org/pixur/be/tasks"
 
 import (
