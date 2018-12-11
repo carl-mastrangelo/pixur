@@ -31,9 +31,9 @@ type ReadIndexPicsTask struct {
 	Ascending bool
 
 	// Results
-	Pics []*schema.Pic
+	UnfilteredPics []*schema.Pic
 	// Same as pics, but with User info removed based on capability
-	FilteredPics []*schema.Pic
+	Pics []*schema.Pic
 
 	NextID, PrevID int64
 }
@@ -204,41 +204,64 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	if n := len(pics); n > 0 && int64(n) == overmax {
-		t.Pics = pics[:n-1]
+		t.UnfilteredPics = pics[:n-1]
 		t.NextID = pics[n-1].PicId
 	} else {
-		t.Pics = pics
+		t.UnfilteredPics = pics
 	}
 	t.PrevID = prevPicId
-	t.FilteredPics = picExtFilter(t.Pics, u, conf)
+	t.Pics = filterPics(t.UnfilteredPics, u, conf)
 
 	return nil
 }
 
-func picExtFilter(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) []*schema.Pic {
+func filterPic(p *schema.Pic, su *schema.User, conf *schema.Configuration) *schema.Pic {
 	var cs *schema.CapSet
+	var subjectUserId int64
 	if su != nil {
 		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
 	} else {
 		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+
+	return picFilterInternal(p, subjectUserId, cs)
+}
+
+func filterPics(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) []*schema.Pic {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
 	}
 	dst := make([]*schema.Pic, 0, len(ps))
 	for _, p := range ps {
-		dp := *p
-		if !cs.Has(schema.User_PIC_EXTENSION_READ) {
-			dp.Ext = nil
-		}
-		if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PICS)) {
-			dp.Source = nil
-			for _, s := range p.Source {
-				ds := *s
-				if !(su != nil && su.UserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF)) {
-					ds.UserId = schema.AnonymousUserID
-				}
-				dp.Source = append(dp.Source, &ds)
-			}
-		}
-		dst = append(dst, &dp)
+		dst = append(dst, picFilterInternal(p, subjectUserId, cs))
 	}
 	return dst
+}
+
+// TODO: test
+func picFilterInternal(p *schema.Pic, subjectUserId int64, cs *schema.CapSet) *schema.Pic {
+	dp := *p
+	if !cs.Has(schema.User_PIC_EXTENSION_READ) {
+		dp.Ext = nil
+	}
+	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PICS)) {
+		dp.Source = nil
+		for _, s := range p.Source {
+			ds := *s
+			if !(subjectUserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+				ds.UserId = schema.AnonymousUserID
+			}
+			dp.Source = append(dp.Source, &ds)
+		}
+	}
+
+	return &dp
 }

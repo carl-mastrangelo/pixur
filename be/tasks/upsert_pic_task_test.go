@@ -59,8 +59,8 @@ func TestUpsertPicTask_URL(t *testing.T) {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-disposition", `attachment;
-                          filename="EURO rates";
-                          filename*=Utf-8''%e2%82%ac%20rates`)
+                    filename="EURO rates";
+                    filename*=Utf-8''%e2%82%ac%20rates`)
 		if _, err := io.Copy(w, f); err != nil {
 			t.Fatal(err)
 		}
@@ -123,8 +123,8 @@ func TestUpsertPicTask_URL(t *testing.T) {
 			Height:     task.CreatedPic.Thumbnail[0].Height,
 		}},
 	}
-	if !proto.Equal(expected, task.CreatedPic) {
-		t.Error("not equal", expected, task.CreatedPic)
+	if !proto.Equal(expected, task.UnfilteredCreatedPic) {
+		t.Error("not equal", expected, task.UnfilteredCreatedPic)
 	}
 }
 

@@ -27,6 +27,7 @@ type LookupPicTask struct {
 	CheckReadPicTagExtCap bool
 
 	// Results
+	UnfilteredPic  *schema.Pic
 	Pic            *schema.Pic
 	PicTags        []*schema.PicTag
 	PicCommentTree *PicCommentTree
@@ -46,11 +47,6 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
-	}
-	if t.CheckReadPicExtCap {
-		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_READ); sts != nil {
-			return sts
-		}
 	}
 	if t.CheckReadPicCommentExtCap {
 		if sts := validateCapability(u, conf, schema.User_PIC_COMMENT_EXTENSION_READ); sts != nil {
@@ -90,7 +86,8 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't rollback job")
 	}
 
-	t.Pic = pics[0]
+	t.UnfilteredPic = pics[0]
+	t.Pic = filterPic(t.UnfilteredPic, u, conf)
 	t.PicTags = picTags
 	t.PicCommentTree = buildCommentTree(picComments)
 

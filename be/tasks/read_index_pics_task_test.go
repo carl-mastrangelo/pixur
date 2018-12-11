@@ -98,8 +98,8 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %v in\n %v", p, task.Pics)
+	if len(task.UnfilteredPics) != 1 || !proto.Equal(p.Pic, task.UnfilteredPics[0]) {
+		t.Fatalf("Unable to find %v in\n %v", p, task.UnfilteredPics)
 	}
 }
 
@@ -124,8 +124,8 @@ func TestReadIndexTaskWorkflow_validateExtCapMissing(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Ext) != 0 {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Ext) != 0 {
+		t.Error(task.Pics)
 	}
 }
 
@@ -151,8 +151,8 @@ func TestReadIndexTaskWorkflow_validateExtCapPresent(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Ext) != 1 {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Ext) != 1 {
+		t.Error(task.Pics)
 	}
 }
 
@@ -176,9 +176,9 @@ func TestReadIndexTaskWorkflow_userReadAll(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
-		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Source) == 0 ||
+		task.Pics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.Pics)
 	}
 }
 
@@ -202,9 +202,9 @@ func TestReadIndexTaskWorkflow_userReadPics(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
-		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Source) == 0 ||
+		task.Pics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.Pics)
 	}
 }
 
@@ -230,9 +230,9 @@ func TestReadIndexTaskWorkflow_userReadSelf(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
-		task.FilteredPics[0].Source[0].UserId != p.Pic.Source[0].UserId {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Source) == 0 ||
+		task.Pics[0].Source[0].UserId != p.Pic.Source[0].UserId {
+		t.Error(task.Pics)
 	}
 }
 
@@ -255,9 +255,9 @@ func TestReadIndexTaskWorkflow_userLacksPermission(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Source) == 0 ||
-		task.FilteredPics[0].Source[0].UserId != schema.AnonymousUserID {
-		t.Error(task.FilteredPics)
+	if len(task.Pics) == 0 || len(task.Pics[0].Source) == 0 ||
+		task.Pics[0].Source[0].UserId != schema.AnonymousUserID {
+		t.Error(task.Pics)
 	}
 }
 
@@ -285,8 +285,8 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p1.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %v in\n %v", p1, task.Pics)
+	if len(task.UnfilteredPics) != 1 || !proto.Equal(p1.Pic, task.UnfilteredPics[0]) {
+		t.Fatalf("Unable to find %v in\n %v", p1, task.UnfilteredPics)
 	}
 }
 
@@ -323,8 +323,8 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p2.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %s in\n %s", p2.Pic, task.Pics[0])
+	if len(task.UnfilteredPics) != 1 || !proto.Equal(p2.Pic, task.UnfilteredPics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p2.Pic, task.UnfilteredPics[0])
 	}
 	if task.NextID != p1.Pic.PicId {
 		t.Fatal(task.NextID, p1.Pic.PicId)
@@ -374,8 +374,8 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p5.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %s in\n %s", p5.Pic, task.Pics[0])
+	if len(task.UnfilteredPics) != 1 || !proto.Equal(p5.Pic, task.UnfilteredPics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p5.Pic, task.UnfilteredPics[0])
 	}
 	if task.NextID != p6.Pic.PicId {
 		t.Fatal(task.NextID, p6.Pic.PicId)
@@ -430,8 +430,8 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 		t.Fatal(sts)
 	}
 
-	if len(task.Pics) != 1 || !proto.Equal(p3.Pic, task.Pics[0]) {
-		t.Fatalf("Unable to find %s in\n %s", p3.Pic, task.Pics[0])
+	if len(task.UnfilteredPics) != 1 || !proto.Equal(p3.Pic, task.UnfilteredPics[0]) {
+		t.Fatalf("Unable to find %s in\n %s", p3.Pic, task.UnfilteredPics[0])
 	}
 	if task.NextID != p2.Pic.PicId {
 		t.Fatal(task.NextID, p2.Pic.PicId)

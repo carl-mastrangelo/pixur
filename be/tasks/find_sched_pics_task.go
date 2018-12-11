@@ -20,7 +20,8 @@ type FindSchedPicsTask struct {
 	ObjectUserID int64
 
 	// Outs
-	Pics []*schema.Pic
+	UnfilteredPics []*schema.Pic
+	Pics           []*schema.Pic
 }
 
 // TODO: add tests
@@ -89,12 +90,13 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 			if p.HardDeleted() {
 				continue
 			}
-			t.Pics = append(t.Pics, p)
+			t.UnfilteredPics = append(t.UnfilteredPics, p)
 			if int64(len(t.Pics)) >= defaultIndexPics {
 				break
 			}
 		}
 	}
+	t.Pics = filterPics(t.UnfilteredPics, su, conf)
 
 	return nil
 }

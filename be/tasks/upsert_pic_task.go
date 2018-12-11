@@ -58,13 +58,14 @@ type UpsertPicTask struct {
 	// new pic and the existing pic, Upsert will fail.
 	Ext map[string]*any.Any
 
-	// Results, only one will be set
-	CreatedPic *schema.Pic
+	// Results
+	UnfilteredCreatedPic *schema.Pic
+	CreatedPic           *schema.Pic
 }
 
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	// destroy outputs incase this is a retry
-	t.CreatedPic = nil
+	t.CreatedPic, t.UnfilteredCreatedPic = nil, nil
 	j, err := tab.NewJob(ctx, t.Beg)
 	if err != nil {
 		return status.Internal(err, "can't create job")
@@ -236,7 +237,8 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 			if err := j.Commit(); err != nil {
 				return status.Internal(err, "can't commit")
 			}
-			t.CreatedPic = p
+			t.UnfilteredCreatedPic = p
+			t.CreatedPic = filterPic(t.UnfilteredCreatedPic, u, conf)
 			return nil
 		}
 	} else {
@@ -395,7 +397,8 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't commit")
 	}
 
-	t.CreatedPic = p
+	t.UnfilteredCreatedPic = p
+	t.CreatedPic = filterPic(t.UnfilteredCreatedPic, u, conf)
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	anypb "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -76,6 +77,8 @@ func TestLookupPicTask_failsOnMissingPicExtCap(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
+	p.Pic.Ext = map[string]*anypb.Any{"a": nil}
+	p.Update()
 
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
@@ -83,21 +86,17 @@ func TestLookupPicTask_failsOnMissingPicExtCap(t *testing.T) {
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
-		Beg:                c.DB(),
-		PicID:              p.Pic.PicId,
-		CheckReadPicExtCap: true,
+		Beg:   c.DB(),
+		PicID: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
-	if sts == nil {
-		t.Fatal("expected error")
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
-	if have, want := sts.Code(), codes.PermissionDenied; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := sts.Message(), "missing cap"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
+	if len(task.Pic.Ext) != 0 {
+		t.Error("didn't remove", task.Pic)
 	}
 }
 
@@ -106,6 +105,8 @@ func TestLookupPicTask_succeedsOnPresentPicExtCap(t *testing.T) {
 	defer c.Close()
 
 	p := c.CreatePic()
+	p.Pic.Ext = map[string]*anypb.Any{"a": nil}
+	p.Update()
 
 	u := c.CreateUser()
 	u.User.Capability =
@@ -115,14 +116,17 @@ func TestLookupPicTask_succeedsOnPresentPicExtCap(t *testing.T) {
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
-		Beg:                c.DB(),
-		PicID:              p.Pic.PicId,
-		CheckReadPicExtCap: true,
+		Beg:   c.DB(),
+		PicID: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
+	}
+
+	if len(task.Pic.Ext) == 0 {
+		t.Error("missing", task.Pic)
 	}
 }
 
