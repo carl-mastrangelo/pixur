@@ -36,16 +36,8 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	neededCapability := schema.User_USER_READ_ALL
-	if su == ou {
-		neededCapability = schema.User_USER_READ_SELF
-	}
-
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
-		return sts
-	}
-	if sts := validateCapability(su, conf, neededCapability); sts != nil {
 		return sts
 	}
 
@@ -67,12 +59,15 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}
 
+	hardmax := conf.MaxFindUserEvents.Value
 	_, overmax, sts := getAndValidateMaxUserEvents(conf, t.MaxUserEvents)
 	if sts != nil {
 		return sts
 	}
 
-	ues, err := j.FindUserEvents(db.Opts{
+	var ues []*schema.UserEvent
+	finds := int64(0)
+	firstScanOpts := db.Opts{
 		Reverse: !t.Ascending,
 		Limit:   int(overmax),
 		Lock:    db.LockNone,
@@ -86,9 +81,35 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 			CreatedTs: &maxCreatedTs,
 			Index:     &maxIndex,
 		},
-	})
-	if err != nil {
-		return status.Internal(err, "can't find user events")
+	}
+	for {
+		events, err := j.FindUserEvents(firstScanOpts)
+		if err != nil {
+			return status.Internal(err, "can't find user events")
+		}
+		ues = append(ues, filterUserEvents(events, su, conf)...)
+		if len(ues) >= int(overmax) {
+			break
+		}
+		if len(events) != firstScanOpts.Limit {
+			break
+		}
+		finds += int64(len(events))
+		if finds >= hardmax {
+			break
+		}
+		last := events[len(events)-1]
+		if t.Ascending {
+			firstScanOpts.StartEx = tab.KeyForUserEvent(last)
+			firstScanOpts.StartInc = nil
+		} else {
+			firstScanOpts.StopEx = tab.KeyForUserEvent(last)
+			firstScanOpts.StopInc = nil
+		}
+		// TODO: change requested to grow exponentially.
+	}
+	if len(ues) > int(overmax) {
+		ues = ues[:int(overmax)]
 	}
 
 	revOpts := db.Opts{
@@ -155,4 +176,51 @@ func getAndValidateMaxUserEvents(conf *schema.Configuration, requestedMax int64)
 
 func getMaxUserEvents(requestedMax int64, conf *schema.Configuration) (max, overmax int64) {
 	return getMaxConf(requestedMax, conf.DefaultFindUserEvents, conf.MaxFindUserEvents)
+}
+
+func filterUserEvents(
+	ues []*schema.UserEvent, su *schema.User, conf *schema.Configuration) []*schema.UserEvent {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+	var dst []*schema.UserEvent
+loop:
+	for _, ue := range ues {
+		switch {
+		case cs.Has(schema.User_USER_READ_ALL):
+		case subjectUserId == ue.UserId && cs.Has(schema.User_USER_READ_SELF):
+		default:
+			switch ue.Evt.(type) {
+			case *schema.UserEvent_OutgoingUpsertPicVote_:
+				switch {
+				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_VOTE):
+				default:
+					continue loop
+				}
+			case *schema.UserEvent_OutgoingPicComment_:
+				switch {
+				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_COMMENT):
+				default:
+					continue loop
+				}
+			case *schema.UserEvent_UpsertPic_:
+				switch {
+				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PICS):
+				default:
+					continue loop
+				}
+			default:
+				continue loop
+			}
+		}
+
+		dst = append(dst, ue)
+	}
+	return dst
 }
