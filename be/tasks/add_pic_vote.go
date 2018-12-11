@@ -25,7 +25,8 @@ type AddPicVoteTask struct {
 	Ext map[string]*anypb.Any
 
 	// Outs
-	PicVote *schema.PicVote
+	UnfilteredPicVote *schema.PicVote
+	PicVote           *schema.PicVote
 }
 
 func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
@@ -198,9 +199,57 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if err := j.Commit(); err != nil {
 		return status.Internal(err, "can't commit job")
 	}
-	t.PicVote = pv
+	t.UnfilteredPicVote = pv
+	t.PicVote = filterPicVote(t.UnfilteredPicVote, u, conf)
 
 	// TODO: ratelimit
 
 	return nil
+}
+
+func filterPicVote(
+	pv *schema.PicVote, su *schema.User, conf *schema.Configuration) *schema.PicVote {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+
+	return filterPicVoteInternal(pv, subjectUserId, cs)
+}
+
+func filterPicVotes(
+	pvs []*schema.PicVote, su *schema.User, conf *schema.Configuration) []*schema.PicVote {
+	var cs *schema.CapSet
+	var subjectUserId int64
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+		subjectUserId = su.UserId
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+		subjectUserId = schema.AnonymousUserID
+	}
+	dst := make([]*schema.PicVote, 0, len(pvs))
+	for _, pv := range pvs {
+		dst = append(dst, filterPicVoteInternal(pv, subjectUserId, cs))
+	}
+	return dst
+}
+
+func filterPicVoteInternal(
+	pv *schema.PicVote, subjectUserId int64, cs *schema.CapSet) *schema.PicVote {
+	dpv := *pv
+	if !cs.Has(schema.User_PIC_VOTE_EXTENSION_READ) {
+		dpv.Ext = nil
+	}
+	if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PIC_VOTE)) {
+		if !(subjectUserId == dpv.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+			dpv.UserId = schema.AnonymousUserID
+		}
+	}
+	return &dpv
 }

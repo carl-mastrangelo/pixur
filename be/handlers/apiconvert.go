@@ -133,16 +133,19 @@ func apiCaps(dst []api.Capability_Cap, srcs []schema.User_Capability) []api.Capa
 }
 
 func apiPicVote(src *schema.PicVote) *api.PicVote {
-	return &api.PicVote{
-		PicId: schema.Varint(src.PicId).Encode(),
-		UserId: &wpb.StringValue{
-			Value: schema.Varint(src.UserId).Encode(),
-		},
+	dst := &api.PicVote{
+		PicId:        schema.Varint(src.PicId).Encode(),
 		Vote:         api.PicVote_Vote(src.Vote),
 		Version:      src.Version(),
 		CreatedTime:  src.CreatedTs,
 		ModifiedTime: src.ModifiedTs,
 	}
+	if src.UserId != schema.AnonymousUserID {
+		dst.UserId = &wpb.StringValue{
+			Value: schema.Varint(src.UserId).Encode(),
+		}
+	}
+	return dst
 }
 
 func apiUserEventId(userId, createdTs, index int64) string {

@@ -44,7 +44,7 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 		t.Error("modified time not updated")
 	}
 
-	if task.PicVote == nil {
+	if task.PicVote == nil || task.UnfilteredPicVote == nil {
 		t.Fatal("no vote created")
 	}
 
@@ -57,11 +57,11 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 		UserId: u.User.UserId,
 		Vote:   schema.PicVote_UP,
 	}
-	task.PicVote.CreatedTs = nil
-	task.PicVote.ModifiedTs = nil
+	task.UnfilteredPicVote.CreatedTs = nil
+	task.UnfilteredPicVote.ModifiedTs = nil
 
-	if !proto.Equal(expected, task.PicVote) {
-		t.Error("have", task.PicVote, "want", expected)
+	if !proto.Equal(expected, task.UnfilteredPicVote) {
+		t.Error("have", task.UnfilteredPicVote, "want", expected)
 	}
 }
 

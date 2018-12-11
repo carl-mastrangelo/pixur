@@ -80,7 +80,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't rollback job")
 	}
 
-	t.PicVote = thevote
+	t.PicVote = filterPicVote(thevote, su, conf)
 
 	return nil
 }
