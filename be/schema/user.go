@@ -75,12 +75,12 @@ func (u *User) IsAnon() bool {
 var AnonymousUserID int64 = 0
 
 // TODO: test
-func VerifyCapabilitySubset(have []User_Capability, want ...User_Capability) status.S {
-	missing := findMissingCapability(have, want)
-	if len(missing) != 0 {
-		args := make([]interface{}, len(missing)+1)
+func VerifyCapSubset(have, want *CapSet) status.S {
+	_, _, right := CapIntersect(have, want)
+	if right.Size() != 0 {
+		args := make([]interface{}, right.Size()+1)
 		args[0] = "missing cap"
-		for i, c := range missing {
+		for i, c := range right.Slice() {
 			args[i+1] = c
 		}
 		return status.PermissionDenied(nil, args...)
@@ -177,21 +177,4 @@ func CapIntersect(left, right *CapSet) (both, leftonly, rightonly *CapSet) {
 	leftonly.extra = append(leftonly.extra, left.extra[li:]...)
 	rightonly.extra = append(rightonly.extra, right.extra[ri:]...)
 	return
-}
-
-// TODO: test
-func HasCapabilitySubset(have []User_Capability, want ...User_Capability) (
-	has bool, missing []User_Capability) {
-	mc := findMissingCapability(have, want)
-	if len(mc) != 0 {
-		return false, mc
-	}
-	return true, nil
-}
-
-func findMissingCapability(have []User_Capability, want []User_Capability) (
-	missing []User_Capability) {
-
-	_, _, right := CapIntersect(CapSetOf(have...), CapSetOf(want...))
-	return right.Slice()
 }

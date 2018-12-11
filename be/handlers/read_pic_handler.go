@@ -100,8 +100,9 @@ func authReadPicRequest(ctx context.Context) status.S {
 			if sts != nil {
 				return sts
 			}
-			if has, _ := schema.HasCapabilitySubset(
-				conf.AnonymousCapability.Capability, schema.User_PIC_READ); !has {
+			cs := schema.CapSetOf(conf.AnonymousCapability.Capability...)
+			_, _, missing := schema.CapIntersect(cs, schema.CapSetOf(schema.User_PIC_READ))
+			if missing.Size() != 0 {
 				return status.Unauthenticated(nil, "missing pix token")
 			}
 		} else if len(tokens) > 1 {

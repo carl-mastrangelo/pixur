@@ -121,7 +121,10 @@ func (s *serv) handleGetRefreshToken(
 
 	var pixPayload *api.PwtPayload
 	var pixToken []byte
-	if has, _ := schema.HasCapabilitySubset(task.User.Capability, schema.User_PIC_READ); has {
+	cshave := schema.CapSetOf(task.User.Capability...)
+	cswant := schema.CapSetOf(schema.User_PIC_READ)
+	_, _, missing := schema.CapIntersect(cshave, cswant)
+	if missing.Size() == 0 {
 		var err error
 		pixPayload = &api.PwtPayload{
 			Subject:   subject,

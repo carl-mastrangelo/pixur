@@ -29,12 +29,11 @@ type ReadIndexPicsTask struct {
 	MaxPics int64
 	// Ascending determines the order of pics returned.
 	Ascending bool
-	// If true, check if the user is allowed to read extended pic info.  The data will be included
-	// regardless of if this is set, and the caller should remove the extended data.
-	CheckReadPicExtCap bool
 
 	// Results
 	Pics []*schema.Pic
+	// Same as pics, but with User info removed based on capability
+	FilteredPics []*schema.Pic
 
 	NextID, PrevID int64
 }
@@ -127,11 +126,6 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	if t.CheckReadPicExtCap {
-		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_READ); sts != nil {
-			return sts
-		}
-	}
 
 	_, overmax, sts := getAndValidateMaxPics(conf, t.MaxPics)
 	if sts != nil {
@@ -216,6 +210,35 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 		t.Pics = pics
 	}
 	t.PrevID = prevPicId
+	t.FilteredPics = picExtFilter(t.Pics, u, conf)
 
 	return nil
+}
+
+func picExtFilter(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) []*schema.Pic {
+	var cs *schema.CapSet
+	if su != nil {
+		cs = schema.CapSetOf(su.Capability...)
+	} else {
+		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
+	}
+	dst := make([]*schema.Pic, 0, len(ps))
+	for _, p := range ps {
+		dp := *p
+		if !cs.Has(schema.User_PIC_EXTENSION_READ) {
+			dp.Ext = nil
+		}
+		if !(cs.Has(schema.User_USER_READ_ALL) || cs.Has(schema.User_USER_READ_PICS)) {
+			dp.Source = nil
+			for _, s := range p.Source {
+				ds := *s
+				if !(su != nil && su.UserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF)) {
+					ds.UserId = schema.AnonymousUserID
+				}
+				dp.Source = append(dp.Source, &ds)
+			}
+		}
+		dst = append(dst, &dp)
+	}
+	return dst
 }

@@ -38,17 +38,17 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	neededCapability := []schema.User_Capability{schema.User_PIC_INDEX}
+	cs := schema.CapSetOf(schema.User_PIC_INDEX)
 	if su == ou {
-		neededCapability = append(neededCapability, schema.User_USER_READ_SELF)
+		cs.Add(schema.User_USER_READ_SELF)
 	} else {
-		neededCapability = append(neededCapability, schema.User_USER_READ_ALL)
+		cs.Add(schema.User_USER_READ_ALL)
 	}
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
 	}
-	if sts := validateCapability(su, conf, neededCapability...); sts != nil {
+	if sts := validateCapSet(su, conf, cs); sts != nil {
 		return sts
 	}
 

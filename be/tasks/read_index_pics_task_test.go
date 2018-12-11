@@ -1,12 +1,11 @@
 package tasks
 
 import (
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc/codes"
+	anypb "github.com/golang/protobuf/ptypes/any"
 
 	"pixur.org/pixur/be/schema"
 )
@@ -104,7 +103,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	}
 }
 
-func TestReadIndexTaskWorkflow_validateExtCapFails(t *testing.T) {
+func TestReadIndexTaskWorkflow_validateExtCapMissing(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -112,27 +111,25 @@ func TestReadIndexTaskWorkflow_validateExtCapFails(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
 
-	_ = c.CreatePic()
+	p := c.CreatePic()
+	p.Pic.Ext = map[string]*anypb.Any{"a": nil}
+	p.Update()
 
 	task := &ReadIndexPicsTask{
-		Beg:                c.DB(),
-		CheckReadPicExtCap: true,
+		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
-	if sts == nil {
-		t.Fatal("expected error")
+	if sts != nil {
+		t.Fatal(sts)
 	}
 
-	if have, want := sts.Code(), codes.PermissionDenied; have != want {
-		t.Error("have", have, "want", want)
-	}
-	if have, want := sts.Message(), "missing cap"; !strings.Contains(have, want) {
-		t.Error("have", have, "want", want)
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Ext) != 0 {
+		t.Error(task.FilteredPics)
 	}
 }
 
-func TestReadIndexTaskWorkflow_validateExtCapSucceeds(t *testing.T) {
+func TestReadIndexTaskWorkflow_validateExtCapPresent(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -141,16 +138,21 @@ func TestReadIndexTaskWorkflow_validateExtCapSucceeds(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_EXTENSION_READ)
 	u.Update()
 
-	_ = c.CreatePic()
+	p := c.CreatePic()
+	p.Pic.Ext = map[string]*anypb.Any{"a": nil}
+	p.Update()
 
 	task := &ReadIndexPicsTask{
-		Beg:                c.DB(),
-		CheckReadPicExtCap: true,
+		Beg: c.DB(),
 	}
 	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
+	}
+
+	if len(task.FilteredPics) == 0 || len(task.FilteredPics[0].Ext) != 1 {
+		t.Error(len(task.FilteredPics))
 	}
 }
 

@@ -47,13 +47,21 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 // not be nil.
 func validateCapability(
 	u *schema.User, conf *schema.Configuration, caps ...schema.User_Capability) status.S {
-	var have []schema.User_Capability
+	return validateCapSet(u, conf, schema.CapSetOf(caps...))
+}
+
+// validateCapSet ensures the given user has the requested permissions.  If the user is nil,
+// the anonymous user is used from the given configuration.  At least one of `u` or `conf` must
+// not be nil.
+func validateCapSet(
+	u *schema.User, conf *schema.Configuration, want *schema.CapSet) status.S {
+	var have *schema.CapSet
 	if u != nil {
-		have = u.Capability
+		have = schema.CapSetOf(u.Capability...)
 	} else {
-		have = conf.AnonymousCapability.Capability
+		have = schema.CapSetOf(conf.AnonymousCapability.Capability...)
 	}
-	return schema.VerifyCapabilitySubset(have, caps...)
+	return schema.VerifyCapSubset(have, want)
 }
 
 // deriveObjectUserId combines a requested object user id and a subject user.
