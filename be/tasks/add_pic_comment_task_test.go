@@ -1355,3 +1355,183 @@ func TestNextUserEventIndex_failsOnMax(t *testing.T) {
 		t.Error("have", have, "want", want)
 	}
 }
+
+func TestFilterPicCommentInternal_extAllowed(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+		Ext:             map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF, schema.User_PIC_COMMENT_EXTENSION_READ),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicCommentInternal_extRemoved(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+		Ext:             map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	pc.Ext = nil
+	if !proto.Equal(pc, pcd) {
+		t.Error("expected ext removed", pc, pcd)
+	}
+}
+
+func TestFilterPicCommentInternal_userReadAll(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_ALL),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicCommentInternal_userReadPicComment(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: schema.AnonymousUserID,
+		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_COMMENT),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicCommentInternal_userReadSelf(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicCommentInternal_userIdRemoved(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	dupe := *pc
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pcd := filterPicCommentInternal(pc, uc)
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	pc.UserId = schema.AnonymousUserID
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicComment(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	u := &schema.User{
+		UserId: 7,
+	}
+	dupe := *pc
+	pcd := filterPicComment(pc, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	pc.UserId = schema.AnonymousUserID
+	if !proto.Equal(pc, pcd) {
+		t.Error("missing field", pc, pcd)
+	}
+}
+
+func TestFilterPicComments(t *testing.T) {
+	pc := &schema.PicComment{
+		PicId:           1,
+		CommentId:       2,
+		CommentParentId: 3,
+		Text:            "four",
+		UserId:          5,
+	}
+	u := &schema.User{
+		UserId: 7,
+	}
+	dupe := *pc
+	pcsd := filterPicComments([]*schema.PicComment{pc}, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pc, &dupe) {
+		t.Error("original changed", pc, dupe)
+	}
+	pc.UserId = schema.AnonymousUserID
+	if len(pcsd) != 1 || !proto.Equal(pc, pcsd[0]) {
+		t.Error("expected field", pc, pcsd)
+	}
+}

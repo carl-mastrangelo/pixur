@@ -267,47 +267,48 @@ func nextUserEventIndex(j *tab.Job, userID, createdTs int64) (int64, status.S) {
 
 func filterPicComment(
 	pc *schema.PicComment, su *schema.User, conf *schema.Configuration) *schema.PicComment {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
+	uc := userCredOf(su, conf)
+	return filterPicCommentInternal(pc, uc)
+}
 
-	return filterPicCommentInternal(pc, subjectUserId, cs)
+type userCred struct {
+	subjectUserId int64
+	cs            *schema.CapSet
+}
+
+func userCredOf(su *schema.User, conf *schema.Configuration) *userCred {
+	if su != nil {
+		return &userCred{
+			subjectUserId: su.UserId,
+			cs:            schema.CapSetOf(su.Capability...),
+		}
+	} else {
+		return &userCred{
+			subjectUserId: schema.AnonymousUserID,
+			cs:            schema.CapSetOf(conf.AnonymousCapability.Capability...),
+		}
+	}
 }
 
 func filterPicComments(
 	pcs []*schema.PicComment, su *schema.User, conf *schema.Configuration) []*schema.PicComment {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
+	uc := userCredOf(su, conf)
 	dst := make([]*schema.PicComment, 0, len(pcs))
 	for _, pc := range pcs {
-		dst = append(dst, filterPicCommentInternal(pc, subjectUserId, cs))
+		dst = append(dst, filterPicCommentInternal(pc, uc))
 	}
 	return dst
 }
 
-func filterPicCommentInternal(
-	pc *schema.PicComment, subjectUserId int64, cs *schema.CapSet) *schema.PicComment {
+func filterPicCommentInternal(pc *schema.PicComment, uc *userCred) *schema.PicComment {
 	dpc := *pc
-	if !cs.Has(schema.User_PIC_COMMENT_EXTENSION_READ) {
+	if !uc.cs.Has(schema.User_PIC_COMMENT_EXTENSION_READ) {
 		dpc.Ext = nil
 	}
 	switch {
-	case cs.Has(schema.User_USER_READ_ALL):
-	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_COMMENT):
-	case subjectUserId == dpc.UserId && cs.Has(schema.User_USER_READ_SELF):
+	case uc.cs.Has(schema.User_USER_READ_ALL):
+	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_COMMENT):
+	case uc.subjectUserId == dpc.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
 		dpc.UserId = schema.AnonymousUserID
 	}
