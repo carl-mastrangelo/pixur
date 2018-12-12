@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	anypb "github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -948,5 +949,169 @@ func TestAddPicVote_Notification_Author_PicParent_ExistingEvents_Neutral(t *test
 	}
 	if len(ues) != 1 {
 		t.Fatal("wrong number of events", ues)
+	}
+}
+
+func TestFilterPicVoteInternal_extAllowed(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+		Ext:    map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF, schema.User_PIC_VOTE_EXTENSION_READ),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVoteInternal_extRemoved(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+		Ext:    map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	pv.Ext = nil
+	if !proto.Equal(pv, pvd) {
+		t.Error("expected ext removed", pv, pvd)
+	}
+}
+
+func TestFilterPicVoteInternal_userReadAll(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_ALL),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVoteInternal_userReadPicVote(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: schema.AnonymousUserID,
+		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_VOTE),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVoteInternal_userReadSelf(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVoteInternal_userIdRemoved(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	pvd := filterPicVoteInternal(pv, uc)
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	pv.UserId = schema.AnonymousUserID
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVote(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	u := &schema.User{
+		UserId: 7,
+	}
+	pvd := filterPicVote(pv, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	pv.UserId = schema.AnonymousUserID
+	if !proto.Equal(pv, pvd) {
+		t.Error("missing field", pv, pvd)
+	}
+}
+
+func TestFilterPicVotes(t *testing.T) {
+	pv := &schema.PicVote{
+		PicId:  1,
+		UserId: 5,
+		Index:  0,
+	}
+	dupe := *pv
+	u := &schema.User{
+		UserId: 7,
+	}
+	pvsd := filterPicVotes([]*schema.PicVote{pv}, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pv, &dupe) {
+		t.Error("original changed", pv, dupe)
+	}
+	pv.UserId = schema.AnonymousUserID
+	if len(pvsd) != 1 || !proto.Equal(pv, pvsd[0]) {
+		t.Error("expected field", pv, pvsd)
 	}
 }

@@ -209,47 +209,29 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 
 func filterPicVote(
 	pv *schema.PicVote, su *schema.User, conf *schema.Configuration) *schema.PicVote {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
-
-	return filterPicVoteInternal(pv, subjectUserId, cs)
+	uc := userCredOf(su, conf)
+	return filterPicVoteInternal(pv, uc)
 }
 
 func filterPicVotes(
 	pvs []*schema.PicVote, su *schema.User, conf *schema.Configuration) []*schema.PicVote {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
+	uc := userCredOf(su, conf)
 	dst := make([]*schema.PicVote, 0, len(pvs))
 	for _, pv := range pvs {
-		dst = append(dst, filterPicVoteInternal(pv, subjectUserId, cs))
+		dst = append(dst, filterPicVoteInternal(pv, uc))
 	}
 	return dst
 }
 
-func filterPicVoteInternal(
-	pv *schema.PicVote, subjectUserId int64, cs *schema.CapSet) *schema.PicVote {
+func filterPicVoteInternal(pv *schema.PicVote, uc *userCred) *schema.PicVote {
 	dpv := *pv
-	if !cs.Has(schema.User_PIC_VOTE_EXTENSION_READ) {
+	if !uc.cs.Has(schema.User_PIC_VOTE_EXTENSION_READ) {
 		dpv.Ext = nil
 	}
 	switch {
-	case cs.Has(schema.User_USER_READ_ALL):
-	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_VOTE):
-	case subjectUserId == dpv.UserId && cs.Has(schema.User_USER_READ_SELF):
+	case uc.cs.Has(schema.User_USER_READ_ALL):
+	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_VOTE):
+	case uc.subjectUserId == dpv.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
 		dpv.UserId = schema.AnonymousUserID
 	}
