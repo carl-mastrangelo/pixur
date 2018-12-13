@@ -102,6 +102,7 @@ func (s *Server) Init(ctx context.Context, c *config.Config) (errCap error) {
 func newPixurChannel(ctx context.Context, interceptor grpc.UnaryClientInterceptor, spec string) (*grpc.ClientConn, error) {
 	var dos []grpc.DialOption
 	dos = append(dos, grpc.WithInsecure())
+	dos = append(dos, grpc.WithWaitForHandshake())
 	if interceptor != nil {
 		dos = append(dos, grpc.WithUnaryInterceptor(interceptor))
 	}

@@ -117,21 +117,21 @@ func TestHasCap(t *testing.T) {
 }
 
 func TestCtxFromAuthToken(t *testing.T) {
-	token := "hi"
-	ctx := ctxFromAuthToken(context.Background(), token)
+	atv := authTokenValue{Token: "hi"}
+	ctx := ctxFromAuthToken(context.Background(), atv)
 
 	val := ctx.Value(authTokenKey{})
-	if outtoken, ok := val.(string); !ok || outtoken != token {
-		t.Error("Have", val, "want", ok, token)
+	if outtoken, ok := val.(authTokenValue); !ok || outtoken != atv {
+		t.Error("Have", val, "want", ok, atv)
 	}
 }
 
 func TestAuthTokenFromCtx(t *testing.T) {
-	token := "hi"
-	ctx := context.WithValue(context.Background(), authTokenKey{}, token)
+	atv := authTokenValue{Token: "hi"}
+	ctx := context.WithValue(context.Background(), authTokenKey{}, atv)
 
-	if outtoken, ok := authTokenFromCtx(ctx); !ok || outtoken != token {
-		t.Error("Have", outtoken, "want", ok, token)
+	if outtoken, ok := authTokenFromCtx(ctx); !ok || outtoken != atv {
+		t.Error("Have", outtoken, "want", ok, atv)
 	}
 }
 
@@ -140,12 +140,12 @@ func TestAuthTokenFromReq(t *testing.T) {
 		Header: make(http.Header),
 	}
 
-	if token, present := authTokenFromReq(req); present || token != "" {
-		t.Error("should be absent", token)
+	if atv, present := authTokenFromReq(req); present || atv.Token != "" {
+		t.Error("should be absent", atv)
 	}
 
 	req.AddCookie(&http.Cookie{Name: authPwtCookieName, Value: "hi"})
-	if token, present := authTokenFromReq(req); !present || token != "hi" {
-		t.Error("should be present", present, token)
+	if atv, present := authTokenFromReq(req); !present || atv.Token != "hi" {
+		t.Error("should be present", present, atv)
 	}
 }

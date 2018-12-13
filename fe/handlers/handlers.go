@@ -32,9 +32,10 @@ func register(rf server.RegFunc) {
 
 type paneData struct {
 	*baseData
-	SiteName    string
-	XsrfToken   string
-	SubjectUser *api.User
+	SiteName        string
+	XsrfToken       string
+	NeedAuthRefresh bool
+	SubjectUser     *api.User
 	// Err is a user visible error set after a failed write
 	Err error
 }
@@ -54,15 +55,22 @@ func (pd *paneData) ErrShouldLogin() bool {
 }
 
 func newPaneData(ctx context.Context, title string, pt *paths) *paneData {
+	var needAuthRefresh bool
+
+	if atv, ok := authTokenFromCtx(ctx); ok {
+		needAuthRefresh = atv.SoftExpired
+	}
+
 	return &paneData{
 		baseData: &baseData{
 			Paths: pt,
 			Title: title,
 		},
-		SiteName:    globalSiteName,
-		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
-		SubjectUser: subjectUserOrNilFromCtx(ctx),
-		Err:         writeErrOrNilFromCtx(ctx),
+		SiteName:        globalSiteName,
+		XsrfToken:       outgoingXsrfTokenOrEmptyFromCtx(ctx),
+		NeedAuthRefresh: needAuthRefresh,
+		SubjectUser:     subjectUserOrNilFromCtx(ctx),
+		Err:             writeErrOrNilFromCtx(ctx),
 	}
 }
 
@@ -71,8 +79,8 @@ var _ grpc.UnaryClientInterceptor = cookieToGRPCAuthInterceptor
 func cookieToGRPCAuthInterceptor(
 	ctx oldctx.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	if token, present := authTokenFromCtx(ctx); present {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderKey, token))
+	if atv, present := authTokenFromCtx(ctx); present {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(authPwtHeaderKey, atv.Token))
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
@@ -144,11 +152,11 @@ type readHandler struct {
 // TODO: test
 func (h *readHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	authToken, authTokenPresent := authTokenFromCtx(ctx)
+	atv, authTokenPresent := authTokenFromCtx(ctx)
 	if !authTokenPresent {
-		authToken, authTokenPresent = authTokenFromReq(r)
+		atv, authTokenPresent = authTokenFromReq(r)
 		if authTokenPresent {
-			ctx = ctxFromAuthToken(ctx, authToken)
+			ctx = ctxFromAuthToken(ctx, atv)
 		}
 	}
 	if _, surPresent := subjectUserResultFromCtx(ctx); authTokenPresent && !surPresent {

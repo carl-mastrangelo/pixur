@@ -85,26 +85,26 @@ func (h *loginActionHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		refreshToken = c.Value
 	}
 
+	ctx := r.Context()
 	req := &api.GetRefreshTokenRequest{
 		RefreshToken: refreshToken,
 	}
+	res, err := h.c.GetRefreshToken(ctx, req)
+	if err != nil {
+		httpCleanupError(w, err)
+		return
+	}
 
-	h.refresh0(w, req, r)
+	if h.refresh0(w, res, r) {
+		w.WriteHeader(http.StatusOK)
+	}
 	return
 }
 
 func (h *loginActionHandler) refresh0(
-	w http.ResponseWriter, tokenRequest *api.GetRefreshTokenRequest, r *http.Request) {
+	w http.ResponseWriter, res *api.GetRefreshTokenResponse, r *http.Request) bool {
 
 	ctx := r.Context()
-	res, err := h.c.GetRefreshToken(ctx, tokenRequest)
-	if err != nil {
-		httpWriteError(w, err)
-		ctx = ctxFromWriteErr(ctx, err)
-		r = r.WithContext(ctx)
-		h.display.ServeHTTP(w, r)
-		return
-	}
 
 	var cookies []*http.Cookie
 	if res.RefreshPayload != nil {
@@ -114,12 +114,12 @@ func (h *loginActionHandler) refresh0(
 			ctx = ctxFromWriteErr(ctx, err)
 			r = r.WithContext(ctx)
 			h.display.ServeHTTP(w, r)
-			return
+			return false
 		}
 		cookies = append(cookies, &http.Cookie{
 			Name:     refreshPwtCookieName,
 			Value:    res.RefreshToken,
-			Path:     h.pt.LoginAction().EscapedPath(),
+			Path:     h.pt.UserTokenRefresh("").EscapedPath(),
 			Expires:  notAfter,
 			Secure:   h.secure,
 			HttpOnly: true,
@@ -132,7 +132,7 @@ func (h *loginActionHandler) refresh0(
 			ctx = ctxFromWriteErr(ctx, err)
 			r = r.WithContext(ctx)
 			h.display.ServeHTTP(w, r)
-			return
+			return false
 		}
 		cookies = append(cookies, &http.Cookie{
 			Name:     authPwtCookieName,
@@ -151,7 +151,7 @@ func (h *loginActionHandler) refresh0(
 				ctx = ctxFromWriteErr(ctx, err)
 				r = r.WithContext(ctx)
 				h.display.ServeHTTP(w, r)
-				return
+				return false
 			}
 		} else {
 			softNotAfter = notAfter
@@ -172,7 +172,7 @@ func (h *loginActionHandler) refresh0(
 			ctx = ctxFromWriteErr(ctx, err)
 			r = r.WithContext(ctx)
 			h.display.ServeHTTP(w, r)
-			return
+			return false
 		}
 		cookies = append(cookies, &http.Cookie{
 			Name:     pixPwtCookieName,
@@ -196,7 +196,7 @@ func (h *loginActionHandler) refresh0(
 		http.SetCookie(w, c)
 	}
 
-	http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
+	return true
 }
 
 func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
@@ -210,8 +210,19 @@ func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
 		Secret:       r.PostFormValue(h.pt.pr.Secret()),
 		RefreshToken: refreshToken,
 	}
+	ctx := r.Context()
+	res, err := h.c.GetRefreshToken(ctx, req)
+	if err != nil {
+		httpWriteError(w, err)
+		ctx = ctxFromWriteErr(ctx, err)
+		r = r.WithContext(ctx)
+		h.display.ServeHTTP(w, r)
+		return
+	}
 
-	h.refresh0(w, req, r)
+	if h.refresh0(w, res, r) {
+		http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
+	}
 	return
 }
 
@@ -224,7 +235,7 @@ func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     refreshPwtCookieName,
 		Value:    "",
-		Path:     h.pt.LoginAction().EscapedPath(),
+		Path:     h.pt.UserTokenRefresh("").EscapedPath(),
 		Expires:  past,
 		Secure:   h.secure,
 		HttpOnly: true,

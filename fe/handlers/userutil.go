@@ -100,23 +100,36 @@ func checkCapInternal(ctx context.Context, c api.Capability_Cap) (has, certain b
 // authTokenKey is a context key for an unparsed auth token
 type authTokenKey struct{}
 
+type authTokenValue struct {
+	Token       string
+	SoftExpired bool
+}
+
 // ctxFromAuthToken creates a new context with a given auth token
-func ctxFromAuthToken(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, authTokenKey{}, token)
+func ctxFromAuthToken(ctx context.Context, atv authTokenValue) context.Context {
+	return context.WithValue(ctx, authTokenKey{}, atv)
 }
 
 // authTokenFromCtx extracts the auth token from a context
-func authTokenFromCtx(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(authTokenKey{}).(string)
-	return token, ok
+func authTokenFromCtx(ctx context.Context) (authTokenValue, bool) {
+	atv, ok := ctx.Value(authTokenKey{}).(authTokenValue)
+	return atv, ok
 }
 
-func authTokenFromReq(req *http.Request) (token string, present bool) {
+func authTokenFromReq(req *http.Request) (authTokenValue, bool) {
 	c, err := req.Cookie(authPwtCookieName)
 	if err == http.ErrNoCookie {
-		return "", false
+		return authTokenValue{}, false
 	} else if err != nil {
 		panic(err) // docs say should never happen
 	}
-	return c.Value, true
+	exp := true
+	if _, err := req.Cookie(authSoftCookieName); err == nil {
+		exp = false
+	} else if err == http.ErrNoCookie {
+	} else {
+		panic(err) // docs say should never happen
+	}
+
+	return authTokenValue{Token: c.Value, SoftExpired: exp}, true
 }
