@@ -3,6 +3,7 @@ package main // import "pixur.org/pixur"
 import (
 	"context"
 	"flag"
+	"time"
 
 	"github.com/golang/glog"
 
@@ -25,6 +26,8 @@ func main() {
 		s := new(beserver.Server)
 		errs <- s.StartAndWait(ctx, beconfig.Conf)
 	}()
+	// Work around lack of wait-for-ready in grpc
+	time.Sleep(100 * time.Millisecond)
 
 	go func() {
 		s := new(feserver.Server)
