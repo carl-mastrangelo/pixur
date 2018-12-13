@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	refreshPwtDuration = time.Hour * 24 * 30 * 6 // 6 months
-	authPwtDuration    = time.Hour * 24 * 30     // 1 month
+	refreshPwtDuration  = time.Hour * 24 * 30 * 6 // 6 months
+	authPwtDuration     = time.Hour * 24 * 30 * 3 // 3 month
+	authPwtSoftDuration = time.Hour * 24          // 1 day
 )
 
 var (
@@ -106,11 +107,16 @@ func (s *serv) handleGetRefreshToken(
 	if err != nil {
 		return nil, status.Internal(err, "can't build auth notafter")
 	}
+	authSoftNotAfter, err := ptypes.TimestampProto(time.Unix(now.Add(authPwtSoftDuration).Unix(), 0))
+	if err != nil {
+		return nil, status.Internal(err, "can't build auth notafter")
+	}
 
 	authPayload := &api.PwtPayload{
 		Subject:       subject,
 		NotBefore:     notBefore,
 		NotAfter:      authNotAfter,
+		SoftNotAfter:  authSoftNotAfter,
 		TokenParentId: refreshTokenId,
 		Type:          api.PwtPayload_AUTH,
 	}
