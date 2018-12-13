@@ -28,6 +28,7 @@ func (h *loginDisplayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	data := &loginData{
 		paneData: newPaneData(ctx, "Login", h.pt),
 	}
+
 	if err := loginDisplayTpl.Execute(w, data); err != nil {
 		httpCleanupError(w, err)
 		return

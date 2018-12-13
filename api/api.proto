@@ -637,6 +637,14 @@ message FindUserEventsResponse {
   string prev_user_event_id = 3;
 }
 
+message WatchBackendConfigurationRequest {
+
+}
+
+message WatchBackendConfigurationResponse {
+  sfixed64 version = 1;
+  BackendConfiguration backend_configuration = 2;
+}
 
 extend google.protobuf.ServiceOptions {
   ServiceOpts pixur_service_opts = 65537;
@@ -666,7 +674,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181210 // AUTO UPDATED BY generate.go
+    api_version: 20181212 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
@@ -733,5 +741,10 @@ service PixurService {
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
   
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
+  
+  rpc WatchBackendConfiguration(WatchBackendConfigurationRequest) returns (
+      stream WatchBackendConfigurationResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
 }
 

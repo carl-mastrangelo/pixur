@@ -150,6 +150,11 @@ func (s *serv) ReadPicFile(rps api.PixurService_ReadPicFileServer) error {
 	return s.handleReadPicFile(rps)
 }
 
+func (s *serv) WatchBackendConfiguration(req *api.WatchBackendConfigurationRequest,
+	wbcs api.PixurService_WatchBackendConfigurationServer) error {
+	return s.handleWatchBackendConfiguration(req, wbcs)
+}
+
 type ServerConfig struct {
 	DB                   db.DB
 	PixPath              string
