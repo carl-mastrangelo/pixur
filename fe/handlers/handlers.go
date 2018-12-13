@@ -269,7 +269,7 @@ func (w *htmlResponseWriter) Push(target string, opts *http.PushOptions) error {
 func writeWrapper(s *server.Server) func(http.Handler) http.Handler {
 	pt := &paths{r: s.HTTPRoot}
 	writeTpl := actionHandler{
-		pr: pt.pr,
+		pt: pt,
 	}
 	return func(next http.Handler) http.Handler {
 		h := writeTpl
@@ -281,7 +281,7 @@ func writeWrapper(s *server.Server) func(http.Handler) http.Handler {
 func newActionHandler(s *server.Server, next http.Handler) http.Handler {
 	pt := &paths{r: s.HTTPRoot}
 	return &actionHandler{
-		pr:   pt.pr,
+		pt:   pt,
 		next: next,
 	}
 }
@@ -289,7 +289,7 @@ func newActionHandler(s *server.Server, next http.Handler) http.Handler {
 var _ http.Handler = &actionHandler{}
 
 type actionHandler struct {
-	pr   params
+	pt   *paths
 	next http.Handler
 }
 
@@ -298,12 +298,14 @@ func (h *actionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	incomingXsrfToken, ok := incomingXsrfTokenFromCtx(ctx)
 	if !ok {
-		xsrfCookie, xsrfField, err := incomingXsrfTokensFromReq(r, h.pr)
+		xsrfCookie, xsrfField, err := incomingXsrfTokensFromReq(r, h.pt)
 		if err != nil {
 			httpError(w, err)
 			return
 		}
 		if err := checkXsrfTokens(xsrfCookie, xsrfField); err != nil {
+			// Never destroy the cookie if they don't match.  An attacker could trick the user into
+			// setting a bad xsrf field, which would cause them to be logged out.
 			httpError(w, err)
 			return
 		}

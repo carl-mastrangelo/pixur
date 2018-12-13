@@ -79,20 +79,25 @@ func (h *loginActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
+func (h *loginActionHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	var refreshToken string
 	if c, err := r.Cookie(refreshPwtCookieName); err == nil {
 		refreshToken = c.Value
 	}
 
 	req := &api.GetRefreshTokenRequest{
-		Ident:        r.PostFormValue(h.pt.pr.Ident()),
-		Secret:       r.PostFormValue(h.pt.pr.Secret()),
 		RefreshToken: refreshToken,
 	}
 
+	h.refresh0(w, req, r)
+	return
+}
+
+func (h *loginActionHandler) refresh0(
+	w http.ResponseWriter, tokenRequest *api.GetRefreshTokenRequest, r *http.Request) {
+
 	ctx := r.Context()
-	res, err := h.c.GetRefreshToken(ctx, req)
+	res, err := h.c.GetRefreshToken(ctx, tokenRequest)
 	if err != nil {
 		httpWriteError(w, err)
 		ctx = ctxFromWriteErr(ctx, err)
@@ -137,6 +142,28 @@ func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
 			Secure:   h.secure,
 			HttpOnly: true,
 		})
+		var softNotAfter time.Time
+		if res.AuthPayload.SoftNotAfter != nil {
+			var err error
+			softNotAfter, err = ptypes.Timestamp(res.AuthPayload.SoftNotAfter)
+			if err != nil {
+				httpWriteError(w, err)
+				ctx = ctxFromWriteErr(ctx, err)
+				r = r.WithContext(ctx)
+				h.display.ServeHTTP(w, r)
+				return
+			}
+		} else {
+			softNotAfter = notAfter
+		}
+		cookies = append(cookies, &http.Cookie{
+			Name:     authSoftCookieName,
+			Value:    authSoftCookieName, // doesn't really matter
+			Path:     h.pt.Root().EscapedPath(),
+			Expires:  softNotAfter,
+			Secure:   h.secure,
+			HttpOnly: true,
+		})
 	}
 	if res.PixPayload != nil {
 		notAfter, err := ptypes.Timestamp(res.PixPayload.NotAfter)
@@ -172,6 +199,22 @@ func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.pt.Root().String(), http.StatusSeeOther)
 }
 
+func (h *loginActionHandler) login(w http.ResponseWriter, r *http.Request) {
+	var refreshToken string
+	if c, err := r.Cookie(refreshPwtCookieName); err == nil {
+		refreshToken = c.Value
+	}
+
+	req := &api.GetRefreshTokenRequest{
+		Ident:        r.PostFormValue(h.pt.pr.Ident()),
+		Secret:       r.PostFormValue(h.pt.pr.Secret()),
+		RefreshToken: refreshToken,
+	}
+
+	h.refresh0(w, req, r)
+	return
+}
+
 func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
 
 	// always destroy the cookies.  Incase they become invalid, we don't want to fail to destroy them
@@ -188,6 +231,14 @@ func (h *loginActionHandler) logout(w http.ResponseWriter, r *http.Request) {
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     authPwtCookieName,
+		Value:    "",
+		Path:     h.pt.Root().EscapedPath(),
+		Expires:  past,
+		Secure:   h.secure,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     authSoftCookieName,
 		Value:    "",
 		Path:     h.pt.Root().EscapedPath(),
 		Expires:  past,
@@ -230,27 +281,33 @@ func init() {
 		ldh := readWrapper(s)(&loginDisplayHandler{
 			pt: pt,
 		})
-		lah := writeWrapper(s)(&loginActionHandler{
+		lah := &loginActionHandler{
 			c:       s.Client,
 			secure:  s.Secure,
 			pt:      pt,
 			now:     s.Now,
 			display: ldh,
-		})
+		}
+		rtlah := http.HandlerFunc(lah.refresh)
+		lahw := writeWrapper(s)(lah)
+		rtlahw := writeWrapper(s)(rtlah)
 		cuh := writeWrapper(s)(&createUserHandler{
 			c:       s.Client,
 			pt:      pt,
 			display: ldh,
-			login:   lah,
+			login:   lahw,
 		})
 		ldhh := compressHtmlHandler(&methodHandler{
 			Get: ldh,
 		})
 		lahh := compressHtmlHandler(&methodHandler{
-			Post: lah,
+			Post: lahw,
 		})
 		cuhh := compressHtmlHandler(&methodHandler{
 			Post: cuh,
+		})
+		rtlahwh := compressHtmlHandler(&methodHandler{
+			Get: rtlahw,
 		})
 
 		// TODO: maybe consolidate these?
@@ -259,6 +316,7 @@ func init() {
 		// handles both login  and log out
 		s.HTTPMux.Handle(pt.LoginAction().Path, lahh)
 		s.HTTPMux.Handle(pt.CreateUserAction().Path, cuhh)
+		s.HTTPMux.Handle(pt.UserTokenRefresh("").Path, rtlahwh)
 		return nil
 	})
 }

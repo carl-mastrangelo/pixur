@@ -17,7 +17,8 @@ func (p *paths) Params() params {
 
 func (p *paths) Root() *url.URL {
 	if p.r != nil {
-		return &*p.r
+		r := *p.r
+		return &r
 	}
 	return &url.URL{Path: "/"}
 }
@@ -52,6 +53,17 @@ func (p *paths) PixDir() *url.URL {
 
 func (p *paths) User() *url.URL {
 	return p.Root().ResolveReference(&url.URL{Path: "u/"})
+}
+
+func (p *paths) UserTokenRefresh(xsrfToken string) *url.URL {
+	var q string
+	if xsrfToken != "" {
+		v := url.Values{}
+		v.Add(p.pr.Xsrf(), xsrfToken)
+		q = v.Encode()
+	}
+
+	return p.User().ResolveReference(&url.URL{Path: "refresh", RawQuery: q})
 }
 
 func (p *paths) Login() *url.URL {

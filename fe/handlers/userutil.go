@@ -10,6 +10,7 @@ import (
 const (
 	refreshPwtCookieName = "rt"
 	authPwtCookieName    = "at"
+	authSoftCookieName   = "st"
 	pixPwtCookieName     = "pt"
 )
 

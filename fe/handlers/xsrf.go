@@ -85,8 +85,8 @@ func newXsrfCookie(token string, now func() time.Time, pt *paths, secure bool) *
 }
 
 // incomingXsrfTokensFromReq extracts the cookie and header xsrf tokens from r
-func incomingXsrfTokensFromReq(r *http.Request, pr params) (string, string, error) {
-	c, err := r.Cookie(pr.XsrfCookie())
+func incomingXsrfTokensFromReq(r *http.Request, pt *paths) (string, string, error) {
+	c, err := r.Cookie(pt.pr.XsrfCookie())
 	if err == http.ErrNoCookie {
 		return "", "", &HTTPErr{
 			Code:    http.StatusUnauthorized,
@@ -101,7 +101,11 @@ func incomingXsrfTokensFromReq(r *http.Request, pr params) (string, string, erro
 			Cause:   err,
 		}
 	}
-	f := r.PostFormValue(pr.Xsrf())
+	f := r.PostFormValue(pt.pr.Xsrf())
+	if f == "" && r.Method == http.MethodGet && r.URL.Path == pt.UserTokenRefresh("").Path {
+		// Single special case.  Sorry.
+		f = r.Form.Get(pt.pr.Xsrf())
+	}
 	return c.Value, f, nil
 }
 
