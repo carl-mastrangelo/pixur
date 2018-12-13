@@ -93,19 +93,25 @@ func TestSubjectUserOrNilFromCtx(t *testing.T) {
 }
 
 func TestHasCap(t *testing.T) {
-	if hasCap(nil, api.Capability_PIC_READ) {
+	if hasCap(context.Background(), api.Capability_PIC_READ) {
 		t.Error("should be false")
 	}
 
 	u := &api.User{
 		Capability: []api.Capability_Cap{},
 	}
-	if hasCap(u, api.Capability_PIC_READ) {
+	sur := &subjectUserResult{
+		User: u,
+		Done: make(chan struct{}),
+	}
+	close(sur.Done)
+	ctx := ctxFromSubjectUserResult(context.Background(), sur)
+	if hasCap(ctx, api.Capability_PIC_READ) {
 		t.Error("should be false")
 	}
 
 	u.Capability = append(u.Capability, api.Capability_PIC_READ)
-	if !hasCap(u, api.Capability_PIC_READ) {
+	if !hasCap(ctx, api.Capability_PIC_READ) {
 		t.Error("should be true")
 	}
 }

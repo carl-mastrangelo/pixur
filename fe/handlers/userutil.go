@@ -58,17 +58,42 @@ func subjectUserOrNilFromCtx(ctx context.Context) *api.User {
 	return user
 }
 
-// TODO: check for AnonymousUser caps
-func hasCap(u *api.User, c api.Capability_Cap) bool {
-	if u == nil {
-		return false
+func hasCap(ctx context.Context, c api.Capability_Cap) bool {
+	has, certain := checkCapInternal(ctx, c)
+	return has && certain
+}
+
+func maybeHasCap(ctx context.Context, c api.Capability_Cap) bool {
+	has, certain := checkCapInternal(ctx, c)
+	return has || !certain
+}
+
+// +user +anon = false
+// -user +anon = true
+//   nil +anon = false
+// error +anon = false
+// +user -anon = true
+// -user -anon = false
+//   nil -anon = false
+// error -anon = false
+func checkCapInternal(ctx context.Context, c api.Capability_Cap) (has, certain bool) {
+	su, err := subjectUserFromCtx(ctx)
+	if err != nil {
+		return false, false
 	}
-	for _, uc := range u.Capability {
-		if c == uc {
-			return true
+	if su != nil {
+		for _, uc := range su.Capability {
+			if uc == c {
+				return true, true
+			}
 		}
+		return false, true
 	}
-	return false
+	conf, err := globalConfig.Get(ctx)
+	if err != nil {
+		return false, true
+	}
+	return conf.anoncap[c], true
 }
 
 // authTokenKey is a context key for an unparsed auth token

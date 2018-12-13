@@ -71,8 +71,7 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	u := subjectUserOrNilFromCtx(ctx)
-	canupload := hasCap(u, api.Capability_PIC_CREATE)
+	canupload := hasCap(ctx, api.Capability_PIC_CREATE)
 
 	data := indexData{
 		paneData:  newPaneData(ctx, "Index", h.pt),

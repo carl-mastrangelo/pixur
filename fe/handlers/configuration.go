@@ -9,6 +9,17 @@ import (
 	"pixur.org/pixur/fe/server"
 )
 
+type testConfigKey struct{}
+
+func ctxFromTestConfig(ctx context.Context, conf *feConfiguration) context.Context {
+	return context.WithValue(ctx, testConfigKey{}, conf)
+}
+
+func testConfigFromCtx(ctx context.Context) (conf *feConfiguration, ok bool) {
+	conf, ok = ctx.Value(testConfigKey{}).(*feConfiguration)
+	return
+}
+
 var globalConfig = &configurationFuture{
 	done: make(chan struct{}),
 }
@@ -18,18 +29,34 @@ type feConfiguration struct {
 	anoncap map[api.Capability_Cap]bool
 }
 
+func (fc *feConfiguration) denorm() {
+	if fc.beconf.AnonymousCapability != nil {
+		fc.anoncap = make(map[api.Capability_Cap]bool)
+		for _, c := range fc.beconf.AnonymousCapability.Capability {
+			fc.anoncap[c] = true
+		}
+	}
+}
+
 type configurationFuture struct {
 	val  atomic.Value
 	done chan struct{}
 }
 
 func (cf *configurationFuture) Get(ctx context.Context) (*feConfiguration, error) {
-	select {
-	case <-cf.done:
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if conf, ok := testConfigFromCtx(ctx); ok {
+		return conf, nil
 	}
-	return cf.val.Load().(*feConfiguration), nil
+	for {
+		if conf := cf.val.Load(); conf != nil {
+			return conf.(*feConfiguration), nil
+		}
+		select {
+		case <-cf.done:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }
 
 func init() {
