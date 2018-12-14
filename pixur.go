@@ -3,9 +3,7 @@ package main // import "pixur.org/pixur"
 import (
 	"context"
 	"flag"
-	"time"
-
-	"github.com/golang/glog"
+	"log"
 
 	beserver "pixur.org/pixur/be/server"
 	beconfig "pixur.org/pixur/be/server/config"
@@ -16,28 +14,44 @@ import (
 
 func main() {
 	flag.Parse()
-	defer glog.Flush()
-
 	ctx := context.Background()
-
 	errs := make(chan error)
+	beready := make(chan struct{})
+	feready := make(chan struct{})
 
 	go func() {
 		s := new(beserver.Server)
-		errs <- s.StartAndWait(ctx, beconfig.Conf)
+		if err := s.Init(ctx, beconfig.Conf); err != nil {
+			errs <- err
+			return
+		}
+		errs <- s.ListenAndServe(ctx, beready)
 	}()
-	// Work around lack of wait-for-ready in grpc
-	time.Sleep(100 * time.Millisecond)
 
 	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-beready:
+		}
 		s := new(feserver.Server)
 		fehandlers.RegisterAll(s)
 		if err := s.Init(ctx, feconfig.Conf); err != nil {
 			errs <- err
 			return
 		}
-		errs <- s.ListenAndServe(ctx, nil)
+
+		errs <- s.ListenAndServe(ctx, feready)
 	}()
 
-	glog.Fatal(<-errs)
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-feready:
+			log.Println("Pixur Server Ready")
+		}
+	}()
+
+	log.Fatal(<-errs)
 }

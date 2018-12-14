@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -16,93 +15,103 @@ import (
 	"pixur.org/pixur/be/handlers"
 	sdb "pixur.org/pixur/be/schema/db"
 	"pixur.org/pixur/be/server/config"
+	"pixur.org/pixur/be/status"
 )
 
 type Server struct {
-	db          sdb.DB
-	s           *grpc.Server
-	ln          net.Listener
-	pixPath     string
-	tokenSecret []byte
-	publicKey   *rsa.PublicKey
-	privateKey  *rsa.PrivateKey
+	db            sdb.DB
+	s             *grpc.Server
+	lnnet, lnaddr string
+	pixPath       string
+	tokenSecret   []byte
+	publicKey     *rsa.PublicKey
+	privateKey    *rsa.PrivateKey
 }
 
-func (s *Server) setup(ctx context.Context, c *config.Config) error {
+func (s *Server) setup(ctx context.Context, c *config.Config) (stscap status.S) {
 	db, err := sdb.Open(ctx, c.DbName, c.DbConfig)
 	if err != nil {
-		return err
+		return status.From(err)
 	}
-	s.db = db
+	closeDbServer := true
+	defer func() {
+		if closeDbServer {
+			if err := db.Close(); err != nil {
+				status.ReplaceOrSuppress(&stscap, status.From(err))
+			}
+		}
+	}()
 
 	// setup storage
 	fi, err := os.Stat(c.PixPath)
 	if os.IsNotExist(err) {
 		if err := os.MkdirAll(c.PixPath, os.ModeDir|0775); err != nil {
-			return err
+			return status.Internal(err, "can't create pix dir")
 		}
 		//make it
 	} else if err != nil {
-		return err
+		return status.Internal(err, "can't stat pix dir")
 	} else if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", c.PixPath)
+		return status.InvalidArgument(nil, c.PixPath, "is not a directory")
 	}
-	s.pixPath = c.PixPath
 
+	var privKey *rsa.PrivateKey
 	if c.SessionPrivateKeyPath != "" {
 		f, err := os.Open(c.SessionPrivateKeyPath)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't open private key")
 		}
 		defer f.Close()
 		data, err := ioutil.ReadAll(f)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't read private key")
 		}
 		block, _ := pem.Decode(data)
 		if block == nil {
-			return fmt.Errorf("No key in %s", c.SessionPrivateKeyPath)
+			return status.InvalidArgument(nil, "no key in", c.SessionPrivateKeyPath)
 		}
 		if block.Type != "RSA PRIVATE KEY" {
-			return fmt.Errorf("Wrong private key type")
+			return status.InvalidArgument(nil, "wrong private key type", block.Type)
 		}
 		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't parse private key")
 		}
 		key.Precompute()
-		s.privateKey = key
+		privKey = key
 	}
 
+	var pubKey *rsa.PublicKey
 	if c.SessionPublicKeyPath != "" {
 		f, err := os.Open(c.SessionPublicKeyPath)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't open public key")
 		}
 		defer f.Close()
 		data, err := ioutil.ReadAll(f)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't read public key")
 		}
 		block, _ := pem.Decode(data)
 		if block == nil {
-			return fmt.Errorf("No key in %s", c.SessionPublicKeyPath)
+			return status.InvalidArgument(nil, "no key in", c.SessionPublicKeyPath)
 		}
 		if block.Type != "PUBLIC KEY" {
-			return fmt.Errorf("Wrong public key type")
+			return status.InvalidArgument(nil, "wrong public key type", block.Type)
 		}
 		key, err := x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
-			return err
+			return status.Internal(err, "can't parse public key")
 		}
 		if rsaKey, ok := key.(*rsa.PublicKey); ok {
-			s.publicKey = rsaKey
+			pubKey = rsaKey
 		} else {
-			return fmt.Errorf("Wrong public key type %T", key)
+			return status.InvalidArgumentf(nil, "wrong public key type %T", key)
 		}
 	}
+	var tokenSecret []byte
 	if c.TokenSecret != "" {
-		s.tokenSecret = []byte(c.TokenSecret)
+		tokenSecret = []byte(c.TokenSecret)
 	}
 
 	opts, cb := handlers.HandlersInit(ctx, &handlers.ServerConfig{
@@ -113,20 +122,53 @@ func (s *Server) setup(ctx context.Context, c *config.Config) error {
 		PublicKey:            s.publicKey,
 		BackendConfiguration: c.BackendConfiguration,
 	})
-	s.s = grpc.NewServer(opts...)
-	cb(s.s)
+	grpcServer := grpc.NewServer(opts...)
+	cb(grpcServer)
 
-	ln, err := net.Listen(c.ListenNetwork, c.ListenAddress)
-	if err != nil {
-		return err
-	}
-	s.ln = ln
+	closeDbServer = false
+	s.db = db
+	s.pixPath = c.PixPath
+	s.privateKey = privKey
+	s.publicKey = pubKey
+	s.tokenSecret = tokenSecret
+	s.s = grpcServer
+	s.lnnet, s.lnaddr = c.ListenNetwork, c.ListenAddress
+
 	return nil
 }
 
-func (s *Server) StartAndWait(ctx context.Context, c *config.Config) error {
+func (s *Server) Init(ctx context.Context, c *config.Config) error {
 	if err := s.setup(ctx, c); err != nil {
 		return err
 	}
-	return s.s.Serve(s.ln)
+	return nil
+}
+
+func (s *Server) ListenAndServe(ctx context.Context, lnready chan<- struct{}) error {
+	return s.listenAndServe(ctx, lnready)
+}
+
+func (s *Server) listenAndServe(ctx context.Context, lnready chan<- struct{}) (stscap status.S) {
+	defer func() {
+		if err := s.db.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.From(err))
+		}
+	}()
+	ln, err := net.Listen(s.lnnet, s.lnaddr)
+	if err != nil {
+		return status.Internal(err, "can't listen on address", s.lnaddr)
+	}
+	defer func() {
+		if err := ln.Close(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't close listener"))
+		}
+	}()
+	if lnready != nil {
+		close(lnready)
+	}
+
+	if err := s.s.Serve(ln); err != nil {
+		return status.Internal(err, "failed to serve")
+	}
+	return nil
 }

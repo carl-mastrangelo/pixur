@@ -4,8 +4,7 @@ package main // import "pixur.org/pixur/fe"
 import (
 	"context"
 	"flag"
-
-	"github.com/golang/glog"
+	"log"
 
 	"pixur.org/pixur/fe/handlers"
 	"pixur.org/pixur/fe/server"
@@ -14,12 +13,11 @@ import (
 
 func main() {
 	flag.Parse()
-	defer glog.Flush()
 
 	s := new(server.Server)
 	handlers.RegisterAll(s)
 	if err := s.Init(context.Background(), config.Conf); err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
-	glog.Fatal(s.ListenAndServe(context.Background(), nil))
+	log.Fatal(s.ListenAndServe(context.Background(), nil))
 }

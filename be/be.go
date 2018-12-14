@@ -4,8 +4,7 @@ package main // import "pixur.org/pixur/be"
 import (
 	"context"
 	"flag"
-
-	"github.com/golang/glog"
+	"log"
 
 	"pixur.org/pixur/be/server"
 	"pixur.org/pixur/be/server/config"
@@ -13,9 +12,9 @@ import (
 
 func main() {
 	flag.Parse()
-	defer glog.Flush()
 
 	s := new(server.Server)
+	s.Init(context.Background(), config.Conf)
 
-	glog.Fatal(s.StartAndWait(context.Background(), config.Conf))
+	log.Fatal(s.ListenAndServe(context.Background(), nil))
 }
