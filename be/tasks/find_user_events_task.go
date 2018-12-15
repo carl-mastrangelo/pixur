@@ -180,38 +180,30 @@ func getMaxUserEvents(requestedMax int64, conf *schema.Configuration) (max, over
 
 func filterUserEvents(
 	ues []*schema.UserEvent, su *schema.User, conf *schema.Configuration) []*schema.UserEvent {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
+	uc := userCredOf(su, conf)
 	var dst []*schema.UserEvent
 loop:
 	for _, ue := range ues {
 		switch {
-		case cs.Has(schema.User_USER_READ_ALL):
-		case subjectUserId == ue.UserId && cs.Has(schema.User_USER_READ_SELF):
+		case uc.cs.Has(schema.User_USER_READ_ALL):
+		case uc.subjectUserId == ue.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 		default:
 			switch ue.Evt.(type) {
 			case *schema.UserEvent_OutgoingUpsertPicVote_:
 				switch {
-				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_VOTE):
+				case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_VOTE):
 				default:
 					continue loop
 				}
 			case *schema.UserEvent_OutgoingPicComment_:
 				switch {
-				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_COMMENT):
+				case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_COMMENT):
 				default:
 					continue loop
 				}
 			case *schema.UserEvent_UpsertPic_:
 				switch {
-				case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PICS):
+				case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PICS):
 				default:
 					continue loop
 				}

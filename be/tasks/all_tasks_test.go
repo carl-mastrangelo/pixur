@@ -568,6 +568,52 @@ func (u *TestUser) Refresh() (exists bool) {
 	return
 }
 
+func (u *TestUser) CreateEvent() *schema.UserEvent {
+	now := time.Now()
+	nowts := schema.ToTspb(now)
+	ue := &schema.UserEvent{
+		UserId:     u.User.UserId,
+		CreatedTs:  nowts,
+		ModifiedTs: nowts,
+		Index:      0,
+	}
+	u.c.AutoJob(func(j *tab.Job) error {
+		return j.InsertUserEvent(ue)
+	})
+	return ue
+}
+
+type TestUserEvent struct {
+	UserEvent *schema.UserEvent
+	c         *TestContainer
+}
+
+func (ue *TestUserEvent) Update() {
+	ue.c.AutoJob(func(j *tab.Job) error {
+		return j.UpdateUserEvent(ue.UserEvent)
+	})
+}
+
+func (ue *TestUserEvent) Refresh() (exists bool) {
+	ue.c.AutoJob(func(j *tab.Job) error {
+		ues, err := j.FindUserEvents(db.Opts{
+			Prefix: tab.KeyForUserEvent(ue.UserEvent),
+		})
+		if err != nil {
+			return err
+		}
+		if len(ues) == 1 {
+			ue.UserEvent = ues[0]
+			exists = true
+		} else {
+			ue.UserEvent = nil
+			exists = false
+		}
+		return nil
+	})
+	return
+}
+
 type TestPicVote struct {
 	PicVote *schema.PicVote
 	c       *TestContainer
