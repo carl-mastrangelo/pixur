@@ -43,16 +43,17 @@ func (s *Server) setup(ctx context.Context, c *config.Config) (stscap status.S) 
 	}()
 
 	// setup storage
-	fi, err := os.Stat(c.PixPath)
+	pixPath := c.PixPath
+	fi, err := os.Stat(pixPath)
 	if os.IsNotExist(err) {
-		if err := os.MkdirAll(c.PixPath, os.ModeDir|0775); err != nil {
+		if err := os.MkdirAll(pixPath, os.ModeDir|0775); err != nil {
 			return status.Internal(err, "can't create pix dir")
 		}
 		//make it
 	} else if err != nil {
 		return status.Internal(err, "can't stat pix dir")
 	} else if !fi.IsDir() {
-		return status.InvalidArgument(nil, c.PixPath, "is not a directory")
+		return status.InvalidArgument(nil, pixPath, "is not a directory")
 	}
 
 	var privKey *rsa.PrivateKey
@@ -116,10 +117,10 @@ func (s *Server) setup(ctx context.Context, c *config.Config) (stscap status.S) 
 
 	opts, cb := handlers.HandlersInit(ctx, &handlers.ServerConfig{
 		DB:                   db,
-		PixPath:              s.pixPath,
-		TokenSecret:          s.tokenSecret,
-		PrivateKey:           s.privateKey,
-		PublicKey:            s.publicKey,
+		PixPath:              pixPath,
+		TokenSecret:          tokenSecret,
+		PrivateKey:           privKey,
+		PublicKey:            pubKey,
 		BackendConfiguration: c.BackendConfiguration,
 	})
 	grpcServer := grpc.NewServer(opts...)
