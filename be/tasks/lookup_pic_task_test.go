@@ -355,3 +355,167 @@ func TestPicCommentTreeIgnoreCycle(t *testing.T) {
 		t.Fatal("wrong children", pct)
 	}
 }
+
+func TestFilterPicTagInternal_extAllowed(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+		Ext:    map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF, schema.User_PIC_TAG_EXTENSION_READ),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTagInternal_extRemoved(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+		Ext:    map[string]*anypb.Any{"six": nil},
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	pt.Ext = nil
+	if !proto.Equal(pt, ptd) {
+		t.Error("expected ext removed", pt, ptd)
+	}
+}
+
+func TestFilterPicTagInternal_userReadAll(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_ALL),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTagInternal_userReadPicTag(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: schema.AnonymousUserID,
+		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_TAG),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTagInternal_userReadSelf(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: 5,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTagInternal_userIdRemoved(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	uc := &userCred{
+		subjectUserId: 7,
+		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
+	}
+	ptd := filterPicTagInternal(pt, uc)
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	pt.UserId = schema.AnonymousUserID
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTag(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	u := &schema.User{
+		UserId: 7,
+	}
+	ptd := filterPicTag(pt, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	pt.UserId = schema.AnonymousUserID
+	if !proto.Equal(pt, ptd) {
+		t.Error("missing field", pt, ptd)
+	}
+}
+
+func TestFilterPicTags(t *testing.T) {
+	pt := &schema.PicTag{
+		PicId:  1,
+		UserId: 5,
+		TagId:  2,
+	}
+	dupe := *pt
+	u := &schema.User{
+		UserId: 7,
+	}
+	ptsd := filterPicTags([]*schema.PicTag{pt}, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pt, &dupe) {
+		t.Error("original changed", pt, dupe)
+	}
+	pt.UserId = schema.AnonymousUserID
+	if len(ptsd) != 1 || !proto.Equal(pt, ptsd[0]) {
+		t.Error("expected field", pt, ptsd)
+	}
+}

@@ -148,47 +148,29 @@ func buildCommentTree(pcs []*schema.PicComment) *PicCommentTree {
 
 func filterPicTag(
 	pt *schema.PicTag, su *schema.User, conf *schema.Configuration) *schema.PicTag {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
-
-	return filterPicTagInternal(pt, subjectUserId, cs)
+	uc := userCredOf(su, conf)
+	return filterPicTagInternal(pt, uc)
 }
 
 func filterPicTags(
 	pts []*schema.PicTag, su *schema.User, conf *schema.Configuration) []*schema.PicTag {
-	var cs *schema.CapSet
-	var subjectUserId int64
-	if su != nil {
-		cs = schema.CapSetOf(su.Capability...)
-		subjectUserId = su.UserId
-	} else {
-		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
-	}
+	uc := userCredOf(su, conf)
 	dst := make([]*schema.PicTag, 0, len(pts))
 	for _, pt := range pts {
-		dst = append(dst, filterPicTagInternal(pt, subjectUserId, cs))
+		dst = append(dst, filterPicTagInternal(pt, uc))
 	}
 	return dst
 }
 
-func filterPicTagInternal(
-	pt *schema.PicTag, subjectUserId int64, cs *schema.CapSet) *schema.PicTag {
+func filterPicTagInternal(pt *schema.PicTag, uc *userCred) *schema.PicTag {
 	dpt := *pt
-	if !cs.Has(schema.User_PIC_TAG_EXTENSION_READ) {
+	if !uc.cs.Has(schema.User_PIC_TAG_EXTENSION_READ) {
 		dpt.Ext = nil
 	}
 	switch {
-	case cs.Has(schema.User_USER_READ_ALL):
-	case cs.Has(schema.User_USER_READ_PUBLIC) && cs.Has(schema.User_USER_READ_PIC_TAG):
-	case subjectUserId == dpt.UserId && cs.Has(schema.User_USER_READ_SELF):
+	case uc.cs.Has(schema.User_USER_READ_ALL):
+	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_TAG):
+	case uc.subjectUserId == dpt.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
 		dpt.UserId = schema.AnonymousUserID
 	}
