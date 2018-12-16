@@ -202,6 +202,30 @@ message PicVote {
   map<string, google.protobuf.Any> ext = 6;
 }
 
+message PicCommentVote {
+  int64 pic_id = 1;
+  int64 comment_id = 2;
+  int64 user_id = 3;
+  // Index is a tie breaker for anonymous votes.  It is always 0 if user_id is not 0.  It is
+  // always positive.
+  int64 index = 4; 
+  
+  enum Vote {
+    UNKNOWN = 0;
+    UP = 1;
+    DOWN = 2;
+    NEUTRAL = 3;
+  }
+  
+  Vote vote = 5;
+  
+  google.protobuf.Timestamp created_ts = 6;
+  google.protobuf.Timestamp modified_ts = 7;
+
+  // Extra information that may not fit into the schema
+  map<string, google.protobuf.Any> ext = 8;
+}
+
 message UserEvent {
   int64 user_id = 1;
   // If multiple events are being created for a single pic, this acts as a tie breaker.

@@ -160,6 +160,25 @@ message PicVoteRow {
   pixur.be.schema.PicVote data = 3;
 }
 
+message PicVoteCommentRow {
+  option (pixur.be.schema.db.model.tab_opts) = {
+    name: "PicCommentVotes"
+    key: {
+      key_type: PRIMARY
+      col: "pic_id"
+      col: "comment_id"
+      col: "user_id"
+      col: "index"
+    }
+  };
+  int64 pic_id = 1 [(pixur.be.schema.db.model.field_opts) = {col_fn: "PicIdCol"}];
+  int64 comment_id = 2 [(pixur.be.schema.db.model.field_opts) = {col_fn: "CommentIdCol"}];
+  int64 user_id = 3 [(pixur.be.schema.db.model.field_opts) = {col_fn: "UserIdCol"}];
+  int64 index = 4 [(pixur.be.schema.db.model.field_opts) = {col_fn: "IndexCol"}];
+  
+  pixur.be.schema.PicCommentVote data = 5;
+}
+
 message UserRow {
   option (pixur.be.schema.db.model.tab_opts) = {
     name: "Users"
