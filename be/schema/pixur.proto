@@ -171,6 +171,11 @@ message PicComment {
 	int64 user_id = 4;
 	
 	string text = 7;
+	
+	// The denormalized sum of upvotes for this comment
+  int64 vote_up = 9;
+  // The denormalized sum of downvotes for this comment
+  int64 vote_down = 10;
 
   google.protobuf.Timestamp created_ts = 5;
   google.protobuf.Timestamp modified_ts = 6;
