@@ -363,6 +363,10 @@ message User {
     // implies that a user can see who voted on a pic, and what votes they 
     // have made.
     USER_READ_PIC_VOTE = 27;
+    // Can this user vote on pic comments?
+    PIC_COMMENT_VOTE_CREATE = 28;
+    // Can this user create arbitrary extension data on a comment vote? 
+    PIC_COMMENT_VOTE_EXTENSION_CREATE = 29;
   }
 
   repeated Capability capability = 7;
