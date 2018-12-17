@@ -269,8 +269,12 @@ func TestGetRefreshToken(t *testing.T) {
 	if !withinProto(resp.AuthPayload.NotAfter, time.Now().Add(authPwtDuration), time.Minute) {
 		t.Error("wrong after", resp.AuthPayload.NotAfter)
 	}
+	if !withinProto(resp.AuthPayload.SoftNotAfter, time.Now().Add(authPwtSoftDuration), time.Minute) {
+		t.Error("wrong soft after", resp.AuthPayload.SoftNotAfter)
+	}
 	resp.AuthPayload.NotBefore = nil
 	resp.AuthPayload.NotAfter = nil
+	resp.AuthPayload.SoftNotAfter = nil
 	expectedAuth := &api.PwtPayload{
 		Subject:       "2",
 		TokenParentId: 4,
