@@ -1731,8 +1731,7 @@ func (m *UserEvent_OutgoingPicComment) GetPicId() int64 {
 // IncomingPicComment represents commenting on someone else's pic.  If a user comments on
 // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
 type UserEvent_IncomingPicComment struct {
-	// comment_id is the newly created child comment, **not** the one owned by user_id.  The
-	// comment_parent_id of the given comment must be owned by user_id.
+	// comment_id is the newly created child comment, **not** the one owned by user_id.
 	CommentId            int64    `protobuf:"varint,1,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	PicId                int64    `protobuf:"varint,2,opt,name=pic_id,json=picId,proto3" json:"pic_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

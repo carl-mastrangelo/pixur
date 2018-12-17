@@ -265,8 +265,7 @@ message UserEvent {
   // IncomingPicComment represents commenting on someone else's pic.  If a user comments on
   // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
   message IncomingPicComment {
-    // comment_id is the newly created child comment, **not** the one owned by user_id.  The
-    // comment_parent_id of the given comment must be owned by user_id.
+    // comment_id is the newly created child comment, **not** the one owned by user_id.
     int64 comment_id = 1;
     int64 pic_id = 2;
   }

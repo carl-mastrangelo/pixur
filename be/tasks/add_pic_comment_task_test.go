@@ -621,7 +621,7 @@ func TestAddPicComment_Notification_Author_CommentParent(t *testing.T) {
 		Evt: &schema.UserEvent_IncomingPicComment_{
 			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 				PicId:     p.Pic.PicId,
-				CommentId: pc.PicComment.CommentId,
+				CommentId: task.PicComment.CommentId,
 			},
 		},
 	}
@@ -835,7 +835,7 @@ func TestAddPicComment_Notification_AnonAuthor_CommentParent(t *testing.T) {
 		Evt: &schema.UserEvent_IncomingPicComment_{
 			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 				PicId:     p.Pic.PicId,
-				CommentId: pc.PicComment.CommentId,
+				CommentId: task.PicComment.CommentId,
 			},
 		},
 	}
@@ -1052,7 +1052,8 @@ func TestAddPicComment_Notification_Author_PicParent(t *testing.T) {
 		ModifiedTs: schema.ToTspb(now()),
 		Evt: &schema.UserEvent_IncomingPicComment_{
 			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
-				PicId: p.Pic.PicId,
+				PicId:     p.Pic.PicId,
+				CommentId: task.PicComment.CommentId,
 			},
 		},
 	}
@@ -1183,7 +1184,8 @@ func TestAddPicComment_Notification_AnonAuthor_PicParent(t *testing.T) {
 		ModifiedTs: schema.ToTspb(now()),
 		Evt: &schema.UserEvent_IncomingPicComment_{
 			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
-				PicId: p.Pic.PicId,
+				PicId:     p.Pic.PicId,
+				CommentId: task.PicComment.CommentId,
 			},
 		},
 	}
@@ -1262,7 +1264,8 @@ func TestAddPicComment_Notification_AnonAuthor_PicParent_ExistingEvents(t *testi
 		Index:      1,
 		Evt: &schema.UserEvent_IncomingPicComment_{
 			IncomingPicComment: &schema.UserEvent_IncomingPicComment{
-				PicId: p.Pic.PicId,
+				PicId:     p.Pic.PicId,
+				CommentId: task.PicComment.CommentId,
 			},
 		},
 	}

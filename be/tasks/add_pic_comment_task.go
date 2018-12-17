@@ -188,7 +188,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 			Evt: &schema.UserEvent_IncomingPicComment_{
 				IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 					PicId:     p.PicId,
-					CommentId: commentParent.CommentId,
+					CommentId: commentID,
 				},
 			},
 		})
@@ -211,7 +211,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 					Evt: &schema.UserEvent_IncomingPicComment_{
 						IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 							PicId:     p.PicId,
-							CommentId: 0,
+							CommentId: commentID,
 						},
 					},
 				})
