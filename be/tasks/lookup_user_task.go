@@ -17,6 +17,8 @@ type LookupUserTask struct {
 
 	// Inputs
 	ObjectUserID int64
+	// If true, only public information about the user will be included.
+	PublicOnly bool
 
 	// Outs
 	User *schema.User
@@ -33,19 +35,23 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	if sts != nil {
-		return sts
-	}
-	neededCapability := schema.User_USER_READ_ALL
-	if su == ou {
-		neededCapability = schema.User_USER_READ_SELF
-	}
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
 	}
-	if sts := validateCapability(su, conf, neededCapability); sts != nil {
-		return sts
+
+	uc := userCredOf(su, conf)
+	switch {
+	case uc.cs.Has(schema.User_USER_READ_ALL):
+	case uc.subjectUserId == ou.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
+	case t.PublicOnly && uc.cs.Has(schema.User_USER_READ_PUBLIC):
+		ou = &schema.User{
+			UserId:    ou.UserId,
+			CreatedTs: ou.CreatedTs,
+			Ident:     ou.Ident,
+		}
+	default:
+		return status.PermissionDenied(nil, "missing capability")
 	}
 
 	if err := j.Rollback(); err != nil {

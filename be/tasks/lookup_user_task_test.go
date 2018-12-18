@@ -79,6 +79,37 @@ func TestLookupUserOther(t *testing.T) {
 	}
 }
 
+func TestLookupUserPublic(t *testing.T) {
+	c := Container(t)
+	defer c.Close()
+
+	u1 := c.CreateUser()
+	u2 := c.CreateUser()
+	u2.User.Capability = append(u2.User.Capability, schema.User_USER_READ_PUBLIC)
+	u2.Update()
+
+	task := &LookupUserTask{
+		Beg:          c.DB(),
+		ObjectUserID: u1.User.UserId,
+		PublicOnly:   true,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u2.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		t.Fatal(sts)
+	}
+
+	expected := &schema.User{
+		UserId:    u1.User.UserId,
+		Ident:     u1.User.Ident,
+		CreatedTs: u1.User.CreatedTs,
+	}
+
+	if !proto.Equal(expected, task.User) {
+		t.Error("Users don't match", expected, task.User)
+	}
+}
+
 func TestLookupUserCantLookupSelf(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
