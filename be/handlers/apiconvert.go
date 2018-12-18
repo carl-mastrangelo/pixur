@@ -125,6 +125,14 @@ func apiUser(src *schema.User) *api.User {
 	}
 }
 
+func apiPublicUserInfo(src *schema.User) *api.PublicUserInfo {
+	return &api.PublicUserInfo{
+		UserId:      schema.Varint(src.UserId).Encode(),
+		Ident:       src.Ident,
+		CreatedTime: src.CreatedTs,
+	}
+}
+
 func apiCaps(dst []api.Capability_Cap, srcs []schema.User_Capability) []api.Capability_Cap {
 	for _, src := range srcs {
 		dst = append(dst, schemaapicapmap[src])

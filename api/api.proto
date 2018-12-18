@@ -252,6 +252,17 @@ message Capability {
   }
 }
 
+// PublicUserInfo is information about a user
+message PublicUserInfo {
+  string user_id = 1;
+
+  string ident = 2;
+
+  // created_time is when the user was created.
+  google.protobuf.Timestamp created_time = 3;
+}
+
+
 // BackendConfiguration is the backend configuration used by Pixur.  All fields are optional 
 // unless explicitly called out.
 message BackendConfiguration {
@@ -358,6 +369,15 @@ message LookupUserRequest {
 
 message LookupUserResponse {
   User user = 1;
+}
+
+message LookupPublicUserInfoRequest {
+  // if absent, assumed to come from auth token
+  string user_id = 1;
+}
+
+message LookupPublicUserInfoResponse {
+  PublicUserInfo user_info = 1;
 }
 
 message UpdateUserRequest {
@@ -713,7 +733,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181217 // AUTO UPDATED BY generate.go
+    api_version: 20181218 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
@@ -768,6 +788,10 @@ service PixurService {
   };
   
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  
+  rpc LookupPublicUserInfo(LookupPublicUserInfoRequest) returns (LookupPublicUserInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
   

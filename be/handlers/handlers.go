@@ -126,6 +126,11 @@ func (s *serv) LookupUser(ctx oldctx.Context, req *api.LookupUserRequest) (*api.
 	return s.handleLookupUser(ctx, req)
 }
 
+func (s *serv) LookupPublicUserInfo(ctx oldctx.Context, req *api.LookupPublicUserInfoRequest) (
+	*api.LookupPublicUserInfoResponse, error) {
+	return s.handleLookupPublicUserInfo(ctx, req)
+}
+
 func (s *serv) PurgePic(ctx oldctx.Context, req *api.PurgePicRequest) (*api.PurgePicResponse, error) {
 	return s.handlePurgePic(ctx, req)
 }
