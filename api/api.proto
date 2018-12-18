@@ -144,6 +144,27 @@ message PicVote {
   google.protobuf.Timestamp modified_time = 6;
 }
 
+message PicCommentVote {
+  string pic_id = 1;
+  string comment_id = 2;
+  // user_id is the user who created this vote.  May be absent if unknown or due to lack of access.
+  google.protobuf.StringValue user_id = 3;
+
+  enum Vote {
+    UNKNOWN = 0;
+    UP = 1;
+    DOWN = 2;
+    NEUTRAL = 3;
+  }
+  
+  Vote vote = 4;
+  
+  sfixed64 version = 5;
+
+  google.protobuf.Timestamp created_time = 6;
+  google.protobuf.Timestamp modified_time = 7;
+}
+
 message User {
   string user_id = 1;
 
@@ -581,6 +602,20 @@ message UpsertPicVoteResponse {
   // empty
 }
 
+message UpsertPicCommentVoteRequest {
+  string pic_id = 1;
+  string comment_id = 2;
+  
+  // Optional.   Not necessary when creating for the first time.
+  sfixed64 version = 3;
+
+  PicCommentVote.Vote vote = 4;
+}
+
+message UpsertPicCommentVoteResponse {
+  // empty
+}
+
 message LookupPicVoteRequest {
   string pic_id = 1;
   // Optional.  Uses auth token if not specified.
@@ -743,6 +778,8 @@ service PixurService {
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
+  
+  rpc UpsertPicCommentVote(UpsertPicCommentVoteRequest) returns (UpsertPicCommentVoteResponse);
   
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
   

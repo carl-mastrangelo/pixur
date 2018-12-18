@@ -142,6 +142,10 @@ func (s *serv) UpsertPic(ctx oldctx.Context, req *api.UpsertPicRequest) (*api.Up
 	return s.handleUpsertPic(ctx, req)
 }
 
+func (s *serv) UpsertPicCommentVote(ctx oldctx.Context, req *api.UpsertPicCommentVoteRequest) (*api.UpsertPicCommentVoteResponse, error) {
+	return s.handleUpsertPicCommentVote(ctx, req)
+}
+
 func (s *serv) UpsertPicVote(ctx oldctx.Context, req *api.UpsertPicVoteRequest) (*api.UpsertPicVoteResponse, error) {
 	return s.handleUpsertPicVote(ctx, req)
 }
