@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -27,9 +28,10 @@ type viewerHandler struct {
 
 type picComment struct {
 	*api.PicComment
-	Child     []*picComment
-	Paths     *paths
-	XsrfToken string
+	UserId, Ident string
+	Child         []*picComment
+	Paths         *paths
+	XsrfToken     string
 	// CommentText is the initial comment after a failed write
 	CommentText string
 }
@@ -84,6 +86,34 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var puismu sync.Mutex
+	puis := make(map[string]*api.PublicUserInfo)
+	if hasCap(ctx, api.Capability_USER_READ_PUBLIC) || hasCap(ctx, api.Capability_USER_READ_ALL) {
+		eg, egctx := errgroup.WithContext(ctx)
+		for _, pc := range details.PicCommentTree.Comment {
+			if pc.UserId != nil {
+				uid := pc.UserId.Value
+				eg.Go(func() error {
+					resp, err := h.c.LookupPublicUserInfo(egctx, &api.LookupPublicUserInfoRequest{
+						UserId: uid,
+					})
+					if err != nil {
+						return err
+					}
+					puismu.Lock()
+					defer puismu.Unlock()
+					puis[resp.UserInfo.UserId] = resp.UserInfo
+					return nil
+				})
+			}
+		}
+
+		if err := eg.Wait(); err != nil {
+			// discard the error, since it's probably not fatal
+			puis = nil
+		}
+	}
+
 	u := subjectUserOrNilFromCtx(ctx)
 	var pv *api.PicVote
 	if u != nil {
@@ -108,8 +138,16 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	if details.PicCommentTree != nil && len(details.PicCommentTree.Comment) > 0 {
 		m := make(map[string][]*picComment)
 		for _, c := range details.PicCommentTree.Comment {
+			var userId string
+			var ident string
+			if c.UserId != nil {
+				userId = puis[c.UserId.Value].UserId
+				ident = puis[c.UserId.Value].Ident
+			}
 			m[c.CommentParentId] = append(m[c.CommentParentId], &picComment{
 				PicComment: c,
+				UserId:     userId,
+				Ident:      ident,
 				Child:      m[c.CommentId],
 				XsrfToken:  pd.XsrfToken,
 				Paths:      pd.Paths,

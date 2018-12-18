@@ -68,6 +68,7 @@
     cursor: pointer;
   }
 </style>
+{{template "commentstyle"}}
 {{- end -}}
 {{define "pane"}}
 {{- $pt := .Paths -}}
@@ -210,7 +211,6 @@
 	    {{- $pr := $pt.Params -}}
 	    <li>
         {{template "commenttext" .}}
-	      <a href="{{$pt.CommentReply .PicId .CommentId}}">Reply</a>
 	      {{if .Child}}{{template "comment" .Child}}{{end}}
 	    </li>
 	    {{- end -}}

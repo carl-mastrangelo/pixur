@@ -1,9 +1,28 @@
+{{define "commentstyle"}}
+<style>
+.comment .comment-links {
+  font-size: smaller;
+}
+.comment .comment-links a:link {
+  color: #777;
+  text-decoration: none;
+}
+.comment .comment-links a:visited {
+  color: #777;
+  text-decoration: none;
+}
+.comment .comment-links a:hover {
+  color: #777;
+  text-decoration: underline;
+}
+</style>
+{{end}}
+
 {{define "commentreply" }}
 {{$pt := .Paths}}
 {{$pr := $pt.Params}}
 {{if .PicComment.CommentId }}
 {{template "commenttext" .PicComment}}
-{{.PicComment}}
 {{end}}
 <form action="{{$pt.CommentReply .PicComment.PicId .PicComment.CommentId}}" method="post">
   <textarea name="{{$pr.CommentText}}">{{.CommentText}}</textarea>
@@ -13,13 +32,33 @@
   <input type="submit" value="Reply" />
 </form>
 {{end}}
+
 {{define "commenttext"}}
 {{$pt := .Paths}}
 {{$pr := $pt.Params}}
-<div id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
-	{{if .UserId}}{{if .UserId.Value}}[<a 
-	  href="{{$pt.UserEvents .UserId.Value "" false}}"
-	  >?</a>] {{end}}{{end}}{{.CommentId}}:
-	{{.Text}}
-</div>
+<table class="comment">
+  <tr>
+    <td>▲</td>
+    <td class="comment-links">
+      {{if .UserId}}
+        <a href="{{$pt.UserEvents .UserId "" false}}">{{.Ident}}</a>
+      {{else}}
+        Anonymous
+      {{end}}
+      <a 
+          href="{{$pt.ViewerComment .PicId .CommentId}}" 
+          id="{{($pt.ViewerComment .PicId .CommentId).Fragment}}">
+        Some time ago
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+    <td>{{.Text}}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="comment-links"><a href="{{$pt.CommentReply .PicId .CommentId}}">reply</a></td>
+  </tr>
+</table>
 {{end}}
