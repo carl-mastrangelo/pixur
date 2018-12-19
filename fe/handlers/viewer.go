@@ -75,11 +75,18 @@ func (pts picTagsSortable) Bytes(i int) []byte {
 }
 
 func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if canViewPic := maybeHasCap(ctx, api.Capability_PIC_INDEX); !canViewPic {
+		http.Redirect(w, r, h.pt.Login().String(), http.StatusSeeOther)
+		return
+	}
+
 	id := strings.TrimPrefix(r.URL.Path, h.pt.ViewerDir().Path)
 	req := &api.LookupPicDetailsRequest{
 		PicId: id,
 	}
-	ctx := r.Context()
+
 	details, err := h.c.LookupPicDetails(ctx, req)
 	if err != nil {
 		httpReadError(ctx, w, err)

@@ -50,6 +50,11 @@ func (h *indexHandler) static(w http.ResponseWriter, r *http.Request) {
 		Ascending:  isPrev,
 	}
 
+	if canViewIndex := maybeHasCap(ctx, api.Capability_PIC_INDEX); !canViewIndex {
+		http.Redirect(w, r, h.pt.Login().String(), http.StatusSeeOther)
+		return
+	}
+
 	res, err := h.c.FindIndexPics(ctx, req)
 	if err != nil {
 		httpReadError(ctx, w, err)

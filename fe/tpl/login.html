@@ -1,27 +1,85 @@
+{{define "panestyle"}}
+<style>
+table.create-login {
+  margin: auto;
+  width: 66.67%; width: calc(100%/3*2);
+  background-color: #fcfcf7;
+  border-width: 1px;
+  border-color: #eeeeee;
+  border-style: solid;
+  padding: 1em;
+}
+.create-login th {
+  text-align: left;
+  padding: 1em;
+}
+.create-login td {
+  text-align: left;
+  padding: 1em;
+}
+.create-login label div {
+  line-height: 2em;
+}
+.create-login label input {
+  padding: 0.5em;
+  margin-bottom: 1em;
+  border-radius: 0.25em;
+  border-width: 1px;
+}
+.create-login td.thin-line, .create-login th.thin-line {
+  width: 1px;
+  padding: 0px;
+  margin: 0px;
+  background-color: #eeeeee;
+}
+</style>
+{{end}}
+
 {{define "pane"}}
-{{ $pt := .Paths}}
-{{ $pr := $pt.Params}}
-<form action="{{$pt.LoginAction}}" method="post">
-  <input type="text" name="{{$pr.Ident}}" placeholder="Ident" /><br />
-  <input type="password" name="{{$pr.Secret}}" /><br />
-  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-  <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
-  <input type="submit" value="Login" />
-</form>
-<hr>
-<form action="{{$pt.CreateUserAction}}" method="post">
-  <input type="text" name="{{$pr.Ident}}" placeholder="Ident" /><br />
-  <input type="password" name="{{$pr.Secret}}" /><br />
-  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-  <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
-  <input type="submit" value="CreateUser" />
-</form>
-<hr>
-{{/*login action is same as log out*/}}
-<form action="{{$pt.LoginAction}}" method="post">
-  <input type="hidden" name="{{$pr.Logout}}" value="non-empty string" />
-  <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
-  <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
-  <input type="submit" value="Logout" />
-</form>
+{{$pt := .Paths}}
+{{$pr := $pt.Params}}
+<table class="create-login">
+  <tr>
+    <th>Create User</th>
+    <th class="thin-line"></th>
+    <th>Login</th>
+  <tr>
+  <tr>
+    <td>
+      <form action="{{$pt.CreateUserAction}}" method="post">
+        <label>
+          <div>User Name:</div> 
+          <input type="text" name="{{$pr.Ident}}" placeholder="An Example Name" />
+        </label>
+        <label>
+          <div>Password</div>
+          <input type="password" name="{{$pr.Secret}}" />
+        </label>
+        <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+        <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
+        <div>
+          <input type="submit" value="CreateUser" />
+        </div>
+      </form>
+    </td>
+    <td class="thin-line"></td>
+    <td>
+      <form action="{{$pt.LoginAction}}" method="post">
+        <label>
+          <div>User Name:</div> 
+          <input type="text" name="{{$pr.Ident}}" placeholder="Your User Name" />
+        </label>
+        <label>
+          <div>Password</div>
+          <input type="password" name="{{$pr.Secret}}" />
+        </label>
+        <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+        <input type="hidden" name="{{$pr.Next}}" value="{{.Next}}" />
+        <div>
+          <input type="submit" value="Login" />
+        </div>
+      </form>
+    </td>
+  </tr>
+</table>
 {{end}}
