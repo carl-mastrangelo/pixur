@@ -41,6 +41,19 @@
     margin: 1em;
     text-align: center;
   }
+  .pane-logged-in-user {
+    text-align: right;
+  }
+  .pane-logged-in-user .dropdown-user-menu {
+    display: none;
+  }
+  .pane-user-box:hover .dropdown-user-menu {
+    display: block;
+    margin-top: 1em;
+  } 
+  .pane-user-link:hover {
+    background-color: #f7f7f7;
+  }
 </style>  
 {{block "panestyle" .}}{{end}}
 {{end}}
@@ -51,7 +64,19 @@
   <div class="pane-header">
     <div class="pane-user-box">
       {{if .SubjectUser}}
-        <a href="{{"" | $pt.UserEdit}}">{{.SubjectUser.Ident}}</a>
+        <div class="pane-logged-in-user">
+          <div class="pane-user-link">
+            <a href="{{"" | $pt.UserEdit}}">{{.SubjectUser.Ident}}</a>
+          </div>
+          <div class="dropdown-user-menu">
+            <hr>
+            <form action="{{$pt.LoginAction}}" method="post">
+              <input type="hidden" name="{{$pr.Logout}}" value="non-empty string" />
+              <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}" />
+              <input type="submit" value="Logout" />
+            </form>
+          </div>
+        </div>
       {{else}}
         <a href="{{$pt.Login}}">Login</a>
       {{end}}
