@@ -25,32 +25,10 @@ func apiPic(src *schema.Pic) *api.Pic {
 		ScoreHi:         scorehi,
 		CreatedTime:     src.CreatedTs,
 		ModifiedTime:    src.ModifiedTs,
-		File: &api.PicFile{
-			Id:           src.GetVarPicID(),
-			Format:       api.PicFile_Format(src.File.Mime),
-			Width:        int32(src.File.Width),
-			Height:       int32(src.File.Height),
-			Duration:     src.File.GetAnimationInfo().GetDuration(),
-			Thumbnail:    false,
-			CreatedTime:  src.File.CreatedTs,
-			ModifiedTime: src.File.ModifiedTs,
-			Size:         src.File.Size,
-		},
+		File:            apiPicFile(src.PicId, false, src.File),
 	}
-
-	for _, th := range src.Thumbnail {
-		dst.Thumbnail = append(dst.Thumbnail, &api.PicFile{
-			Id:           src.GetVarPicID() + schema.Varint(th.Index).Encode(),
-			Format:       api.PicFile_Format(th.Mime),
-			Width:        int32(th.Width),
-			Height:       int32(th.Height),
-			Duration:     th.GetAnimationInfo().GetDuration(),
-			Thumbnail:    true,
-			CreatedTime:  th.CreatedTs,
-			ModifiedTime: th.ModifiedTs,
-			Size:         th.Size,
-		})
-	}
+	// hack to remove the 0 at the end of the id
+	dst.File.Id = dst.File.Id[:len(dst.File.Id)-1]
 
 	for _, s := range src.Source {
 		dst.Source = append(dst.Source, &api.PicSource{
@@ -66,6 +44,41 @@ func apiPic(src *schema.Pic) *api.Pic {
 	}
 
 	return dst
+}
+
+func apiPicFiles(dst []*api.PicFile, picId int64, thumb bool, srcs ...*schema.Pic_File) []*api.PicFile {
+	for _, src := range srcs {
+		dst = append(dst, apiPicFile(picId, thumb, src))
+	}
+	return dst
+}
+
+func apiPicFile(picId int64, thumb bool, pf *schema.Pic_File) *api.PicFile {
+	return &api.PicFile{
+		Id:           schema.Varint(picId).Encode() + schema.Varint(pf.Index).Encode(),
+		Format:       api.PicFile_Format(pf.Mime),
+		Width:        int32(pf.Width),
+		Height:       int32(pf.Height),
+		Duration:     pf.GetAnimationInfo().GetDuration(),
+		Thumbnail:    thumb,
+		CreatedTime:  pf.CreatedTs,
+		ModifiedTime: pf.ModifiedTs,
+		Size:         pf.Size,
+	}
+}
+
+func apiPicAndThumbnails(dst []*api.PicAndThumbnail, srcs ...*schema.Pic) []*api.PicAndThumbnail {
+	for _, src := range srcs {
+		dst = append(dst, apiPicAndThumbnail(src))
+	}
+	return dst
+}
+
+func apiPicAndThumbnail(src *schema.Pic) *api.PicAndThumbnail {
+	return &api.PicAndThumbnail{
+		Pic:       apiPic(src),
+		Thumbnail: apiPicFiles(nil, src.PicId, true, src.Thumbnail...),
+	}
 }
 
 func apiPicTags(dst []*api.PicTag, srcs ...*schema.PicTag) []*api.PicTag {

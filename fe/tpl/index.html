@@ -76,9 +76,9 @@
     {{- range .Pic -}}
     <li>{{- /**/ -}}
       <div class="thumbnail-cntr">{{- /**/ -}}
-        <a href="{{$pt.Viewer .Id}}">{{- /**/ -}}
+        <a href="{{$pt.Viewer .Pic.Id}}">{{- /**/ -}}
           <img {{/**/ -}}
-	          class="thumbnail{{if .PendingDeletion}} deleted{{end}}" {{/**/ -}}
+	          class="thumbnail{{if .Pic.PendingDeletion}} deleted{{end}}" {{/**/ -}}
 	          src="{{$pt.PicFileFirst .Thumbnail}}" />{{- /**/ -}}
 	      </a>{{- /**/ -}}
       </div>{{- /**/ -}}

@@ -11,7 +11,7 @@ import (
 type indexData struct {
 	*paneData
 
-	Pic []*api.Pic
+	Pic []*api.PicAndThumbnail
 
 	NextID, PrevID string
 

@@ -21,6 +21,6 @@ func (s *serv) handleFindSchedPics(ctx context.Context, req *api.FindSchedPicsRe
 	}
 
 	return &api.FindSchedPicsResponse{
-		Pic: apiPics(nil, task.Pics...),
+		Pic: apiPicAndThumbnails(nil, task.Pics...),
 	}, nil
 }

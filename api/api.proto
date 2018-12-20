@@ -23,7 +23,7 @@ message Pic {
   // modified_time is when the pic was last modified.
   google.protobuf.Timestamp modified_time = 15;
 
-  reserved 2, 3, 5, 6, 7, 8, 11;
+  reserved 2, 3, 5, 6, 7, 8, 11, 17;
 
   // pending_deletion indicates if the pic may be deleted soon.
   bool pending_deletion = 9;
@@ -37,9 +37,7 @@ message Pic {
   PicFile file = 16;
   
   repeated PicSource source = 18;
-  
-  repeated PicFile thumbnail = 17;
-  
+
   // The user id of the first user who uploading this pic.  May be absent.
   google.protobuf.StringValue first_user_id = 19;
 }
@@ -419,7 +417,6 @@ message LookupPicDetailsResponse {
   Pic pic = 1;
   repeated PicTag pic_tag = 2;
   PicCommentTree pic_comment_tree = 3;
-  repeated PicFile pic_file = 4;
 }
 
 message FindIndexPicsRequest {
@@ -429,7 +426,7 @@ message FindIndexPicsRequest {
 }
 
 message FindIndexPicsResponse {
-  repeated Pic pic = 1;
+  repeated PicAndThumbnail pic = 4;
   // if set, this field is the next pic id as a 
   // continuation token.
   string next_pic_id = 2;
@@ -438,11 +435,16 @@ message FindIndexPicsResponse {
   string prev_pic_id = 3;
 }
 
+message PicAndThumbnail {
+  Pic pic = 1;
+  repeated PicFile thumbnail = 2;
+}
+
 message FindSchedPicsRequest {
 }
 
 message FindSchedPicsResponse {
-  repeated Pic pic = 1;
+  repeated PicAndThumbnail pic = 2;
 }
 
 message AddPicTagsRequest {
@@ -733,7 +735,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181218 // AUTO UPDATED BY generate.go
+    api_version: 20181220 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

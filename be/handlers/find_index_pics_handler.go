@@ -30,7 +30,7 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 	}
 
 	resp := &api.FindIndexPicsResponse{
-		Pic: apiPics(nil, task.Pics...),
+		Pic: apiPicAndThumbnails(nil, task.Pics...),
 	}
 
 	if task.NextID != 0 {
