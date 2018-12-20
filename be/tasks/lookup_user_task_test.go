@@ -11,26 +11,10 @@ import (
 )
 
 func TestLookupUserWorkflow(t *testing.T) {
-	c := Container(t)
+	c, u := lookupUserTaskWorkFlow_setup(t)
 	defer c.Close()
 
-	u := c.CreateUser()
-	u.User.Capability = append(u.User.Capability, schema.User_USER_READ_SELF)
-	u.Update()
-
-	task := &LookupUserTask{
-		Beg:          c.DB(),
-		ObjectUserID: u.User.UserId,
-	}
-
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
-	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
-		t.Fatal(sts)
-	}
-
-	if !proto.Equal(u.User, task.User) {
-		t.Error("Users don't match", u.User, task.User)
-	}
+	lookupUserTaskWorkFlow(c, u, t)
 }
 
 func TestLookupUserBlankID(t *testing.T) {
@@ -182,4 +166,51 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 	if have, want := sts.Message(), "can't lookup user"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
+}
+
+func lookupUserTaskWorkFlow_setup(tb testing.TB) (*TestContainer, *TestUser) {
+	c := Container(tb)
+	u := c.CreateUser()
+	u.User.Capability = append(u.User.Capability, schema.User_USER_READ_SELF)
+	u.Update()
+	return c, u
+}
+
+func lookupUserTaskWorkFlow(c *TestContainer, u *TestUser, tb testing.TB) {
+	task := &LookupUserTask{
+		Beg:          c.DB(),
+		ObjectUserID: u.User.UserId,
+	}
+
+	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
+		tb.Fatal(sts)
+	}
+
+	if !proto.Equal(u.User, task.User) {
+		tb.Error("Users don't match", u.User, task.User)
+	}
+}
+
+func BenchmarkLookupUserTask(b *testing.B) {
+	c, u := lookupUserTaskWorkFlow_setup(b)
+	defer c.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		lookupUserTaskWorkFlow(c, u, b)
+	}
+}
+
+func BenchmarkLookupUserTaskParallel(b *testing.B) {
+	c, u := lookupUserTaskWorkFlow_setup(b)
+	defer c.Close()
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			lookupUserTaskWorkFlow(c, u, b)
+		}
+	})
+
 }
