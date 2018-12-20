@@ -19,7 +19,7 @@ type userHandler struct {
 }
 
 type userEditData struct {
-	*paneData
+	*userPaneData
 
 	ObjectUser *api.User
 
@@ -28,12 +28,17 @@ type userEditData struct {
 	Cap []capInfo
 }
 
-type userEventsData struct {
+type userPaneData struct {
 	*paneData
 
 	ObjectUserId string
-	Next, Prev   string
-	UserEvents   []*api.UserEvent
+}
+
+type userEventsData struct {
+	*userPaneData
+
+	Next, Prev string
+	UserEvents []*api.UserEvent
 }
 
 type capInfo struct {
@@ -71,11 +76,13 @@ func (h *userHandler) userEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &userEventsData{
-		paneData:     newPaneData(ctx, "Recent Activity", h.pt),
-		UserEvents:   resp.UserEvent,
-		ObjectUserId: r.FormValue(h.pt.pr.UserId()),
-		Next:         nextID,
-		Prev:         prevID,
+		userPaneData: &userPaneData{
+			paneData:     newPaneData(ctx, "Recent Activity", h.pt),
+			ObjectUserId: r.FormValue(h.pt.pr.UserId()),
+		},
+		UserEvents: resp.UserEvent,
+		Next:       nextID,
+		Prev:       prevID,
 	}
 	if err := h.userEventsTpl.Execute(w, data); err != nil {
 		httpError(w, err)
@@ -143,7 +150,10 @@ func (h *userHandler) static(w http.ResponseWriter, r *http.Request) {
 	})
 
 	data := userEditData{
-		paneData:   newPaneData(ctx, "User Edit", h.pt),
+		userPaneData: &userPaneData{
+			paneData:     newPaneData(ctx, "User Edit", h.pt),
+			ObjectUserId: objectUser.UserId,
+		},
 		ObjectUser: objectUser,
 		CanEditCap: canedit,
 		Cap:        caps,
@@ -277,8 +287,8 @@ func init() {
 		h := userHandler{
 			c:             s.Client,
 			pt:            &paths{r: s.HTTPRoot},
-			userEditTpl:   parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEdit),
-			userEventsTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.UserEvents),
+			userEditTpl:   parseTpl(ptpl.Base, ptpl.Pane, ptpl.Userpane, ptpl.UserEdit),
+			userEventsTpl: parseTpl(ptpl.Base, ptpl.Pane, ptpl.Userpane, ptpl.UserEvents),
 		}
 
 		s.HTTPMux.Handle(h.pt.UserEdit("").Path, readWrapper(s)(http.HandlerFunc(h.static)))

@@ -1,4 +1,4 @@
-{{- define "panestyle" -}}
+{{- define "userpanestyle" -}}
 <style>
   .nav-prev {
     float: left;
@@ -21,17 +21,15 @@
     {{if .Next}}<span class="nav-next"><a href="{{$pt.UserEvents .ObjectUserId .Next false}}">Next</a></span>{{end}}
   </div>
 {{end}}
-{{define "pane"}}
+{{define "userpane"}}
 {{- $pt := .Paths -}}
 {{- $pr := $pt.Params -}}
 <div>
-  <h1>Recent Activity</h1>
-  
+  <h2>Recent Activity</h2>
   {{- template "nav" . -}}
   {{if .UserEvents}}
     <table>
     {{range .UserEvents}}
-    
       <tr>
         <td>{{.CreatedTime}}</td>
         <td>

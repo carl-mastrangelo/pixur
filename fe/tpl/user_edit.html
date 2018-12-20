@@ -1,13 +1,13 @@
-{{- define "panestyle" -}}
+{{- define "userpanestyle" -}}
 <style>
 
 </style>
 {{- end -}}
-{{define "pane"}}
+{{define "userpane"}}
 {{- $pt := .Paths -}}
 {{- $pr := $pt.Params -}}
 <div>
-  <h1>User Edit</h1>
+  <h2>User Edit</h2>
   <form method="post" action="{{$pt.UpdateUserAction}}">
     <input type="hidden" name="{{$pr.Xsrf}}" value="{{.XsrfToken}}">
     <input type="hidden" name="{{$pr.UserId}}" value="{{.ObjectUser.UserId}}">

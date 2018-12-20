@@ -1,0 +1,130 @@
+{{block "panestyle" .}}
+<style>
+.row {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.row:after {
+  clear: both;
+  content: "";
+  display: table;
+}
+
+.row .col {
+  float: left;
+  min-height: 1px;
+}
+
+.row .col.s1 {
+  width: 8.3333333333%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s2 {
+  width: 16.6666666667%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s3 {
+  width: 25%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s4 {
+  width: 33.3333333333%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s5 {
+  width: 41.6666666667%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s6 {
+  width: 50%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s7 {
+  width: 58.3333333333%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s8 {
+  width: 66.6666666667%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s9 {
+  width: 75%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s10 {
+  width: 83.3333333333%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s11 {
+  width: 91.6666666667%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.row .col.s12 {
+  width: 100%;
+  margin-left: auto;
+  left: auto;
+  right: auto;
+}
+
+.user-side-nav {
+  width: 25%;
+  left: auto;
+  right: auto;
+}
+.user-pane {
+  width: 75%;
+  left: auto;
+  right: auto;
+}
+</style>
+{{block "userpanestyle" .}}{{end}}
+{{end}}
+{{define "pane"}}
+{{- $pt := .Paths -}}
+{{- $pr := $pt.Params -}}
+<div class="row">
+  <div class="col s2">
+    <ul>
+      <li><a href="{{$pt.UserEvents .ObjectUserId "" false }}">Activity</a></li>
+      <li><a href="{{$pt.UserEdit .ObjectUserId}}">Account</a></li>
+    </ul>
+  </div>{{- /**/ -}}
+  <div class="col s8">
+    {{template "userpane" .}}
+  </div>
+</div>
+{{end}}
