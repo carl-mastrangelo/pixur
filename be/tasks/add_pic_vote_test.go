@@ -964,7 +964,7 @@ func TestFilterPicVoteInternal_extAllowed(t *testing.T) {
 		subjectUserId: 5,
 		cs:            schema.CapSetOf(schema.User_USER_READ_SELF, schema.User_PIC_VOTE_EXTENSION_READ),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -985,7 +985,7 @@ func TestFilterPicVoteInternal_extRemoved(t *testing.T) {
 		subjectUserId: 5,
 		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -1006,7 +1006,7 @@ func TestFilterPicVoteInternal_userReadAll(t *testing.T) {
 		subjectUserId: 7,
 		cs:            schema.CapSetOf(schema.User_USER_READ_ALL),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -1026,7 +1026,7 @@ func TestFilterPicVoteInternal_userReadPicVote(t *testing.T) {
 		subjectUserId: schema.AnonymousUserID,
 		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_VOTE),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -1046,7 +1046,7 @@ func TestFilterPicVoteInternal_userReadSelf(t *testing.T) {
 		subjectUserId: 5,
 		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -1066,7 +1066,7 @@ func TestFilterPicVoteInternal_userIdRemoved(t *testing.T) {
 		subjectUserId: 7,
 		cs:            schema.CapSetOf(schema.User_USER_READ_SELF),
 	}
-	pvd := filterPicVoteInternal(pv, uc)
+	pvd, _ := filterPicVoteInternal(pv, uc)
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
@@ -1097,21 +1097,26 @@ func TestFilterPicVote(t *testing.T) {
 }
 
 func TestFilterPicVotes(t *testing.T) {
-	pv := &schema.PicVote{
+	pv1 := &schema.PicVote{
 		PicId:  1,
 		UserId: 5,
 		Index:  0,
 	}
-	dupe := *pv
-	u := &schema.User{
+	pv2 := &schema.PicVote{
+		PicId:  1,
 		UserId: 7,
+		Index:  0,
 	}
-	pvsd := filterPicVotes([]*schema.PicVote{pv}, u, schema.GetDefaultConfiguration())
-	if !proto.Equal(pv, &dupe) {
-		t.Error("original changed", pv, dupe)
+	dupe := *pv2
+	u := &schema.User{
+		UserId:     7,
+		Capability: []schema.User_Capability{schema.User_USER_READ_SELF},
 	}
-	pv.UserId = schema.AnonymousUserID
-	if len(pvsd) != 1 || !proto.Equal(pv, pvsd[0]) {
-		t.Error("expected field", pv, pvsd)
+	pvsd := filterPicVotes([]*schema.PicVote{pv1, pv2}, u, schema.GetDefaultConfiguration())
+	if !proto.Equal(pv2, &dupe) {
+		t.Error("original changed", pv2, dupe)
+	}
+	if len(pvsd) != 1 || !proto.Equal(pv2, pvsd[0]) {
+		t.Error("expected field", pv2, pvsd)
 	}
 }

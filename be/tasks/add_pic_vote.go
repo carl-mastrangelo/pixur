@@ -210,7 +210,8 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 func filterPicVote(
 	pv *schema.PicVote, su *schema.User, conf *schema.Configuration) *schema.PicVote {
 	uc := userCredOf(su, conf)
-	return filterPicVoteInternal(pv, uc)
+	dpv, _ := filterPicVoteInternal(pv, uc)
+	return dpv
 }
 
 func filterPicVotes(
@@ -218,22 +219,27 @@ func filterPicVotes(
 	uc := userCredOf(su, conf)
 	dst := make([]*schema.PicVote, 0, len(pvs))
 	for _, pv := range pvs {
-		dst = append(dst, filterPicVoteInternal(pv, uc))
+		if dpv, uf := filterPicVoteInternal(pv, uc); !uf {
+			dst = append(dst, dpv)
+		}
 	}
 	return dst
 }
 
-func filterPicVoteInternal(pv *schema.PicVote, uc *userCred) *schema.PicVote {
+func filterPicVoteInternal(pv *schema.PicVote, uc *userCred) (
+	filteredVote *schema.PicVote, userFiltered bool) {
 	dpv := *pv
 	if !uc.cs.Has(schema.User_PIC_VOTE_EXTENSION_READ) {
 		dpv.Ext = nil
 	}
+	uf := false
 	switch {
 	case uc.cs.Has(schema.User_USER_READ_ALL):
 	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_VOTE):
 	case uc.subjectUserId == dpv.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
+		uf = true
 		dpv.UserId = schema.AnonymousUserID
 	}
-	return &dpv
+	return &dpv, uf
 }
