@@ -86,6 +86,10 @@ func (s *serv) FindIndexPics(ctx oldctx.Context, req *api.FindIndexPicsRequest) 
 	return s.handleFindIndexPics(ctx, req)
 }
 
+func (s *serv) FindPicCommentVotes(ctx oldctx.Context, req *api.FindPicCommentVotesRequest) (*api.FindPicCommentVotesResponse, error) {
+	return s.handleFindPicCommentVotes(ctx, req)
+}
+
 func (s *serv) FindSchedPics(ctx oldctx.Context, req *api.FindSchedPicsRequest) (*api.FindSchedPicsResponse, error) {
 	return s.handleFindSchedPics(ctx, req)
 }
@@ -104,6 +108,10 @@ func (s *serv) GetRefreshToken(ctx oldctx.Context, req *api.GetRefreshTokenReque
 
 func (s *serv) IncrementViewCount(ctx oldctx.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, error) {
 	return s.handleIncrementViewCount(ctx, req)
+}
+
+func (s *serv) LookupPicCommentVote(ctx oldctx.Context, req *api.LookupPicCommentVoteRequest) (*api.LookupPicCommentVoteResponse, error) {
+	return s.handleLookupPicCommentVote(ctx, req)
 }
 
 func (s *serv) LookupPicDetails(ctx oldctx.Context, req *api.LookupPicDetailsRequest) (*api.LookupPicDetailsResponse, error) {

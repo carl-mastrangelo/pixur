@@ -374,6 +374,20 @@ message LookupUserResponse {
   User user = 1;
 }
 
+message FindPicCommentVotesRequest {
+  // the pic id of pic comment votes.  Must be present.
+  string pic_id = 1;
+  // the comment id of pic comment votes.  If present, pic id must be present too.
+  string comment_id = 2;
+  // the user_id of the pic votes.  If present, comment id must be present too.
+  string user_id = 3;
+}
+
+message FindPicCommentVotesResponse {
+  // all the votes that matched the prefix, and which the subject user has access to.
+  repeated PicCommentVote vote = 1;
+}
+
 message LookupPicCommentVoteRequest {
   string pic_id = 1;
   string comment_id = 2;
@@ -766,6 +780,10 @@ service PixurService {
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
 
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+  
+  rpc FindPicCommentVotes(FindPicCommentVotesRequest) returns (FindPicCommentVotesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
 

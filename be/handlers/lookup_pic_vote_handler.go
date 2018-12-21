@@ -12,16 +12,16 @@ import (
 // TODO: add tests
 func (s *serv) handleLookupPicVote(ctx context.Context, req *api.LookupPicVoteRequest) (
 	*api.LookupPicVoteResponse, status.S) {
-	var picID schema.Varint
+	var picId schema.Varint
 	if req.PicId != "" {
-		if err := picID.DecodeAll(req.PicId); err != nil {
+		if err := picId.DecodeAll(req.PicId); err != nil {
 			return nil, status.InvalidArgument(err, "Unable to decode pic id")
 		}
 	}
 
-	var userID schema.Varint
+	var userId schema.Varint
 	if req.UserId != "" {
-		if err := userID.DecodeAll(req.PicId); err != nil {
+		if err := userId.DecodeAll(req.UserId); err != nil {
 			return nil, status.InvalidArgument(err, "Unable to decode user id")
 		}
 	}
@@ -29,8 +29,8 @@ func (s *serv) handleLookupPicVote(ctx context.Context, req *api.LookupPicVoteRe
 	task := &tasks.LookupPicVoteTask{
 		Beg: s.db,
 
-		PicID:        int64(picID),
-		ObjectUserID: int64(userID),
+		PicID:        int64(picId),
+		ObjectUserID: int64(userId),
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {
