@@ -22,7 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Pic_DeletionStatus_Reason int32
 
@@ -1456,135 +1456,15 @@ func (m *UserEvent) GetUpsertPic() *UserEvent_UpsertPic {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*UserEvent) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _UserEvent_OneofMarshaler, _UserEvent_OneofUnmarshaler, _UserEvent_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*UserEvent) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*UserEvent_OutgoingUpsertPicVote_)(nil),
 		(*UserEvent_IncomingUpsertPicVote_)(nil),
 		(*UserEvent_OutgoingPicComment_)(nil),
 		(*UserEvent_IncomingPicComment_)(nil),
 		(*UserEvent_UpsertPic_)(nil),
 	}
-}
-
-func _UserEvent_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*UserEvent)
-	// evt
-	switch x := m.Evt.(type) {
-	case *UserEvent_OutgoingUpsertPicVote_:
-		b.EncodeVarint(5<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.OutgoingUpsertPicVote); err != nil {
-			return err
-		}
-	case *UserEvent_IncomingUpsertPicVote_:
-		b.EncodeVarint(6<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.IncomingUpsertPicVote); err != nil {
-			return err
-		}
-	case *UserEvent_OutgoingPicComment_:
-		b.EncodeVarint(7<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.OutgoingPicComment); err != nil {
-			return err
-		}
-	case *UserEvent_IncomingPicComment_:
-		b.EncodeVarint(8<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.IncomingPicComment); err != nil {
-			return err
-		}
-	case *UserEvent_UpsertPic_:
-		b.EncodeVarint(9<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.UpsertPic); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("UserEvent.Evt has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _UserEvent_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*UserEvent)
-	switch tag {
-	case 5: // evt.outgoing_upsert_pic_vote
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(UserEvent_OutgoingUpsertPicVote)
-		err := b.DecodeMessage(msg)
-		m.Evt = &UserEvent_OutgoingUpsertPicVote_{msg}
-		return true, err
-	case 6: // evt.incoming_upsert_pic_vote
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(UserEvent_IncomingUpsertPicVote)
-		err := b.DecodeMessage(msg)
-		m.Evt = &UserEvent_IncomingUpsertPicVote_{msg}
-		return true, err
-	case 7: // evt.outgoing_pic_comment
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(UserEvent_OutgoingPicComment)
-		err := b.DecodeMessage(msg)
-		m.Evt = &UserEvent_OutgoingPicComment_{msg}
-		return true, err
-	case 8: // evt.incoming_pic_comment
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(UserEvent_IncomingPicComment)
-		err := b.DecodeMessage(msg)
-		m.Evt = &UserEvent_IncomingPicComment_{msg}
-		return true, err
-	case 9: // evt.upsert_pic
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(UserEvent_UpsertPic)
-		err := b.DecodeMessage(msg)
-		m.Evt = &UserEvent_UpsertPic_{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _UserEvent_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*UserEvent)
-	// evt
-	switch x := m.Evt.(type) {
-	case *UserEvent_OutgoingUpsertPicVote_:
-		s := proto.Size(x.OutgoingUpsertPicVote)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *UserEvent_IncomingUpsertPicVote_:
-		s := proto.Size(x.IncomingUpsertPicVote)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *UserEvent_OutgoingPicComment_:
-		s := proto.Size(x.OutgoingPicComment)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *UserEvent_IncomingPicComment_:
-		s := proto.Size(x.IncomingPicComment)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *UserEvent_UpsertPic_:
-		s := proto.Size(x.UpsertPic)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // IncomingUpsertPicVote represents sending a vote on a pic another user made.  If a user

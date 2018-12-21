@@ -33,9 +33,9 @@ message Pic {
   double score_lo = 12;
   // The estimated upper bound of the pic score
   double score_hi = 13;
-  
+
   PicFile file = 16;
-  
+
   repeated PicSource source = 18;
 
   // The user id of the first user who uploading this pic.  May be absent.
@@ -117,7 +117,7 @@ message PicComment {
   google.protobuf.Timestamp modified_time = 5;
   // version is the version of the tag.  It is used when updating the tag.
   sfixed64 version = 6;
-  
+
   // The user id of comment author.  May be absent.
   google.protobuf.StringValue user_id = 8;
 }
@@ -133,9 +133,9 @@ message PicVote {
     DOWN = 2;
     NEUTRAL = 3;
   }
-  
+
   Vote vote = 3;
-  
+
   sfixed64 version = 4;
 
   google.protobuf.Timestamp created_time = 5;
@@ -154,9 +154,9 @@ message PicCommentVote {
     DOWN = 2;
     NEUTRAL = 3;
   }
-  
+
   Vote vote = 4;
-  
+
   sfixed64 version = 5;
 
   google.protobuf.Timestamp created_time = 6;
@@ -211,49 +211,51 @@ message Capability {
     USER_READ_SELF = 13;
     // Can this user read infortmation about others?
     USER_READ_ALL = 14;
-    // Can this user create arbitrary extension data on a pic? 
+    // Can this user create arbitrary extension data on a pic?
     PIC_EXTENSION_CREATE = 15;
-    // Can this user read arbitrary extension data on a pic? 
+    // Can this user read arbitrary extension data on a pic?
     PIC_EXTENSION_READ = 16;
-    // Can this user create arbitrary extension data on a comment? 
+    // Can this user create arbitrary extension data on a comment?
     PIC_COMMENT_EXTENSION_CREATE = 17;
-    // Can this user read arbitrary extension data on a comment? 
+    // Can this user read arbitrary extension data on a comment?
     PIC_COMMENT_EXTENSION_READ = 18;
-    // Can this user create arbitrary extension data on a pic tag? 
+    // Can this user create arbitrary extension data on a pic tag?
     PIC_TAG_EXTENSION_CREATE = 19;
-    // Can this user read arbitrary extension data on a pic tag? 
+    // Can this user read arbitrary extension data on a pic tag?
     PIC_TAG_EXTENSION_READ = 20;
-    // Can this user create arbitrary extension data on a pic vote? 
+    // Can this user create arbitrary extension data on a pic vote?
     PIC_VOTE_EXTENSION_CREATE = 21;
-    // Can this user read arbitrary extension data on a pic vote? 
+    // Can this user read arbitrary extension data on a pic vote?
     PIC_VOTE_EXTENSION_READ = 22;
     // Can this user read public information about other users?  Currently,
     // public means user id, user name, and created time
     USER_READ_PUBLIC = 23;
-    // Can this user read pics that other users have created?  Currently, 
+    // Can this user read pics that other users have created?  Currently,
     // this is Pic.FileSource.User and UserEvents.UpsertPic.
     USER_READ_PICS = 24;
-    // Can this user read pic tags that other users have created?  Currently, 
+    // Can this user read pic tags that other users have created?  Currently,
     // this is PicTag.UserId.
     USER_READ_PIC_TAG = 25;
     // Can this user read pic comments that other users have created?  This
-    // implies that a user can see who else made comments.  
+    // implies that a user can see who else made comments.
     USER_READ_PIC_COMMENT = 26;
     // Can this user read pic votes that other users have created?  This
-    // implies that a user can see who voted on a pic, and what votes they 
+    // implies that a user can see who voted on a pic, and what votes they
     // have made.
     USER_READ_PIC_VOTE = 27;
     // Can this user vote on pic comments?
     PIC_COMMENT_VOTE_CREATE = 28;
-    // Can this user create arbitrary extension data on a comment vote? 
+    // Can this user create arbitrary extension data on a comment vote?
     PIC_COMMENT_VOTE_EXTENSION_CREATE = 29;
   }
 }
 
 // PublicUserInfo is information about a user
 message PublicUserInfo {
+  // user_id is the id of the user.  It is always present.
   string user_id = 1;
 
+  // ident is the public name of the user.  It may be absent if the user does not have a name.
   string ident = 2;
 
   // created_time is when the user was created.
@@ -261,7 +263,7 @@ message PublicUserInfo {
 }
 
 
-// BackendConfiguration is the backend configuration used by Pixur.  All fields are optional 
+// BackendConfiguration is the backend configuration used by Pixur.  All fields are optional
 // unless explicitly called out.
 message BackendConfiguration {
   // the minimum comment length in bytes.
@@ -309,12 +311,15 @@ message BackendConfiguration {
 }
 
 message UserEvent {
+  // user_id is the id of the user this event applies to.
   string user_id = 1;
+  // user_event_id is the unique identifier for this event.  It should be considered as an opaque
+  // token.  It generally consistes of the user_id, created_time and an optional identifier.
   string user_event_id = 2;
-  
+
   // created_time is when the user event was created.
   google.protobuf.Timestamp created_time = 3;
-  
+
   // IncomingUpsertPicVote represents sending a vote on a pic another user made.  If a user
   // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
   message OutgoingUpsertPicVote {
@@ -346,7 +351,7 @@ message UserEvent {
     string comment_id = 2;
     string comment_parent_id = 3;
   }
-  
+
   message UpsertPic {
     string pic_id = 1;
   }
@@ -367,6 +372,17 @@ message LookupUserRequest {
 
 message LookupUserResponse {
   User user = 1;
+}
+
+message LookupPicCommentVoteRequest {
+  string pic_id = 1;
+  string comment_id = 2;
+  // if absent, this comes from the auth token.
+  string user_id = 3;
+}
+
+message LookupPicCommentVoteResponse {
+  PicCommentVote vote = 1;
 }
 
 message LookupPublicUserInfoRequest {
@@ -427,10 +443,10 @@ message FindIndexPicsRequest {
 
 message FindIndexPicsResponse {
   repeated PicAndThumbnail pic = 4;
-  // if set, this field is the next pic id as a 
+  // if set, this field is the next pic id as a
   // continuation token.
   string next_pic_id = 2;
-  // if set, this field is the previous pic id as a 
+  // if set, this field is the previous pic id as a
   // continuation token.
   string prev_pic_id = 3;
 }
@@ -501,20 +517,20 @@ enum DeletionReason {
   RULE_VIOLATION = 2;
 }
 
-// UpsertPicRequest is a request to upload and possibly merge with another 
+// UpsertPicRequest is a request to upload and possibly merge with another
 // picture.
 message UpsertPicRequest {
   // url is an optional field for the Pixur backend to download the pic from.
-  // Either url and/or data must be set.   If the data field is set along 
-  // with the URL, the url is treated as regular metadata and not fetched.  
+  // Either url and/or data must be set.   If the data field is set along
+  // with the URL, the url is treated as regular metadata and not fetched.
 	string url = 1;
-	// referrer is the referrer url used to fetch the resource.  If no data is 
+	// referrer is the referrer url used to fetch the resource.  If no data is
 	// set, the url will be used to retrieve the data, along with the referrer
-	// being set in the request.  If data is set, referrer is treated as 
+	// being set in the request.  If data is set, referrer is treated as
 	// additional metadata.  May not be used if url is not set.
 	string referrer = 5;
 	// name is an optional field indicating a reasonable file name for the pic.
-	// If name and url are set, the name field will override the name 
+	// If name and url are set, the name field will override the name
 	// automatically derived from the URL.
 	string name = 2;
 	// data is the file contents of the upload.  It must contain a valid pic
@@ -529,7 +545,7 @@ message UpsertPicRequest {
 }
 
 message UpsertPicResponse {
-  // pic is the newly created or updated picture.  
+  // pic is the newly created or updated picture.
   Pic pic = 1;
 }
 
@@ -613,7 +629,7 @@ message DeleteTokenResponse {
 
 message UpsertPicVoteRequest {
   string pic_id = 1;
-  
+
   // Optional.   Not necessary when creating for the first time.
   sfixed64 version = 3;
 
@@ -627,7 +643,7 @@ message UpsertPicVoteResponse {
 message UpsertPicCommentVoteRequest {
   string pic_id = 1;
   string comment_id = 2;
-  
+
   // Optional.   Not necessary when creating for the first time.
   sfixed64 version = 3;
 
@@ -687,13 +703,13 @@ message FindUserEventsRequest {
   string user_id = 1;
   // Optional.  If present, specifies the starting user event id to scan for
   string start_user_event_id = 2;
-  
+
   bool ascending = 3;
 }
 
 message FindUserEventsResponse {
   repeated UserEvent user_event = 1;
-  
+
   string next_user_event_id = 2;
   string prev_user_event_id = 3;
 }
@@ -735,80 +751,84 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181220 // AUTO UPDATED BY generate.go
+    api_version: 20181221 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
   };
-  
+
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
-  
+
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
 
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  
+
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
-  
+
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc FindSchedPics(FindSchedPicsRequest) returns (FindSchedPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc FindUserEvents(FindUserEventsRequest) returns (FindUserEventsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  
+
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
-  
+
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
-  
+
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc LookupPicExtension(LookupPicExtensionRequest) returns (LookupPicExtensionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc LookupPicVote(LookupPicVoteRequest) returns (LookupPicVoteResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
+  rpc LookupPicCommentVote(LookupPicCommentVoteRequest) returns (LookupPicCommentVoteResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  };
+
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc LookupPublicUserInfo(LookupPublicUserInfoRequest) returns (LookupPublicUserInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
+
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
-  
+
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
-  
+
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  
+
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
-  
+
   rpc UpsertPicCommentVote(UpsertPicCommentVoteRequest) returns (UpsertPicCommentVoteResponse);
-  
+
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
-  
+
   rpc WatchBackendConfiguration(WatchBackendConfigurationRequest) returns (
       stream WatchBackendConfigurationResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
