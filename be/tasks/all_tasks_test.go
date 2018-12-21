@@ -568,7 +568,7 @@ func (u *TestUser) Refresh() (exists bool) {
 	return
 }
 
-func (u *TestUser) CreateEvent() *schema.UserEvent {
+func (u *TestUser) CreateEvent() *TestUserEvent {
 	now := time.Now()
 	nowts := schema.ToTspb(now)
 	ue := &schema.UserEvent{
@@ -580,7 +580,10 @@ func (u *TestUser) CreateEvent() *schema.UserEvent {
 	u.c.AutoJob(func(j *tab.Job) error {
 		return j.InsertUserEvent(ue)
 	})
-	return ue
+	return &TestUserEvent{
+		UserEvent: ue,
+		c:         u.c,
+	}
 }
 
 type TestUserEvent struct {
