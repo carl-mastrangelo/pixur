@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"golang.org/x/crypto/bcrypt"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -98,7 +99,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		}
 
 		// TODO: rate limit this.
-		if err := t.CompareHashAndPassword(user.Secret, []byte(t.Secret)); err != nil {
+		if err := t.compareHashAndPassword(user.Secret, []byte(t.Secret)); err != nil {
 			return status.Unauthenticated(err, "can't lookup user")
 		}
 		user.NextTokenId++
@@ -163,6 +164,14 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	t.User = user
 	t.NewTokenID = newTokenID
 	return nil
+}
+
+func (t *AuthUserTask) compareHashAndPassword(hashed, password []byte) error {
+	if t.CompareHashAndPassword != nil {
+		return t.CompareHashAndPassword(hashed, password)
+	} else {
+		return bcrypt.CompareHashAndPassword(hashed, password)
+	}
 }
 
 type userTokens []*schema.UserToken
