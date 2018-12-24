@@ -49,8 +49,9 @@ func (s *serv) handleLookupPicCommentVote(ctx context.Context, req *api.LookupPi
 		return &api.LookupPicCommentVoteResponse{}, nil
 	}
 
+	// todo: fix
 	return &api.LookupPicCommentVoteResponse{
-		Vote: apiPicCommentVote(task.PicCommentVote),
+		Vote: apiPicCommentVote(task.PicCommentVote[0]),
 	}, nil
 }
 
@@ -91,7 +92,7 @@ func (s *serv) handleFindPicCommentVotes(ctx context.Context, req *api.FindPicCo
 	}
 
 	return &api.FindPicCommentVotesResponse{
-		Vote: apiPicCommentVote(task.PicCommentVote),
+		Vote: apiPicCommentVotes(nil, task.PicCommentVote),
 	}, nil
 }
 

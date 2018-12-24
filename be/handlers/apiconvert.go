@@ -323,3 +323,11 @@ func beCaps(dst []schema.User_Capability, srcs []api.Capability_Cap) []schema.Us
 	}
 	return dst
 }
+
+func apiPicCommentVote(src *schema.PicCommentVote) *api.PicCommentVote {
+	return nil
+}
+
+func apiPicCommentVotes(dst []*api.PicCommentVote, srcs []*schema.PicCommentVote) []*api.PicCommentVote {
+	return nil
+}
