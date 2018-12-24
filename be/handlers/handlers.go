@@ -15,6 +15,7 @@ import (
 	gstatus "google.golang.org/grpc/status"
 
 	"pixur.org/pixur/api"
+	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
 	"pixur.org/pixur/be/status"
 	"pixur.org/pixur/be/tasks"
@@ -187,11 +188,16 @@ func HandlersInit(ctx context.Context, c *ServerConfig) ([]grpc.ServerOption, fu
 	now := time.Now
 	initPwtCoder(c, now)
 
+	var beconf *schema.Configuration
+	if c.BackendConfiguration != nil {
+		beconf = beConfig(c.BackendConfiguration)
+	}
+
 	// TODO: don't be so hacky!  This should probably come from a file, or the db itself.
 	task := &tasks.LoadConfigurationTask{
 		Beg: c.DB,
 
-		Config: beConfig(c.BackendConfiguration),
+		Config: beconf,
 	}
 	sts := new(tasks.TaskRunner).Run(ctx, task)
 	if sts != nil {
