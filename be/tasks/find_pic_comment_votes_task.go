@@ -44,7 +44,6 @@ func (t *FindPicCommentVotesTask) Run(ctx context.Context) (stscap status.S) {
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicId},
-		Limit:  1,
 	})
 	if err != nil {
 		return status.Internal(err, "can't lookup pic")

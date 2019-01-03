@@ -325,9 +325,26 @@ func beCaps(dst []schema.User_Capability, srcs []api.Capability_Cap) []schema.Us
 }
 
 func apiPicCommentVote(src *schema.PicCommentVote) *api.PicCommentVote {
-	return nil
+	dst := &api.PicCommentVote{
+		PicId:        schema.Varint(src.PicId).Encode(),
+		CommentId:    schema.Varint(src.CommentId).Encode(),
+		Vote:         api.PicCommentVote_Vote(src.Vote),
+		Version:      src.Version(),
+		CreatedTime:  src.CreatedTs,
+		ModifiedTime: src.ModifiedTs,
+	}
+	if src.UserId != schema.AnonymousUserID {
+		dst.UserId = &wpb.StringValue{
+			Value: schema.Varint(src.UserId).Encode(),
+		}
+	}
+	return dst
 }
 
-func apiPicCommentVotes(dst []*api.PicCommentVote, srcs []*schema.PicCommentVote) []*api.PicCommentVote {
-	return nil
+func apiPicCommentVotes(
+	dst []*api.PicCommentVote, srcs []*schema.PicCommentVote) []*api.PicCommentVote {
+	for _, src := range srcs {
+		dst = append(dst, apiPicCommentVote(src))
+	}
+	return dst
 }

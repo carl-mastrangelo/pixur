@@ -15,3 +15,7 @@ func (pcv *PicCommentVote) UserIdCol() int64 {
 func (pcv *PicCommentVote) IndexCol() int64 {
 	return pcv.Index
 }
+
+func (pcv *PicCommentVote) Version() int64 {
+	return ToTime(pcv.ModifiedTs).UnixNano()
+}
