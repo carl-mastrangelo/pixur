@@ -9,361 +9,9 @@ option java_multiple_files = true;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
-import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
+import "pixur.org/pixur/api/data.proto";
 
-message Pic {
-  // id is the unique identifier for the pic, in varint form
-  string id = 1;
-  // version is the version of the pic.  It is used when updating the pic.
-  sfixed64 version = 4;
-  // created_time is when the pic was created.
-  google.protobuf.Timestamp created_time = 14;
-  // modified_time is when the pic was last modified.
-  google.protobuf.Timestamp modified_time = 15;
-
-  reserved 2, 3, 5, 6, 7, 8, 11, 17;
-
-  // pending_deletion indicates if the pic may be deleted soon.
-  bool pending_deletion = 9;
-  // view_count is the number of views this picture has received.
-  int64 view_count = 10;
-  // The estimated lower bound of the pic score
-  double score_lo = 12;
-  // The estimated upper bound of the pic score
-  double score_hi = 13;
-
-  PicFile file = 16;
-
-  repeated PicSource source = 18;
-
-  // The user id of the first user who uploading this pic.  May be absent.
-  google.protobuf.StringValue first_user_id = 19;
-}
-
-message PicFile {
-  // The fully qualified picfile id.  The first component is always the pic id.
-  string id = 1;
-  enum Format {
-    UNKNOWN = 0;
-    JPEG = 1;
-    GIF = 2;
-    PNG = 3;
-    WEBM = 4;
-  }
-  Format format = 2;
-
-  // width is the width of pic file
-  int32 width = 3;
-  // height is the height of the pic file
-  int32 height = 4;
-
-  // duration is present if the image is animated (GIF or WEBM).  Note that
-  // GIFs duration is not well defined and is subject to reinterpretation.
-  google.protobuf.Duration duration = 5;
-
-  // Is this pic considered a thumbnail
-  bool thumbnail = 6;
-
-  // created_time is when the PicFile was created.
-  google.protobuf.Timestamp created_time = 7;
-  // modified_time is when the PicFile was last modified.
-  google.protobuf.Timestamp modified_time = 8;
-
-  // the size in bytes of the file
-  int64 size = 9;
-}
-
-message PicSource {
-  // url is optional and is the location the pic came from.
-  string url = 1;
-  // referrer is optional and is the location the pic was referred from.
-  string referrer = 3;
-  // name is optional and the file name for this source.  It may be derived
-  // from the url, from the content-disposition, or from the user who
-  // upload the file.
-  string name = 2;
-}
-
-message PicTag {
-  // pic_id is the unique identifier for the pic, in varint form
-  string pic_id = 1;
-  // tag_id is the unique identifier for the tag, in varint form
-  string tag_id = 2;
-  // name is the tag name in utf8 form
-  string name = 3;
-  // created_time is when the tag was created.
-  google.protobuf.Timestamp created_time = 4;
-  // modified_time is when the tag was last modified.
-  google.protobuf.Timestamp modified_time = 5;
-  // version is the version of the tag.  It is used when updating the tag.
-  sfixed64 version = 6;
-}
-
-message PicComment {
-  // pic_id is the unique identifier for the pic, in varint form
-  string pic_id = 1;
-  // comment_id is the unique identifier for the comment, in varint form
-  string comment_id = 2;
-  // comment_parent_id is the unique identifier for the parent comment, in varint form
-  string comment_parent_id = 3;
-
-  string text = 7;
-
-  // created_time is when the tag was created.
-  google.protobuf.Timestamp created_time = 4;
-  // modified_time is when the tag was last modified.
-  google.protobuf.Timestamp modified_time = 5;
-  // version is the version of the tag.  It is used when updating the tag.
-  sfixed64 version = 6;
-
-  // The user id of comment author.  May be absent.
-  google.protobuf.StringValue user_id = 8;
-}
-
-message PicVote {
-  string pic_id = 1;
-  // user_id is the user who created this vote.  May be absent if unknown or due to lack of access.
-  google.protobuf.StringValue user_id = 7;
-
-  enum Vote {
-    UNKNOWN = 0;
-    UP = 1;
-    DOWN = 2;
-    NEUTRAL = 3;
-  }
-
-  Vote vote = 3;
-
-  sfixed64 version = 4;
-
-  google.protobuf.Timestamp created_time = 5;
-  google.protobuf.Timestamp modified_time = 6;
-}
-
-message PicCommentVote {
-  string pic_id = 1;
-  string comment_id = 2;
-  // user_id is the user who created this vote.  May be absent if unknown or due to lack of access.
-  google.protobuf.StringValue user_id = 3;
-
-  enum Vote {
-    UNKNOWN = 0;
-    UP = 1;
-    DOWN = 2;
-    NEUTRAL = 3;
-  }
-
-  Vote vote = 4;
-
-  sfixed64 version = 5;
-
-  google.protobuf.Timestamp created_time = 6;
-  google.protobuf.Timestamp modified_time = 7;
-}
-
-message User {
-  string user_id = 1;
-
-  string ident = 2;
-
-  // created_time is when the user was created.
-  google.protobuf.Timestamp created_time = 3;
-  // modified_time is when the user was last modified.
-  google.protobuf.Timestamp modified_time = 4;
-  // modified_time is when the user was last modified.
-  google.protobuf.Timestamp last_seen_time = 5;
-  // version is the version of the user.  It is used when updating the user.
-  sfixed64 version = 6;
-
-  repeated Capability.Cap capability = 7;
-}
-
-message Capability {
-  enum Cap {
-    UNKNOWN = 0;
-    // Can this user create and upload pictures
-    PIC_CREATE = 1;
-    // Can this user view the actual image data (grants pic token)
-    PIC_READ = 2;
-    // Can this user perform general pic index queries?
-    PIC_INDEX = 3;
-    // Can this user soft delete a pic?
-    PIC_SOFT_DELETE = 5;
-    // Can this user hard delete a pic?
-    PIC_HARD_DELETE = 6;
-    // Can this user purge a pic?
-    PIC_PURGE = 7;
-    // Can this user increment the pic view counter?
-    PIC_UPDATE_VIEW_COUNTER = 8;
-    // Can this user add tags and pic tags?
-    PIC_TAG_CREATE = 9;
-    // Can this user create comments?
-    PIC_COMMENT_CREATE = 10;
-    // Can this user vote?
-    PIC_VOTE_CREATE = 11;
-    // Can this user create other users?
-    USER_CREATE = 4;
-    // Can this user modify capabilities?
-    USER_UPDATE_CAPABILITY = 12;
-    // Can this user read information about themselves?
-    USER_READ_SELF = 13;
-    // Can this user read infortmation about others?
-    USER_READ_ALL = 14;
-    // Can this user create arbitrary extension data on a pic?
-    PIC_EXTENSION_CREATE = 15;
-    // Can this user read arbitrary extension data on a pic?
-    PIC_EXTENSION_READ = 16;
-    // Can this user create arbitrary extension data on a comment?
-    PIC_COMMENT_EXTENSION_CREATE = 17;
-    // Can this user read arbitrary extension data on a comment?
-    PIC_COMMENT_EXTENSION_READ = 18;
-    // Can this user create arbitrary extension data on a pic tag?
-    PIC_TAG_EXTENSION_CREATE = 19;
-    // Can this user read arbitrary extension data on a pic tag?
-    PIC_TAG_EXTENSION_READ = 20;
-    // Can this user create arbitrary extension data on a pic vote?
-    PIC_VOTE_EXTENSION_CREATE = 21;
-    // Can this user read arbitrary extension data on a pic vote?
-    PIC_VOTE_EXTENSION_READ = 22;
-    // Can this user read public information about other users?  Currently,
-    // public means user id, user name, and created time
-    USER_READ_PUBLIC = 23;
-    // Can this user read pics that other users have created?  Currently,
-    // this is Pic.FileSource.User and UserEvents.UpsertPic.
-    USER_READ_PICS = 24;
-    // Can this user read pic tags that other users have created?  Currently,
-    // this is PicTag.UserId.
-    USER_READ_PIC_TAG = 25;
-    // Can this user read pic comments that other users have created?  This
-    // implies that a user can see who else made comments.
-    USER_READ_PIC_COMMENT = 26;
-    // Can this user read pic votes that other users have created?  This
-    // implies that a user can see who voted on a pic, and what votes they
-    // have made.
-    USER_READ_PIC_VOTE = 27;
-    // Can this user vote on pic comments?
-    PIC_COMMENT_VOTE_CREATE = 28;
-    // Can this user create arbitrary extension data on a comment vote?
-    PIC_COMMENT_VOTE_EXTENSION_CREATE = 29;
-  }
-}
-
-// PublicUserInfo is information about a user
-message PublicUserInfo {
-  // user_id is the id of the user.  It is always present.
-  string user_id = 1;
-
-  // ident is the public name of the user.  It may be absent if the user does not have a name.
-  string ident = 2;
-
-  // created_time is when the user was created.
-  google.protobuf.Timestamp created_time = 3;
-}
-
-
-// BackendConfiguration is the backend configuration used by Pixur.  All fields are optional
-// unless explicitly called out.
-message BackendConfiguration {
-  // the minimum comment length in bytes.
-  google.protobuf.Int64Value min_comment_length = 1;
-  // the maximum comment length in bytes.
-  google.protobuf.Int64Value max_comment_length = 2;
-  // the minimum ident length for a user in bytes.
-  google.protobuf.Int64Value min_ident_length = 3;
-  // the maximum ident length for a user in bytes.
-  google.protobuf.Int64Value max_ident_length = 4;
-  // the minimum file name length in bytes.
-  google.protobuf.Int64Value min_file_name_length = 5;
-  // the maximum file name length in bytes.
-  google.protobuf.Int64Value max_file_name_length = 6;
-  // the minimum url length for pic upsert in bytes.
-  google.protobuf.Int64Value min_url_length = 7;
-  // the maximum url length for pic upsert in bytes.
-  google.protobuf.Int64Value max_url_length = 8;
-  // the minimum tag length in bytes.
-  google.protobuf.Int64Value min_tag_length = 9;
-  // the maximum tag length in bytes.
-  google.protobuf.Int64Value max_tag_length = 10;
-  // the capabilities of the anonymous user.
-  CapabilitySet anonymous_capability = 11;
-  // the capabilities of a newly created user.
-  CapabilitySet new_user_capability = 12;
-  // the default number of index pics to return
-  google.protobuf.Int64Value default_find_index_pics = 13;
-  // the max number of index pics to return
-  google.protobuf.Int64Value max_find_index_pics = 14;
-  // the max duration a WEBM pic can be
-  google.protobuf.Duration max_webm_duration = 15;
-  // allows users to reply to their own comments
-  google.protobuf.BoolValue enable_pic_comment_self_reply = 16;
-  // allows a single user to reply multiple times to one comment
-  google.protobuf.BoolValue enable_pic_comment_sibling_reply = 17;
-  // the default number of user events to return
-  google.protobuf.Int64Value default_find_user_events = 18;
-  // the max number of user events to return
-  google.protobuf.Int64Value max_find_user_events = 19;
-
-  message CapabilitySet {
-    repeated Capability.Cap capability = 1;
-  }
-}
-
-message UserEvent {
-  // user_id is the id of the user this event applies to.
-  string user_id = 1;
-  // user_event_id is the unique identifier for this event.  It should be considered as an opaque
-  // token.  It generally consistes of the user_id, created_time and an optional identifier.
-  string user_event_id = 2;
-
-  // created_time is when the user event was created.
-  google.protobuf.Timestamp created_time = 3;
-
-  // IncomingUpsertPicVote represents sending a vote on a pic another user made.  If a user
-  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
-  message OutgoingUpsertPicVote {
-    string pic_id = 1;
-  }
-
-  // IncomingUpsertPicVote represents receiving a vote on a pic they made.  If a user
-  // self-votes, OutgoingUpsertPicVote will be created instead of IncomingUpsertPicVote.
-  message IncomingUpsertPicVote {
-    string pic_id = 1;
-    // The user who made the vote.  May be absent
-    string subject_user_id = 2;
-  }
-
-  // OutgoingPicComment represents commenting on someone else's pic.  If a user comments on
-  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
-  message OutgoingPicComment {
-    string pic_id = 1;
-    // comment_id is the comment that this user created.
-    string comment_id = 2;
-  }
-
-  // IncomingPicComment represents commenting on someone else's pic.  If a user comments on
-  // their own pic, OutgoingPicComment will be used instead of IncomingPicComment.
-  message IncomingPicComment {
-    string pic_id = 1;
-    // comment_id is the newly created child comment, **not** the one owned by user_id.  The
-    // comment_parent_id of the given comment is owned by user_id.
-    string comment_id = 2;
-    string comment_parent_id = 3;
-  }
-
-  message UpsertPic {
-    string pic_id = 1;
-  }
-
-  oneof evt {
-    OutgoingUpsertPicVote outgoing_upsert_pic_vote = 4;
-    IncomingUpsertPicVote incoming_upsert_pic_vote = 5;
-    OutgoingPicComment outgoing_pic_comment = 6;
-    IncomingPicComment incoming_pic_comment = 7;
-    UpsertPic upsert_pic = 8;
-  }
-}
 
 message LookupUserRequest {
   // if absent, assumed to come from auth token
@@ -521,16 +169,6 @@ message SoftDeletePicResponse {
   // nothing for now
 }
 
-// Copy of schema.proto
-enum DeletionReason {
-  // The reason is not know, due to limitations of proto
-  UNKNOWN = 0;
-  // No specific reason.  This is a catch-all reason.
-  NONE = 1;
-  // The pic is in violation of the rules.
-  RULE_VIOLATION = 2;
-}
-
 // UpsertPicRequest is a request to upload and possibly merge with another
 // picture.
 message UpsertPicRequest {
@@ -590,36 +228,6 @@ message GetRefreshTokenResponse {
 	PwtPayload refresh_payload = 3;
 	PwtPayload auth_payload = 4;
 	PwtPayload pix_payload = 6;
-}
-
-message PwtHeader {
-	enum Algorithm {
-		UNKNOWN = 0;
-		HS256 = 1;
-		RS256 = 2;
-		HS512_256 = 3;
-	}
-	Algorithm algorithm = 1;
-	int64 version = 2;
-}
-
-message PwtPayload {
-	string subject = 1;
-	google.protobuf.Timestamp not_before = 2;
-	google.protobuf.Timestamp not_after = 3;
-	// represents when this token should be reverified.  Optional.
-	google.protobuf.Timestamp soft_not_after = 6;
-	string issuer = 4;
-	int64 token_id = 5;
-	int64 token_parent_id = 8;
-
-	enum Type {
-		UNKNOWN = 0;
-		REFRESH = 1;
-		AUTH = 2;
-		PIX = 3;
-	}
-	Type type = 7;
 }
 
 message AddPicCommentRequest {
@@ -729,7 +337,6 @@ message FindUserEventsResponse {
 }
 
 message WatchBackendConfigurationRequest {
-
 }
 
 message WatchBackendConfigurationResponse {
@@ -765,88 +372,63 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20181221 // AUTO UPDATED BY generate.go
+    api_version: 20190121 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
   };
 
   rpc AddPicComment(AddPicCommentRequest) returns (AddPicCommentResponse);
-
   rpc AddPicTags(AddPicTagsRequest) returns (AddPicTagsResponse);
-
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
-
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-  
   rpc FindPicCommentVotes(FindPicCommentVotesRequest) returns (FindPicCommentVotesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc FindSchedPics(FindSchedPicsRequest) returns (FindSchedPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc FindUserEvents(FindUserEventsRequest) returns (FindUserEventsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
-
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
-
   rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupPicExtension(LookupPicExtensionRequest) returns (LookupPicExtensionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupPicVote(LookupPicVoteRequest) returns (LookupPicVoteResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupPicCommentVote(LookupPicCommentVoteRequest) returns (LookupPicCommentVoteResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc LookupPublicUserInfo(LookupPublicUserInfoRequest) returns (LookupPublicUserInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   };
-
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
-
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
-
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
-
   rpc UpsertPicCommentVote(UpsertPicCommentVoteRequest) returns (UpsertPicCommentVoteResponse);
-
   rpc UpsertPicVote(UpsertPicVoteRequest) returns (UpsertPicVoteResponse);
-
   rpc WatchBackendConfiguration(WatchBackendConfigurationRequest) returns (
       stream WatchBackendConfigurationResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
