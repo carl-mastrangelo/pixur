@@ -12,14 +12,59 @@ import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
 import "pixur.org/pixur/api/data.proto";
 
-
-message LookupUserRequest {
-  // if absent, assumed to come from auth token
-  string user_id = 1;
+message AddPicCommentRequest {
+	string pic_id = 1;
+	string comment_parent_id = 2;
+	
+	string text = 3;
 }
 
-message LookupUserResponse {
-  User user = 1;
+message AddPicCommentResponse {
+	PicComment comment = 1;
+}
+
+message AddPicTagsRequest {
+	string pic_id = 1;
+	repeated string tag = 2;
+}
+
+message AddPicTagsResponse {
+  // nothing here for now.
+}
+
+message CreateUserRequest {
+	// ident is the unique identity of the user being created, usually an email address
+	string ident = 1;
+	// secret is the secret string used to authenticate the user, usually a password
+	string secret = 2;
+}
+
+message CreateUserResponse {
+	// nothing for now.
+}
+
+message DeleteTokenRequest {
+	// empty, uses out of band auth token
+}
+
+message DeleteTokenResponse {
+	// empty
+}
+
+message FindIndexPicsRequest {
+	string start_pic_id = 1;
+	
+	bool ascending = 2;
+}
+
+message FindIndexPicsResponse {
+  repeated PicAndThumbnail pic = 4;
+  // if set, this field is the next pic id as a
+  // continuation token.
+  string next_pic_id = 2;
+  // if set, this field is the previous pic id as a
+  // continuation token.
+  string prev_pic_id = 3;
 }
 
 message FindPicCommentVotesRequest {
@@ -36,6 +81,63 @@ message FindPicCommentVotesResponse {
   repeated PicCommentVote vote = 1;
 }
 
+message FindSchedPicsRequest {
+}
+
+message FindSchedPicsResponse {
+  repeated PicAndThumbnail pic = 2;
+}
+
+message FindSimilarPicsRequest {
+  string pic_id = 1;
+}
+
+message FindSimilarPicsResponse {
+  repeated string pic_id = 1;
+}
+
+message FindUserEventsRequest {
+  // Optional.  Uses auth token if not specified.
+  string user_id = 1;
+  // Optional.  If present, specifies the starting user event id to scan for
+  string start_user_event_id = 2;
+
+  bool ascending = 3;
+}
+
+message FindUserEventsResponse {
+  repeated UserEvent user_event = 1;
+
+  string next_user_event_id = 2;
+  string prev_user_event_id = 3;
+}
+
+message GetRefreshTokenRequest {
+	// ident is the unique identity of the user being created, usually an email address
+	string ident = 1;
+	// secret is the secret string used to authenticate the user, usually a password
+	string secret = 2;
+	
+	string refresh_token = 3;
+}
+
+message GetRefreshTokenResponse {
+	string refresh_token = 1;
+	string auth_token = 2;
+	string pix_token = 5;
+	PwtPayload refresh_payload = 3;
+	PwtPayload auth_payload = 4;
+	PwtPayload pix_payload = 6;
+}
+
+message IncrementViewCountRequest {
+  string pic_id = 1;
+}
+
+message IncrementViewCountResponse {
+  // nothing for now
+}
+
 message LookupPicCommentVoteRequest {
   string pic_id = 1;
   string comment_id = 2;
@@ -47,6 +149,43 @@ message LookupPicCommentVoteResponse {
   PicCommentVote vote = 1;
 }
 
+message LookupPicDetailsRequest {
+	string pic_id = 1;
+}
+
+message LookupPicDetailsResponse {
+  Pic pic = 1;
+  repeated PicTag pic_tag = 2;
+  PicCommentTree pic_comment_tree = 3;
+}
+
+message LookupPicExtensionRequest {
+  string pic_id = 1;
+}
+
+message LookupPicExtensionResponse {
+  map<string, google.protobuf.Any> ext = 1;
+}
+
+message LookupPicFileRequest {
+  string pic_file_id = 1;
+  PicFile.Format format = 2;
+}
+
+message LookupPicFileResponse {
+  PicFile pic_file = 1;
+}
+
+message LookupPicVoteRequest {
+  string pic_id = 1;
+  // Optional.  Uses auth token if not specified.
+  string user_id = 2;
+}
+
+message LookupPicVoteResponse {
+  PicVote vote = 1;
+}
+
 message LookupPublicUserInfoRequest {
   // if absent, assumed to come from auth token
   string user_id = 1;
@@ -54,6 +193,51 @@ message LookupPublicUserInfoRequest {
 
 message LookupPublicUserInfoResponse {
   PublicUserInfo user_info = 1;
+}
+
+message LookupUserRequest {
+  // if absent, assumed to come from auth token
+  string user_id = 1;
+}
+
+message LookupUserResponse {
+  User user = 1;
+}
+
+message PurgePicRequest {
+  string pic_id = 1;
+}
+
+message PurgePicResponse {
+  // nothing for now
+}
+
+message ReadPicFileRequest {
+  string pic_file_id = 1;
+  PicFile.Format format = 2;
+
+  // The offset into the file to start reading at.  Required
+  int64 offset = 3;
+  // The maximum number of bytes to read.   Maybe be 0.
+  int64 limit = 4;
+}
+
+message ReadPicFileResponse {
+  // may be empty
+  bytes data = 1;
+  // indicates that the end of the pic has been reached.
+  bool eof = 2;
+}
+
+message SoftDeletePicRequest {
+	string pic_id = 1;
+	string details = 2;
+  DeletionReason reason = 3;
+  google.protobuf.Timestamp deletion_time = 4;
+}
+
+message SoftDeletePicResponse {
+  // nothing for now
 }
 
 message UpdateUserRequest {
@@ -81,92 +265,18 @@ message UpdateUserResponse {
   User user = 1;
 }
 
-message PicCommentTree {
-	// All comments, ordered by a post order traversal.  Protobuf does not handle deeply nested
-	// messages well.
-	repeated PicComment comment = 1;
-}
-
-message LookupPicDetailsRequest {
-	string pic_id = 1;
-}
-
-message LookupPicDetailsResponse {
-  Pic pic = 1;
-  repeated PicTag pic_tag = 2;
-  PicCommentTree pic_comment_tree = 3;
-}
-
-message FindIndexPicsRequest {
-	string start_pic_id = 1;
-	
-	bool ascending = 2;
-}
-
-message FindIndexPicsResponse {
-  repeated PicAndThumbnail pic = 4;
-  // if set, this field is the next pic id as a
-  // continuation token.
-  string next_pic_id = 2;
-  // if set, this field is the previous pic id as a
-  // continuation token.
-  string prev_pic_id = 3;
-}
-
-message PicAndThumbnail {
-  Pic pic = 1;
-  repeated PicFile thumbnail = 2;
-}
-
-message FindSchedPicsRequest {
-}
-
-message FindSchedPicsResponse {
-  repeated PicAndThumbnail pic = 2;
-}
-
-message AddPicTagsRequest {
-	string pic_id = 1;
-	repeated string tag = 2;
-}
-
-message AddPicTagsResponse {
-  // nothing here for now.
-}
-
-message FindSimilarPicsRequest {
+message UpsertPicCommentVoteRequest {
   string pic_id = 1;
+  string comment_id = 2;
+
+  // Optional.   Not necessary when creating for the first time.
+  sfixed64 version = 3;
+
+  PicCommentVote.Vote vote = 4;
 }
 
-message FindSimilarPicsResponse {
-  repeated string pic_id = 1;
-}
-
-message IncrementViewCountRequest {
-  string pic_id = 1;
-}
-
-message IncrementViewCountResponse {
-  // nothing for now
-}
-
-message PurgePicRequest {
-  string pic_id = 1;
-}
-
-message PurgePicResponse {
-  // nothing for now
-}
-
-message SoftDeletePicRequest {
-	string pic_id = 1;
-	string details = 2;
-  DeletionReason reason = 3;
-  google.protobuf.Timestamp deletion_time = 4;
-}
-
-message SoftDeletePicResponse {
-  // nothing for now
+message UpsertPicCommentVoteResponse {
+  // empty
 }
 
 // UpsertPicRequest is a request to upload and possibly merge with another
@@ -201,54 +311,6 @@ message UpsertPicResponse {
   Pic pic = 1;
 }
 
-message CreateUserRequest {
-	// ident is the unique identity of the user being created, usually an email address
-	string ident = 1;
-	// secret is the secret string used to authenticate the user, usually a password
-	string secret = 2;
-}
-
-message CreateUserResponse {
-	// nothing for now.
-}
-
-message GetRefreshTokenRequest {
-	// ident is the unique identity of the user being created, usually an email address
-	string ident = 1;
-	// secret is the secret string used to authenticate the user, usually a password
-	string secret = 2;
-	
-	string refresh_token = 3;
-}
-
-message GetRefreshTokenResponse {
-	string refresh_token = 1;
-	string auth_token = 2;
-	string pix_token = 5;
-	PwtPayload refresh_payload = 3;
-	PwtPayload auth_payload = 4;
-	PwtPayload pix_payload = 6;
-}
-
-message AddPicCommentRequest {
-	string pic_id = 1;
-	string comment_parent_id = 2;
-	
-	string text = 3;
-}
-
-message AddPicCommentResponse {
-	PicComment comment = 1;
-}
-
-message DeleteTokenRequest {
-	// empty, uses out of band auth token
-}
-
-message DeleteTokenResponse {
-	// empty
-}
-
 message UpsertPicVoteRequest {
   string pic_id = 1;
 
@@ -260,80 +322,6 @@ message UpsertPicVoteRequest {
 
 message UpsertPicVoteResponse {
   // empty
-}
-
-message UpsertPicCommentVoteRequest {
-  string pic_id = 1;
-  string comment_id = 2;
-
-  // Optional.   Not necessary when creating for the first time.
-  sfixed64 version = 3;
-
-  PicCommentVote.Vote vote = 4;
-}
-
-message UpsertPicCommentVoteResponse {
-  // empty
-}
-
-message LookupPicVoteRequest {
-  string pic_id = 1;
-  // Optional.  Uses auth token if not specified.
-  string user_id = 2;
-}
-
-message LookupPicVoteResponse {
-  PicVote vote = 1;
-}
-
-message LookupPicFileRequest {
-  string pic_file_id = 1;
-  PicFile.Format format = 2;
-}
-
-message LookupPicFileResponse {
-  PicFile pic_file = 1;
-}
-
-message ReadPicFileRequest {
-  string pic_file_id = 1;
-  PicFile.Format format = 2;
-
-  // The offset into the file to start reading at.  Required
-  int64 offset = 3;
-  // The maximum number of bytes to read.   Maybe be 0.
-  int64 limit = 4;
-}
-
-message ReadPicFileResponse {
-  // may be empty
-  bytes data = 1;
-  // indicates that the end of the pic has been reached.
-  bool eof = 2;
-}
-
-message LookupPicExtensionRequest {
-  string pic_id = 1;
-}
-
-message LookupPicExtensionResponse {
-  map<string, google.protobuf.Any> ext = 1;
-}
-
-message FindUserEventsRequest {
-  // Optional.  Uses auth token if not specified.
-  string user_id = 1;
-  // Optional.  If present, specifies the starting user event id to scan for
-  string start_user_event_id = 2;
-
-  bool ascending = 3;
-}
-
-message FindUserEventsResponse {
-  repeated UserEvent user_event = 1;
-
-  string next_user_event_id = 2;
-  string prev_user_event_id = 3;
 }
 
 message WatchBackendConfigurationRequest {
@@ -384,46 +372,46 @@ service PixurService {
   rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
   rpc FindIndexPics(FindIndexPicsRequest) returns (FindIndexPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
   rpc FindPicCommentVotes(FindPicCommentVotesRequest) returns (FindPicCommentVotesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
   rpc FindSchedPics(FindSchedPicsRequest) returns (FindSchedPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
   rpc FindSimilarPics(FindSimilarPicsRequest) returns (FindSimilarPicsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
   rpc FindUserEvents(FindUserEventsRequest) returns (FindUserEventsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
   rpc IncrementViewCount(IncrementViewCountRequest) returns (IncrementViewCountResponse);
-  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
-  rpc LookupPicExtension(LookupPicExtensionRequest) returns (LookupPicExtensionResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
-  rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
-  rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
-  rpc LookupPicVote(LookupPicVoteRequest) returns (LookupPicVoteResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  };
   rpc LookupPicCommentVote(LookupPicCommentVoteRequest) returns (LookupPicCommentVoteResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
-  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
+  }
+  rpc LookupPicDetails(LookupPicDetailsRequest) returns (LookupPicDetailsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
+  rpc LookupPicExtension(LookupPicExtensionRequest) returns (LookupPicExtensionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc LookupPicFile(LookupPicFileRequest) returns (LookupPicFileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc LookupPicVote(LookupPicVoteRequest) returns (LookupPicVoteResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc LookupPublicUserInfo(LookupPublicUserInfoRequest) returns (LookupPublicUserInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
-  };
+  }
+  rpc LookupUser(LookupUserRequest) returns (LookupUserResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc PurgePic(PurgePicRequest) returns (PurgePicResponse);
+  rpc ReadPicFile(stream ReadPicFileRequest) returns (stream ReadPicFileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SoftDeletePic(SoftDeletePicRequest) returns (SoftDeletePicResponse);
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc UpsertPic(UpsertPicRequest) returns (UpsertPicResponse);
