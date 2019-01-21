@@ -22,7 +22,7 @@ func (s *serv) handleAddPicTags(ctx context.Context, req *api.AddPicTagsRequest)
 		Beg: s.db,
 		Now: s.now,
 
-		PicID:    int64(vid),
+		PicId:    int64(vid),
 		TagNames: req.Tag,
 	}
 	if err := s.runner.Run(ctx, task); err != nil {

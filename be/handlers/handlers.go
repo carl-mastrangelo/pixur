@@ -36,7 +36,7 @@ func (si *serverInterceptor) intercept(
 			switch req.(type) {
 			case *api.GetRefreshTokenRequest:
 			default:
-				ctx, sts = fillUserIDFromCtx(ctx)
+				ctx, sts = fillUserIdFromCtx(ctx)
 				if sts != nil {
 					return nil, gstatus.Error(sts.Code(), sts.Message())
 				}

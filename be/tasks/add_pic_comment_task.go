@@ -20,8 +20,8 @@ type AddPicCommentTask struct {
 	Now func() time.Time
 
 	// Inputs
-	PicID           int64
-	CommentParentID int64
+	PicId           int64
+	CommentParentId int64
 	Text            string
 
 	// Ext is additional extra data associated with this comment.
@@ -63,9 +63,9 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	userID := schema.AnonymousUserID
+	userId := schema.AnonymousUserId
 	if u != nil {
-		userID = u.UserId
+		userId = u.UserId
 	}
 
 	if len(t.Ext) != 0 {
@@ -75,7 +75,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 	})
 	if err != nil {
 		return status.Internal(err, "can't lookup pic")
@@ -90,9 +90,9 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	var commentParent *schema.PicComment
-	if t.CommentParentID != 0 {
+	if t.CommentParentId != 0 {
 		comments, err := j.FindPicComments(db.Opts{
-			Prefix: tab.PicCommentsPrimary{PicId: &t.PicID, CommentId: &t.CommentParentID},
+			Prefix: tab.PicCommentsPrimary{PicId: &t.PicId, CommentId: &t.CommentParentId},
 		})
 		if err != nil {
 			return status.Internal(err, "can't lookup comment")
@@ -103,38 +103,38 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		commentParent = comments[0]
 
 		if conf.EnablePicCommentSelfReply != nil && !conf.EnablePicCommentSelfReply.Value {
-			if userID == commentParent.UserId && userID != schema.AnonymousUserID {
+			if userId == commentParent.UserId && userId != schema.AnonymousUserId {
 				return status.InvalidArgument(nil, "can't self reply")
 			}
 		}
 	}
 	if conf.EnablePicCommentSiblingReply != nil && !conf.EnablePicCommentSiblingReply.Value {
-		if userID != schema.AnonymousUserID {
+		if userId != schema.AnonymousUserId {
 			comments, err := j.FindPicComments(db.Opts{
-				Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+				Prefix: tab.PicCommentsPrimary{PicId: &t.PicId},
 			})
 			if err != nil {
 				return status.Internal(err, "can't lookup comments")
 			}
 			for _, c := range comments {
-				if c.CommentParentId == t.CommentParentID && c.UserId == userID {
+				if c.CommentParentId == t.CommentParentId && c.UserId == userId {
 					return status.InvalidArgument(nil, "can't double reply")
 				}
 			}
 		}
 	}
 
-	commentID, err := j.AllocID()
+	commentId, err := j.AllocId()
 	if err != nil {
 		return status.Internal(err, "can't allocate id")
 	}
 
 	pc := &schema.PicComment{
 		PicId:           p.PicId,
-		CommentId:       commentID,
-		CommentParentId: t.CommentParentID,
+		CommentId:       commentId,
+		CommentParentId: t.CommentParentId,
 		Text:            txt,
-		UserId:          userID,
+		UserId:          userId,
 		Ext:             t.Ext,
 	}
 
@@ -154,26 +154,26 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	var iues []*schema.UserEvent
 	var oue *schema.UserEvent
 	notifications := make(map[int64]bool)
-	if userID != schema.AnonymousUserID {
-		idx, sts := next(userID)
+	if userId != schema.AnonymousUserId {
+		idx, sts := next(userId)
 		if sts != nil {
 			return sts
 		}
-		notifications[userID] = true
+		notifications[userId] = true
 		oue = &schema.UserEvent{
-			UserId:     userID,
+			UserId:     userId,
 			Index:      idx,
 			CreatedTs:  pc.CreatedTs,
 			ModifiedTs: pc.ModifiedTs,
 			Evt: &schema.UserEvent_OutgoingPicComment_{
 				OutgoingPicComment: &schema.UserEvent_OutgoingPicComment{
 					PicId:     p.PicId,
-					CommentId: commentID,
+					CommentId: commentId,
 				},
 			},
 		}
 	}
-	if commentParent != nil && commentParent.UserId != schema.AnonymousUserID &&
+	if commentParent != nil && commentParent.UserId != schema.AnonymousUserId &&
 		!notifications[commentParent.UserId] {
 		idx, sts := next(commentParent.UserId)
 		if sts != nil {
@@ -188,7 +188,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 			Evt: &schema.UserEvent_IncomingPicComment_{
 				IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 					PicId:     p.PicId,
-					CommentId: commentID,
+					CommentId: commentId,
 				},
 			},
 		})
@@ -197,7 +197,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	// for each of the "uploaders" of the pic.
 	if commentParent == nil {
 		for _, fs := range p.Source {
-			if fs.UserId != schema.AnonymousUserID && !notifications[fs.UserId] {
+			if fs.UserId != schema.AnonymousUserId && !notifications[fs.UserId] {
 				idx, sts := next(fs.UserId)
 				if sts != nil {
 					return sts
@@ -211,7 +211,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 					Evt: &schema.UserEvent_IncomingPicComment_{
 						IncomingPicComment: &schema.UserEvent_IncomingPicComment{
 							PicId:     p.PicId,
-							CommentId: commentID,
+							CommentId: commentId,
 						},
 					},
 				})
@@ -240,13 +240,13 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 	return nil
 }
 
-func nextUserEventIndex(j *tab.Job, userID, createdTs int64) (int64, status.S) {
+func nextUserEventIndex(j *tab.Job, userId, createdTs int64) (int64, status.S) {
 	ues, err := j.FindUserEvents(db.Opts{
 		// We don't actually intend to write, but this prevents other transactions
 		// from trying to use the same index.
 		Lock: db.LockWrite,
 		Prefix: tab.UserEventsPrimary{
-			UserId:    &userID,
+			UserId:    &userId,
 			CreatedTs: &createdTs,
 		},
 	})
@@ -284,7 +284,7 @@ func userCredOf(su *schema.User, conf *schema.Configuration) *userCred {
 		}
 	} else {
 		return &userCred{
-			subjectUserId: schema.AnonymousUserID,
+			subjectUserId: schema.AnonymousUserId,
 			cs:            schema.CapSetOf(conf.AnonymousCapability.Capability...),
 		}
 	}
@@ -310,7 +310,7 @@ func filterPicCommentInternal(pc *schema.PicComment, uc *userCred) *schema.PicCo
 	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_COMMENT):
 	case uc.subjectUserId == dpc.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
-		dpc.UserId = schema.AnonymousUserID
+		dpc.UserId = schema.AnonymousUserId
 	}
 
 	return &dpc

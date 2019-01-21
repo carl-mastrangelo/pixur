@@ -37,23 +37,23 @@ func init() {
 	}
 }
 
-func PicFilePath(pixPath string, picID int64, mime Pic_File_Mime) (string, status.S) {
+func PicFilePath(pixPath string, picId int64, mime Pic_File_Mime) (string, status.S) {
 	ext, present := picFileMimeExt[mime]
 	if !present {
 		return "", status.InvalidArgument(nil, "unknown mime", mime)
 	}
 
-	return filepath.Join(PicBaseDir(pixPath, picID), Varint(picID).Encode()+ext), nil
+	return filepath.Join(PicBaseDir(pixPath, picId), Varint(picId).Encode()+ext), nil
 }
 
 func PicFileThumbnailPath(
-	pixPath string, picID, index int64, mime Pic_File_Mime) (string, status.S) {
+	pixPath string, picId, index int64, mime Pic_File_Mime) (string, status.S) {
 	ext, present := picFileMimeExt[mime]
 	if !present {
 		return "", status.InvalidArgument(nil, "unknown mime", mime)
 	}
 
 	return filepath.Join(
-		PicBaseDir(pixPath, picID),
-		Varint(picID).Encode()+Varint(index).Encode()+ext), nil
+		PicBaseDir(pixPath, picId),
+		Varint(picId).Encode()+Varint(index).Encode()+ext), nil
 }

@@ -11,17 +11,17 @@ import (
 
 func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRequest) (
 	*api.FindIndexPicsResponse, status.S) {
-	var picID schema.Varint
+	var picId schema.Varint
 	startPicPresent := req.StartPicId != ""
 	if startPicPresent {
-		if err := picID.DecodeAll(req.StartPicId); err != nil {
+		if err := picId.DecodeAll(req.StartPicId); err != nil {
 			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
 
 	var task = &tasks.ReadIndexPicsTask{
 		Beg:       s.db,
-		StartID:   int64(picID),
+		StartId:   int64(picId),
 		Ascending: req.Ascending,
 	}
 
@@ -33,11 +33,11 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 		Pic: apiPicAndThumbnails(nil, task.Pics...),
 	}
 
-	if task.NextID != 0 {
-		resp.NextPicId = schema.Varint(task.NextID).Encode()
+	if task.NextId != 0 {
+		resp.NextPicId = schema.Varint(task.NextId).Encode()
 	}
-	if task.PrevID != 0 {
-		resp.PrevPicId = schema.Varint(task.PrevID).Encode()
+	if task.PrevId != 0 {
+		resp.PrevPicId = schema.Varint(task.PrevId).Encode()
 	}
 
 	return resp, nil

@@ -90,7 +90,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "secret too long")
 	}
 
-	userID, err := j.AllocID()
+	userId, err := j.AllocId()
 	if err != nil {
 		return status.Internal(err, "can't allocate id")
 	}
@@ -112,7 +112,7 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	now := t.Now()
 	user := &schema.User{
-		UserId: userID,
+		UserId: userId,
 		Secret: hashed,
 		// Don't set last seen.
 		Ident:      ident,

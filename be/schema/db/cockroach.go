@@ -26,7 +26,7 @@ const (
 	// I have only seen 40001 in practice.
 	codeSerializationFailureError = "40001"
 	codeDeadlockDetectedError     = "40P01"
-	// codeUniqueViolationError can happen occasionally when not using preallocated IDs for rows.
+	// codeUniqueViolationError can happen occasionally when not using preallocated Ids for rows.
 	// An example is UserEvents, which all compete for index 0, but which can be retried and pass.
 	codeUniqueViolationError = "23505"
 )

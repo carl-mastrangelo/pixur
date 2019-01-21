@@ -43,10 +43,10 @@ func (t *AddPicCommentVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	userID := schema.AnonymousUserID
+	userId := schema.AnonymousUserId
 	picCommentVoteIndex := int64(0)
 	if u != nil {
-		userID = u.UserId
+		userId = u.UserId
 	}
 
 	conf, sts := GetConfiguration(ctx)
@@ -94,14 +94,14 @@ func (t *AddPicCommentVoteTask) Run(ctx context.Context) (stscap status.S) {
 		Prefix: tab.PicCommentVotesPrimary{
 			PicId:     &t.PicId,
 			CommentId: &t.CommentId,
-			UserId:    &userID,
+			UserId:    &userId,
 		},
 		Lock: db.LockWrite,
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pic comment votes")
 	}
-	if userID != schema.AnonymousUserID {
+	if userId != schema.AnonymousUserId {
 		if len(pcvs) != 0 {
 			return status.AlreadyExists(nil, "can't double vote")
 		}
@@ -123,7 +123,7 @@ func (t *AddPicCommentVoteTask) Run(ctx context.Context) (stscap status.S) {
 	pcv := &schema.PicCommentVote{
 		PicId:      p.PicId,
 		CommentId:  c.CommentId,
-		UserId:     userID,
+		UserId:     userId,
 		Index:      picCommentVoteIndex,
 		Vote:       t.Vote,
 		Ext:        t.Ext,

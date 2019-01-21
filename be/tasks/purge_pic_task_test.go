@@ -40,10 +40,10 @@ func TestPurgeWorkflow(t *testing.T) {
 		PixPath: c.TempDir(),
 		Now:     time.Now,
 		Remove:  os.Remove,
-		PicID:   p.Pic.PicId,
+		PicId:   p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestPurgeWorkflow(t *testing.T) {
 	var afterIdents []*schema.PicIdent
 	c.AutoJob(func(j *tab.Job) error {
 		pis, err := j.FindPicIdents(db.Opts{
-			Prefix: tab.PicIdentsPrimary{PicId: &task.PicID},
+			Prefix: tab.PicIdentsPrimary{PicId: &task.PicId},
 		})
 		if err != nil {
 			return err
@@ -123,11 +123,11 @@ func TestPurge_TagsDecremented(t *testing.T) {
 		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  os.Remove,
-		PicID:   p.Pic.PicId,
+		PicId:   p.Pic.PicId,
 		Now:     time.Now,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -164,11 +164,11 @@ func TestPurgeDeleteFails(t *testing.T) {
 		Beg:     c.DB(),
 		PixPath: c.TempDir(),
 		Remove:  func(name string) error { return errors.New("nope") },
-		PicID:   p.Pic.PicId,
+		PicId:   p.Pic.PicId,
 		Now:     time.Now,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("Expected error")

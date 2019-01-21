@@ -18,7 +18,7 @@ func TestLookupUserForAuthOrNil_succeeds(t *testing.T) {
 
 	u := c.CreateUser()
 
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserId(context.Background(), u.User.UserId)
 	j := c.Job()
 	defer j.Rollback()
 
@@ -56,7 +56,7 @@ func TestLookupUserForAuthOrNil_failsOnNoUser(t *testing.T) {
 	j := c.Job()
 	defer j.Rollback()
 
-	ctx := CtxFromUserID(context.Background(), -1)
+	ctx := CtxFromUserId(context.Background(), -1)
 
 	_, sts := lookupUserForAuthOrNil(ctx, j, db.LockRead)
 	if sts == nil {
@@ -76,7 +76,7 @@ func TestLookupUserForAuthOrNil_failsOnDbError(t *testing.T) {
 	defer c.Close()
 
 	u := c.CreateUser()
-	ctx := CtxFromUserID(context.Background(), u.User.UserId)
+	ctx := CtxFromUserId(context.Background(), u.User.UserId)
 
 	j := c.Job()
 	j.Rollback()
@@ -255,7 +255,7 @@ func TestRequireCapability_worksOnPresentUser(t *testing.T) {
 		},
 	}
 	ctx := CtxFromTestConfig(context.Background(), conf)
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 
 	foundUser, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts != nil {
@@ -282,7 +282,7 @@ func TestRequireCapability_failsOnPresentUserWithoutCap(t *testing.T) {
 		},
 	}
 	ctx := CtxFromTestConfig(context.Background(), conf)
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 
 	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
 	if sts == nil {
@@ -316,7 +316,7 @@ func TestRequireCapability_capabilitiesNotMerged(t *testing.T) {
 	defer j.Rollback()
 
 	ctx := CtxFromTestConfig(context.Background(), conf)
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 	// Even though the anonymous user has the cap, don't allow it.  This prevents
 	// accidental privelege access for limited users.
 	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
@@ -348,7 +348,7 @@ func TestRequireCapability_capabilitiesNotMergedOnBadUser(t *testing.T) {
 
 	ctx := CtxFromTestConfig(context.Background(), conf)
 	// a user which does not exist doesn't escalate to anonymous capability.
-	ctx = CtxFromUserID(ctx, -1)
+	ctx = CtxFromUserId(ctx, -1)
 	// Even though the anonymous user has the cap, don't allow it.  This prevents
 	// accidental privelege access for limited users.
 	_, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)

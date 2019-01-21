@@ -138,7 +138,7 @@ func (c *TestContainer) AutoJob(cb func(j *tab.Job) error) {
 func (c *TestContainer) CreatePic() *TestPic {
 	now := time.Now()
 	p := &schema.Pic{
-		PicId: c.ID(),
+		PicId: c.Id(),
 		File: &schema.Pic_File{
 			Index: 0,
 			Mime:  schema.Pic_File_PNG,
@@ -244,9 +244,9 @@ func makeImageData(img image.Image, c *TestContainer) *bytes.Reader {
 	return bytes.NewReader(buf.Bytes())
 }
 
-func makeImage(picID int64) image.Image {
+func makeImage(picId int64) image.Image {
 	data := make([]uint8, 8)
-	binary.LittleEndian.PutUint64(data, uint64(picID))
+	binary.LittleEndian.PutUint64(data, uint64(picId))
 	return &image.Gray{
 		Pix:    data,
 		Stride: 8,
@@ -367,7 +367,7 @@ func (p *TestPic) Tags() (tags []*TestTag, picTags []*TestPicTag) {
 
 func (c *TestContainer) CreateTag() *TestTag {
 	now := time.Now()
-	id := c.ID()
+	id := c.Id()
 
 	t := &schema.Tag{
 		TagId: id,
@@ -466,13 +466,13 @@ func (pc *TestPicComment) Comment() *TestPicComment {
 	return pc.c.createPicComment(pc.PicComment.PicId, pc.PicComment.CommentId)
 }
 
-func (c *TestContainer) createPicComment(picID, commentParentID int64) *TestPicComment {
+func (c *TestContainer) createPicComment(picId, commentParentId int64) *TestPicComment {
 	now := time.Now()
-	id := c.ID()
+	id := c.Id()
 
 	pc := &schema.PicComment{
-		PicId:           picID,
-		CommentParentId: commentParentID,
+		PicId:           picId,
+		CommentParentId: commentParentId,
 		CommentId:       id,
 	}
 	pc.SetCreatedTime(now)
@@ -519,7 +519,7 @@ type TestUser struct {
 
 func (c *TestContainer) CreateUser() *TestUser {
 	now := time.Now()
-	id := c.ID()
+	id := c.Id()
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte("secret"), bcrypt.MinCost)
 	if err != nil {
@@ -671,10 +671,10 @@ func (pv *TestPicVote) Refresh() (exists bool) {
 	return
 }
 
-func (c *TestContainer) ID() int64 {
+func (c *TestContainer) Id() int64 {
 	var idCap int64
 	c.AutoJob(func(j *tab.Job) error {
-		id, err := j.AllocID()
+		id, err := j.AllocId()
 		if err != nil {
 			return err
 		}

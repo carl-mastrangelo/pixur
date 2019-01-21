@@ -15,7 +15,7 @@ type LookupPicTask struct {
 	Beg tab.JobBeginner
 
 	// Inputs
-	PicID int64
+	PicId int64
 	// If true, check if the user is allowed to read extended pic info.  The data will be included
 	// regardless of if this is set, and the caller should remove the extended data.
 	CheckReadPicExtCap bool
@@ -60,7 +60,7 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Limit:  1,
 	})
 	if err != nil {
@@ -70,14 +70,14 @@ func (t *LookupPicTask) Run(ctx context.Context) (stscap status.S) {
 		return status.NotFound(nil, "can't find pic")
 	}
 	picTags, err := j.FindPicTags(db.Opts{
-		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicTagsPrimary{PicId: &t.PicId},
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pic tags")
 	}
 
 	picComments, err := j.FindPicComments(db.Opts{
-		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicCommentsPrimary{PicId: &t.PicId},
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pic comments")
@@ -172,7 +172,7 @@ func filterPicTagInternal(pt *schema.PicTag, uc *userCred) *schema.PicTag {
 	case uc.cs.Has(schema.User_USER_READ_PUBLIC) && uc.cs.Has(schema.User_USER_READ_PIC_TAG):
 	case uc.subjectUserId == dpt.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
-		dpt.UserId = schema.AnonymousUserID
+		dpt.UserId = schema.AnonymousUserId
 	}
 	return &dpt
 }

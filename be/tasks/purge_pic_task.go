@@ -20,7 +20,7 @@ type PurgePicTask struct {
 	Now     func() time.Time
 
 	// input
-	PicID int64
+	PicId int64
 }
 
 func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
@@ -35,7 +35,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Limit:  1,
 		Lock:   db.LockWrite,
 	})
@@ -52,7 +52,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pis, err := j.FindPicIdents(db.Opts{
-		Prefix: tab.PicIdentsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicIdentsPrimary{PicId: &t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -66,7 +66,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pts, err := j.FindPicTags(db.Opts{
-		Prefix: tab.PicTagsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicTagsPrimary{PicId: &t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -111,7 +111,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pcs, err := j.FindPicComments(db.Opts{
-		Prefix: tab.PicCommentsPrimary{PicId: &t.PicID},
+		Prefix: tab.PicCommentsPrimary{PicId: &t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -125,7 +125,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pvs, err := j.FindPicVotes(db.Opts{
-		Prefix: tab.PicVotesPrimary{PicId: &t.PicID},
+		Prefix: tab.PicVotesPrimary{PicId: &t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -158,7 +158,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}
 
-	// TODO: purge any user events that contain the PicID
+	// TODO: purge any user events that contain the PicId
 
 	return nil
 }

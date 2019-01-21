@@ -19,8 +19,8 @@ type UnauthUserTask struct {
 	Now func() time.Time
 
 	// Inputs
-	UserID  int64
-	TokenID int64
+	UserId  int64
+	TokenId int64
 }
 
 func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
@@ -36,7 +36,7 @@ func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 		status.Internal(err, "can't create timestamp")
 	}
 	users, err := j.FindUsers(db.Opts{
-		Prefix: tab.UsersPrimary{&t.UserID},
+		Prefix: tab.UsersPrimary{&t.UserId},
 		Lock:   db.LockWrite,
 		Limit:  1,
 	})
@@ -50,7 +50,7 @@ func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
 
 	var pos int = -1
 	for i, ut := range user.UserToken {
-		if ut.TokenId == t.TokenID {
+		if ut.TokenId == t.TokenId {
 			pos = i
 			break
 		}

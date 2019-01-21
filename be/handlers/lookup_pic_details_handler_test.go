@@ -74,8 +74,8 @@ func TestLookupPicWorkFlow(t *testing.T) {
 	}
 
 	// No input, should have 0, even though the returned pic is id 1
-	if taskCap.PicID != 0 {
-		t.Error("expected empty PicID", taskCap.PicID)
+	if taskCap.PicId != 0 {
+		t.Error("expected empty PicId", taskCap.PicId)
 	}
 
 	jp := apiPic(taskCap.Pic)
@@ -137,8 +137,8 @@ func TestLookupPicParsePicId(t *testing.T) {
 		t.Fatal("Task didn't run")
 	}
 
-	if taskCap.PicID != 16 {
-		t.Error("wrong PicID", taskCap.PicID)
+	if taskCap.PicId != 16 {
+		t.Error("wrong PicId", taskCap.PicId)
 	}
 }
 
@@ -194,7 +194,7 @@ func TestLookupPicTaskError(t *testing.T) {
 		t.Fatal("Task didn't run")
 	}
 
-	if taskCap.PicID != 21 {
-		t.Error("Wrong PicID", taskCap.PicID)
+	if taskCap.PicId != 21 {
+		t.Error("Wrong PicId", taskCap.PicId)
 	}
 }

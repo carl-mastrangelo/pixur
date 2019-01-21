@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func mustPicFilePath(t *testing.T, pixPath string, picID int64, mime Pic_File_Mime) string {
-	path, sts := PicFilePath(pixPath, picID, mime)
+func mustPicFilePath(t *testing.T, pixPath string, picId int64, mime Pic_File_Mime) string {
+	path, sts := PicFilePath(pixPath, picId, mime)
 	if sts != nil {
 		t.Helper()
 		t.Fatal(sts)
@@ -18,8 +18,8 @@ func mustPicFilePath(t *testing.T, pixPath string, picID int64, mime Pic_File_Mi
 }
 
 func mustPicFileThumbnailPath(
-	t *testing.T, pixPath string, picID, index int64, mime Pic_File_Mime) string {
-	path, sts := PicFileThumbnailPath(pixPath, picID, index, mime)
+	t *testing.T, pixPath string, picId, index int64, mime Pic_File_Mime) string {
+	path, sts := PicFileThumbnailPath(pixPath, picId, index, mime)
 	if sts != nil {
 		t.Helper()
 		t.Fatal(sts)

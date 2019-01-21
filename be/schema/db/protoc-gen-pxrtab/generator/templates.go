@@ -186,10 +186,10 @@ type JobBeginner interface {
 	
 func NewJob(ctx context.Context, beg JobBeginner) (*Job, error) {
   adap := beg.Adapter()
-  var alloc *db.IDAlloc
-  if all, ok := beg.(db.IDAllocatable); ok {
-    alloc = all.IDAllocator()
-    if err := db.PreallocateIDs(ctx, beg, alloc, adap); err != nil {
+  var alloc *db.IdAlloc
+  if all, ok := beg.(db.IdAllocatable); ok {
+    alloc = all.IdAllocator()
+    if err := db.PreallocateIds(ctx, beg, alloc, adap); err != nil {
       return nil, err
     } 
   }
@@ -211,7 +211,7 @@ type Job struct {
   ctx context.Context
   tx db.QuerierExecutorCommitter
   adap db.DBAdapter
-  alloc *db.IDAlloc
+  alloc *db.IdAlloc
   done bool
 }
 
@@ -240,8 +240,8 @@ var jobCloser = func(j *Job) {
   }
 }
 
-func (j *Job) AllocID() (int64, error) {
-  return db.AllocIDJob(j.ctx, j.tx, j.alloc, j.adap)
+func (j *Job) AllocId() (int64, error) {
+  return db.AllocIdJob(j.ctx, j.tx, j.alloc, j.adap)
 }
 `))
 	_ = template.Must(tpl.New("scanfunc").Parse(`

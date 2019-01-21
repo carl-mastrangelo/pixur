@@ -13,7 +13,7 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func TestFindSimilarPicsFailsOnBadPicID(t *testing.T) {
+func TestFindSimilarPicsFailsOnBadPicId(t *testing.T) {
 	s := &serv{}
 	_, sts := s.handleFindSimilarPics(context.Background(), &api.FindSimilarPicsRequest{
 		PicId: "x",
@@ -35,7 +35,7 @@ func TestFindSimilarPics(t *testing.T) {
 	successRunner := func(ctx context.Context, task tasks.Task) status.S {
 		ctxCap = ctx
 		taskCap = task.(*tasks.FindSimilarPicsTask)
-		taskCap.SimilarPicIDs = append(taskCap.SimilarPicIDs, 2)
+		taskCap.SimilarPicIds = append(taskCap.SimilarPicIds, 2)
 		return nil
 	}
 	s := &serv{
@@ -50,7 +50,7 @@ func TestFindSimilarPics(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.PicID, int64(1); have != want {
+	if have, want := taskCap.PicId, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := ctxCap, context.Background(); have != want {

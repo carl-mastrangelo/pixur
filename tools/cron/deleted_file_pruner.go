@@ -57,15 +57,15 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 		return nil
 	}
 
-	log.Println("Preparing to delete", p.GetVarPicID(), pendingTime)
+	log.Println("Preparing to delete", p.GetVarPicId(), pendingTime)
 	var task = &tasks.HardDeletePicTask{
 		Beg:     db,
 		PixPath: pixPath,
-		PicID:   p.PicId,
+		PicId:   p.PicId,
 	}
 	runner := new(tasks.TaskRunner)
 	// TODO: use real userid
-	if err := runner.Run(tasks.CtxFromUserID(context.TODO(), -12345), task); err != nil {
+	if err := runner.Run(tasks.CtxFromUserId(context.TODO(), -12345), task); err != nil {
 		return err
 	}
 

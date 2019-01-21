@@ -14,7 +14,7 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func TestAddPicCommentFailsOnBadPicID(t *testing.T) {
+func TestAddPicCommentFailsOnBadPicId(t *testing.T) {
 	s := &serv{}
 	_, sts := s.handleAddPicComment(context.Background(), &api.AddPicCommentRequest{
 		PicId: "x",
@@ -30,7 +30,7 @@ func TestAddPicCommentFailsOnBadPicID(t *testing.T) {
 	}
 }
 
-func TestAddPicCommentFailsOnBadCommentParentID(t *testing.T) {
+func TestAddPicCommentFailsOnBadCommentParentId(t *testing.T) {
 	s := &serv{}
 	_, sts := s.handleAddPicComment(context.Background(), &api.AddPicCommentRequest{
 		CommentParentId: "x",
@@ -71,10 +71,10 @@ func TestAddPicComment(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.PicID, int64(1); have != want {
+	if have, want := taskCap.PicId, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.CommentParentID, int64(2); have != want {
+	if have, want := taskCap.CommentParentId, int64(2); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := capCtx, context.Background(); have != want {

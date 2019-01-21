@@ -12,7 +12,7 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func TestIncrementViewCountFailsOnBadPicID(t *testing.T) {
+func TestIncrementViewCountFailsOnBadPicId(t *testing.T) {
 	s := &serv{}
 	_, sts := s.handleIncrementViewCount(context.Background(), &api.IncrementViewCountRequest{
 		PicId: "x",
@@ -48,7 +48,7 @@ func TestIncrementViewCount(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.PicID, int64(1); have != want {
+	if have, want := taskCap.PicId, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := ctxCap, context.Background(); have != want {

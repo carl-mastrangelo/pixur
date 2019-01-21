@@ -45,7 +45,7 @@ func (p *Pic) IndexOrder() int64 {
 	return p.NonHiddenIndexOrder()
 }
 
-func (p *Pic) GetVarPicID() string {
+func (p *Pic) GetVarPicId() string {
 	return Varint(p.PicId).Encode()
 }
 

@@ -13,9 +13,9 @@ import (
 func (s *serv) handlePurgePic(
 	ctx context.Context, req *api.PurgePicRequest) (*api.PurgePicResponse, status.S) {
 
-	var picID schema.Varint
+	var picId schema.Varint
 	if req.PicId != "" {
-		if err := picID.DecodeAll(req.PicId); err != nil {
+		if err := picId.DecodeAll(req.PicId); err != nil {
 			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
@@ -25,7 +25,7 @@ func (s *serv) handlePurgePic(
 		Now:     s.now,
 		PixPath: s.pixpath,
 		Remove:  os.Remove,
-		PicID:   int64(picID),
+		PicId:   int64(picId),
 	}
 	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts

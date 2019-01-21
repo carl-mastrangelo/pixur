@@ -93,7 +93,7 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -118,7 +118,7 @@ func TestReadIndexTaskWorkflow_validateExtCapMissing(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -145,7 +145,7 @@ func TestReadIndexTaskWorkflow_validateExtCapPresent(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -170,7 +170,7 @@ func TestReadIndexTaskWorkflow_userReadAll(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -199,7 +199,7 @@ func TestReadIndexTaskWorkflow_userReadPics(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -227,7 +227,7 @@ func TestReadIndexTaskWorkflow_userReadSelf(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -252,14 +252,14 @@ func TestReadIndexTaskWorkflow_userLacksPermission(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
 	}
 
 	if len(task.Pics) == 0 || len(task.Pics[0].Source) == 0 ||
-		task.Pics[0].Source[0].UserId != schema.AnonymousUserID {
+		task.Pics[0].Source[0].UserId != schema.AnonymousUserId {
 		t.Error(task.Pics)
 	}
 }
@@ -283,7 +283,7 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -317,11 +317,11 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
-		StartID:   p3.Pic.PicId,
+		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -329,11 +329,11 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 	if len(task.UnfilteredPics) != 1 || !proto.Equal(p2.Pic, task.UnfilteredPics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p2.Pic, task.UnfilteredPics[0])
 	}
-	if task.NextID != p1.Pic.PicId {
-		t.Fatal(task.NextID, p1.Pic.PicId)
+	if task.NextId != p1.Pic.PicId {
+		t.Fatal(task.NextId, p1.Pic.PicId)
 	}
-	if task.PrevID != p4.Pic.PicId {
-		t.Fatal(task.PrevID, p4.Pic.PicId)
+	if task.PrevId != p4.Pic.PicId {
+		t.Fatal(task.PrevId, p4.Pic.PicId)
 	}
 
 	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7
@@ -368,11 +368,11 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
-		StartID:   p3.Pic.PicId,
+		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: true,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -380,11 +380,11 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 	if len(task.UnfilteredPics) != 1 || !proto.Equal(p5.Pic, task.UnfilteredPics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p5.Pic, task.UnfilteredPics[0])
 	}
-	if task.NextID != p6.Pic.PicId {
-		t.Fatal(task.NextID, p6.Pic.PicId)
+	if task.NextId != p6.Pic.PicId {
+		t.Fatal(task.NextId, p6.Pic.PicId)
 	}
-	if task.PrevID != p2.Pic.PicId {
-		t.Fatal(task.PrevID, p2.Pic.PicId)
+	if task.PrevId != p2.Pic.PicId {
+		t.Fatal(task.PrevId, p2.Pic.PicId)
 	}
 
 	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7
@@ -424,11 +424,11 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
-		StartID:   p3.Pic.PicId,
+		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -436,11 +436,11 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 	if len(task.UnfilteredPics) != 1 || !proto.Equal(p3.Pic, task.UnfilteredPics[0]) {
 		t.Fatalf("Unable to find %s in\n %s", p3.Pic, task.UnfilteredPics[0])
 	}
-	if task.NextID != p2.Pic.PicId {
-		t.Fatal(task.NextID, p2.Pic.PicId)
+	if task.NextId != p2.Pic.PicId {
+		t.Fatal(task.NextId, p2.Pic.PicId)
 	}
-	if task.PrevID != p4.Pic.PicId {
-		t.Fatal(task.PrevID, p4.Pic.PicId)
+	if task.PrevId != p4.Pic.PicId {
+		t.Fatal(task.PrevId, p4.Pic.PicId)
 	}
 
 	_, _, _, _, _, _, _ = p1, p2, p3, p4, p5, p6, p7

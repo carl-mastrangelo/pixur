@@ -70,8 +70,8 @@ func (s *serv) handleGetRefreshToken(
 		if err := vid.DecodeAll(oldRefreshPayload.Subject); err != nil {
 			return nil, status.Unauthenticated(err, "can't decode subject")
 		}
-		task.TokenID = oldRefreshPayload.TokenId
-		task.UserID = int64(vid)
+		task.TokenId = oldRefreshPayload.TokenId
+		task.UserId = int64(vid)
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {
@@ -79,7 +79,7 @@ func (s *serv) handleGetRefreshToken(
 	}
 
 	subject := schema.Varint(task.User.UserId).Encode()
-	refreshTokenId := task.NewTokenID
+	refreshTokenId := task.NewTokenId
 
 	now := s.now()
 	notBefore, err := ptypes.TimestampProto(time.Unix(now.Add(-1*time.Minute).Unix(), 0))

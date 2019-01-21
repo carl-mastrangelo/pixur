@@ -63,13 +63,13 @@ func TestAuthUserTaskFailsOnMissingUser_Token(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
-	id := c.ID()
+	id := c.Id()
 
 	task := &AuthUserTask{
 		Beg:                    c.DB(),
 		Now:                    time.Now,
 		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
-		UserID:                 id,
+		UserId:                 id,
 	}
 
 	ctx := c.Ctx
@@ -95,8 +95,8 @@ func TestAuthUserTaskFailsOnMissingToken(t *testing.T) {
 		Beg:                    c.DB(),
 		Now:                    time.Now,
 		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
-		UserID:                 u.User.UserId,
-		TokenID:                0,
+		UserId:                 u.User.UserId,
+		TokenId:                0,
 	}
 
 	ctx := c.Ctx
@@ -128,8 +128,8 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 		Beg:                    c.DB(),
 		Now:                    time.Now,
 		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
-		UserID:                 u.User.UserId,
-		TokenID:                1,
+		UserId:                 u.User.UserId,
+		TokenId:                1,
 	}
 
 	ctx := c.Ctx
@@ -147,8 +147,8 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 		!proto.Equal(token.LastSeenTs, u.User.ModifiedTs) {
 		t.Error("expected user ts to update.", u.User)
 	}
-	if task.User.UserId != u.User.UserId || task.NewTokenID != 1 {
-		t.Error("wrong task results", task.User.UserId, task.NewTokenID)
+	if task.User.UserId != u.User.UserId || task.NewTokenId != 1 {
+		t.Error("wrong task results", task.User.UserId, task.NewTokenId)
 	}
 }
 
@@ -244,8 +244,8 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 		!proto.Equal(token.LastSeenTs, u.User.ModifiedTs) {
 		t.Error("expected user ts to update.", u.User)
 	}
-	if task.User.UserId != u.User.UserId || task.NewTokenID != token.TokenId {
-		t.Error("wrong task results", task.User.UserId, task.NewTokenID)
+	if task.User.UserId != u.User.UserId || task.NewTokenId != token.TokenId {
+		t.Error("wrong task results", task.User.UserId, task.NewTokenId)
 	}
 	if len(u.User.UserToken) != maxUserTokens {
 		t.Error("expected old token to be deleted", len(u.User.UserToken))
@@ -289,8 +289,8 @@ func TestAuthUserTask_PreferIdent(t *testing.T) {
 		Secret:                 "secret",
 
 		// A seemingly good token
-		UserID:  u2.User.UserId,
-		TokenID: u2.User.NextTokenId - 1,
+		UserId:  u2.User.UserId,
+		TokenId: u2.User.NextTokenId - 1,
 	}
 
 	ctx := c.Ctx
@@ -337,8 +337,8 @@ func TestAuthUserTask_LowerIdentWorks(t *testing.T) {
 		Secret:                 "secret",
 
 		// A seemingly good token
-		UserID:  u2.User.UserId,
-		TokenID: u2.User.NextTokenId - 1,
+		UserId:  u2.User.UserId,
+		TokenId: u2.User.NextTokenId - 1,
 	}
 
 	ctx := c.Ctx

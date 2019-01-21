@@ -14,7 +14,7 @@ import (
 	"pixur.org/pixur/be/tasks"
 )
 
-func TestFindIndexPicsFailsOnBadPicID(t *testing.T) {
+func TestFindIndexPicsFailsOnBadPicId(t *testing.T) {
 	s := &serv{}
 	_, sts := s.handleFindIndexPics(context.Background(), &api.FindIndexPicsRequest{
 		StartPicId: "x",
@@ -63,7 +63,7 @@ func TestFindIndexPics(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.StartID, int64(2); have != want {
+	if have, want := taskCap.StartId, int64(2); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Ascending, true; have != want {
@@ -104,8 +104,8 @@ func TestFindIndexPics_descending(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
-		taskCap.NextID = 5
-		taskCap.PrevID = 9
+		taskCap.NextId = 5
+		taskCap.PrevId = 9
 		return nil
 	}
 	s := &serv{
@@ -122,7 +122,7 @@ func TestFindIndexPics_descending(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.StartID, int64(8); have != want {
+	if have, want := taskCap.StartId, int64(8); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Ascending, false; have != want {
@@ -163,7 +163,7 @@ func TestFindIndexPics_noStartPic(t *testing.T) {
 			Mime: schema.Pic_File_JPEG,
 		}}
 		taskCap.Pics = append(taskCap.Pics, p)
-		taskCap.NextID = 5
+		taskCap.NextId = 5
 		return nil
 	}
 	s := &serv{
@@ -180,7 +180,7 @@ func TestFindIndexPics_noStartPic(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.StartID, int64(0); have != want {
+	if have, want := taskCap.StartId, int64(0); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if have, want := taskCap.Ascending, false; have != want {

@@ -15,9 +15,9 @@ import (
 func (s *serv) handleSoftDeletePic(
 	ctx context.Context, req *api.SoftDeletePicRequest) (*api.SoftDeletePicResponse, status.S) {
 
-	var picID schema.Varint
+	var picId schema.Varint
 	if req.PicId != "" {
-		if err := picID.DecodeAll(req.PicId); err != nil {
+		if err := picId.DecodeAll(req.PicId); err != nil {
 			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
@@ -37,7 +37,7 @@ func (s *serv) handleSoftDeletePic(
 	var task = &tasks.SoftDeletePicTask{
 		Beg:                 s.db,
 		Now:                 s.now,
-		PicID:               int64(picID),
+		PicId:               int64(picId),
 		Details:             req.Details,
 		Reason:              schema.Pic_DeletionStatus_Reason(reason),
 		PendingDeletionTime: &deletionTime,

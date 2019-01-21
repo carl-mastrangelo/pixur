@@ -19,9 +19,9 @@ var upsertPicVoteMap = map[api.PicVote_Vote]schema.PicVote_Vote{
 // TODO: add tests
 func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRequest) (
 	*api.UpsertPicVoteResponse, status.S) {
-	var picID schema.Varint
+	var picId schema.Varint
 	if req.PicId != "" {
-		if err := picID.DecodeAll(req.PicId); err != nil {
+		if err := picId.DecodeAll(req.PicId); err != nil {
 			return nil, status.InvalidArgument(err, "Unable to decode pic id")
 		}
 	}
@@ -30,7 +30,7 @@ func (s *serv) handleUpsertPicVote(ctx context.Context, req *api.UpsertPicVoteRe
 		Beg: s.db,
 		Now: s.now,
 
-		PicID: int64(picID),
+		PicId: int64(picId),
 		Vote:  upsertPicVoteMap[req.Vote],
 	}
 

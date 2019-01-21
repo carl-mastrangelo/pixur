@@ -113,7 +113,7 @@ func TestServerInterceptor(t *testing.T) {
 	if ctxcap == nil {
 		t.Fatal("nil ctx")
 	}
-	id, present := tasks.UserIDFromCtx(ctxcap)
+	id, present := tasks.UserIdFromCtx(ctxcap)
 	if !present {
 		t.Fatal("missing user id")
 	}

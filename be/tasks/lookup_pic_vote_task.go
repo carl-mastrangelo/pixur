@@ -16,8 +16,8 @@ type LookupPicVoteTask struct {
 	Beg tab.JobBeginner
 
 	// Inputs
-	PicID        int64
-	ObjectUserID int64
+	PicId        int64
+	ObjectUserId int64
 
 	// Results
 	PicVote *schema.PicVote
@@ -30,7 +30,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserID)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
 	if sts != nil {
 		return sts
 	}
@@ -48,7 +48,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Limit:  1,
 	})
 	if err != nil {
@@ -60,7 +60,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 
 	picVotes, err := j.FindPicVotes(db.Opts{
 		Prefix: tab.PicVotesPrimary{
-			PicId:  &t.PicID,
+			PicId:  &t.PicId,
 			UserId: &ou.UserId,
 		},
 	})
@@ -73,7 +73,7 @@ func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	case 1:
 		thevote = picVotes[0]
 	default:
-		return status.Internal(nil, "bad number of pic votes", t.PicID, len(picVotes))
+		return status.Internal(nil, "bad number of pic votes", t.PicId, len(picVotes))
 	}
 
 	if err := j.Rollback(); err != nil {

@@ -16,7 +16,7 @@ type IncrementViewCountTask struct {
 	Now func() time.Time
 
 	// Inputs
-	PicID int64
+	PicId int64
 }
 
 func (t *IncrementViewCountTask) Run(ctx context.Context) (stscap status.S) {
@@ -31,7 +31,7 @@ func (t *IncrementViewCountTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{Id: &t.PicID},
+		Prefix: tab.PicsPrimary{Id: &t.PicId},
 		Limit:  1,
 		Lock:   db.LockWrite,
 	})

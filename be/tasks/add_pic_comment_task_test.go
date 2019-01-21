@@ -26,12 +26,12 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -101,13 +101,13 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 	parent := p.Comment()
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             time.Now,
 		Text:            "hi",
-		CommentParentID: parent.PicComment.CommentId,
+		CommentParentId: parent.PicComment.CommentId,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -146,11 +146,11 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		Text:  "hi",
-		PicID: 0,
+		PicId: 0,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -171,12 +171,12 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Text:  "hi",
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -199,13 +199,13 @@ func TestAddPicCommentTaskWork_MissingPermissionExt(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Text:  "hi",
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Ext:   map[string]*anypb.Any{"foo": nil},
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -238,12 +238,12 @@ func TestAddPicCommentTaskWork_CantCommentOnHardDeleted(t *testing.T) {
 	p.Update()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Text:  "hi",
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -266,7 +266,7 @@ func TestAddPicCommentTask_MissingComment(t *testing.T) {
 		Text:  "",
 		Beg:   c.DB(),
 		Now:   time.Now,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(c.Ctx, task)
@@ -323,12 +323,12 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 
 	task := &AddPicCommentTask{
 		Text:            "hi",
-		PicID:           p.Pic.PicId,
-		CommentParentID: parent.PicComment.CommentId,
+		PicId:           p.Pic.PicId,
+		CommentParentId: parent.PicComment.CommentId,
 		Beg:             c.DB(),
 		Now:             time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -359,12 +359,12 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -374,8 +374,8 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 	}
 
 	task2 := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
-		CommentParentID: task.PicComment.CommentId,
+		PicId:           p.Pic.PicId,
+		CommentParentId: task.PicComment.CommentId,
 		Beg:             c.DB(),
 		Now:             time.Now,
 		Text:            "hello",
@@ -418,19 +418,19 @@ func TestAddPicComment_SelfReplyDisallowed(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
 
 	task2 := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
-		CommentParentID: task.PicComment.CommentId,
+		PicId:           p.Pic.PicId,
+		CommentParentId: task.PicComment.CommentId,
 		Beg:             c.DB(),
 		Now:             time.Now,
 		Text:            "hello",
@@ -466,12 +466,12 @@ func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -481,7 +481,7 @@ func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
 	}
 
 	task2 := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hello",
@@ -523,12 +523,12 @@ func TestAddPicComment_SiblingReplyDisallowed(t *testing.T) {
 	p := c.CreatePic()
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserID(ctx, u.User.UserId)
+	ctx = CtxFromUserId(ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -538,7 +538,7 @@ func TestAddPicComment_SiblingReplyDisallowed(t *testing.T) {
 	}
 
 	task2 := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 		Text:  "hello",
@@ -581,14 +581,14 @@ func TestAddPicComment_Notification_Author_CommentParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             now,
 		Text:            "hi",
-		CommentParentID: pc.PicComment.CommentId,
+		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -658,21 +658,21 @@ func TestAddPicComment_Notification_Author_AnonCommentParent(t *testing.T) {
 	p.Update()
 
 	pc := p.Comment()
-	pc.PicComment.UserId = schema.AnonymousUserID
+	pc.PicComment.UserId = schema.AnonymousUserId
 	pc.Update()
 
 	tm := time.Now()
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             now,
 		Text:            "hi",
-		CommentParentID: pc.PicComment.CommentId,
+		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -734,14 +734,14 @@ func TestAddPicComment_Notification_Author_AuthorCommentParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             now,
 		Text:            "hi",
-		CommentParentID: pc.PicComment.CommentId,
+		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -807,11 +807,11 @@ func TestAddPicComment_Notification_AnonAuthor_CommentParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             now,
 		Text:            "hi",
-		CommentParentID: pc.PicComment.CommentId,
+		CommentParentId: pc.PicComment.CommentId,
 	}
 
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
@@ -870,18 +870,18 @@ func TestAddPicComment_Notification_AnonAuthor_AnonCommentParent(t *testing.T) {
 	p.Update()
 
 	pc := p.Comment()
-	pc.PicComment.UserId = schema.AnonymousUserID
+	pc.PicComment.UserId = schema.AnonymousUserId
 	pc.Update()
 
 	tm := time.Now()
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID:           p.Pic.PicId,
+		PicId:           p.Pic.PicId,
 		Beg:             c.DB(),
 		Now:             now,
 		Text:            "hi",
-		CommentParentID: pc.PicComment.CommentId,
+		CommentParentId: pc.PicComment.CommentId,
 	}
 
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
@@ -909,7 +909,7 @@ func TestAddPicComment_Notification_Author_AnonPicParent(t *testing.T) {
 	u.Update()
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -917,13 +917,13 @@ func TestAddPicComment_Notification_Author_AnonPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -966,7 +966,7 @@ func TestAddPicComment_Notification_AnonAuthor_AnonPicParent(t *testing.T) {
 
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -974,7 +974,7 @@ func TestAddPicComment_Notification_AnonAuthor_AnonPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
@@ -1014,13 +1014,13 @@ func TestAddPicComment_Notification_Author_PicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -1091,13 +1091,13 @@ func TestAddPicComment_Notification_Author_AuthorPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -1157,7 +1157,7 @@ func TestAddPicComment_Notification_AnonAuthor_PicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
@@ -1236,7 +1236,7 @@ func TestAddPicComment_Notification_AnonAuthor_PicParent_ExistingEvents(t *testi
 	})
 
 	task := &AddPicCommentTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Text:  "hi",
@@ -1438,7 +1438,7 @@ func TestFilterPicCommentInternal_userReadPicComment(t *testing.T) {
 	}
 	dupe := *pc
 	uc := &userCred{
-		subjectUserId: schema.AnonymousUserID,
+		subjectUserId: schema.AnonymousUserId,
 		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_COMMENT),
 	}
 	pcd := filterPicCommentInternal(pc, uc)
@@ -1489,7 +1489,7 @@ func TestFilterPicCommentInternal_userIdRemoved(t *testing.T) {
 	if !proto.Equal(pc, &dupe) {
 		t.Error("original changed", pc, dupe)
 	}
-	pc.UserId = schema.AnonymousUserID
+	pc.UserId = schema.AnonymousUserId
 	if !proto.Equal(pc, pcd) {
 		t.Error("missing field", pc, pcd)
 	}
@@ -1511,7 +1511,7 @@ func TestFilterPicComment(t *testing.T) {
 	if !proto.Equal(pc, &dupe) {
 		t.Error("original changed", pc, dupe)
 	}
-	pc.UserId = schema.AnonymousUserID
+	pc.UserId = schema.AnonymousUserId
 	if !proto.Equal(pc, pcd) {
 		t.Error("missing field", pc, pcd)
 	}
@@ -1533,7 +1533,7 @@ func TestFilterPicComments(t *testing.T) {
 	if !proto.Equal(pc, &dupe) {
 		t.Error("original changed", pc, dupe)
 	}
-	pc.UserId = schema.AnonymousUserID
+	pc.UserId = schema.AnonymousUserId
 	if len(pcsd) != 1 || !proto.Equal(pc, pcsd[0]) {
 		t.Error("expected field", pc, pcsd)
 	}

@@ -17,7 +17,7 @@ func apiPics(dst []*api.Pic, srcs ...*schema.Pic) []*api.Pic {
 func apiPic(src *schema.Pic) *api.Pic {
 	scorelo, scorehi := src.WilsonScoreInterval(schema.Z_99)
 	dst := &api.Pic{
-		Id:              src.GetVarPicID(),
+		Id:              src.GetVarPicId(),
 		Version:         src.Version(),
 		PendingDeletion: src.SoftDeleted(),
 		ViewCount:       src.ViewCount,
@@ -36,7 +36,7 @@ func apiPic(src *schema.Pic) *api.Pic {
 			Url:      s.Url,
 			Referrer: s.Referrer,
 		})
-		if s.UserId != schema.AnonymousUserID && dst.FirstUserId != nil {
+		if s.UserId != schema.AnonymousUserId && dst.FirstUserId != nil {
 			dst.FirstUserId = &wpb.StringValue{
 				Value: schema.Varint(s.UserId).Encode(),
 			}
@@ -118,7 +118,7 @@ func apiPicComment(src *schema.PicComment) *api.PicComment {
 		ModifiedTime:    src.ModifiedTs,
 		Version:         src.Version(),
 	}
-	if src.UserId != schema.AnonymousUserID {
+	if src.UserId != schema.AnonymousUserId {
 		dst.UserId = &wpb.StringValue{
 			Value: schema.Varint(src.UserId).Encode(),
 		}
@@ -161,7 +161,7 @@ func apiPicVote(src *schema.PicVote) *api.PicVote {
 		CreatedTime:  src.CreatedTs,
 		ModifiedTime: src.ModifiedTs,
 	}
-	if src.UserId != schema.AnonymousUserID {
+	if src.UserId != schema.AnonymousUserId {
 		dst.UserId = &wpb.StringValue{
 			Value: schema.Varint(src.UserId).Encode(),
 		}
@@ -195,7 +195,7 @@ func apiUserEvent(
 		}
 	case *schema.UserEvent_IncomingUpsertPicVote_:
 		var subjectUserId string
-		if evt.IncomingUpsertPicVote.SubjectUserId != schema.AnonymousUserID {
+		if evt.IncomingUpsertPicVote.SubjectUserId != schema.AnonymousUserId {
 			subjectUserId = schema.Varint(evt.IncomingUpsertPicVote.SubjectUserId).Encode()
 		}
 		dst.Evt = &api.UserEvent_IncomingUpsertPicVote_{
@@ -214,7 +214,7 @@ func apiUserEvent(
 	case *schema.UserEvent_IncomingPicComment_:
 		var commentParentId string
 		// TODO: implement
-		if cpid := commentIdToCommentParentId[evt.IncomingPicComment.CommentId]; cpid != schema.NoCommentParentID {
+		if cpid := commentIdToCommentParentId[evt.IncomingPicComment.CommentId]; cpid != schema.NoCommentParentId {
 			commentParentId = schema.Varint(cpid).Encode()
 		}
 		dst.Evt = &api.UserEvent_IncomingPicComment_{
@@ -333,7 +333,7 @@ func apiPicCommentVote(src *schema.PicCommentVote) *api.PicCommentVote {
 		CreatedTime:  src.CreatedTs,
 		ModifiedTime: src.ModifiedTs,
 	}
-	if src.UserId != schema.AnonymousUserID {
+	if src.UserId != schema.AnonymousUserId {
 		dst.UserId = &wpb.StringValue{
 			Value: schema.Varint(src.UserId).Encode(),
 		}

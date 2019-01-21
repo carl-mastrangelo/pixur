@@ -26,11 +26,11 @@ func TestUpdateUserTaskDifferentUser(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  ou.User.UserId,
+		ObjectUserId:  ou.User.UserId,
 		Version:       ou.User.Version(),
 		SetCapability: append(ou.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserID(c.Ctx, su.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -60,11 +60,11 @@ func TestUpdateUserTaskSameUserDefault(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  0,
+		ObjectUserId:  0,
 		Version:       u.User.Version(),
 		SetCapability: append(u.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -79,7 +79,7 @@ func TestUpdateUserTaskSameUserDefault(t *testing.T) {
 	}
 }
 
-func TestUpdateUserTaskSameUserID(t *testing.T) {
+func TestUpdateUserTaskSameUserId(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -90,11 +90,11 @@ func TestUpdateUserTaskSameUserID(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  u.User.UserId,
+		ObjectUserId:  u.User.UserId,
 		Version:       u.User.Version(),
 		SetCapability: append(u.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -122,11 +122,11 @@ func TestUpdateUserTaskNoUpdate(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  u.User.UserId,
+		ObjectUserId:  u.User.UserId,
 		Version:       u.User.Version(),
 		SetCapability: nil,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -155,11 +155,11 @@ func TestUpdateUserTaskNoopNoUpdate(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:             c.DB(),
 		Now:             time.Now,
-		ObjectUserID:    u.User.UserId,
+		ObjectUserId:    u.User.UserId,
 		Version:         u.User.Version(),
 		ClearCapability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -184,11 +184,11 @@ func TestUpdateUserTaskMissingCap(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  0,
+		ObjectUserId:  0,
 		Version:       su.User.Version(),
 		SetCapability: append(su.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserID(c.Ctx, su.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected status", sts)
@@ -213,12 +213,12 @@ func TestUpdateUserTaskDupeCap(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:             c.DB(),
 		Now:             time.Now,
-		ObjectUserID:    0,
+		ObjectUserId:    0,
 		Version:         su.User.Version(),
 		SetCapability:   []schema.User_Capability{schema.User_USER_CREATE},
 		ClearCapability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
-	ctx := CtxFromUserID(c.Ctx, su.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected status", sts)
@@ -241,11 +241,11 @@ func TestUpdateUserTaskWrongVersion(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  0,
+		ObjectUserId:  0,
 		Version:       0,
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserID(c.Ctx, su.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)
@@ -268,11 +268,11 @@ func TestUpdateUserTaskMissingSubject(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  0,
+		ObjectUserId:  0,
 		Version:       su.User.Version(),
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserID(c.Ctx, -1)
+	ctx := CtxFromUserId(c.Ctx, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)
@@ -295,11 +295,11 @@ func TestUpdateUserTaskMissingObject(t *testing.T) {
 	task := &UpdateUserTask{
 		Beg:           c.DB(),
 		Now:           time.Now,
-		ObjectUserID:  -1,
+		ObjectUserId:  -1,
 		Version:       0,
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserID(c.Ctx, su.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)

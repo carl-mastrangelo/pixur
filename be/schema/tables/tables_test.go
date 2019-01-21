@@ -49,8 +49,8 @@ func (db fakeDB) Adapter() sdb.DBAdapter {
 	return nil
 }
 
-func (db fakeDB) IDAllocator() *sdb.IDAlloc {
-	alloc := new(sdb.IDAlloc)
+func (db fakeDB) IdAllocator() *sdb.IdAlloc {
+	alloc := new(sdb.IdAlloc)
 	alloc.SetWatermark(0, 0)
 	return alloc
 }

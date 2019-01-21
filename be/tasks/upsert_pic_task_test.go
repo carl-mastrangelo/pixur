@@ -86,7 +86,7 @@ func TestUpsertPicTask_URL(t *testing.T) {
 		FileURLReferrer: "http://bogo/#ref",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -162,7 +162,7 @@ func TestUpsertPicTask_BadFileName(t *testing.T) {
 		FileName: "/root",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -180,7 +180,7 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 		Beg: c.DB(),
 	}
 
-	ctx := CtxFromUserID(c.Ctx, -1)
+	ctx := CtxFromUserId(c.Ctx, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)
@@ -198,7 +198,7 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 		Beg: c.DB(),
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "no pic specified")
 	compareStatus(t, sts, expected)
@@ -225,7 +225,7 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, -1)
+	ctx := CtxFromUserId(c.Ctx, -1)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.Unauthenticated(nil, "can't lookup user")
 	compareStatus(t, sts, expected)
@@ -254,7 +254,7 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_CREATE")
 	compareStatus(t, sts, expected)
@@ -293,7 +293,7 @@ func TestUpsertPicTask_MissingPicExtCap(t *testing.T) {
 		Ext:  ext,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_EXTENSION_CREATE")
 	compareStatus(t, sts, expected)
@@ -339,7 +339,7 @@ func TestUpsertPicTask_PresentPicExtCap(t *testing.T) {
 		Ext:  ext,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -378,7 +378,7 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		FileName: "orig",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -430,7 +430,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
@@ -495,7 +495,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -570,7 +570,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Md5 hash mismatch")
 	compareStatus(t, sts, expected)
@@ -602,7 +602,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		File: c.TempFile(),
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "unable to read")
 	compareStatus(t, sts, expected)
@@ -642,7 +642,7 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 		FileName: "orig",
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -697,7 +697,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "can't upload deleted pic")
 	compareStatus(t, sts, expected)
@@ -759,7 +759,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -822,7 +822,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -918,11 +918,11 @@ func TestMerge(t *testing.T) {
 	p.Update()
 	now := time.Now()
 	nowts := schema.ToTspb(now)
-	userID := int64(-1)
+	userId := int64(-1)
 
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
-		UserId:    userID,
+		UserId:    userId,
 		Name:      "Name",
 		CreatedTs: nowts,
 	}
@@ -938,7 +938,7 @@ func TestMerge(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	err = mergePic(j, p.Pic, nowts, pfs, userID, ext)
+	err = mergePic(j, p.Pic, nowts, pfs, userId, ext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -967,10 +967,10 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	p.Update()
 	now := time.Now()
 	nowts := schema.ToTspb(now)
-	userID := int64(-1)
+	userId := int64(-1)
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://url",
-		UserId:    userID,
+		UserId:    userId,
 		Name:      "Name",
 		CreatedTs: nowts,
 	}
@@ -989,7 +989,7 @@ func TestMerge_FailsOnDuplicateExtension(t *testing.T) {
 	}
 	defer j.Rollback()
 
-	sts := mergePic(j, p.Pic, nowts, pfs, userID, ext)
+	sts := mergePic(j, p.Pic, nowts, pfs, userId, ext)
 	if sts == nil {
 		t.Fatal("expected error")
 	}
@@ -1103,14 +1103,14 @@ func TestMergeIgnoresDuplicateSource(t *testing.T) {
 
 	now := time.Now()
 	nowts := schema.ToTspb(now)
-	userID := p.Pic.Source[0].UserId
+	userId := p.Pic.Source[0].UserId
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/bar/unique",
-		UserId:    userID,
+		UserId:    userId,
 		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, nowts, pfs, userID, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, userId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1136,14 +1136,14 @@ func TestMergeIgnoresDuplicateSourceExceptAnonymous(t *testing.T) {
 
 	now := time.Now()
 	nowts := schema.ToTspb(now)
-	userID := schema.AnonymousUserID
+	userId := schema.AnonymousUserId
 	pfs := &schema.Pic_FileSource{
 		Url:       "http://foo/bar/unique",
-		UserId:    userID,
+		UserId:    userId,
 		CreatedTs: nowts,
 	}
 
-	err := mergePic(j, p.Pic, nowts, pfs, userID, nil)
+	err := mergePic(j, p.Pic, nowts, pfs, userId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

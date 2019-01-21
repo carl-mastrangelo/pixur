@@ -15,14 +15,14 @@ type FindUserEventsTask struct {
 
 	// Input
 	MaxUserEvents                           int64
-	ObjectUserID                            int64
-	StartUserID, StartCreatedTs, StartIndex int64
+	ObjectUserId                            int64
+	StartUserId, StartCreatedTs, StartIndex int64
 	Ascending                               bool
 
 	// Output
 	UserEvents                           []*schema.UserEvent
-	NextUserID, NextCreatedTs, NextIndex int64
-	PrevUserID, PrevCreatedTs, PrevIndex int64
+	NextUserId, NextCreatedTs, NextIndex int64
+	PrevUserId, PrevCreatedTs, PrevIndex int64
 }
 
 func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
@@ -32,7 +32,7 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockRead, t.ObjectUserID)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockRead, t.ObjectUserId)
 	if sts != nil {
 		return sts
 	}
@@ -46,8 +46,8 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	maxCreatedTs := int64(math.MaxInt64)
 	maxIndex := int64(math.MaxInt64)
 
-	if t.StartUserID != 0 || t.StartCreatedTs != 0 || t.StartIndex != 0 {
-		if ou.UserId != t.StartUserID {
+	if t.StartUserId != 0 || t.StartCreatedTs != 0 || t.StartIndex != 0 {
+		if ou.UserId != t.StartUserId {
 			return status.PermissionDenied(nil, "can't lookup user events for different user")
 		}
 		if t.Ascending {
@@ -153,13 +153,13 @@ func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
 	if n := len(ues); n > 0 && int64(n) == overmax {
 		t.UserEvents = ues[:n-1]
 		k := tab.KeyForUserEvent(ues[n-1])
-		t.NextUserID, t.NextCreatedTs, t.NextIndex = *k.UserId, *k.CreatedTs, *k.Index
+		t.NextUserId, t.NextCreatedTs, t.NextIndex = *k.UserId, *k.CreatedTs, *k.Index
 	} else {
 		t.UserEvents = ues
 	}
 	if len(prevUes) > 0 {
 		k := tab.KeyForUserEvent(prevUes[0])
-		t.PrevUserID, t.PrevCreatedTs, t.PrevIndex = *k.UserId, *k.CreatedTs, *k.Index
+		t.PrevUserId, t.PrevCreatedTs, t.PrevIndex = *k.UserId, *k.CreatedTs, *k.Index
 	}
 
 	return nil

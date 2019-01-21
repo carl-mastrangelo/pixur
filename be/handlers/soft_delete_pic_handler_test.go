@@ -40,8 +40,8 @@ func TestSoftDeletePicWorkFlow(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if taskCap.PicID != 16 {
-		t.Error("Wrong pic id", taskCap.PicID)
+	if taskCap.PicId != 16 {
+		t.Error("Wrong pic id", taskCap.PicId)
 	}
 	if taskCap.Details != "details" {
 		t.Error("Wrong details", taskCap.Details)
@@ -133,8 +133,8 @@ func TestSoftDeletePicDefaultsSet(t *testing.T) {
 	}
 
 	// pic id is set to 0 (which will fail in the task)
-	if taskCap.PicID != 0 {
-		t.Error("wrong pic id", taskCap.PicID)
+	if taskCap.PicId != 0 {
+		t.Error("wrong pic id", taskCap.PicId)
 	}
 	if taskCap.Details != "" {
 		t.Error("wrong details", taskCap.Details)
@@ -173,7 +173,7 @@ func TestSoftDeletePicTaskError(t *testing.T) {
 		t.Fatal("task didn't run")
 	}
 
-	if taskCap.PicID != 16 {
-		t.Error("Wrong PicID", taskCap.PicID)
+	if taskCap.PicId != 16 {
+		t.Error("Wrong PicId", taskCap.PicId)
 	}
 }

@@ -39,7 +39,7 @@ type Beginner interface {
 // DB represents a database.  It is the entry point to creating transactions.
 type DB interface {
 	DBAdaptable
-	IDAllocatable
+	IdAllocatable
 	Beginner
 	// Close closes the database, and should be called when the db is no longer needed.
 	Close() error
@@ -52,9 +52,9 @@ type DBAdaptable interface {
 	Adapter() DBAdapter
 }
 
-type IDAllocatable interface {
-	// IDAllocator returns an IDAlloc for use with a database.
-	IDAllocator() *IDAlloc
+type IdAllocatable interface {
+	// IdAllocator returns an IdAlloc for use with a database.
+	IdAllocator() *IdAlloc
 }
 
 // Retryable is implemented by errors that can describe their retryability.

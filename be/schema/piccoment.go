@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-const NoCommentParentID = 0
+const NoCommentParentId = 0
 
 func (pc *PicComment) PicIdCol() int64 {
 	return pc.PicId

@@ -17,7 +17,7 @@ type UpdateUserTask struct {
 	Now func() time.Time
 
 	// Inputs
-	ObjectUserID int64
+	ObjectUserId int64
 	Version      int64
 
 	// Capabilities to add
@@ -36,7 +36,7 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockWrite, t.ObjectUserID)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockWrite, t.ObjectUserId)
 	if sts != nil {
 		return sts
 	}

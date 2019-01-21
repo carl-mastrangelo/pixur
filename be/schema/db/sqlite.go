@@ -14,7 +14,7 @@ import (
 
 // retryable codes
 const (
-	// codeUniqueViolationError can happen occasionally when not using preallocated IDs for rows.
+	// codeUniqueViolationError can happen occasionally when not using preallocated Ids for rows.
 	// An example is UserEvents, which all compete for index 0, but which can be retried and pass.
 	codeConstrainPrimaryKeyError = 1555
 )

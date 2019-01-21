@@ -123,7 +123,7 @@ func filterPicCommentVoteInternal(pcv *schema.PicCommentVote, uc *userCred) (
 	case uc.subjectUserId == dpcv.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
 		uf = true
-		dpcv.UserId = schema.AnonymousUserID
+		dpcv.UserId = schema.AnonymousUserId
 	}
 	return &dpcv, uf
 }

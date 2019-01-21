@@ -19,10 +19,10 @@ func TestLookupPicVoteTaskWorkFlow(t *testing.T) {
 
 	pv := c.CreatePicVote(p, u)
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	task := &LookupPicVoteTask{
 		Beg:   c.DB(),
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {

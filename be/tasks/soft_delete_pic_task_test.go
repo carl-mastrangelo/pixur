@@ -23,12 +23,12 @@ func TestSoftDeleteWorkflow(t *testing.T) {
 	task := &SoftDeletePicTask{
 		Beg:       c.DB(),
 		Now:       time.Now,
-		PicID:     p.Pic.PicId,
+		PicId:     p.Pic.PicId,
 		Reason:    schema.Pic_DeletionStatus_RULE_VIOLATION,
 		Details:   "LowQuality",
 		Temporary: true,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -88,11 +88,11 @@ func TestSoftDelete_OverwritePendingTimestamp(t *testing.T) {
 	task := &SoftDeletePicTask{
 		Beg:                 c.DB(),
 		Now:                 time.Now,
-		PicID:               p.Pic.PicId,
+		PicId:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -128,12 +128,12 @@ func TestSoftDelete_CannotSoftDeleteHardDeletedPic(t *testing.T) {
 	task := &SoftDeletePicTask{
 		Beg:                 c.DB(),
 		Now:                 time.Now,
-		PicID:               p.Pic.PicId,
+		PicId:               p.Pic.PicId,
 		PendingDeletionTime: &now,
 		Reason:              schema.Pic_DeletionStatus_NONE,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")

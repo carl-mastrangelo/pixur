@@ -31,11 +31,11 @@ func TestAddPicTags_TagsCollapsed(t *testing.T) {
 		Beg: c.DB(),
 		Now: func() time.Time { return time.Unix(100, 0) },
 
-		PicID:    p.Pic.PicId,
+		PicId:    p.Pic.PicId,
 		TagNames: []string{"  Blooper  ", strings.ToUpper(tt.Tag.Name)},
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -121,7 +121,7 @@ func TestCreatePicTags_CantPrepare(t *testing.T) {
 	j := c.Job()
 	j.Rollback()
 
-	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, schema.AnonymousUserID)
+	_, sts := createPicTags(j, []*schema.Tag{tag.Tag}, pic.Pic.PicId, now, schema.AnonymousUserId)
 	expected := status.Internal(nil, "can't create pic tag")
 	compareStatus(t, sts, expected)
 }

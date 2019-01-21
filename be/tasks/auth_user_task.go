@@ -28,12 +28,12 @@ type AuthUserTask struct {
 	Secret string
 
 	// Alt inputs
-	UserID  int64
-	TokenID int64
+	UserId  int64
+	TokenId int64
 
 	// Results
 	User       *schema.User
-	NewTokenID int64
+	NewTokenId int64
 }
 
 const (
@@ -56,7 +56,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	if err != nil {
 		status.Internal(err, "can't create timestamp")
 	}
-	var newTokenID int64
+	var newTokenId int64
 	if t.Ident != "" {
 		conf, sts := GetConfiguration(ctx)
 		if sts != nil {
@@ -103,16 +103,16 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 			return status.Unauthenticated(err, "can't lookup user")
 		}
 		user.NextTokenId++
-		newTokenID = user.NextTokenId
+		newTokenId = user.NextTokenId
 		user.UserToken = append(user.UserToken, &schema.UserToken{
 			TokenId:    user.NextTokenId,
 			CreatedTs:  nowts,
 			LastSeenTs: nowts,
 		})
 
-	} else if t.UserID != 0 {
+	} else if t.UserId != 0 {
 		users, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&t.UserID},
+			Prefix: tab.UsersPrimary{&t.UserId},
 			Lock:   db.LockWrite,
 			Limit:  1,
 		})
@@ -124,13 +124,13 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		}
 		user = users[0]
 		for _, ut := range user.UserToken {
-			if ut.TokenId == t.TokenID {
+			if ut.TokenId == t.TokenId {
 				ut.LastSeenTs = nowts
-				newTokenID = t.TokenID
+				newTokenId = t.TokenId
 				break
 			}
 		}
-		if newTokenID == 0 {
+		if newTokenId == 0 {
 			return status.Unauthenticated(nil, "can't find token")
 		}
 
@@ -142,7 +142,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 	if len(user.UserToken) > maxUserTokens {
 		for i := maxUserTokens; i < len(user.UserToken); i++ {
 			// TODO: log deleted tokens?
-			if user.UserToken[i].TokenId == newTokenID {
+			if user.UserToken[i].TokenId == newTokenId {
 				// this could theoretically happen if all the tokens are newer than the one we just
 				// created, perhaps due to clock skew between servers.
 				return status.Internal(nil, "new token no longer valid")
@@ -162,7 +162,7 @@ func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can' commit job")
 	}
 	t.User = user
-	t.NewTokenID = newTokenID
+	t.NewTokenId = newTokenId
 	return nil
 }
 

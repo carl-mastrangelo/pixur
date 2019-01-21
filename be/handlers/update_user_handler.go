@@ -31,9 +31,9 @@ func init() {
 
 func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest) (
 	*api.UpdateUserResponse, status.S) {
-	var objectUserID schema.Varint
+	var objectUserId schema.Varint
 	if req.UserId != "" {
-		if err := objectUserID.DecodeAll(req.UserId); err != nil {
+		if err := objectUserId.DecodeAll(req.UserId); err != nil {
 			return nil, status.InvalidArgument(err, "bad user id")
 		}
 	}
@@ -58,7 +58,7 @@ func (s *serv) handleUpdateUser(ctx context.Context, req *api.UpdateUserRequest)
 	var task = &tasks.UpdateUserTask{
 		Beg:             s.db,
 		Now:             s.now,
-		ObjectUserID:    int64(objectUserID),
+		ObjectUserId:    int64(objectUserId),
 		Version:         req.Version,
 		SetCapability:   newcaps,
 		ClearCapability: oldcaps,

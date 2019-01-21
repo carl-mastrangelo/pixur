@@ -25,9 +25,9 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		PixPath: c.TempDir(),
 		Now:     time.Now,
 
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -94,10 +94,10 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		PixPath: c.TempDir(),
 		Now:     func() time.Time { return now },
 
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -172,10 +172,10 @@ func TestHardDeleteFails(t *testing.T) {
 		Remove:  func(name string) error { return errors.New("nope") },
 		Now:     time.Now,
 
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("Expected error")

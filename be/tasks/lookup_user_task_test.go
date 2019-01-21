@@ -17,7 +17,7 @@ func TestLookupUserWorkflow(t *testing.T) {
 	lookupUserTaskWorkFlow(c, u, t)
 }
 
-func TestLookupUserBlankID(t *testing.T) {
+func TestLookupUserBlankId(t *testing.T) {
 	c := Container(t)
 	defer c.Close()
 
@@ -29,7 +29,7 @@ func TestLookupUserBlankID(t *testing.T) {
 		Beg: c.DB(),
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -50,10 +50,10 @@ func TestLookupUserOther(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: u1.User.UserId,
+		ObjectUserId: u1.User.UserId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u2.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u2.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -74,11 +74,11 @@ func TestLookupUserPublic(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: u1.User.UserId,
+		ObjectUserId: u1.User.UserId,
 		PublicOnly:   true,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u2.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u2.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -102,10 +102,10 @@ func TestLookupUserCantLookupSelf(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: u.User.UserId,
+		ObjectUserId: u.User.UserId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -128,9 +128,9 @@ func TestLookupUserCantLookupOther(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: u2.User.UserId,
+		ObjectUserId: u2.User.UserId,
 	}
-	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -151,10 +151,10 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: -1,
+		ObjectUserId: -1,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -179,10 +179,10 @@ func lookupUserTaskWorkFlow_setup(tb testing.TB) (*TestContainer, *TestUser) {
 func lookupUserTaskWorkFlow(c *TestContainer, u *TestUser, tb testing.TB) {
 	task := &LookupUserTask{
 		Beg:          c.DB(),
-		ObjectUserID: u.User.UserId,
+		ObjectUserId: u.User.UserId,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		tb.Fatal(sts)
 	}

@@ -11,7 +11,7 @@ import (
 
 // lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
 func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job, lk db.Lock) (*schema.User, status.S) {
-	if uid, ok := UserIDFromCtx(ctx); ok {
+	if uid, ok := UserIdFromCtx(ctx); ok {
 		us, err := j.FindUsers(db.Opts{
 			Prefix: tab.UsersPrimary{&uid},
 			Lock:   lk,
@@ -70,7 +70,7 @@ func validateCapSet(
 // !objectUserId +  subjectUser => subjectUser.UserId
 // !objectUserId + !subjectUser => error
 func deriveObjectUserId(objectUserId int64, subjectUser *schema.User) (int64, status.S) {
-	if objectUserId != schema.AnonymousUserID {
+	if objectUserId != schema.AnonymousUserId {
 		return objectUserId, nil
 	} else if subjectUser != nil {
 		return subjectUser.UserId, nil

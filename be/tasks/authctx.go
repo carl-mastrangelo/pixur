@@ -8,12 +8,12 @@ type userIdKey struct{}
 
 type authTokenKey struct{}
 
-func CtxFromUserID(ctx context.Context, userID int64) context.Context {
-	return context.WithValue(ctx, userIdKey{}, userID)
+func CtxFromUserId(ctx context.Context, userId int64) context.Context {
+	return context.WithValue(ctx, userIdKey{}, userId)
 }
 
-func UserIDFromCtx(ctx context.Context) (userID int64, ok bool) {
-	userID, ok = ctx.Value(userIdKey{}).(int64)
+func UserIdFromCtx(ctx context.Context) (userId int64, ok bool) {
+	userId, ok = ctx.Value(userIdKey{}).(int64)
 	return
 }
 

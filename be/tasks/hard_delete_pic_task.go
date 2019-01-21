@@ -20,7 +20,7 @@ type HardDeletePicTask struct {
 	Now     func() time.Time
 
 	// input
-	PicID int64
+	PicId int64
 }
 
 func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
@@ -38,7 +38,7 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	_ = u
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Lock:   db.LockWrite,
 		Limit:  1,
 	})

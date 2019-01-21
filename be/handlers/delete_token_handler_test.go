@@ -40,7 +40,7 @@ func TestDeleteTokenFailsOnTaskError(t *testing.T) {
 		now:    time.Now,
 	}
 	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
-	ctx = tasks.CtxFromUserID(ctx, testAuthSubject)
+	ctx = tasks.CtxFromUserId(ctx, testAuthSubject)
 
 	_, sts := s.handleDeleteToken(ctx, &api.DeleteTokenRequest{})
 
@@ -67,7 +67,7 @@ func TestDeleteTokenSucess(t *testing.T) {
 	}
 
 	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
-	ctx = tasks.CtxFromUserID(ctx, testAuthSubject)
+	ctx = tasks.CtxFromUserId(ctx, testAuthSubject)
 	resp, sts := s.handleDeleteToken(ctx, &api.DeleteTokenRequest{})
 
 	if sts != nil {
@@ -77,10 +77,10 @@ func TestDeleteTokenSucess(t *testing.T) {
 	if want := new(api.DeleteTokenResponse); !proto.Equal(resp, want) {
 		t.Error("have", resp, "want", want)
 	}
-	if have, want := taskCap.UserID, testAuthSubject; have != want {
+	if have, want := taskCap.UserId, testAuthSubject; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.TokenID, int64(testAuthPayload.TokenParentId); have != want {
+	if have, want := taskCap.TokenId, int64(testAuthPayload.TokenParentId); have != want {
 		t.Error("have", have, "want", want)
 	}
 }

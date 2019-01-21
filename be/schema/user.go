@@ -72,7 +72,7 @@ func (u *User) IsAnon() bool {
  * correct.  In the event of data corruption, we still don't know who the correct
  * user was, so 0 would be the unfortuantely correct answer.
  */
-var AnonymousUserID int64 = 0
+var AnonymousUserId int64 = 0
 
 // TODO: test
 func VerifyCapSubset(have, want *CapSet) status.S {

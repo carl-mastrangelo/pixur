@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	defaultDescIndexID = math.MaxInt64
-	defaultAscIndexID  = 0
+	defaultDescIndexId = math.MaxInt64
+	defaultAscIndexId  = 0
 )
 
 type ReadIndexPicsTask struct {
@@ -23,7 +23,7 @@ type ReadIndexPicsTask struct {
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
-	StartID int64
+	StartId int64
 	// MaxPics is the maximum number of pics to return.  Note that the number of pictures returned
 	// may be less than the number requested.  If unset, a default is used.
 	MaxPics int64
@@ -35,7 +35,7 @@ type ReadIndexPicsTask struct {
 	// Same as pics, but with User info removed based on capability
 	Pics []*schema.Pic
 
-	NextID, PrevID int64
+	NextId, PrevId int64
 }
 
 // This may return a deleted pic
@@ -133,14 +133,14 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	var startPic *schema.Pic
-	if t.StartID != 0 {
-		if startPic, sts = lookupStartPic(j, t.StartID, t.Ascending); sts != nil {
+	if t.StartId != 0 {
+		if startPic, sts = lookupStartPic(j, t.StartId, t.Ascending); sts != nil {
 			return sts
 		}
 	}
 
-	minIndexOrder := int64(defaultAscIndexID)
-	maxIndexOrder := int64(defaultDescIndexID)
+	minIndexOrder := int64(defaultAscIndexId)
+	maxIndexOrder := int64(defaultDescIndexId)
 	minIndexOrderPicId := int64(0)
 	maxIndexOrderPicId := int64(math.MaxInt64)
 	if startPic != nil {
@@ -176,10 +176,10 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	if startPic != nil {
 		if t.Ascending {
 			maxIndexOrder, maxIndexOrderPicId = minIndexOrder, minIndexOrderPicId
-			minIndexOrder, minIndexOrderPicId = defaultAscIndexID, 0
+			minIndexOrder, minIndexOrderPicId = defaultAscIndexId, 0
 		} else {
 			minIndexOrder, minIndexOrderPicId = maxIndexOrder, maxIndexOrderPicId
-			maxIndexOrder, maxIndexOrderPicId = defaultDescIndexID, math.MaxInt64
+			maxIndexOrder, maxIndexOrderPicId = defaultDescIndexId, math.MaxInt64
 		}
 		prevOpts := db.Opts{
 			Limit: 1,
@@ -205,11 +205,11 @@ func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 
 	if n := len(pics); n > 0 && int64(n) == overmax {
 		t.UnfilteredPics = pics[:n-1]
-		t.NextID = pics[n-1].PicId
+		t.NextId = pics[n-1].PicId
 	} else {
 		t.UnfilteredPics = pics
 	}
-	t.PrevID = prevPicId
+	t.PrevId = prevPicId
 	t.Pics = filterPics(t.UnfilteredPics, u, conf)
 
 	return nil
@@ -223,7 +223,7 @@ func filterPic(p *schema.Pic, su *schema.User, conf *schema.Configuration) *sche
 		subjectUserId = su.UserId
 	} else {
 		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
+		subjectUserId = schema.AnonymousUserId
 	}
 
 	return filterPicInternal(p, subjectUserId, cs)
@@ -237,7 +237,7 @@ func filterPics(ps []*schema.Pic, su *schema.User, conf *schema.Configuration) [
 		subjectUserId = su.UserId
 	} else {
 		cs = schema.CapSetOf(conf.AnonymousCapability.Capability...)
-		subjectUserId = schema.AnonymousUserID
+		subjectUserId = schema.AnonymousUserId
 	}
 	dst := make([]*schema.Pic, 0, len(ps))
 	for _, p := range ps {
@@ -262,7 +262,7 @@ func filterPicInternal(p *schema.Pic, subjectUserId int64, cs *schema.CapSet) *s
 			switch {
 			case subjectUserId == ds.UserId && cs.Has(schema.User_USER_READ_SELF):
 			default:
-				ds.UserId = schema.AnonymousUserID
+				ds.UserId = schema.AnonymousUserId
 			}
 			dp.Source = append(dp.Source, &ds)
 		}

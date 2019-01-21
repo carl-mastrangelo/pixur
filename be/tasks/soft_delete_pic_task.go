@@ -18,7 +18,7 @@ type SoftDeletePicTask struct {
 	Now func() time.Time
 
 	// input
-	PicID int64
+	PicId int64
 	// Represents when this Pic can be hard deleted.  Optional.
 	PendingDeletionTime *time.Time
 
@@ -49,7 +49,7 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	_ = u
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Lock:   db.LockWrite,
 		Limit:  1,
 	})

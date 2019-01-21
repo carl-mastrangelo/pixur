@@ -19,7 +19,7 @@ type AddPicTagsTask struct {
 	Now func() time.Time
 
 	// Inputs
-	PicID    int64
+	PicId    int64
 	TagNames []string
 
 	// Outputs
@@ -38,14 +38,14 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	userID := schema.AnonymousUserID
+	userId := schema.AnonymousUserId
 	if u != nil {
 		// TODO: test
-		userID = u.UserId
+		userId = u.UserId
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -78,7 +78,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	upsertedTagIds, sts :=
-		upsertTags(j, t.TagNames, p.PicId, t.Now(), userID, minTagLen, maxTagLen)
+		upsertTags(j, t.TagNames, p.PicId, t.Now(), userId, minTagLen, maxTagLen)
 	if sts != nil {
 		return sts
 	}
@@ -95,13 +95,13 @@ type tagNameAndUniq struct {
 	name, orig, uniq string
 }
 
-func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
-	userID, minTagLen, maxTagLen int64) (map[string]int64, status.S) {
+func upsertTags(j *tab.Job, rawTags []string, picId int64, now time.Time,
+	userId, minTagLen, maxTagLen int64) (map[string]int64, status.S) {
 	newTagNames, sts := cleanTagNames(rawTags, minTagLen, maxTagLen)
 	if sts != nil {
 		return nil, sts
 	}
-	attachedTags, _, sts := findAttachedPicTags(j, picID)
+	attachedTags, _, sts := findAttachedPicTags(j, picId)
 	if sts != nil {
 		return nil, sts
 	}
@@ -121,7 +121,7 @@ func upsertTags(j *tab.Job, rawTags []string, picID int64, now time.Time,
 	}
 
 	unattachedExistingTags = append(unattachedExistingTags, newTags...)
-	if _, sts := createPicTags(j, unattachedExistingTags, picID, now, userID); sts != nil {
+	if _, sts := createPicTags(j, unattachedExistingTags, picId, now, userId); sts != nil {
 		return nil, sts
 	}
 
@@ -158,9 +158,9 @@ func buildTagIdList(providedTagNames []tagNameAndUniq, existing, created []*sche
 	return nameMap, nil
 }
 
-func findAttachedPicTags(j *tab.Job, picID int64) ([]*schema.Tag, []*schema.PicTag, status.S) {
+func findAttachedPicTags(j *tab.Job, picId int64) ([]*schema.Tag, []*schema.PicTag, status.S) {
 	pts, err := j.FindPicTags(db.Opts{
-		Prefix: tab.PicTagsPrimary{PicId: &picID},
+		Prefix: tab.PicTagsPrimary{PicId: &picId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
@@ -239,12 +239,12 @@ func updateExistingTags(j *tab.Job, tags []*schema.Tag, now time.Time) status.S 
 func createNewTags(j *tab.Job, names []tagNameAndUniq, now time.Time) ([]*schema.Tag, status.S) {
 	var tags []*schema.Tag
 	for _, name := range names {
-		tagID, err := j.AllocID()
+		tagId, err := j.AllocId()
 		if err != nil {
 			return nil, status.Internal(err, "can't allocate id")
 		}
 		tag := &schema.Tag{
-			TagId:      tagID,
+			TagId:      tagId,
 			Name:       name.name,
 			UsageCount: 1,
 		}
@@ -258,15 +258,15 @@ func createNewTags(j *tab.Job, names []tagNameAndUniq, now time.Time) ([]*schema
 	return tags, nil
 }
 
-func createPicTags(j *tab.Job, tags []*schema.Tag, picID int64, now time.Time, userID int64) (
+func createPicTags(j *tab.Job, tags []*schema.Tag, picId int64, now time.Time, userId int64) (
 	[]*schema.PicTag, status.S) {
 	var picTags []*schema.PicTag
 	for _, tag := range tags {
 		pt := &schema.PicTag{
-			PicId:  picID,
+			PicId:  picId,
 			TagId:  tag.TagId,
 			Name:   tag.Name,
-			UserId: userID,
+			UserId: userId,
 		}
 		pt.SetCreatedTime(now)
 		pt.SetModifiedTime(now)

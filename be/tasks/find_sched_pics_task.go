@@ -17,7 +17,7 @@ type FindSchedPicsTask struct {
 	Now func() time.Time
 
 	// Inputs
-	ObjectUserID int64
+	ObjectUserId int64
 
 	// Outs
 	UnfilteredPics []*schema.Pic
@@ -32,7 +32,7 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserID)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
 	if sts != nil {
 		return sts
 	}

@@ -218,7 +218,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	defer db.Close()
 	// don't waste initial ids
-	db.IDAllocator().SetWatermark(0, 0)
+	db.IdAllocator().SetWatermark(0, 0)
 
 	fmt.Println("Create initial tables? (default: y)")
 	if y := readbool(r, true); y {

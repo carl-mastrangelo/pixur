@@ -19,7 +19,7 @@ type AddPicVoteTask struct {
 	Now func() time.Time
 
 	// Inputs
-	PicID int64
+	PicId int64
 	Vote  schema.PicVote_Vote
 	// Ext is additional extra data associated with this vote.
 	Ext map[string]*anypb.Any
@@ -44,10 +44,10 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	userID := schema.AnonymousUserID
+	userId := schema.AnonymousUserId
 	picVoteIndex := int64(0)
 	if u != nil {
-		userID = u.UserId
+		userId = u.UserId
 	}
 
 	conf, sts := GetConfiguration(ctx)
@@ -62,32 +62,32 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Lock:   db.LockWrite,
 	})
 	if err != nil {
-		return status.Internal(err, "can't lookup pic", t.PicID)
+		return status.Internal(err, "can't lookup pic", t.PicId)
 	}
 	if len(pics) != 1 {
-		return status.NotFound(nil, "can't find pic", t.PicID)
+		return status.NotFound(nil, "can't find pic", t.PicId)
 	}
 	p := pics[0]
 
 	if p.HardDeleted() {
-		return status.InvalidArgument(nil, "can't vote on deleted pic", t.PicID)
+		return status.InvalidArgument(nil, "can't vote on deleted pic", t.PicId)
 	}
 
 	pvs, err := j.FindPicVotes(db.Opts{
 		Prefix: tab.PicVotesPrimary{
-			PicId:  &t.PicID,
-			UserId: &userID,
+			PicId:  &t.PicId,
+			UserId: &userId,
 		},
 		Lock: db.LockWrite,
 	})
 	if err != nil {
 		return status.Internal(err, "can't find pic votes")
 	}
-	if userID != schema.AnonymousUserID {
+	if userId != schema.AnonymousUserId {
 		if len(pvs) != 0 {
 			return status.AlreadyExists(nil, "can't double vote")
 		}
@@ -107,7 +107,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	now := t.Now()
 	pv := &schema.PicVote{
 		PicId:  p.PicId,
-		UserId: userID,
+		UserId: userId,
 		Index:  picVoteIndex,
 		Vote:   t.Vote,
 		Ext:    t.Ext,
@@ -143,14 +143,14 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 		var iues []*schema.UserEvent
 		var oue *schema.UserEvent
 		notifications := make(map[int64]bool)
-		if userID != schema.AnonymousUserID {
-			idx, sts := next(userID)
+		if userId != schema.AnonymousUserId {
+			idx, sts := next(userId)
 			if sts != nil {
 				return sts
 			}
-			notifications[userID] = true
+			notifications[userId] = true
 			oue = &schema.UserEvent{
-				UserId:     userID,
+				UserId:     userId,
 				Index:      idx,
 				CreatedTs:  pv.CreatedTs,
 				ModifiedTs: pv.ModifiedTs,
@@ -162,7 +162,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 			}
 		}
 		for _, fs := range p.Source {
-			if fs.UserId != schema.AnonymousUserID && !notifications[fs.UserId] {
+			if fs.UserId != schema.AnonymousUserId && !notifications[fs.UserId] {
 				idx, sts := next(fs.UserId)
 				if sts != nil {
 					return sts
@@ -176,7 +176,7 @@ func (t *AddPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 					Evt: &schema.UserEvent_IncomingUpsertPicVote_{
 						IncomingUpsertPicVote: &schema.UserEvent_IncomingUpsertPicVote{
 							PicId:         p.PicId,
-							SubjectUserId: userID,
+							SubjectUserId: userId,
 						},
 					},
 				})
@@ -239,7 +239,7 @@ func filterPicVoteInternal(pv *schema.PicVote, uc *userCred) (
 	case uc.subjectUserId == dpv.UserId && uc.cs.Has(schema.User_USER_READ_SELF):
 	default:
 		uf = true
-		dpv.UserId = schema.AnonymousUserID
+		dpv.UserId = schema.AnonymousUserId
 	}
 	return &dpv, uf
 }

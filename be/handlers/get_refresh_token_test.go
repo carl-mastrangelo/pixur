@@ -21,7 +21,7 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
 	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
-		taskCap.NewTokenID = 3
+		taskCap.NewTokenId = 3
 		taskCap.User = &schema.User{
 			UserId:     2,
 			Capability: []schema.User_Capability{schema.User_PIC_READ},
@@ -62,7 +62,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 	var taskCap *tasks.AuthUserTask
 	successRunner := func(_ context.Context, task tasks.Task) status.S {
 		taskCap = task.(*tasks.AuthUserTask)
-		taskCap.NewTokenID = 3
+		taskCap.NewTokenId = 3
 		taskCap.User = &schema.User{
 			UserId:     2,
 			Capability: []schema.User_Capability{schema.User_PIC_READ},
@@ -91,7 +91,7 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if taskCap.TokenID != payload.TokenId || taskCap.UserID != 9 /* payload.Subject */ {
+	if taskCap.TokenId != payload.TokenId || taskCap.UserId != 9 /* payload.Subject */ {
 		t.Error("wrong task input", taskCap.Ident, taskCap.Secret)
 	}
 }
@@ -199,7 +199,7 @@ func TestGetRefreshToken(t *testing.T) {
 			UserId:     2,
 			Capability: []schema.User_Capability{schema.User_PIC_READ},
 		}
-		taskCap.NewTokenID = 4
+		taskCap.NewTokenId = 4
 		return nil
 	}
 	s := serv{
@@ -235,10 +235,10 @@ func TestGetRefreshToken(t *testing.T) {
 	if have, want := taskCap.Secret, "secret"; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.UserID, int64(2); have != want {
+	if have, want := taskCap.UserId, int64(2); have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.TokenID, int64(3); have != want {
+	if have, want := taskCap.TokenId, int64(3); have != want {
 		t.Error("have", have, "want", want)
 	}
 
@@ -313,7 +313,7 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 		taskCap.User = &schema.User{
 			UserId: 2,
 		}
-		taskCap.NewTokenID = 4
+		taskCap.NewTokenId = 4
 		return nil
 	}
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))

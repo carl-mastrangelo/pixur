@@ -21,7 +21,7 @@ func TestUpdatePicTagWorkflow(t *testing.T) {
 	tag := c.CreateTag()
 	pt := c.CreatePicTag(p, tag)
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	task := &UpdatePicTagTask{
 		Beg: c.DB(),
 		Now: time.Now,

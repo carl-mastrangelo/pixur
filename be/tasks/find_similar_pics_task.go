@@ -17,10 +17,10 @@ type FindSimilarPicsTask struct {
 	Beg tab.JobBeginner
 
 	// Inputs
-	PicID int64
+	PicId int64
 
 	// Results
-	SimilarPicIDs []int64
+	SimilarPicIds []int64
 }
 
 func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
@@ -35,7 +35,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pics, err := j.FindPics(db.Opts{
-		Prefix: tab.PicsPrimary{&t.PicID},
+		Prefix: tab.PicsPrimary{&t.PicId},
 		Limit:  1,
 	})
 	if err != nil {
@@ -49,7 +49,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	dctIdentType := schema.PicIdent_DCT_0
 
 	picIdents, err := j.FindPicIdents(db.Opts{
-		Prefix: tab.PicIdentsPrimary{PicId: &t.PicID, Type: &dctIdentType},
+		Prefix: tab.PicIdentsPrimary{PicId: &t.PicId, Type: &dctIdentType},
 		Limit:  1,
 	})
 	if err != nil {
@@ -64,7 +64,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 	scanOpts := db.Opts{
 		StartInc: tab.PicIdentsIdent{Type: &dctIdentType},
 	}
-	var similarPicIDs []int64
+	var similarPicIds []int64
 
 	err = j.ScanPicIdents(scanOpts, func(pi *schema.PicIdent) error {
 		if pi.PicId == pic.PicId {
@@ -82,7 +82,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 			}
 		}
 		if bitCount <= 10 {
-			similarPicIDs = append(similarPicIDs, pi.PicId)
+			similarPicIds = append(similarPicIds, pi.PicId)
 		}
 
 		return nil
@@ -95,7 +95,7 @@ func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.Internal(err, "can't rollback job")
 	}
 	// Only set results on success
-	t.SimilarPicIDs = similarPicIDs
+	t.SimilarPicIds = similarPicIds
 
 	return nil
 }

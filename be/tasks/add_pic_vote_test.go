@@ -26,11 +26,11 @@ func TestAddPicVoteTaskWorkFlow(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -78,11 +78,11 @@ func TestAddPicVoteTaskWork_NoDoubleVoting(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -115,11 +115,11 @@ func TestAddPicVoteTaskWork_MissingPic(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: 0,
+		PicId: 0,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -153,11 +153,11 @@ func TestAddPicVoteTaskWork_CantVoteOnHardDeleted(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -205,7 +205,7 @@ func TestAddPicVoteTask_AnonymousAllowed(t *testing.T) {
 
 	task := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
@@ -234,7 +234,7 @@ func TestAddPicVoteTask_AnonymousAllowed(t *testing.T) {
 
 	expected := &schema.PicVote{
 		PicId:  p.Pic.PicId,
-		UserId: schema.AnonymousUserID,
+		UserId: schema.AnonymousUserId,
 		Vote:   schema.PicVote_UP,
 	}
 	task.PicVote.CreatedTs = nil
@@ -258,7 +258,7 @@ func TestAddPicVoteTask_AnonymousAllowed_DoubleVote(t *testing.T) {
 
 	task1 := &AddPicVoteTask{
 		Vote:  schema.PicVote_UP,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
@@ -269,7 +269,7 @@ func TestAddPicVoteTask_AnonymousAllowed_DoubleVote(t *testing.T) {
 
 	task2 := &AddPicVoteTask{
 		Vote:  schema.PicVote_DOWN,
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
@@ -299,7 +299,7 @@ func TestAddPicVoteTask_AnonymousAllowed_DoubleVote(t *testing.T) {
 
 	expected := &schema.PicVote{
 		PicId:  p.Pic.PicId,
-		UserId: schema.AnonymousUserID,
+		UserId: schema.AnonymousUserId,
 		Index:  1,
 		Vote:   schema.PicVote_DOWN,
 	}
@@ -320,7 +320,7 @@ func TestAddPicVote_Notification_Author_AnonPicParent(t *testing.T) {
 	u.Update()
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -328,13 +328,13 @@ func TestAddPicVote_Notification_Author_AnonPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -376,7 +376,7 @@ func TestAddPicVote_Notification_AnonAuthor_AnonPicParent(t *testing.T) {
 
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -384,7 +384,7 @@ func TestAddPicVote_Notification_AnonAuthor_AnonPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
@@ -424,13 +424,13 @@ func TestAddPicVote_Notification_Author_PicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -500,13 +500,13 @@ func TestAddPicVote_Notification_Author_AuthorPicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -565,7 +565,7 @@ func TestAddPicVote_Notification_AnonAuthor_PicParent(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
@@ -593,7 +593,7 @@ func TestAddPicVote_Notification_AnonAuthor_PicParent(t *testing.T) {
 		Evt: &schema.UserEvent_IncomingUpsertPicVote_{
 			IncomingUpsertPicVote: &schema.UserEvent_IncomingUpsertPicVote{
 				PicId:         p.Pic.PicId,
-				SubjectUserId: schema.AnonymousUserID,
+				SubjectUserId: schema.AnonymousUserId,
 			},
 		},
 	}
@@ -644,13 +644,13 @@ func TestAddPicVote_Notification_Author_PicParent_ExistingEvents(t *testing.T) {
 	})
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_UP,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -700,7 +700,7 @@ func TestAddPicVote_Notification_Author_AnonPicParent_Neutral(t *testing.T) {
 	u.Update()
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -708,13 +708,13 @@ func TestAddPicVote_Notification_Author_AnonPicParent_Neutral(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -742,7 +742,7 @@ func TestAddPicVote_Notification_AnonAuthor_AnonPicParent_Neutral(t *testing.T) 
 
 	p := c.CreatePic()
 	for _, s := range p.Pic.Source {
-		s.UserId = schema.AnonymousUserID
+		s.UserId = schema.AnonymousUserId
 	}
 	p.Update()
 
@@ -750,7 +750,7 @@ func TestAddPicVote_Notification_AnonAuthor_AnonPicParent_Neutral(t *testing.T) 
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
@@ -790,13 +790,13 @@ func TestAddPicVote_Notification_Author_PicParent_Neutral(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -830,13 +830,13 @@ func TestAddPicVote_Notification_Author_AuthorPicParent_Neutral(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -873,7 +873,7 @@ func TestAddPicVote_Notification_AnonAuthor_PicParent_Neutral(t *testing.T) {
 	now := func() time.Time { return tm }
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
@@ -929,13 +929,13 @@ func TestAddPicVote_Notification_Author_PicParent_ExistingEvents_Neutral(t *test
 	})
 
 	task := &AddPicVoteTask{
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 		Beg:   c.DB(),
 		Now:   now,
 		Vote:  schema.PicVote_NEUTRAL,
 	}
 
-	ctx := CtxFromUserID(c.Ctx, u1.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -1023,7 +1023,7 @@ func TestFilterPicVoteInternal_userReadPicVote(t *testing.T) {
 	}
 	dupe := *pv
 	uc := &userCred{
-		subjectUserId: schema.AnonymousUserID,
+		subjectUserId: schema.AnonymousUserId,
 		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_VOTE),
 	}
 	pvd, _ := filterPicVoteInternal(pv, uc)
@@ -1070,7 +1070,7 @@ func TestFilterPicVoteInternal_userIdRemoved(t *testing.T) {
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
-	pv.UserId = schema.AnonymousUserID
+	pv.UserId = schema.AnonymousUserId
 	if !proto.Equal(pv, pvd) {
 		t.Error("missing field", pv, pvd)
 	}
@@ -1090,7 +1090,7 @@ func TestFilterPicVote(t *testing.T) {
 	if !proto.Equal(pv, &dupe) {
 		t.Error("original changed", pv, dupe)
 	}
-	pv.UserId = schema.AnonymousUserID
+	pv.UserId = schema.AnonymousUserId
 	if !proto.Equal(pv, pvd) {
 		t.Error("missing field", pv, pvd)
 	}

@@ -76,9 +76,9 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	if sts != nil {
 		return sts
 	}
-	var userID = schema.AnonymousUserID
+	var userId = schema.AnonymousUserId
 	if u != nil {
-		userID = u.UserId
+		userId = u.UserId
 	}
 
 	conf, sts := GetConfiguration(ctx)
@@ -168,7 +168,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	// TODO: test this
 	pfs := &schema.Pic_FileSource{
 		CreatedTs: nowts,
-		UserId:    userID,
+		UserId:    userId,
 	}
 	if loc != nil {
 		pfs.Url = loc.String()
@@ -231,7 +231,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 			}
 			//  fall through, picture needs to be undeleted.
 		} else {
-			if sts := mergePic(j, p, nowts, pfs, userID, ext); sts != nil {
+			if sts := mergePic(j, p, nowts, pfs, userId, ext); sts != nil {
 				return sts
 			}
 			if err := j.Commit(); err != nil {
@@ -242,13 +242,13 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 			return nil
 		}
 	} else {
-		picID, err := j.AllocID()
+		picId, err := j.AllocId()
 		if err != nil {
 			return status.Internal(err, "can't allocate id")
 		}
 		width, height := im.Dimensions()
 		p = &schema.Pic{
-			PicId: picID,
+			PicId: picId,
 			File: &schema.Pic_File{
 				Index:         0, // always 0 for main pic
 				Size:          size,
@@ -323,7 +323,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		ModifiedTs:    nowts,
 	})
 
-	if sts := mergePic(j, p, nowts, pfs, userID, ext); sts != nil {
+	if sts := mergePic(j, p, nowts, pfs, userId, ext); sts != nil {
 		return sts
 	}
 
@@ -465,7 +465,7 @@ func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
 }
 
 func mergePic(j *tab.Job, p *schema.Pic, nowts *tspb.Timestamp, pfs *schema.Pic_FileSource,
-	userID int64, ext map[string]*any.Any) status.S {
+	userId int64, ext map[string]*any.Any) status.S {
 	p.ModifiedTs = nowts
 	if ds := p.DeletionStatus; ds != nil {
 		if ds.Temporary {
@@ -483,7 +483,7 @@ func mergePic(j *tab.Job, p *schema.Pic, nowts *tspb.Timestamp, pfs *schema.Pic_
 		}
 		// At most one (non-anonymous) user can be in a source.
 		// ignore sources from the same user after the first one
-		if s.UserId != schema.AnonymousUserID && s.UserId == pfs.UserId {
+		if s.UserId != schema.AnonymousUserId && s.UserId == pfs.UserId {
 			pfsExists = true
 			break
 		}
@@ -493,14 +493,14 @@ func mergePic(j *tab.Job, p *schema.Pic, nowts *tspb.Timestamp, pfs *schema.Pic_
 		p.Source = append(p.Source, pfs)
 
 		// Also, only give notification if they added something new.
-		if userID != schema.AnonymousUserID {
+		if userId != schema.AnonymousUserId {
 			createdTs := schema.UserEventCreatedTsCol(nowts)
-			idx, sts := nextUserEventIndex(j, userID, createdTs)
+			idx, sts := nextUserEventIndex(j, userId, createdTs)
 			if sts != nil {
 				return sts
 			}
 			oue := &schema.UserEvent{
-				UserId:     userID,
+				UserId:     userId,
 				Index:      idx,
 				CreatedTs:  nowts,
 				ModifiedTs: nowts,
@@ -562,9 +562,9 @@ func findExistingPic(j *tab.Job, typ schema.PicIdent_Type, hash []byte) (*schema
 	return pics[0], nil
 }
 
-func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha512_256Hash []byte) status.S {
+func insertPicHashes(j *tab.Job, picId int64, md5Hash, sha1Hash, sha512_256Hash []byte) status.S {
 	md5Ident := &schema.PicIdent{
-		PicId: picID,
+		PicId: picId,
 		Type:  schema.PicIdent_MD5,
 		Value: md5Hash,
 	}
@@ -572,7 +572,7 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha512_256Hash 
 		return status.Internal(err, "can't create md5")
 	}
 	sha1Ident := &schema.PicIdent{
-		PicId: picID,
+		PicId: picId,
 		Type:  schema.PicIdent_SHA1,
 		Value: sha1Hash,
 	}
@@ -580,7 +580,7 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha512_256Hash 
 		return status.Internal(err, "can't create sha1")
 	}
 	sha512_256Ident := &schema.PicIdent{
-		PicId: picID,
+		PicId: picId,
 		Type:  schema.PicIdent_SHA512_256,
 		Value: sha512_256Hash,
 	}
@@ -590,13 +590,13 @@ func insertPicHashes(j *tab.Job, picID int64, md5Hash, sha1Hash, sha512_256Hash 
 	return nil
 }
 
-func insertPerceptualHash(j *tab.Job, picID int64, im imaging.PixurImage) status.S {
+func insertPerceptualHash(j *tab.Job, picId int64, im imaging.PixurImage) status.S {
 	hash, inputs, sts := im.PerceptualHash0()
 	if sts != nil {
 		return sts
 	}
 	dct0Ident := &schema.PicIdent{
-		PicId:      picID,
+		PicId:      picId,
 		Type:       schema.PicIdent_DCT_0,
 		Value:      hash,
 		Dct0Values: inputs,

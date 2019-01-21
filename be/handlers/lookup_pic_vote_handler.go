@@ -29,8 +29,8 @@ func (s *serv) handleLookupPicVote(ctx context.Context, req *api.LookupPicVoteRe
 	task := &tasks.LookupPicVoteTask{
 		Beg: s.db,
 
-		PicID:        int64(picId),
-		ObjectUserID: int64(userId),
+		PicId:        int64(picId),
+		ObjectUserId: int64(userId),
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

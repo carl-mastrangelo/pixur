@@ -61,7 +61,7 @@ func TestAddPicTags(t *testing.T) {
 	if taskCap == nil {
 		t.Fatal("task didn't run")
 	}
-	if have, want := taskCap.PicID, int64(1); have != want {
+	if have, want := taskCap.PicId, int64(1); have != want {
 		t.Error("have", have, "want", want)
 	}
 	if len(taskCap.TagNames) != 2 || taskCap.TagNames[0] != "a" || taskCap.TagNames[1] != "b" {

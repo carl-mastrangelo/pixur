@@ -12,9 +12,9 @@ import (
 func (s *serv) handleIncrementViewCount(
 	ctx context.Context, req *api.IncrementViewCountRequest) (*api.IncrementViewCountResponse, status.S) {
 
-	var picID schema.Varint
+	var picId schema.Varint
 	if req.PicId != "" {
-		if err := picID.DecodeAll(req.PicId); err != nil {
+		if err := picId.DecodeAll(req.PicId); err != nil {
 			return nil, status.InvalidArgument(err, "bad pic id")
 		}
 	}
@@ -22,7 +22,7 @@ func (s *serv) handleIncrementViewCount(
 	var task = &tasks.IncrementViewCountTask{
 		Beg:   s.db,
 		Now:   s.now,
-		PicID: int64(picID),
+		PicId: int64(picId),
 	}
 	if sts := s.runner.Run(ctx, task); sts != nil {
 		return nil, sts

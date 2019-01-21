@@ -24,11 +24,11 @@ func TestLookupPicTaskWorkflow(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
@@ -52,11 +52,11 @@ func TestLookupPicTask_failsOnMissingCap(t *testing.T) {
 	p := c.CreatePic()
 
 	u := c.CreateUser()
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
@@ -83,11 +83,11 @@ func TestLookupPicTask_failsOnMissingPicExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
@@ -113,11 +113,11 @@ func TestLookupPicTask_succeedsOnPresentPicExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
-		PicID: p.Pic.PicId,
+		PicId: p.Pic.PicId,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
@@ -139,11 +139,11 @@ func TestLookupPicTask_failsOnMissingPicCommentExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:                       c.DB(),
-		PicID:                     p.Pic.PicId,
+		PicId:                     p.Pic.PicId,
 		CheckReadPicCommentExtCap: true,
 	}
 
@@ -171,11 +171,11 @@ func TestLookupPicTask_succeedsOnPresentPicCommentExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_COMMENT_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:                       c.DB(),
-		PicID:                     p.Pic.PicId,
+		PicId:                     p.Pic.PicId,
 		CheckReadPicCommentExtCap: true,
 	}
 
@@ -194,11 +194,11 @@ func TestLookupPicTask_failsOnMissingPicTagExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:                   c.DB(),
-		PicID:                 p.Pic.PicId,
+		PicId:                 p.Pic.PicId,
 		CheckReadPicTagExtCap: true,
 	}
 
@@ -226,11 +226,11 @@ func TestLookupPicTask_succeedsOnPresentPicTagExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_TAG_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:                   c.DB(),
-		PicID:                 p.Pic.PicId,
+		PicId:                 p.Pic.PicId,
 		CheckReadPicTagExtCap: true,
 	}
 
@@ -247,11 +247,11 @@ func TestLookupPicTask_failsOnMissingPic(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
-		PicID: -1,
+		PicId: -1,
 	}
 
 	sts := new(TaskRunner).Run(ctx, task)
@@ -427,7 +427,7 @@ func TestFilterPicTagInternal_userReadPicTag(t *testing.T) {
 	}
 	dupe := *pt
 	uc := &userCred{
-		subjectUserId: schema.AnonymousUserID,
+		subjectUserId: schema.AnonymousUserId,
 		cs:            schema.CapSetOf(schema.User_USER_READ_PUBLIC, schema.User_USER_READ_PIC_TAG),
 	}
 	ptd := filterPicTagInternal(pt, uc)
@@ -474,7 +474,7 @@ func TestFilterPicTagInternal_userIdRemoved(t *testing.T) {
 	if !proto.Equal(pt, &dupe) {
 		t.Error("original changed", pt, dupe)
 	}
-	pt.UserId = schema.AnonymousUserID
+	pt.UserId = schema.AnonymousUserId
 	if !proto.Equal(pt, ptd) {
 		t.Error("missing field", pt, ptd)
 	}
@@ -494,7 +494,7 @@ func TestFilterPicTag(t *testing.T) {
 	if !proto.Equal(pt, &dupe) {
 		t.Error("original changed", pt, dupe)
 	}
-	pt.UserId = schema.AnonymousUserID
+	pt.UserId = schema.AnonymousUserId
 	if !proto.Equal(pt, ptd) {
 		t.Error("missing field", pt, ptd)
 	}
@@ -514,7 +514,7 @@ func TestFilterPicTags(t *testing.T) {
 	if !proto.Equal(pt, &dupe) {
 		t.Error("original changed", pt, dupe)
 	}
-	pt.UserId = schema.AnonymousUserID
+	pt.UserId = schema.AnonymousUserId
 	if len(ptsd) != 1 || !proto.Equal(pt, ptsd[0]) {
 		t.Error("expected field", pt, ptsd)
 	}

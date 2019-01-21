@@ -35,7 +35,7 @@ func TestAddPicCommentVoteTaskWorkflow(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -102,7 +102,7 @@ func TestAddPicCommentVoteTask_anonymousVote(t *testing.T) {
 	expected := &schema.PicCommentVote{
 		PicId:      p.Pic.PicId,
 		CommentId:  pc.PicComment.CommentId,
-		UserId:     schema.AnonymousUserID,
+		UserId:     schema.AnonymousUserId,
 		Index:      1,
 		Vote:       schema.PicCommentVote_UP,
 		CreatedTs:  nowts,
@@ -143,7 +143,7 @@ func TestAddPicCommentVoteTask_missingCap(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -180,7 +180,7 @@ func TestAddPicCommentVoteTask_badVoteDir(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_Vote(-1),
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -217,7 +217,7 @@ func TestAddPicCommentVoteTask_badPicId(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -260,7 +260,7 @@ func TestAddPicCommentVoteTask_hardDeletedPic(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -297,7 +297,7 @@ func TestAddPicCommentVoteTask_missingComment(t *testing.T) {
 		CommentId: -1,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -333,7 +333,7 @@ func TestAddPicCommentVoteTask_doubleVote(t *testing.T) {
 		CommentId: pc.PicComment.CommentId,
 		Vote:      schema.PicCommentVote_UP,
 	}
-	ctx := CtxFromUserID(c.Ctx, u.User.UserId)
+	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
 	// first one should pass
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)

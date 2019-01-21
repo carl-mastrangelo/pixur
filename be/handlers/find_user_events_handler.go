@@ -12,9 +12,9 @@ import (
 // TODO: test
 func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEventsRequest) (
 	*api.FindUserEventsResponse, status.S) {
-	var userID schema.Varint
+	var userId schema.Varint
 	if req.UserId != "" {
-		if err := userID.DecodeAll(req.UserId); err != nil {
+		if err := userId.DecodeAll(req.UserId); err != nil {
 			return nil, status.InvalidArgument(err, "bad user id")
 		}
 	}
@@ -47,8 +47,8 @@ func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEvents
 	var task = &tasks.FindUserEventsTask{
 		Beg:            s.db,
 		Ascending:      req.Ascending,
-		ObjectUserID:   int64(userID),
-		StartUserID:    int64(keyUserId),
+		ObjectUserId:   int64(userId),
+		StartUserId:    int64(keyUserId),
 		StartCreatedTs: int64(keyCreatedTs),
 		StartIndex:     int64(keyIndex),
 	}
@@ -60,11 +60,11 @@ func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEvents
 	resp := &api.FindUserEventsResponse{
 		UserEvent: apiUserEvents(nil, task.UserEvents, nil),
 	}
-	if task.NextUserID != 0 {
-		resp.NextUserEventId = apiUserEventId(task.NextUserID, task.NextCreatedTs, task.NextIndex)
+	if task.NextUserId != 0 {
+		resp.NextUserEventId = apiUserEventId(task.NextUserId, task.NextCreatedTs, task.NextIndex)
 	}
-	if task.PrevUserID != 0 {
-		resp.PrevUserEventId = apiUserEventId(task.PrevUserID, task.PrevCreatedTs, task.PrevIndex)
+	if task.PrevUserId != 0 {
+		resp.PrevUserEventId = apiUserEventId(task.PrevUserId, task.PrevCreatedTs, task.PrevIndex)
 	}
 	return resp, nil
 }

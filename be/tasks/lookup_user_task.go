@@ -16,7 +16,7 @@ type LookupUserTask struct {
 	Now func() time.Time
 
 	// Inputs
-	ObjectUserID int64
+	ObjectUserId int64
 	// If true, only public information about the user will be included.
 	PublicOnly bool
 
@@ -31,7 +31,7 @@ func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserID)
+	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
 	if sts != nil {
 		return sts
 	}
