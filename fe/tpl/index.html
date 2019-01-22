@@ -57,6 +57,9 @@
     display: block;
   }
 </style>
+{{- $pt := .Paths -}}
+{{if .PrevID}}<link rel="prev" href="{{$pt.IndexPrev .PrevID}}">{{end}}
+{{if .NextID}}<link rel="next" href="{{$pt.Index .NextID}}">{{end}}
 {{end}}
 {{define "nav"}}
   {{- $pt := .Paths -}}
