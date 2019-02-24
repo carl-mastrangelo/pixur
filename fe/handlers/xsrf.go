@@ -102,10 +102,6 @@ func incomingXsrfTokensFromReq(r *http.Request, pt *paths) (string, string, erro
 		}
 	}
 	f := r.PostFormValue(pt.pr.Xsrf())
-	if f == "" && r.Method == http.MethodGet && r.URL.Path == pt.UserTokenRefresh("").Path {
-		// Single special case.  Sorry.
-		f = r.Form.Get(pt.pr.Xsrf())
-	}
 	return c.Value, f, nil
 }
 

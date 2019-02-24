@@ -80,7 +80,7 @@ func TestDeleteTokenSucess(t *testing.T) {
 	if have, want := taskCap.UserId, testAuthSubject; have != want {
 		t.Error("have", have, "want", want)
 	}
-	if have, want := taskCap.TokenId, int64(testAuthPayload.TokenParentId); have != want {
+	if have, want := taskCap.TokenId, int64(testAuthPayload.TokenId); have != want {
 		t.Error("have", have, "want", want)
 	}
 }

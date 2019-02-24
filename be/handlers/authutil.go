@@ -19,12 +19,13 @@ func authTokenFromMD(md metadata.MD) (string, bool) {
 	return tokens[0], true
 }
 
-func fillUserIdFromCtx(ctx context.Context) (context.Context, status.S) {
+func fillUserIdAndTokenFromCtx(ctx context.Context) (context.Context, status.S) {
 	if token, ok := tasks.AuthTokenFromCtx(ctx); ok {
 		payload, sts := decodeAuthToken(token)
 		if sts != nil {
 			return nil, sts
 		}
+		ctx = tasks.CtxFromTokenId(ctx, payload.TokenId)
 		ctx, sts = addUserIdToCtx(ctx, payload)
 		if sts != nil {
 			return nil, sts

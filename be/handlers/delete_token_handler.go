@@ -29,7 +29,7 @@ func (s *serv) handleDeleteToken(
 		Beg:     s.db,
 		Now:     s.now,
 		UserId:  userId,
-		TokenId: payload.TokenParentId,
+		TokenId: payload.TokenId,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

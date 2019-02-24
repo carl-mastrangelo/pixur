@@ -41,10 +41,10 @@ func TestGetRefreshTokenSucceedsOnIdentSecret(t *testing.T) {
 	if sts != nil {
 		t.Fatal(sts)
 	}
-	if resp.RefreshToken == "" || resp.AuthToken == "" || resp.PixToken == "" {
+	if resp.AuthToken == "" || resp.PixToken == "" {
 		t.Error("tokens should be present", resp)
 	}
-	if resp.RefreshPayload.Subject != "2" || resp.RefreshPayload.TokenId != 3 {
+	if resp.AuthPayload.Subject != "2" || resp.AuthPayload.TokenId != 3 {
 		t.Error("wrong token ids", resp)
 	}
 	if taskCap == nil {
@@ -74,18 +74,18 @@ func TestGetRefreshTokenSucceedsOnRefreshToken(t *testing.T) {
 		now:    time.Now,
 	}
 
-	token, payload := testRefreshToken()
+	token, payload := testAuthTokenFn()
 	res, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		RefreshToken: token,
+		PreviousAuthToken: token,
 	})
 	if sts != nil {
 		t.Fatal(sts)
 	}
 
-	if res.RefreshToken == "" || res.AuthToken == "" || res.PixToken == "" {
+	if res.AuthToken == "" || res.PixToken == "" {
 		t.Error("tokens should be present", res)
 	}
-	if res.RefreshPayload.Subject != "2" || res.RefreshPayload.TokenId != 3 {
+	if res.AuthPayload.Subject != "2" || res.AuthPayload.TokenId != 3 {
 		t.Error("wrong token ids", res)
 	}
 	if taskCap == nil {
@@ -101,7 +101,7 @@ func TestGetRefreshTokenFailsOnInvalidToken(t *testing.T) {
 		now: time.Now,
 	}
 	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		RefreshToken: "invalid",
+		PreviousAuthToken: "invalid",
 	})
 
 	if have, want := sts.Code(), codes.Unauthenticated; have != want {
@@ -113,15 +113,15 @@ func TestGetRefreshTokenFailsOnInvalidToken(t *testing.T) {
 }
 
 func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
-	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
 		Subject:   "9",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      api.PwtPayload_AUTH,
+		Type:      api.PwtPayload_UNKNOWN,
 	}
-	refreshToken, err := defaultPwtCoder.encode(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
@@ -129,28 +129,28 @@ func TestGetRefreshTokenFailsOnNonRefreshToken(t *testing.T) {
 		now: time.Now,
 	}
 	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		RefreshToken: string(refreshToken),
+		PreviousAuthToken: string(authToken),
 	})
 
 	if have, want := sts.Code(), codes.Unauthenticated; have != want {
 		t.Error("have", have, "want", want)
 	}
 
-	if have, want := sts.Message(), "can't decode non refresh token"; !strings.Contains(have, want) {
+	if have, want := sts.Message(), "can't decode non auth token"; !strings.Contains(have, want) {
 		t.Error("have", have, "want", want)
 	}
 }
 
 func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
-	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
 		Subject:   "invalid",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      api.PwtPayload_REFRESH,
+		Type:      api.PwtPayload_AUTH,
 	}
-	refreshToken, err := defaultPwtCoder.encode(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
@@ -158,7 +158,7 @@ func TestGetRefreshTokenFailsOnBadSubject(t *testing.T) {
 		now: time.Now,
 	}
 	_, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		RefreshToken: string(refreshToken),
+		PreviousAuthToken: string(authToken),
 	})
 
 	if have, want := sts.Code(), codes.Unauthenticated; have != want {
@@ -206,24 +206,24 @@ func TestGetRefreshToken(t *testing.T) {
 		now:    time.Now,
 		runner: tasks.TestTaskRunner(successRunner),
 	}
-	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
 		Subject:   "2",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      api.PwtPayload_REFRESH,
+		Type:      api.PwtPayload_AUTH,
 		TokenId:   3,
 	}
-	refreshToken, err := defaultPwtCoder.encode(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
 
 	resp, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		Ident:        "ident",
-		Secret:       "secret",
-		RefreshToken: string(refreshToken),
+		Ident:             "ident",
+		Secret:            "secret",
+		PreviousAuthToken: string(authToken),
 	})
 	if sts != nil {
 		t.Fatal(err)
@@ -242,25 +242,8 @@ func TestGetRefreshToken(t *testing.T) {
 		t.Error("have", have, "want", want)
 	}
 
-	if len(resp.RefreshToken) == 0 || len(resp.AuthToken) == 0 || len(resp.PixToken) == 0 {
-		t.Error("expected non-empty token", resp.RefreshToken, resp.AuthToken, resp.PixToken)
-	}
-
-	if !withinProto(resp.RefreshPayload.NotBefore, time.Now(), time.Minute*2) {
-		t.Error("wrong before", resp.RefreshPayload.NotBefore)
-	}
-	if !withinProto(resp.RefreshPayload.NotAfter, time.Now().Add(refreshPwtDuration), time.Minute) {
-		t.Error("wrong after", resp.RefreshPayload.NotAfter)
-	}
-	resp.RefreshPayload.NotBefore = nil
-	resp.RefreshPayload.NotAfter = nil
-	expectedRefresh := &api.PwtPayload{
-		Subject: "2",
-		TokenId: 4,
-		Type:    api.PwtPayload_REFRESH,
-	}
-	if !proto.Equal(resp.RefreshPayload, expectedRefresh) {
-		t.Error("have", resp.RefreshPayload, "want", expectedRefresh)
+	if len(resp.AuthToken) == 0 || len(resp.PixToken) == 0 {
+		t.Error("expected non-empty token", resp.AuthToken, resp.PixToken)
 	}
 
 	if !withinProto(resp.AuthPayload.NotBefore, time.Now(), time.Minute*2) {
@@ -269,16 +252,13 @@ func TestGetRefreshToken(t *testing.T) {
 	if !withinProto(resp.AuthPayload.NotAfter, time.Now().Add(authPwtDuration), time.Minute) {
 		t.Error("wrong after", resp.AuthPayload.NotAfter)
 	}
-	if !withinProto(resp.AuthPayload.SoftNotAfter, time.Now().Add(authPwtSoftDuration), time.Minute) {
-		t.Error("wrong soft after", resp.AuthPayload.SoftNotAfter)
-	}
 	resp.AuthPayload.NotBefore = nil
 	resp.AuthPayload.NotAfter = nil
 	resp.AuthPayload.SoftNotAfter = nil
 	expectedAuth := &api.PwtPayload{
-		Subject:       "2",
-		TokenParentId: 4,
-		Type:          api.PwtPayload_AUTH,
+		Subject: "2",
+		TokenId: 4,
+		Type:    api.PwtPayload_AUTH,
 	}
 	if !proto.Equal(resp.AuthPayload, expectedAuth) {
 		t.Error("have", resp.AuthPayload, "want", expectedAuth)
@@ -287,19 +267,15 @@ func TestGetRefreshToken(t *testing.T) {
 	if !withinProto(resp.PixPayload.NotBefore, time.Now(), time.Minute*2) {
 		t.Error("wrong before", resp.PixPayload.NotBefore)
 	}
-	if !withinProto(resp.PixPayload.NotAfter, time.Now().Add(refreshPwtDuration), time.Minute) {
+	if !withinProto(resp.PixPayload.NotAfter, time.Now().Add(authPwtDuration), time.Minute) {
 		t.Error("wrong after", resp.PixPayload.NotAfter)
-	}
-	if !withinProto(resp.PixPayload.SoftNotAfter, time.Now().Add(authPwtDuration), time.Minute) {
-		t.Error("wrong soft after", resp.PixPayload.SoftNotAfter)
 	}
 	resp.PixPayload.NotBefore = nil
 	resp.PixPayload.NotAfter = nil
 	resp.PixPayload.SoftNotAfter = nil
 	expectedPix := &api.PwtPayload{
-		Subject:       "2",
-		TokenParentId: 4,
-		Type:          api.PwtPayload_PIX,
+		Subject: "2",
+		Type:    api.PwtPayload_PIX,
 	}
 	if !proto.Equal(resp.PixPayload, expectedPix) {
 		t.Error("have", resp.PixPayload, "want", expectedPix)
@@ -316,16 +292,16 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 		taskCap.NewTokenId = 4
 		return nil
 	}
-	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
 		Subject:   "2",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      api.PwtPayload_REFRESH,
+		Type:      api.PwtPayload_AUTH,
 		TokenId:   3,
 	}
-	refreshToken, err := defaultPwtCoder.encode(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
@@ -336,9 +312,9 @@ func TestGetRefreshTokenNoPix(t *testing.T) {
 	}
 
 	resp, sts := s.handleGetRefreshToken(context.Background(), &api.GetRefreshTokenRequest{
-		Ident:        "ident",
-		Secret:       "secret",
-		RefreshToken: string(refreshToken),
+		Ident:             "ident",
+		Secret:            "secret",
+		PreviousAuthToken: string(authToken),
 	})
 	if sts != nil {
 		t.Fatal(err)
@@ -372,19 +348,19 @@ func withinProto(t1pb *tspb.Timestamp, t2 time.Time, diff time.Duration) bool {
 	return d <= diff
 }
 
-func testRefreshToken() (string, *api.PwtPayload) {
-	notafter, _ := ptypes.TimestampProto(time.Now().Add(refreshPwtDuration))
+func testAuthTokenFn() (string, *api.PwtPayload) {
+	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	payload := &api.PwtPayload{
 		Subject:   "9",
 		NotAfter:  notafter,
 		NotBefore: notbefore,
-		Type:      api.PwtPayload_REFRESH,
+		Type:      api.PwtPayload_AUTH,
 		TokenId:   10,
 	}
-	refreshToken, err := defaultPwtCoder.encode(payload)
+	authToken, err := defaultPwtCoder.encode(payload)
 	if err != nil {
 		panic(err)
 	}
-	return string(refreshToken), payload
+	return string(authToken), payload
 }

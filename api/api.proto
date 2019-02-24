@@ -118,14 +118,14 @@ message GetRefreshTokenRequest {
 	// secret is the secret string used to authenticate the user, usually a password
 	string secret = 2;
 	
-	string refresh_token = 3;
+	string previous_auth_token = 3;
 }
 
 message GetRefreshTokenResponse {
-	string refresh_token = 1;
 	string auth_token = 2;
 	string pix_token = 5;
-	PwtPayload refresh_payload = 3;
+	reserved "refresh_token", "refresh_payload";
+	reserved 1, 3;
 	PwtPayload auth_payload = 4;
 	PwtPayload pix_payload = 6;
 }
@@ -360,7 +360,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20190121 // AUTO UPDATED BY generate.go
+    api_version: 20190224 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"

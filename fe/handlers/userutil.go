@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	refreshPwtCookieName = "rt"
-	authPwtCookieName    = "at"
-	authSoftCookieName   = "st"
-	pixPwtCookieName     = "pt"
+	authPwtCookieName  = "at"
+	authSoftCookieName = "st"
+	pixPwtCookieName   = "pt"
 )
 
 // subjectUserKey is a context key for a subjectUserResult

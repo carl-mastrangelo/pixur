@@ -22,12 +22,11 @@ func init() {
 	notafter, _ := ptypes.TimestampProto(time.Now().Add(authPwtDuration))
 	notbefore, _ := ptypes.TimestampProto(time.Now().Add(-1 * time.Minute))
 	testAuthPayload = &api.PwtPayload{
-		Subject:       "0",
-		NotAfter:      notafter,
-		NotBefore:     notbefore,
-		Type:          api.PwtPayload_AUTH,
-		TokenId:       1,
-		TokenParentId: 2,
+		Subject:   "0",
+		NotAfter:  notafter,
+		NotBefore: notbefore,
+		Type:      api.PwtPayload_AUTH,
+		TokenId:   1,
 	}
 
 	authToken, err := defaultPwtCoder.encode(testAuthPayload)

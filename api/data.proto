@@ -330,11 +330,13 @@ message PwtPayload {
 	google.protobuf.Timestamp soft_not_after = 6;
 	string issuer = 4;
 	int64 token_id = 5;
-	int64 token_parent_id = 8;
+	reserved "token_parent_id";
+	reserved 8;
 
 	enum Type {
 		UNKNOWN = 0;
-		REFRESH = 1;
+		reserved "REFRESH";
+		reserved 1;
 		AUTH = 2;
 		PIX = 3;
 	}

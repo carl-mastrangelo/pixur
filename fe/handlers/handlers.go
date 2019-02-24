@@ -32,10 +32,9 @@ func register(rf server.RegFunc) {
 
 type paneData struct {
 	*baseData
-	SiteName        string
-	XsrfToken       string
-	NeedAuthRefresh bool
-	SubjectUser     *api.User
+	SiteName    string
+	XsrfToken   string
+	SubjectUser *api.User
 	// Err is a user visible error set after a failed write
 	Err error
 }
@@ -55,22 +54,15 @@ func (pd *paneData) ErrShouldLogin() bool {
 }
 
 func newPaneData(ctx context.Context, title string, pt *paths) *paneData {
-	var needAuthRefresh bool
-
-	if atv, ok := authTokenFromCtx(ctx); ok {
-		needAuthRefresh = atv.SoftExpired
-	}
-
 	return &paneData{
 		baseData: &baseData{
 			Paths: pt,
 			Title: title,
 		},
-		SiteName:        globalSiteName,
-		XsrfToken:       outgoingXsrfTokenOrEmptyFromCtx(ctx),
-		NeedAuthRefresh: needAuthRefresh,
-		SubjectUser:     subjectUserOrNilFromCtx(ctx),
-		Err:             writeErrOrNilFromCtx(ctx),
+		SiteName:    globalSiteName,
+		XsrfToken:   outgoingXsrfTokenOrEmptyFromCtx(ctx),
+		SubjectUser: subjectUserOrNilFromCtx(ctx),
+		Err:         writeErrOrNilFromCtx(ctx),
 	}
 }
 
@@ -159,6 +151,7 @@ func (h *readHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ctx = ctxFromAuthToken(ctx, atv)
 		}
 	}
+	// TODO: check if the auth token is expired, and issue a refresh.
 	if _, surPresent := subjectUserResultFromCtx(ctx); authTokenPresent && !surPresent {
 		sur := &subjectUserResult{
 			Done: make(chan struct{}),
