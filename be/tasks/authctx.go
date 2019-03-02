@@ -4,27 +4,24 @@ import (
 	"context"
 )
 
-type userIdKey struct{}
+type userTokenKey struct{}
 
-type tokenIdKey struct{}
+type UserToken struct {
+  UserId int64
+  TokenId int64
+}
 
 type authTokenKey struct{}
 
-func CtxFromUserId(ctx context.Context, userId int64) context.Context {
-	return context.WithValue(ctx, userIdKey{}, userId)
+func CtxFromUserToken(ctx context.Context, userId, tokenId int64) context.Context {
+	return context.WithValue(ctx, userTokenKey{}, &UserToken{
+	  UserId: userId,
+	  TokenId: tokenId,
+	})
 }
 
-func UserIdFromCtx(ctx context.Context) (userId int64, ok bool) {
-	userId, ok = ctx.Value(userIdKey{}).(int64)
-	return
-}
-
-func CtxFromTokenId(ctx context.Context, tokenId int64) context.Context {
-	return context.WithValue(ctx, tokenIdKey{}, tokenId)
-}
-
-func TokenIdFromCtx(ctx context.Context) (tokenId int64, ok bool) {
-	tokenId, ok = ctx.Value(tokenIdKey{}).(int64)
+func UserTokenFromCtx(ctx context.Context) (tok *UserToken, ok bool) {
+	tok, ok = ctx.Value(userTokenKey{}).(*UserToken)
 	return
 }
 
@@ -35,4 +32,8 @@ func CtxFromAuthToken(ctx context.Context, token string) context.Context {
 func AuthTokenFromCtx(ctx context.Context) (token string, ok bool) {
 	token, ok = ctx.Value(authTokenKey{}).(string)
 	return
+}
+
+func CtxFromUserId(ctx context.Context, userId int64) context.Context {
+  panic("do not call")
 }

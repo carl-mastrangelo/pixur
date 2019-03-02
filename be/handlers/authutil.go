@@ -25,8 +25,7 @@ func fillUserIdAndTokenFromCtx(ctx context.Context) (context.Context, status.S) 
 		if sts != nil {
 			return nil, sts
 		}
-		ctx = tasks.CtxFromTokenId(ctx, payload.TokenId)
-		ctx, sts = addUserIdToCtx(ctx, payload)
+		ctx, sts = addUserTokenToCtx(ctx, payload)
 		if sts != nil {
 			return nil, sts
 		}
@@ -34,16 +33,23 @@ func fillUserIdAndTokenFromCtx(ctx context.Context) (context.Context, status.S) 
 	return ctx, nil
 }
 
-func addUserIdToCtx(ctx context.Context, pwt *api.PwtPayload) (context.Context, status.S) {
+func addUserTokenToCtx(ctx context.Context, pwt *api.PwtPayload) (context.Context, status.S) {
 	if pwt == nil {
 		return ctx, nil
 	}
+	userId, tokenId, sts := extractUserToken(pwt)
+	if sts != nil {
+		return nil, sts
+	}
+	return tasks.CtxFromUserToken(ctx, userId, tokenId), nil
+}
+
+func extractUserToken(pwt *api.PwtPayload) (int64, int64, status.S) {
 	var userId schema.Varint
 	if err := userId.DecodeAll(pwt.Subject); err != nil {
-		return nil, status.Internal(err, "can't decode pwt subject")
+		return 0, 0, status.Internal(err, "can't decode pwt subject")
 	}
-	// TODO move auth here instead of the http handler
-	return tasks.CtxFromUserId(ctx, int64(userId)), nil
+	return int64(userId), pwt.TokenId, nil
 }
 
 func decodeAuthToken(token string) (*api.PwtPayload, status.S) {

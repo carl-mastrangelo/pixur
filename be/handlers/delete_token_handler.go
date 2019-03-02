@@ -20,16 +20,18 @@ func (s *serv) handleDeleteToken(
 	if err != nil {
 		return nil, status.Unauthenticated(err, "can't decode auth token")
 	}
-	userId, present := tasks.UserIdFromCtx(ctx)
-	if !present {
-		// the interceptor should have added this for us.
-		panic("missing user id")
+
+	userId, tokenId, sts := extractUserToken(payload)
+	if sts != nil {
+		return nil, sts
 	}
+
+	ctx = tasks.CtxFromUserToken(ctx, userId, tokenId)
 	var task = &tasks.UnauthUserTask{
 		Beg:     s.db,
 		Now:     s.now,
 		UserId:  userId,
-		TokenId: payload.TokenId,
+		TokenId: tokenId,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

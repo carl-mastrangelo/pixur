@@ -26,7 +26,7 @@ func init() {
 		NotAfter:  notafter,
 		NotBefore: notbefore,
 		Type:      api.PwtPayload_AUTH,
-		TokenId:   1,
+		TokenId:   testUserToken,
 	}
 
 	authToken, err := defaultPwtCoder.encode(testAuthPayload)
@@ -38,6 +38,7 @@ func init() {
 
 var (
 	testAuthSubject = int64(0)
+	testUserToken   = int64(3)
 	testAuthPayload *api.PwtPayload
 	testAuthToken   string
 )

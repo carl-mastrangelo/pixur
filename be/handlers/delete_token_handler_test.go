@@ -40,7 +40,7 @@ func TestDeleteTokenFailsOnTaskError(t *testing.T) {
 		now:    time.Now,
 	}
 	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
-	ctx = tasks.CtxFromUserId(ctx, testAuthSubject)
+	ctx = tasks.CtxFromUserToken(ctx, testAuthSubject, testUserToken)
 
 	_, sts := s.handleDeleteToken(ctx, &api.DeleteTokenRequest{})
 
@@ -67,7 +67,7 @@ func TestDeleteTokenSucess(t *testing.T) {
 	}
 
 	ctx := tasks.CtxFromAuthToken(context.Background(), testAuthToken)
-	ctx = tasks.CtxFromUserId(ctx, testAuthSubject)
+	ctx = tasks.CtxFromUserToken(ctx, testAuthSubject, testUserToken)
 	resp, sts := s.handleDeleteToken(ctx, &api.DeleteTokenRequest{})
 
 	if sts != nil {

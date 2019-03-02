@@ -113,11 +113,14 @@ func TestServerInterceptor(t *testing.T) {
 	if ctxcap == nil {
 		t.Fatal("nil ctx")
 	}
-	id, present := tasks.UserIdFromCtx(ctxcap)
+	tok, present := tasks.UserTokenFromCtx(ctxcap)
 	if !present {
-		t.Fatal("missing user id")
+		t.Fatal("missing user token")
 	}
-	if have, want := id, testAuthSubject; have != want {
+	if have, want := tok.UserId, testAuthSubject; have != want {
+		t.Error("have", have, "want", want)
+	}
+	if have, want := tok.TokenId, testUserToken; have != want {
 		t.Error("have", have, "want", want)
 	}
 }
