@@ -46,6 +46,7 @@ func (s *serv) handleFindUserEvents(ctx context.Context, req *api.FindUserEvents
 
 	var task = &tasks.FindUserEventsTask{
 		Beg:            s.db,
+		Now:            s.now,
 		Ascending:      req.Ascending,
 		ObjectUserId:   int64(userId),
 		StartUserId:    int64(keyUserId),

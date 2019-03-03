@@ -21,6 +21,7 @@ func (s *serv) handleFindIndexPics(ctx context.Context, req *api.FindIndexPicsRe
 
 	var task = &tasks.ReadIndexPicsTask{
 		Beg:       s.db,
+		Now:       s.now,
 		StartId:   int64(picId),
 		Ascending: req.Ascending,
 	}

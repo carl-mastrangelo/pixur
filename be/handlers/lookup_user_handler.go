@@ -22,6 +22,7 @@ func (s *serv) handleLookupUser(ctx context.Context, req *api.LookupUserRequest)
 
 	var task = &tasks.LookupUserTask{
 		Beg:          s.db,
+		Now:          s.now,
 		ObjectUserId: int64(objectUserId),
 	}
 
@@ -46,6 +47,7 @@ func (s *serv) handleLookupPublicUserInfo(
 
 	var task = &tasks.LookupUserTask{
 		Beg:          s.db,
+		Now:          s.now,
 		ObjectUserId: int64(objectUserId),
 		PublicOnly:   true,
 	}

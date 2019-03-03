@@ -14,6 +14,7 @@ func (s *serv) handleFindSchedPics(ctx context.Context, req *api.FindSchedPicsRe
 
 	var task = &tasks.FindSchedPicsTask{
 		Beg: s.db,
+		Now: s.now,
 	}
 
 	if sts := s.runner.Run(ctx, task); sts != nil {

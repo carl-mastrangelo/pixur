@@ -35,6 +35,7 @@ func (s *serv) handleLookupPicCommentVote(ctx context.Context, req *api.LookupPi
 
 	task := &tasks.FindPicCommentVotesTask{
 		Beg: s.db,
+		Now: s.now,
 
 		PicId: int64(picId),
 		// this is wrong, fix it

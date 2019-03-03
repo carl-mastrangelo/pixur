@@ -20,6 +20,7 @@ func (s *serv) handleFindSimilarPics(ctx context.Context, req *api.FindSimilarPi
 
 	var task = &tasks.FindSimilarPicsTask{
 		Beg:   s.db,
+		Now:   s.now,
 		PicId: int64(requestedPicId),
 	}
 	if sts := s.runner.Run(ctx, task); sts != nil {

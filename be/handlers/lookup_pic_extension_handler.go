@@ -23,6 +23,7 @@ func (s *serv) handleLookupPicExtension(
 
 	var task = &tasks.LookupPicTask{
 		Beg:                s.db,
+		Now:                s.now,
 		PicId:              int64(picId),
 		CheckReadPicExtCap: true,
 	}
