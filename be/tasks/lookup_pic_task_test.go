@@ -3,6 +3,7 @@ package tasks
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	anypb "github.com/golang/protobuf/ptypes/any"
@@ -24,10 +25,11 @@ func TestLookupPicTaskWorkflow(t *testing.T) {
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
 
@@ -52,10 +54,11 @@ func TestLookupPicTask_failsOnMissingCap(t *testing.T) {
 	p := c.CreatePic()
 
 	u := c.CreateUser()
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
 
@@ -83,10 +86,11 @@ func TestLookupPicTask_failsOnMissingPicExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
 
@@ -113,10 +117,11 @@ func TestLookupPicTask_succeedsOnPresentPicExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
 
@@ -139,10 +144,11 @@ func TestLookupPicTask_failsOnMissingPicCommentExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:                       c.DB(),
+		Now:                       time.Now,
 		PicId:                     p.Pic.PicId,
 		CheckReadPicCommentExtCap: true,
 	}
@@ -171,10 +177,11 @@ func TestLookupPicTask_succeedsOnPresentPicCommentExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_COMMENT_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:                       c.DB(),
+		Now:                       time.Now,
 		PicId:                     p.Pic.PicId,
 		CheckReadPicCommentExtCap: true,
 	}
@@ -194,10 +201,11 @@ func TestLookupPicTask_failsOnMissingPicTagExtCap(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:                   c.DB(),
+		Now:                   time.Now,
 		PicId:                 p.Pic.PicId,
 		CheckReadPicTagExtCap: true,
 	}
@@ -226,10 +234,11 @@ func TestLookupPicTask_succeedsOnPresentPicTagExtCap(t *testing.T) {
 		append(u.User.Capability, schema.User_PIC_INDEX, schema.User_PIC_TAG_EXTENSION_READ)
 	u.Update()
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:                   c.DB(),
+		Now:                   time.Now,
 		PicId:                 p.Pic.PicId,
 		CheckReadPicTagExtCap: true,
 	}
@@ -247,10 +256,11 @@ func TestLookupPicTask_failsOnMissingPic(t *testing.T) {
 	u := c.CreateUser()
 	u.User.Capability = append(u.User.Capability, schema.User_PIC_INDEX)
 	u.Update()
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 
 	task := &LookupPicTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: -1,
 	}
 

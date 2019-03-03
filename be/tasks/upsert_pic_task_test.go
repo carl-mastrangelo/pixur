@@ -86,7 +86,7 @@ func TestUpsertPicTask_URL(t *testing.T) {
 		FileURLReferrer: "http://bogo/#ref",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -162,7 +162,7 @@ func TestUpsertPicTask_BadFileName(t *testing.T) {
 		FileName: "/root",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -178,9 +178,10 @@ func TestUpsertPicTask_CantBegin(t *testing.T) {
 
 	task := &UpsertPicTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, -1)
+	ctx := CtxFromUserToken(c.Ctx, -1, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)
@@ -196,9 +197,10 @@ func TestUpsertPicTask_NoFileOrURL(t *testing.T) {
 
 	task := &UpsertPicTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "no pic specified")
 	compareStatus(t, sts, expected)
@@ -225,7 +227,7 @@ func TestUpsertPicTask_CantFindUser(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, -1)
+	ctx := CtxFromUserToken(c.Ctx, -1, -1)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.Unauthenticated(nil, "can't lookup user")
 	compareStatus(t, sts, expected)
@@ -254,7 +256,7 @@ func TestUpsertPicTask_MissingCap(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_CREATE")
 	compareStatus(t, sts, expected)
@@ -293,7 +295,7 @@ func TestUpsertPicTask_MissingPicExtCap(t *testing.T) {
 		Ext:  ext,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.PermissionDenied(nil, "missing cap PIC_EXTENSION_CREATE")
 	compareStatus(t, sts, expected)
@@ -339,7 +341,7 @@ func TestUpsertPicTask_PresentPicExtCap(t *testing.T) {
 		Ext:  ext,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -378,7 +380,7 @@ func TestUpsertPicTask_Md5PresentDuplicate(t *testing.T) {
 		FileName: "orig",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -430,7 +432,7 @@ func TestUpsertPicTask_Md5PresentHardPermanentDeleted(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Can't upload deleted pic.")
 	compareStatus(t, sts, expected)
@@ -495,7 +497,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -570,7 +572,7 @@ func TestUpsertPicTask_Md5Mismatch(t *testing.T) {
 		Md5Hash: md5Hash,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "Md5 hash mismatch")
 	compareStatus(t, sts, expected)
@@ -602,7 +604,7 @@ func TestUpsertPicTask_BadImage(t *testing.T) {
 		File: c.TempFile(),
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "unable to read")
 	compareStatus(t, sts, expected)
@@ -642,7 +644,7 @@ func TestUpsertPicTask_Duplicate(t *testing.T) {
 		FileName: "orig",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -697,7 +699,7 @@ func TestUpsertPicTask_DuplicateHardPermanentDeleted(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "can't upload deleted pic")
 	compareStatus(t, sts, expected)
@@ -759,7 +761,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -822,7 +824,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 		File: f,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}

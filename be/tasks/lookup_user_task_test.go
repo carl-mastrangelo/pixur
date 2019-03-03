@@ -3,6 +3,7 @@ package tasks
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
@@ -27,9 +28,10 @@ func TestLookupUserBlankId(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -50,10 +52,11 @@ func TestLookupUserOther(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: u1.User.UserId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u2.User.UserId)
+	ctx := u2.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -74,11 +77,12 @@ func TestLookupUserPublic(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: u1.User.UserId,
 		PublicOnly:   true,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u2.User.UserId)
+	ctx := u2.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -102,10 +106,11 @@ func TestLookupUserCantLookupSelf(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: u.User.UserId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -128,9 +133,10 @@ func TestLookupUserCantLookupOther(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: u2.User.UserId,
 	}
-	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
+	ctx := u1.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -151,10 +157,11 @@ func TestLookupUserCantLookupOtherMissing(t *testing.T) {
 
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: -1,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u1.User.UserId)
+	ctx := u1.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected error")
@@ -179,10 +186,11 @@ func lookupUserTaskWorkFlow_setup(tb testing.TB) (*TestContainer, *TestUser) {
 func lookupUserTaskWorkFlow(c *TestContainer, u *TestUser, tb testing.TB) {
 	task := &LookupUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		ObjectUserId: u.User.UserId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		tb.Fatal(sts)
 	}

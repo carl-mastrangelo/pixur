@@ -33,7 +33,3 @@ func AuthTokenFromCtx(ctx context.Context) (token string, ok bool) {
 	token, ok = ctx.Value(authTokenKey{}).(string)
 	return
 }
-
-func CtxFromUserId(ctx context.Context, userId int64) context.Context {
-	panic("do not call")
-}

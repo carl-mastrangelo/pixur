@@ -92,8 +92,9 @@ func TestReadIndexTaskWorkflow(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -117,8 +118,9 @@ func TestReadIndexTaskWorkflow_validateExtCapMissing(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -144,8 +146,9 @@ func TestReadIndexTaskWorkflow_validateExtCapPresent(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -169,8 +172,9 @@ func TestReadIndexTaskWorkflow_userReadAll(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -198,8 +202,9 @@ func TestReadIndexTaskWorkflow_userReadPics(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -226,8 +231,9 @@ func TestReadIndexTaskWorkflow_userReadSelf(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -251,8 +257,9 @@ func TestReadIndexTaskWorkflow_userLacksPermission(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Fatal(sts)
@@ -282,8 +289,9 @@ func TestReadIndexTask_IgnoreHiddenPics(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg: c.DB(),
+		Now: time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -317,11 +325,12 @@ func TestReadIndexTask_StartAtDeleted(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
+		Now:       time.Now,
 		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -368,11 +377,12 @@ func TestReadIndexTask_StartAtDeletedAscending(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
+		Now:       time.Now,
 		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: true,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -424,11 +434,12 @@ func TestReadIndexTask_AllSameTimeStamp(t *testing.T) {
 
 	task := &ReadIndexPicsTask{
 		Beg:       c.DB(),
+		Now:       time.Now,
 		StartId:   p3.Pic.PicId,
 		MaxPics:   1,
 		Ascending: false,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}

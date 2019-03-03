@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -19,9 +20,10 @@ func TestLookupPicVoteTaskWorkFlow(t *testing.T) {
 
 	pv := c.CreatePicVote(p, u)
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	task := &LookupPicVoteTask{
 		Beg:   c.DB(),
+		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
 

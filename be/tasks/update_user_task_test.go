@@ -30,7 +30,7 @@ func TestUpdateUserTaskDifferentUser(t *testing.T) {
 		Version:       ou.User.Version(),
 		SetCapability: append(ou.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
+	ctx := su.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -64,7 +64,7 @@ func TestUpdateUserTaskSameUserDefault(t *testing.T) {
 		Version:       u.User.Version(),
 		SetCapability: append(u.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -94,7 +94,7 @@ func TestUpdateUserTaskSameUserId(t *testing.T) {
 		Version:       u.User.Version(),
 		SetCapability: append(u.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -126,7 +126,7 @@ func TestUpdateUserTaskNoUpdate(t *testing.T) {
 		Version:       u.User.Version(),
 		SetCapability: nil,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -159,7 +159,7 @@ func TestUpdateUserTaskNoopNoUpdate(t *testing.T) {
 		Version:         u.User.Version(),
 		ClearCapability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts != nil {
 		t.Error("expected nil status", sts)
@@ -188,7 +188,7 @@ func TestUpdateUserTaskMissingCap(t *testing.T) {
 		Version:       su.User.Version(),
 		SetCapability: append(su.User.Capability, schema.User_USER_CREATE),
 	}
-	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
+	ctx := su.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected status", sts)
@@ -218,7 +218,7 @@ func TestUpdateUserTaskDupeCap(t *testing.T) {
 		SetCapability:   []schema.User_Capability{schema.User_USER_CREATE},
 		ClearCapability: []schema.User_Capability{schema.User_USER_CREATE},
 	}
-	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
+	ctx := su.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected status", sts)
@@ -245,7 +245,7 @@ func TestUpdateUserTaskWrongVersion(t *testing.T) {
 		Version:       0,
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
+	ctx := su.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)
@@ -272,7 +272,7 @@ func TestUpdateUserTaskMissingSubject(t *testing.T) {
 		Version:       su.User.Version(),
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserId(c.Ctx, -1)
+	ctx := CtxFromUserToken(c.Ctx, -1, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)
@@ -299,7 +299,7 @@ func TestUpdateUserTaskMissingObject(t *testing.T) {
 		Version:       0,
 		SetCapability: make([]schema.User_Capability, 0),
 	}
-	ctx := CtxFromUserId(c.Ctx, su.User.UserId)
+	ctx := su.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected nil status", sts)

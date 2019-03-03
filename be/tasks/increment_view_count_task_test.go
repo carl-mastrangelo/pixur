@@ -25,7 +25,7 @@ func TestPicViewCountUpdated(t *testing.T) {
 		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestPicViewCountFailsIfDeleted(t *testing.T) {
 		Now:   time.Now,
 		PicId: p.Pic.PicId,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts == nil {
 		t.Fatal("Expected an error")
 	} else {
