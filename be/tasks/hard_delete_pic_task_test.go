@@ -27,7 +27,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 
 		PicId: p.Pic.PicId,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -97,7 +97,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		PicId: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestHardDeleteFails(t *testing.T) {
 		PicId: p.Pic.PicId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts = new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("Expected error")

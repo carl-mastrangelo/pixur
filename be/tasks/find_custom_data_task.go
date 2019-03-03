@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -11,6 +12,7 @@ import (
 
 type FindCustomDataTask struct {
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	KeyType    int64
 	KeyPrefix  []int64
@@ -20,13 +22,18 @@ type FindCustomDataTask struct {
 }
 
 func (t *FindCustomDataTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, t.Capability...); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, t.Capability...); sts != nil {
 		return sts
 	}
 

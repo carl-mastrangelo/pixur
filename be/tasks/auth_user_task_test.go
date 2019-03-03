@@ -21,6 +21,7 @@ func TestAuthUserTaskFailsOnNoJob(t *testing.T) {
 	db.Close()
 	task := &AuthUserTask{
 		Beg:                    db,
+		Now:                    time.Now,
 		CompareHashAndPassword: bcrypt.CompareHashAndPassword,
 	}
 
@@ -118,6 +119,7 @@ func TestAuthUserTaskUpdatesExistingToken(t *testing.T) {
 
 	u := c.CreateUser()
 	u.User.NextTokenId = 2
+	u.User.UserToken = nil
 	u.User.UserToken = append(u.User.UserToken, &schema.UserToken{
 		TokenId:    1,
 		LastSeenTs: nil,
@@ -208,6 +210,8 @@ func TestAuthUserTaskCreatesNewToken(t *testing.T) {
 	defer c.Close()
 
 	u := c.CreateUser()
+	u.User.UserToken = nil
+
 	for i := 0; i < maxUserTokens; i++ {
 		u.User.NextTokenId++
 		u.User.UserToken = append(u.User.UserToken, &schema.UserToken{

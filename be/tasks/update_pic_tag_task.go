@@ -25,14 +25,18 @@ type UpdatePicTagTask struct {
 
 // TODO: test
 func (t *UpdatePicTagTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	_, sts := requireCapability(ctx, j, schema.User_PIC_TAG_EXTENSION_CREATE)
+	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_TAG_EXTENSION_CREATE); sts != nil {
 		return sts
 	}
 
@@ -76,7 +80,7 @@ func (t *UpdatePicTagTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	pt.Ext = t.Ext
-	pt.SetModifiedTime(t.Now())
+	pt.SetModifiedTime(now)
 
 	if err := j.UpdatePicTag(pt); err != nil {
 		return status.Internal(err, "can't update")

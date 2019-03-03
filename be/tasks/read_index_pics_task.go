@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"math"
+	"time"
 
 	wpb "github.com/golang/protobuf/ptypes/wrappers"
 
@@ -20,6 +21,7 @@ const (
 type ReadIndexPicsTask struct {
 	// Deps
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// Inputs
 	// Only get pics with Pic Id <= than this.  If unset, the latest pics will be returned.
@@ -112,18 +114,18 @@ func getMaxConf(requestedMax int64, confDefault, confMax *wpb.Int64Value) (max, 
 }
 
 func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "Unable to Begin TX")
-	}
-	defer revert(j, &stscap)
-
-	u, sts := requireCapability(ctx, j, schema.User_PIC_INDEX)
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}
+	defer revert(j, &stscap)
+
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_INDEX); sts != nil {
 		return sts
 	}
 

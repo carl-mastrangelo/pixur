@@ -42,7 +42,7 @@ func TestCreateUserWorkFlow(t *testing.T) {
 		Ext:          map[string]*any.Any{"key": userExt},
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if err := new(TaskRunner).Run(ctx, task); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestCreateUserCapabilityOverride(t *testing.T) {
 		Capability:   []schema.User_Capability{schema.User_USER_CREATE},
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -123,11 +123,12 @@ func TestCreateUserAlreadyUsed(t *testing.T) {
 	task := &CreateUserTask{
 		Beg:          c.DB(),
 		Ident:        u.User.Ident,
+		Now:          time.Now,
 		HashPassword: hashPassword,
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.AlreadyExists(nil, "ident already used")
 	compareStatus(t, sts, expected)
@@ -149,11 +150,12 @@ func TestCreateUserAlreadyUsedDifferentCase(t *testing.T) {
 	task := &CreateUserTask{
 		Beg:          c.DB(),
 		HashPassword: hashPassword,
+		Now:          time.Now,
 		Ident:        "LITTLE",
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.AlreadyExists(nil, "ident already used")
 	compareStatus(t, sts, expected)
@@ -174,11 +176,12 @@ func TestCreateUserIdentTooLong(t *testing.T) {
 	task := &CreateUserTask{
 		Beg:          c.DB(),
 		HashPassword: hashPassword,
+		Now:          time.Now,
 		Ident:        strings.Repeat("a", 22+1),
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		t.Fatal(sts)
@@ -205,11 +208,12 @@ func TestCreateUserIdentBogusBytes(t *testing.T) {
 	task := &CreateUserTask{
 		Beg:          c.DB(),
 		HashPassword: hashPassword,
+		Now:          time.Now,
 		Ident:        string([]byte{0xff}),
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "invalid ident utf8 text")
 	compareStatus(t, sts, expected)
@@ -230,11 +234,12 @@ func TestCreateUserIdentPrintOnly(t *testing.T) {
 	task := &CreateUserTask{
 		Beg:          c.DB(),
 		HashPassword: hashPassword,
+		Now:          time.Now,
 		Ident:        "\n",
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "unsupported newline")
 	compareStatus(t, sts, expected)
@@ -254,11 +259,12 @@ func TestCreateUserEmptyIdent(t *testing.T) {
 
 	task := &CreateUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		HashPassword: hashPassword,
 		Secret:       "secret",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "ident too short")
 	compareStatus(t, sts, expected)
@@ -278,10 +284,11 @@ func TestCreateUserEmptySecret(t *testing.T) {
 
 	task := &CreateUserTask{
 		Beg:          c.DB(),
+		Now:          time.Now,
 		HashPassword: hashPassword,
 		Ident:        "email",
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.InvalidArgument(nil, "missing secret")
 	compareStatus(t, sts, expected)
@@ -299,9 +306,10 @@ func TestCreateUserCantBegin(t *testing.T) {
 
 	task := &CreateUserTask{
 		Beg:          db,
+		Now:          time.Now,
 		HashPassword: hashPassword,
 	}
-	ctx := CtxFromUserId(c.Ctx, -1)
+	ctx := CtxFromUserToken(c.Ctx, -1, -1)
 	sts := new(TaskRunner).Run(ctx, task)
 	expected := status.Internal(nil, "can't create job")
 	compareStatus(t, sts, expected)

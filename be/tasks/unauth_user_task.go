@@ -24,14 +24,15 @@ type UnauthUserTask struct {
 }
 
 func (t *UnauthUserTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, _, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
 	var user *schema.User
-	nowts, err := ptypes.TimestampProto(t.Now())
+	nowts, err := ptypes.TimestampProto(now)
 	if err != nil {
 		status.Internal(err, "can't create timestamp")
 	}

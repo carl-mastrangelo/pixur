@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -14,6 +15,7 @@ import (
 type FindPicCommentVotesTask struct {
 	// Deps
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// Inputs
 	PicId        int64
@@ -25,17 +27,14 @@ type FindPicCommentVotesTask struct {
 }
 
 func (t *FindPicCommentVotesTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
 	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
-	}
-	su, sts := lookupUserForAuthOrNil(ctx, j, db.LockNone)
 	if sts != nil {
 		return sts
 	}

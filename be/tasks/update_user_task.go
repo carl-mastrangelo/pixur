@@ -30,13 +30,14 @@ type UpdateUserTask struct {
 }
 
 func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "Unable to Begin TX")
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockWrite, t.ObjectUserId)
+	ou, sts := lookupObjectUser(ctx, j, db.LockWrite, t.ObjectUserId, su)
 	if sts != nil {
 		return sts
 	}
@@ -45,6 +46,8 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 		return sts
 	}
 
+	// TODO: This will fail if it's the first call in a while, since the last seen time will be
+	// updated and not match the inputted version.  This should be fixed.
 	if ou.Version() != t.Version {
 		return status.Aborted(nil, "version mismatch")
 	}
@@ -101,7 +104,6 @@ func (t *UpdateUserTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	if changed {
-		now := t.Now()
 		ou.ModifiedTs = schema.ToTspb(now)
 
 		if err := j.UpdateUser(ou); err != nil {

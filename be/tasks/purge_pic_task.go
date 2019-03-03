@@ -24,13 +24,18 @@ type PurgePicTask struct {
 }
 
 func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, schema.User_PIC_PURGE); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_PURGE); sts != nil {
 		return sts
 	}
 
@@ -95,7 +100,6 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 		ts = append(ts, tags[0])
 	}
 
-	now := t.Now()
 	for _, t := range ts {
 		if t.UsageCount > 1 {
 			t.UsageCount--

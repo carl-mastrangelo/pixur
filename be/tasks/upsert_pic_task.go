@@ -66,14 +66,18 @@ type UpsertPicTask struct {
 func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	// destroy outputs incase this is a retry
 	t.CreatedPic, t.UnfilteredCreatedPic = nil, nil
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	u, sts := requireCapability(ctx, j, schema.User_PIC_CREATE)
+	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_CREATE); sts != nil {
 		return sts
 	}
 	var userId = schema.AnonymousUserId
@@ -81,10 +85,6 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		userId = u.UserId
 	}
 
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
-	}
 	var ext map[string]*any.Any
 	if len(t.Ext) != 0 {
 		if sts := validateCapability(u, conf, schema.User_PIC_EXTENSION_CREATE); sts != nil {
@@ -163,7 +163,6 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}()
 
-	now := t.Now()
 	nowts := schema.ToTspb(now)
 	// TODO: test this
 	pfs := &schema.Pic_FileSource{

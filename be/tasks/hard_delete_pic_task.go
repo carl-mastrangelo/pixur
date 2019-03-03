@@ -24,18 +24,20 @@ type HardDeletePicTask struct {
 }
 
 func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
-	}
-	defer revert(j, &stscap)
-
-	u, sts := requireCapability(ctx, j, schema.User_PIC_HARD_DELETE)
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}
-	// TODO: record this
-	_ = u
+	defer revert(j, &stscap)
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_HARD_DELETE); sts != nil {
+		return sts
+	}
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicId},
@@ -50,7 +52,6 @@ func (t *HardDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 	p := pics[0]
 
-	now := t.Now()
 	nowpb := schema.ToTspb(now)
 
 	if p.DeletionStatus == nil {

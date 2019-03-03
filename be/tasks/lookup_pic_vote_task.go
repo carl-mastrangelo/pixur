@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -14,6 +15,7 @@ import (
 type LookupPicVoteTask struct {
 	// Deps
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// Inputs
 	PicId        int64
@@ -24,24 +26,25 @@ type LookupPicVoteTask struct {
 }
 
 func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
+	ou, sts := lookupObjectUser(ctx, j, db.LockNone, t.ObjectUserId, su)
+	if sts != nil {
+		return sts
+	}
+
+	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
 	}
 	neededCapability := schema.User_USER_READ_ALL
 	if su == ou {
 		neededCapability = schema.User_USER_READ_SELF
-	}
-
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
 	}
 	if sts := validateCapability(su, conf, neededCapability); sts != nil {
 		return sts

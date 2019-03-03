@@ -20,13 +20,18 @@ type IncrementViewCountTask struct {
 }
 
 func (t *IncrementViewCountTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, schema.User_PIC_UPDATE_VIEW_COUNTER); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_UPDATE_VIEW_COUNTER); sts != nil {
 		return sts
 	}
 
@@ -49,7 +54,7 @@ func (t *IncrementViewCountTask) Run(ctx context.Context) (stscap status.S) {
 
 	// TODO: This needs some sort of debouncing to avoid being run up.
 	p.ViewCount++
-	p.SetModifiedTime(t.Now())
+	p.SetModifiedTime(now)
 
 	if err := j.UpdatePic(p); err != nil {
 		return status.Internal(err, "can't update pic")

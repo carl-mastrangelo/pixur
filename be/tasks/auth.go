@@ -119,53 +119,6 @@ func validateAndUpdateUserAndToken(j *tab.Job, userId, tokenId int64, lk db.Lock
 	return u, updated, nil
 }
 
-// lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
-func lookupUserForAuthOrNil(ctx context.Context, j *tab.Job, lk db.Lock) (*schema.User, status.S) {
-	if tok, ok := UserTokenFromCtx(ctx); ok {
-		us, err := j.FindUsers(db.Opts{
-			Prefix: tab.UsersPrimary{&tok.UserId},
-			Lock:   lk,
-		})
-		if err != nil {
-			return nil, status.Internal(err, "can't lookup user")
-		}
-		if len(us) != 1 {
-			return nil, status.Unauthenticated(nil, "can't lookup user")
-		}
-		u := us[0]
-		if sts := validateUserTokenId(tok.TokenId, u); sts != nil {
-			return nil, sts
-		}
-		return u, nil
-	}
-	return nil, nil
-}
-
-// requireCapability ensures the user in the context has the requested capabilities.  If there
-// is no user, the anonymous user capabilities are used.
-func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capability) (
-	*schema.User, status.S) {
-	u, sts := lookupUserForAuthOrNil(ctx, j, db.LockNone)
-	if sts != nil {
-		return nil, sts
-	}
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return nil, sts
-	}
-	return u, validateCapability(u, conf, caps...)
-}
-
-// TODO: remove once lookupUserForAuthOrNil is removed
-func validateUserTokenId(tokenId int64, u *schema.User) status.S {
-	for _, ut := range u.UserToken {
-		if ut.TokenId == tokenId {
-			return nil
-		}
-	}
-	return status.Unauthenticated(nil, "token id has been deleted")
-}
-
 // validateCapability ensures the given user has the requested permissions.  If the user is nil,
 // the anonymous user is used from the given configuration.  At least one of `u` or `conf` must
 // not be nil.
@@ -203,7 +156,9 @@ func deriveObjectUserId(objectUserId int64, subjectUser *schema.User) (int64, st
 	}
 }
 
-// lookupObjectUser returns the user for objectUserId, or subjectUser if it has the same UserId
+// lookupObjectUser returns the user for objectUserId, or subjectUser if it has the same UserId.
+// The subject user may be nil, but the returned object user will not be nil.  If the subject user
+// has the same user id as the object user, the returned user will be identical to subjectUser.
 func lookupObjectUser(
 	ctx context.Context, j *tab.Job, lk db.Lock, objectUserId int64, subjectUser *schema.User) (
 	*schema.User, status.S) {
@@ -225,20 +180,4 @@ func lookupObjectUser(
 		return nil, status.NotFound(nil, "can't lookup user")
 	}
 	return us[0], nil
-}
-
-// lookupSubjectObjectUsers finds the subject and object user, typically from task input.  The
-// subject user may be nil, but the object user will not be nil.  If the subject user has the
-// same user id as the object user, they will be identical pointers.
-func lookupSubjectObjectUsers(ctx context.Context, j *tab.Job, lk db.Lock, objectUserId int64) (
-	subjectUser, objectUser *schema.User, stscap status.S) {
-	su, sts := lookupUserForAuthOrNil(ctx, j, lk)
-	if sts != nil {
-		return nil, nil, sts
-	}
-	ou, sts := lookupObjectUser(ctx, j, lk, objectUserId, su)
-	if sts != nil {
-		return nil, nil, sts
-	}
-	return su, ou, sts
 }

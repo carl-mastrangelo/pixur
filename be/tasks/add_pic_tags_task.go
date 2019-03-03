@@ -28,16 +28,21 @@ type AddPicTagsTask struct {
 
 // TODO: add tests
 func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
-	}
-	defer revert(j, &stscap)
-
-	u, sts := requireCapability(ctx, j, schema.User_PIC_TAG_CREATE)
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}
+	defer revert(j, &stscap)
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_TAG_CREATE); sts != nil {
+		return sts
+	}
+
 	userId := schema.AnonymousUserId
 	if u != nil {
 		// TODO: test
@@ -60,11 +65,6 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 		return status.InvalidArgument(nil, "can't tag deleted pic")
 	}
 
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
-	}
-
 	var minTagLen, maxTagLen int64
 	if conf.MinTagLength != nil {
 		minTagLen = conf.MinTagLength.Value
@@ -78,7 +78,7 @@ func (t *AddPicTagsTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	upsertedTagIds, sts :=
-		upsertTags(j, t.TagNames, p.PicId, t.Now(), userId, minTagLen, maxTagLen)
+		upsertTags(j, t.TagNames, p.PicId, now, userId, minTagLen, maxTagLen)
 	if sts != nil {
 		return sts
 	}

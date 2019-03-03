@@ -25,13 +25,14 @@ type LookupUserTask struct {
 }
 
 func (t *LookupUserTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
+	ou, sts := lookupObjectUser(ctx, j, db.LockNone, t.ObjectUserId, su)
 	if sts != nil {
 		return sts
 	}

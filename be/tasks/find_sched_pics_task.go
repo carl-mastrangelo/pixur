@@ -26,13 +26,19 @@ type FindSchedPicsTask struct {
 
 // TODO: add tests
 func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockNone, t.ObjectUserId)
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+
+	ou, sts := lookupObjectUser(ctx, j, db.LockNone, t.ObjectUserId, su)
 	if sts != nil {
 		return sts
 	}
@@ -45,10 +51,7 @@ func (t *FindSchedPicsTask) Run(ctx context.Context) (stscap status.S) {
 	} else {
 		cs.Add(schema.User_USER_READ_ALL)
 	}
-	conf, sts := GetConfiguration(ctx)
-	if sts != nil {
-		return sts
-	}
+
 	if sts := validateCapSet(su, conf, cs); sts != nil {
 		return sts
 	}

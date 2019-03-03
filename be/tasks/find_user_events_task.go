@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"math"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -12,6 +13,7 @@ import (
 
 type FindUserEventsTask struct {
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// Input
 	MaxUserEvents                           int64
@@ -26,16 +28,18 @@ type FindUserEventsTask struct {
 }
 
 func (t *FindUserEventsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
-	}
-	defer revert(j, &stscap)
-
-	su, ou, sts := lookupSubjectObjectUsers(ctx, j, db.LockRead, t.ObjectUserId)
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}
+	defer revert(j, &stscap)
+
+	ou, sts := lookupObjectUser(ctx, j, db.LockRead, t.ObjectUserId, su)
+	if sts != nil {
+		return sts
+	}
+
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts

@@ -40,20 +40,21 @@ type CreateUserTask struct {
 
 func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 	var err error
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
-	}
-	defer revert(j, &stscap)
-
-	if _, sts := requireCapability(ctx, j, schema.User_USER_CREATE); sts != nil {
+	now := t.Now()
+	j, su, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
 		return sts
 	}
+	defer revert(j, &stscap)
 
 	conf, sts := GetConfiguration(ctx)
 	if sts != nil {
 		return sts
 	}
+	if sts := validateCapability(su, conf, schema.User_USER_CREATE); sts != nil {
+		return sts
+	}
+
 	var minIdentLen, maxIdentLen int64
 	if conf.MinIdentLength != nil {
 		minIdentLen = conf.MinIdentLength.Value
@@ -110,7 +111,6 @@ func (t *CreateUserTask) Run(ctx context.Context) (stscap status.S) {
 		newcap = conf.NewUserCapability.Capability
 	}
 
-	now := t.Now()
 	user := &schema.User{
 		UserId: userId,
 		Secret: hashed,

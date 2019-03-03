@@ -35,7 +35,7 @@ func TestAddPicTags_TagsCollapsed(t *testing.T) {
 		TagNames: []string{"  Blooper  ", strings.ToUpper(tt.Tag.Name)},
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}

@@ -34,19 +34,20 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 	if t.Reason == schema.Pic_DeletionStatus_UNKNOWN {
 		return status.Internal(nil, "Invalid deletion reason", t.Reason)
 	}
-
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
-	}
-	defer revert(j, &stscap)
-
-	u, sts := requireCapability(ctx, j, schema.User_PIC_SOFT_DELETE)
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}
-	// TODO: use this
-	_ = u
+	defer revert(j, &stscap)
+
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_SOFT_DELETE); sts != nil {
+		return sts
+	}
 
 	pics, err := j.FindPics(db.Opts{
 		Prefix: tab.PicsPrimary{&t.PicId},
@@ -60,8 +61,6 @@ func (t *SoftDeletePicTask) Run(ctx context.Context) (stscap status.S) {
 		return status.NotFound(nil, "can't lookup pic")
 	}
 	p := pics[0]
-
-	now := t.Now()
 
 	if p.DeletionStatus != nil {
 		if p.HardDeleted() {

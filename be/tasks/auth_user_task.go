@@ -41,18 +41,15 @@ const (
 )
 
 func (t *AuthUserTask) Run(ctx context.Context) (stscap status.S) {
-	if ctx == nil {
-		return status.Internal(nil, "missing context")
-	}
-
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, _, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
 	var user *schema.User
-	nowts, err := ptypes.TimestampProto(t.Now())
+	nowts, err := ptypes.TimestampProto(now)
 	if err != nil {
 		status.Internal(err, "can't create timestamp")
 	}
@@ -181,6 +178,12 @@ func (uts userTokens) Len() int {
 }
 
 func (uts userTokens) Less(i, k int) bool {
+	if uts[i].LastSeenTs == nil {
+		return false
+	}
+	if uts[k].LastSeenTs == nil {
+		return true
+	}
 	if uts[i].LastSeenTs.Seconds < uts[k].LastSeenTs.Seconds {
 		return true
 	} else if uts[i].LastSeenTs.Seconds == uts[k].LastSeenTs.Seconds {

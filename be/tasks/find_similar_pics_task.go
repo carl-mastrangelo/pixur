@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/binary"
+	"time"
 
 	"pixur.org/pixur/be/schema"
 	"pixur.org/pixur/be/schema/db"
@@ -15,6 +16,7 @@ import (
 type FindSimilarPicsTask struct {
 	// Deps
 	Beg tab.JobBeginner
+	Now func() time.Time
 
 	// Inputs
 	PicId int64
@@ -24,13 +26,18 @@ type FindSimilarPicsTask struct {
 }
 
 func (t *FindSimilarPicsTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create new job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, schema.User_PIC_INDEX); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, schema.User_PIC_INDEX); sts != nil {
 		return sts
 	}
 

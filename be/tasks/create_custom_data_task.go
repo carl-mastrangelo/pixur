@@ -22,18 +22,22 @@ type CreateCustomDataTask struct {
 }
 
 func (t *CreateCustomDataTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
-	if _, sts := requireCapability(ctx, j, t.Capability...); sts != nil {
+	conf, sts := GetConfiguration(ctx)
+	if sts != nil {
+		return sts
+	}
+	if sts := validateCapability(u, conf, t.Capability...); sts != nil {
 		return sts
 	}
 
-	now := t.Now()
-	_, sts := createCustomData(j, t.KeyType, t.Key1, t.Key2, t.Key3, t.Key4, t.Key5, now, t.Data)
+	_, sts = createCustomData(j, t.KeyType, t.Key1, t.Key2, t.Key3, t.Key4, t.Key5, now, t.Data)
 	if sts != nil {
 		return sts
 	}
