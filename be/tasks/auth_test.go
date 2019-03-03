@@ -109,11 +109,12 @@ func TestAuthedJob_userUpdate(t *testing.T) {
 	if u2 == nil {
 		t.Error("expected user")
 	}
-	// While no user, we should be able to commit the valid job.
-	if err := j.Commit(); err != nil {
-		t.Error("can't commit", err)
+	// A rollback should not affect the user update
+	if err := j.Rollback(); err != nil {
+		t.Error("can't rollback", err)
 	}
-	if !proto.Equal(u2, u.User) {
+	// this is easier to check than the token
+	if !proto.Equal(u2.LastSeenTs, u.User.LastSeenTs) {
 		t.Error("users don't match", u2, u.User)
 	}
 }
