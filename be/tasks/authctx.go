@@ -7,16 +7,16 @@ import (
 type userTokenKey struct{}
 
 type UserToken struct {
-  UserId int64
-  TokenId int64
+	UserId  int64
+	TokenId int64
 }
 
 type authTokenKey struct{}
 
 func CtxFromUserToken(ctx context.Context, userId, tokenId int64) context.Context {
 	return context.WithValue(ctx, userTokenKey{}, &UserToken{
-	  UserId: userId,
-	  TokenId: tokenId,
+		UserId:  userId,
+		TokenId: tokenId,
 	})
 }
 
@@ -35,5 +35,5 @@ func AuthTokenFromCtx(ctx context.Context) (token string, ok bool) {
 }
 
 func CtxFromUserId(ctx context.Context, userId int64) context.Context {
-  panic("do not call")
+	panic("do not call")
 }

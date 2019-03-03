@@ -3,7 +3,7 @@ package tasks
 import (
 	"context"
 	"time"
-	
+
 	"github.com/golang/protobuf/ptypes"
 
 	"pixur.org/pixur/be/schema"
@@ -15,104 +15,104 @@ import (
 const lastSeenUpdateThreshold = 24 * time.Hour
 
 func authedJob(ctx context.Context, beg tab.JobBeginner, now time.Time) (
-  _ *tab.Job, _ *schema.User, stscap status.S) {
+	_ *tab.Job, _ *schema.User, stscap status.S) {
 	j, err := tab.NewJob(ctx, beg)
 	if err != nil {
 		return nil, nil, status.Internal(err, "can't create job")
 	}
 	rollback := true
 	defer func() {
-	  if rollback {
-	    if sts := j.Rollback(); sts != nil {
-	      status.ReplaceOrSuppress(&stscap, status.From(sts))
-	    } 
-	  }
+		if rollback {
+			if sts := j.Rollback(); sts != nil {
+				status.ReplaceOrSuppress(&stscap, status.From(sts))
+			}
+		}
 	}()
-	
-  tok, present := UserTokenFromCtx(ctx)
-  if !present {
-    rollback = false
-	  return j, nil, nil 
-  }
-  u, updated, sts := validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockNone, now)
-  if sts != nil {
-    return nil, nil, sts
-  }
-  if updated {
-    u, updated, sts = validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockWrite, now)
-    if sts != nil {
-      return nil, nil, sts
-    }
-    if !updated {
-      // I don't think this is technically possible, but just in case.
-      return nil, nil, status.Internal(nil, "unexpected non snapshot read during update")
-    }
-    if err := j.UpdateUser(u); err != nil {
-      return nil, nil, status.Internal(err, "can't update user")
-    }
-    if err := j.Commit(); err != nil {
-      return nil, nil, status.Internal(err, "can't commit")
-    }
-    rollback = false
-	  j, err = tab.NewJob(ctx, beg)
-	  if err != nil {
-		  return nil, nil, status.Internal(err, "can't create job")
-	  }
-  } else {
-    rollback = false
-  }
-  return j, u, nil
+
+	tok, present := UserTokenFromCtx(ctx)
+	if !present {
+		rollback = false
+		return j, nil, nil
+	}
+	u, updated, sts := validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockNone, now)
+	if sts != nil {
+		return nil, nil, sts
+	}
+	if updated {
+		u, updated, sts = validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockWrite, now)
+		if sts != nil {
+			return nil, nil, sts
+		}
+		if !updated {
+			// I don't think this is technically possible, but just in case.
+			return nil, nil, status.Internal(nil, "unexpected non snapshot read during update")
+		}
+		if err := j.UpdateUser(u); err != nil {
+			return nil, nil, status.Internal(err, "can't update user")
+		}
+		if err := j.Commit(); err != nil {
+			return nil, nil, status.Internal(err, "can't commit")
+		}
+		rollback = false
+		j, err = tab.NewJob(ctx, beg)
+		if err != nil {
+			return nil, nil, status.Internal(err, "can't create job")
+		}
+	} else {
+		rollback = false
+	}
+	return j, u, nil
 }
 
 func validateAndUpdateUserAndToken(j *tab.Job, userId, tokenId int64, lk db.Lock, now time.Time) (
-  *schema.User, bool, status.S) {
+	*schema.User, bool, status.S) {
 	us, err := j.FindUsers(db.Opts{
-	  Prefix: tab.UsersPrimary{&userId},
-	  Lock:   lk,
+		Prefix: tab.UsersPrimary{&userId},
+		Lock:   lk,
 	})
 	if err != nil {
-	  return nil, false, status.Internal(err, "can't find users")
-  }
-  if len(us) != 1 {
-	  return nil, false, status.Unauthenticated(nil, "can't lookup user")
-  }
-  u := us[0]
-  tokenIdx := -1
-  for i, ut := range u.UserToken {
-    if ut.TokenId == tokenId {
-      tokenIdx = i
-      break
-    }
-  }
-  if tokenIdx == -1 {
-    return nil, false, status.Unauthenticated(nil, "token id has been deleted")
-  }
-  nowts, err := ptypes.TimestampProto(now)
-  if err != nil {
-    return nil, false, status.Internal(err, "can't get now ts")
-  }
-  ut := u.UserToken[tokenIdx]
-  utLastSeen, err := ptypes.Timestamp(ut.LastSeenTs)
-  if err != nil {
-    return nil, false, status.Internal(err, "can't get token ts")
-  }
-  var updated bool
-  if now.Add(-lastSeenUpdateThreshold).After(utLastSeen) {
-    ut.LastSeenTs = nowts
-    updated = true
-  }
-  uLastSeen, err := ptypes.Timestamp(u.LastSeenTs)
-  if err != nil {
-    return nil, false, status.Internal(err, "can't get user ts")
-  }
-  if now.Add(-lastSeenUpdateThreshold).After(uLastSeen) {
-    u.LastSeenTs = nowts
-    updated = true
-  }
-  if updated {
-    u.ModifiedTs = nowts
-  }
-  return u, updated, nil
+		return nil, false, status.Internal(err, "can't find users")
+	}
+	if len(us) != 1 {
+		return nil, false, status.Unauthenticated(nil, "can't lookup user")
+	}
+	u := us[0]
+	tokenIdx := -1
+	for i, ut := range u.UserToken {
+		if ut.TokenId == tokenId {
+			tokenIdx = i
+			break
+		}
+	}
+	if tokenIdx == -1 {
+		return nil, false, status.Unauthenticated(nil, "token id has been deleted")
+	}
+	nowts, err := ptypes.TimestampProto(now)
+	if err != nil {
+		return nil, false, status.Internal(err, "can't get now ts")
+	}
+	ut := u.UserToken[tokenIdx]
+	utLastSeen, err := ptypes.Timestamp(ut.LastSeenTs)
+	if err != nil {
+		return nil, false, status.Internal(err, "can't get token ts")
+	}
+	var updated bool
+	if now.Add(-lastSeenUpdateThreshold).After(utLastSeen) {
+		ut.LastSeenTs = nowts
+		updated = true
+	}
+	uLastSeen, err := ptypes.Timestamp(u.LastSeenTs)
+	if err != nil {
+		return nil, false, status.Internal(err, "can't get user ts")
+	}
+	if now.Add(-lastSeenUpdateThreshold).After(uLastSeen) {
+		u.LastSeenTs = nowts
+		updated = true
+	}
+	if updated {
+		u.ModifiedTs = nowts
+	}
+	return u, updated, nil
 }
 
 // lookupUserForAuthOrNil returns the user for the context user id, or nil if absent
