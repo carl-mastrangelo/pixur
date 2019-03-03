@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	tspb "github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 
 	"pixur.org/pixur/be/schema"
@@ -221,8 +222,9 @@ func TestValidateAndUpdateUserAndToken_badUtLastSeen(t *testing.T) {
 
 	u := c.CreateUser()
 	u.User.UserToken = append(u.User.UserToken, &schema.UserToken{
-		TokenId:   2,
-		CreatedTs: schema.ToTspb(now),
+		TokenId:    2,
+		CreatedTs:  schema.ToTspb(now),
+		LastSeenTs: &tspb.Timestamp{Seconds: 1 << 62},
 	})
 	u.User.LastSeenTs = schema.ToTspb(now)
 	u.Update()
@@ -255,6 +257,7 @@ func TestValidateAndUpdateUserAndToken_badULastSeen(t *testing.T) {
 		CreatedTs:  schema.ToTspb(now),
 		LastSeenTs: schema.ToTspb(now),
 	})
+	u.User.LastSeenTs = &tspb.Timestamp{Seconds: 1 << 62}
 	u.Update()
 
 	j := c.Job()

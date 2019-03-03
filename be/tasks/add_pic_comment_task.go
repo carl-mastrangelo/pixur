@@ -33,9 +33,10 @@ type AddPicCommentTask struct {
 }
 
 func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
-	j, err := tab.NewJob(ctx, t.Beg)
-	if err != nil {
-		return status.Internal(err, "can't create job")
+	now := t.Now()
+	j, u, sts := authedJob(ctx, t.Beg, now)
+	if sts != nil {
+		return sts
 	}
 	defer revert(j, &stscap)
 
@@ -59,8 +60,7 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		return status.From(err)
 	}
 
-	u, sts := requireCapability(ctx, j, schema.User_PIC_COMMENT_CREATE)
-	if sts != nil {
+	if sts := validateCapability(u, conf, schema.User_PIC_COMMENT_CREATE); sts != nil {
 		return sts
 	}
 	userId := schema.AnonymousUserId
@@ -138,7 +138,6 @@ func (t *AddPicCommentTask) Run(ctx context.Context) (stscap status.S) {
 		Ext:             t.Ext,
 	}
 
-	now := t.Now()
 	pc.SetCreatedTime(now)
 	pc.SetModifiedTime(now)
 

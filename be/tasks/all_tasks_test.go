@@ -519,6 +519,7 @@ type TestUser struct {
 
 func (c *TestContainer) CreateUser() *TestUser {
 	now := time.Now()
+	nowts := schema.ToTspb(now)
 	id := c.Id()
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte("secret"), bcrypt.MinCost)
@@ -533,6 +534,11 @@ func (c *TestContainer) CreateUser() *TestUser {
 	}
 	u.SetCreatedTime(now)
 	u.SetModifiedTime(now)
+	u.UserToken = append(u.UserToken, &schema.UserToken{
+		TokenId:    1,
+		CreatedTs:  nowts,
+		LastSeenTs: nowts,
+	})
 	c.AutoJob(func(j *tab.Job) error {
 		return j.InsertUser(u)
 	})
@@ -540,6 +546,10 @@ func (c *TestContainer) CreateUser() *TestUser {
 		User: u,
 		c:    c,
 	}
+}
+
+func (u *TestUser) AuthedCtx(ctx context.Context) context.Context {
+	return CtxFromUserToken(ctx, u.User.UserId, u.User.UserToken[0].TokenId)
 }
 
 func (u *TestUser) Update() {

@@ -31,7 +31,7 @@ func TestAddPicCommentTaskWorkFlow(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -107,7 +107,7 @@ func TestAddPicCommentTaskWorkFlowWithParent(t *testing.T) {
 		Text:            "hi",
 		CommentParentId: parent.PicComment.CommentId,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -150,7 +150,7 @@ func TestAddPicCommentTask_MissingPic(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -176,7 +176,7 @@ func TestAddPicCommentTaskWork_MissingPermission(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -205,7 +205,7 @@ func TestAddPicCommentTaskWork_MissingPermissionExt(t *testing.T) {
 		Now:   time.Now,
 		Ext:   map[string]*anypb.Any{"foo": nil},
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Fatal("expected non-nil status")
@@ -243,7 +243,7 @@ func TestAddPicCommentTaskWork_CantCommentOnHardDeleted(t *testing.T) {
 		Beg:   c.DB(),
 		Now:   time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -328,7 +328,7 @@ func TestAddPicCommentTask_BadParent(t *testing.T) {
 		Beg:             c.DB(),
 		Now:             time.Now,
 	}
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	sts := new(TaskRunner).Run(ctx, task)
 	if sts == nil {
 		t.Error("expected non-nil status")
@@ -364,7 +364,7 @@ func TestAddPicComment_SelfReplyAllowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserId(ctx, u.User.UserId)
+	ctx = u.AuthedCtx(ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -423,7 +423,7 @@ func TestAddPicComment_SelfReplyDisallowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserId(ctx, u.User.UserId)
+	ctx = u.AuthedCtx(ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -471,7 +471,7 @@ func TestAddPicComment_SiblingReplyAllowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserId(ctx, u.User.UserId)
+	ctx = u.AuthedCtx(ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -528,7 +528,7 @@ func TestAddPicComment_SiblingReplyDisallowed(t *testing.T) {
 		Now:   time.Now,
 		Text:  "hi",
 	}
-	ctx = CtxFromUserId(ctx, u.User.UserId)
+	ctx = u.AuthedCtx(ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -588,7 +588,7 @@ func TestAddPicComment_Notification_Author_CommentParent(t *testing.T) {
 		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -672,7 +672,7 @@ func TestAddPicComment_Notification_Author_AnonCommentParent(t *testing.T) {
 		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -741,7 +741,7 @@ func TestAddPicComment_Notification_Author_AuthorCommentParent(t *testing.T) {
 		CommentParentId: pc.PicComment.CommentId,
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -923,7 +923,7 @@ func TestAddPicComment_Notification_Author_AnonPicParent(t *testing.T) {
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -1020,7 +1020,7 @@ func TestAddPicComment_Notification_Author_PicParent(t *testing.T) {
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}
@@ -1097,7 +1097,7 @@ func TestAddPicComment_Notification_Author_AuthorPicParent(t *testing.T) {
 		Text:  "hi",
 	}
 
-	ctx := CtxFromUserId(c.Ctx, u.User.UserId)
+	ctx := u.AuthedCtx(c.Ctx)
 	if sts := new(TaskRunner).Run(ctx, task); sts != nil {
 		t.Fatal(sts)
 	}

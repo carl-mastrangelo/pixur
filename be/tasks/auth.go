@@ -92,22 +92,26 @@ func validateAndUpdateUserAndToken(j *tab.Job, userId, tokenId int64, lk db.Lock
 		return nil, false, status.Internal(err, "can't get now ts")
 	}
 	ut := u.UserToken[tokenIdx]
-	utLastSeen, err := ptypes.Timestamp(ut.LastSeenTs)
-	if err != nil {
-		return nil, false, status.Internal(err, "can't get token ts")
-	}
 	var updated bool
-	if now.Add(-lastSeenUpdateThreshold).After(utLastSeen) {
-		ut.LastSeenTs = nowts
-		updated = true
+	if ut.LastSeenTs != nil {
+		utLastSeen, err := ptypes.Timestamp(ut.LastSeenTs)
+		if err != nil {
+			return nil, false, status.Internal(err, "can't get token ts")
+		}
+		if now.Add(-lastSeenUpdateThreshold).After(utLastSeen) {
+			ut.LastSeenTs = nowts
+			updated = true
+		}
 	}
-	uLastSeen, err := ptypes.Timestamp(u.LastSeenTs)
-	if err != nil {
-		return nil, false, status.Internal(err, "can't get user ts")
-	}
-	if now.Add(-lastSeenUpdateThreshold).After(uLastSeen) {
-		u.LastSeenTs = nowts
-		updated = true
+	if u.LastSeenTs != nil {
+		uLastSeen, err := ptypes.Timestamp(u.LastSeenTs)
+		if err != nil {
+			return nil, false, status.Internal(err, "can't get user ts")
+		}
+		if now.Add(-lastSeenUpdateThreshold).After(uLastSeen) {
+			u.LastSeenTs = nowts
+			updated = true
+		}
 	}
 	if updated {
 		u.ModifiedTs = nowts
@@ -152,6 +156,7 @@ func requireCapability(ctx context.Context, j *tab.Job, caps ...schema.User_Capa
 	return u, validateCapability(u, conf, caps...)
 }
 
+// TODO: remove once lookupUserForAuthOrNil is removed
 func validateUserTokenId(tokenId int64, u *schema.User) status.S {
 	for _, ut := range u.UserToken {
 		if ut.TokenId == tokenId {
