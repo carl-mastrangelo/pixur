@@ -65,7 +65,7 @@ func perPic(p *schema.Pic, db sdb.DB, pixPath string) error {
 	}
 	runner := new(tasks.TaskRunner)
 	// TODO: use real userid
-	if err := runner.Run(tasks.CtxFromUserId(context.TODO(), -12345), task); err != nil {
+	if err := runner.Run(tasks.CtxFromUserToken(context.TODO(), -12345, -12345), task); err != nil {
 		return err
 	}
 
