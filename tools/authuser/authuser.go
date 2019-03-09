@@ -28,14 +28,14 @@ func run(ctx context.Context, spec string) error {
 	defer ch.Close()
 	client := api.NewPixurServiceClient(ch)
 
-	fmt.Print("User Ident (e.g. foo@bar.com): ")
+	fmt.Fprint(os.Stderr, "User Ident (e.g. foo@bar.com): ")
 	data, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil {
 		return err
 	}
 	ident := string(data[:len(data)-1])
 
-	fmt.Print("Admin Secret Password (e.g. 12345): ")
+	fmt.Fprint(os.Stderr, "Admin Secret Password (e.g. 12345): ")
 	secret, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return err
@@ -49,7 +49,8 @@ func run(ctx context.Context, spec string) error {
 		return err
 	}
 
-	fmt.Println(res)
+	fmt.Fprint(os.Stdout, res)
+	fmt.Fprint(os.Stderr, "\nSuccess!\n")
 	return nil
 }
 
