@@ -9,6 +9,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/ssh/terminal"
 	"google.golang.org/grpc"
 
@@ -16,9 +17,9 @@ import (
 )
 
 // Sample usage:
-// go run authuser.go '--spec=dns:///localhost:8889' > ~/.pxrtoken.pb.txt
+// go run authuser.go '--target=dns:///localhost:8889' > ~/.pxrtoken.pb.txt
 
-var flagSpec = flag.String("spec", "", "The Pixur gRPC server address")
+var flagSpec = flag.String("target", "", "The Pixur gRPC server address")
 
 func run(ctx context.Context, spec string) error {
 	ch, err := grpc.DialContext(ctx, spec, grpc.WithInsecure())
@@ -49,7 +50,7 @@ func run(ctx context.Context, spec string) error {
 		return err
 	}
 
-	fmt.Fprint(os.Stdout, res)
+	fmt.Fprint(os.Stdout, (&proto.TextMarshaler{ExpandAny: true}).Text(res))
 	fmt.Fprint(os.Stderr, "\nSuccess!\n")
 	return nil
 }
