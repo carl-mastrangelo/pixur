@@ -10,7 +10,7 @@ import "api/data.proto";
 // Config describes configuration used for command line tools.
 message Config {
 	// Pixur API server target
-	string pixur_spec = 1;
+	string pixur_target = 1;
 	
 	string auth_token = 2;
 	string pix_token = 3;
