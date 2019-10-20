@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pixur.tools.config;
+
+option go_package = "pixur.org/pixur/tools/config;config";
+
+import "api/data.proto";
+
+
+// Config describes configuration used for command line tools.
+message Config {
+	// Pixur API server target
+	string pixur_spec = 1;
+	
+	string auth_token = 2;
+	string pix_token = 3;
+	api.PwtPayload auth_payload = 4;
+	api.PwtPayload pix_payload = 5;
+}
+
