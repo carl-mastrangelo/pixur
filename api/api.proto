@@ -304,6 +304,8 @@ message UpsertPicRequest {
 	// backend already has a pic with a matching md5_hash, it may not use
 	// either data or url (at least one must still be specified, though).
 	bytes md5_hash = 4;
+	// Optional extension data.  You must have the correct permissions to set this.
+	map<string, google.protobuf.Any> ext = 6;
 }
 
 message UpsertPicResponse {
@@ -360,7 +362,7 @@ message HttpHeader {
 
 service PixurService {
   option (pixur.api.pixur_service_opts) = {
-    api_version: 20190224 // AUTO UPDATED BY generate.go
+    api_version: 20191022 // AUTO UPDATED BY generate.go
     auth_token_header_key: "pixur-auth-token"
     pix_token_header_key: "pixur-pix-token"
     http_header_key: "pixur-http-header-bin"
