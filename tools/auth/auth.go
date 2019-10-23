@@ -30,7 +30,7 @@ const (
 )
 
 // cc is optional
-func Auth(ctx context.Context, cc *grpc.ClientConn) (context.Context, status.S) {
+func Auth(ctx context.Context, cc **grpc.ClientConn) (context.Context, status.S) {
 	conf, sts := getAndUpdateConfig(ctx, cc)
 	if sts != nil {
 		return nil, sts
@@ -46,7 +46,7 @@ func Auth(ctx context.Context, cc *grpc.ClientConn) (context.Context, status.S) 
 	return metadata.NewOutgoingContext(ctx, md), nil
 }
 
-func getAndUpdateConfig(ctx context.Context, cc *grpc.ClientConn) (
+func getAndUpdateConfig(ctx context.Context, cc **grpc.ClientConn) (
 	_ *config.Config, stscap status.S) {
 	oldconf, sts := config.GetConfig()
 	if sts != nil {
@@ -100,7 +100,7 @@ func shouldRefresh(now func() time.Time, notAfter, softNotAfter *tspb.Timestamp)
 	return false, false, nil
 }
 
-func updateConfig(ctx context.Context, cc *grpc.ClientConn, conf *config.Config) (stscap status.S) {
+func updateConfig(ctx context.Context, cc **grpc.ClientConn, conf *config.Config) (stscap status.S) {
 	var (
 		useToken bool
 		useCreds bool = true
@@ -117,7 +117,8 @@ func updateConfig(ctx context.Context, cc *grpc.ClientConn, conf *config.Config)
 		}
 	}
 
-	if cc == nil {
+	var conn *grpc.ClientConn
+	if cc == nil || *cc == nil {
 		if conf.PixurTarget == "" {
 			target, sts := getTargetFromTerm(os.Stderr, os.Stdin)
 			if sts != nil {
@@ -126,20 +127,25 @@ func updateConfig(ctx context.Context, cc *grpc.ClientConn, conf *config.Config)
 			conf.PixurTarget = target
 		}
 		var err error
-		cc, err = grpc.DialContext(ctx, conf.PixurTarget, grpc.WithInsecure())
+		conn, err = grpc.DialContext(ctx, conf.PixurTarget, grpc.WithInsecure())
 		if err != nil {
 			return status.From(err)
 		}
-		defer func() {
-			if cc != nil {
-				if err := cc.Close(); err != nil {
+		if cc != nil {
+			*cc = conn
+		} else {
+			defer func() {
+
+				if err := conn.Close(); err != nil {
 					status.ReplaceOrSuppress(&stscap, status.From(err))
+
 				}
-			}
-		}()
+			}()
+		}
+
 	}
 
-	client := api.NewPixurServiceClient(cc)
+	client := api.NewPixurServiceClient(conn)
 
 	if useToken && conf.AuthToken != "" {
 		res, err := client.GetRefreshToken(ctx, &api.GetRefreshTokenRequest{

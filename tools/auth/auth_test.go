@@ -33,7 +33,8 @@ func TestHeaderKeysMatch(t *testing.T) {
 }
 
 func TestSomething(t *testing.T) {
-	c, sts := Auth(context.Background())
+
+	c, sts := Auth(context.Background(), nil)
 	if sts != nil {
 		t.Fatal(sts)
 	}
