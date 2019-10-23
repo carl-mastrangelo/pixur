@@ -105,7 +105,7 @@ func updateConfig(ctx context.Context, cc **grpc.ClientConn, conf *config.Config
 		useToken bool
 		useCreds bool = true
 	)
-	if conf.AuthPayload != nil || conf.AuthToken == "" {
+	if conf.AuthPayload != nil {
 		var sts status.S
 		useToken, useCreds, sts =
 			shouldRefresh(time.Now, conf.AuthPayload.NotAfter, conf.AuthPayload.SoftNotAfter)
