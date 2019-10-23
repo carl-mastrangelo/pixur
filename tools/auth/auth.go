@@ -101,22 +101,6 @@ func shouldRefresh(now func() time.Time, notAfter, softNotAfter *tspb.Timestamp)
 }
 
 func updateConfig(ctx context.Context, cc **grpc.ClientConn, conf *config.Config) (stscap status.S) {
-	var (
-		useToken bool
-		useCreds bool = true
-	)
-	if conf.AuthPayload != nil {
-		var sts status.S
-		useToken, useCreds, sts =
-			shouldRefresh(time.Now, conf.AuthPayload.NotAfter, conf.AuthPayload.SoftNotAfter)
-		if sts != nil {
-			return sts
-		}
-		if !useToken && !useCreds {
-			return nil
-		}
-	}
-
 	var conn *grpc.ClientConn
 	if cc == nil || *cc == nil {
 		if conf.PixurTarget == "" {
@@ -135,14 +119,26 @@ func updateConfig(ctx context.Context, cc **grpc.ClientConn, conf *config.Config
 			*cc = conn
 		} else {
 			defer func() {
-
 				if err := conn.Close(); err != nil {
 					status.ReplaceOrSuppress(&stscap, status.From(err))
-
 				}
 			}()
 		}
-
+	}
+	var (
+		useToken bool
+		useCreds bool = true
+	)
+	if conf.AuthPayload != nil {
+		var sts status.S
+		useToken, useCreds, sts =
+			shouldRefresh(time.Now, conf.AuthPayload.NotAfter, conf.AuthPayload.SoftNotAfter)
+		if sts != nil {
+			return sts
+		}
+		if !useToken && !useCreds {
+			return nil
+		}
 	}
 
 	client := api.NewPixurServiceClient(conn)
