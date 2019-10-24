@@ -204,7 +204,10 @@ func HandlersInit(ctx context.Context, c *ServerConfig) ([]grpc.ServerOption, fu
 		panic(sts)
 	}
 
-	opts := []grpc.ServerOption{grpc.UnaryInterceptor((&serverInterceptor{}).intercept)}
+	opts := []grpc.ServerOption{
+		grpc.UnaryInterceptor((&serverInterceptor{}).intercept),
+		grpc.MaxRecvMsgSize(512 * 1024 * 1024),
+	}
 	return opts, func(s *grpc.Server) {
 		api.RegisterPixurServiceServer(s, &serv{
 			db:          c.DB,
