@@ -19,7 +19,7 @@ import (
 )
 
 func init() {
-	defaultwebmreader = func(ctx context.Context, r io.Reader) (PixurImage, status.S) {
+	defaultvideoreader = func(ctx context.Context, r io.Reader) (PixurImage, status.S) {
 		return ffmpegDecode(ctx, r)
 	}
 }
@@ -28,6 +28,7 @@ var _ PixurImage = (*ffmpegImage)(nil)
 
 type ffmpegImage struct {
 	ctx              context.Context
+	format           ImageFormat
 	videoFrame       image.Image
 	cachedVideoFrame PixurImage
 	probeResponse    *probeResponse
@@ -35,7 +36,7 @@ type ffmpegImage struct {
 }
 
 func (im *ffmpegImage) Format() ImageFormat {
-	return DefaultWebmFormat
+	return im.format
 }
 
 func (im *ffmpegImage) Close() {
@@ -151,14 +152,16 @@ func ffmpegDecode(ctx context.Context, r io.Reader) (_ *ffmpegImage, stscap stat
 		return nil, convertSts
 	}
 
-	if sts := checkValidWebm(resp); sts != nil {
+	format, sts := checkValidVideo(resp)
+	if sts != nil {
 		return nil, sts
 	}
-	// duration was already checked in checkValidWebm
+	// duration was already checked in checkValidVideo
 	duration, _ := parseFfmpegDuration(resp.Format.Duration)
 
 	return &ffmpegImage{
 		ctx:           ctx,
+		format:        ImageFormat(format),
 		videoFrame:    img,
 		duration:      duration,
 		probeResponse: resp,
@@ -228,44 +231,56 @@ func ffmpegConvert(ctx context.Context, r io.Reader) (_ image.Image, stscap stat
 	return im, nil
 }
 
-func checkValidWebm(resp *probeResponse) status.S {
-	if resp.Format.FormatName != "matroska,webm" {
-		return status.InvalidArgumentf(nil, "Only webm supported: %+v", *resp)
+func checkValidVideo(resp *probeResponse) (string, status.S) {
+	var supportedVideo map[string]bool
+	var supportedAudio map[string]bool
+	var format string
+	switch resp.Format.FormatName {
+	case "matroska,webm":
+		supportedVideo = map[string]bool{"vp8": true, "vp9": true}
+		supportedAudio = map[string]bool{"vorbis": true, "opus": true}
+		format = string(DefaultWebmFormat)
+	case "mov,mp4,m4a,3gp,3g2,mj2":
+		supportedVideo = map[string]bool{"h264": true}
+		supportedAudio = map[string]bool{"aac": true}
+		format = string(DefaultMp4Format)
+	default:
+		return "", status.InvalidArgumentf(nil, "Only webm/mp4 supported: %+v", *resp)
 	}
 	if resp.Format.StreamCount <= 0 {
-		return status.InvalidArgumentf(nil, "No Streams found: %+v", *resp)
+		return "", status.InvalidArgumentf(nil, "No Streams found: %+v", *resp)
 	}
 	duration, sts := parseFfmpegDuration(resp.Format.Duration)
 	if sts != nil {
-		return sts
+		return "", sts
 	}
 	if duration < 0 {
-		return status.InvalidArgumentf(nil, "Invalid duration: %v for %+v", duration, *resp)
+		return "", status.InvalidArgumentf(nil, "Invalid duration: %v for %+v", duration, *resp)
 	}
 
 	var videoFound bool
 	// Only check for a video stream, since we will just mute it on output.
 	for _, stream := range resp.Streams {
 		if stream.CodecType == "video" {
-			if stream.CodecName == "vp8" || stream.CodecName == "vp9" {
+			if supportedVideo[stream.CodecName] {
 				videoFound = true
 				break
 			} else {
-				return status.InvalidArgumentf(nil, "Unsupported video type: %v", stream.CodecName)
+				return "", status.InvalidArgumentf(nil, "Unsupported video type: %v", stream.CodecName)
 			}
 		} else if stream.CodecType == "audio" {
 			// even though we don't plan on playing it, don't allow invalid types in
-			if stream.CodecName != "vorbis" && stream.CodecName != "opus" {
-				return status.InvalidArgumentf(nil, "Unsupported audio type: %v", stream.CodecName)
+			if !supportedAudio[stream.CodecName] {
+				return "", status.InvalidArgumentf(nil, "Unsupported audio type: %v", stream.CodecName)
 			}
 		}
 	}
 
 	if !videoFound {
-		return status.InvalidArgumentf(nil, "No video found: %+v", *resp)
+		return "", status.InvalidArgumentf(nil, "No video found: %+v", *resp)
 	}
 
-	return nil
+	return format, nil
 }
 
 func ffmpegProbe(ctx context.Context, r io.Reader) (_ *probeResponse, stscap status.S) {

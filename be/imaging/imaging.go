@@ -14,6 +14,7 @@ const (
 	DefaultJpegFormat ImageFormat = "JPEG"
 	DefaultPngFormat  ImageFormat = "PNG"
 	DefaultWebmFormat ImageFormat = "WEBM"
+	DefaultMp4Format  ImageFormat = "MP4"
 )
 
 const (
@@ -25,6 +26,9 @@ const gifTicksPerSecond = 100
 const (
 	// WEBM magic header
 	ebmlHeader = "\x1a\x45\xdf\xa3"
+
+	// MP4 header
+	movHeader = "\x00\x00\x00\x20"
 )
 
 // ImageFormat is the string format of the image
@@ -47,9 +51,14 @@ func (f ImageFormat) IsPng() bool {
 	return f == "PNG" || f == "PNG24" || f == "PNG32" || f == "PNG8"
 }
 
-// IsJpeg returns true if the type of this image is a WEBM.
+// IsWebm returns true if the type of this image is a WEBM.
 func (f ImageFormat) IsWebm() bool {
 	return f == "WEBM"
+}
+
+// IsMp4 returns true if the type of this image is a MP4.
+func (f ImageFormat) IsMp4() bool {
+	return f == "MP4"
 }
 
 type PixurImage interface {
@@ -69,7 +78,7 @@ type PixurImage interface {
 }
 
 var defaultimagereader func(ctx context.Context, r io.Reader) (PixurImage, status.S)
-var defaultwebmreader func(ctx context.Context, r io.Reader) (PixurImage, status.S)
+var defaultvideoreader func(ctx context.Context, r io.Reader) (PixurImage, status.S)
 
 type rra interface {
 	io.Reader
@@ -92,8 +101,8 @@ func ReadImage(ctx context.Context, r io.Reader) (PixurImage, status.S) {
 	if _, err := ra.ReadAt(firstfour, 0); err != nil {
 		return nil, status.InvalidArgument(err, "unable to read first 4 bytes")
 	}
-	if bytes.Equal(firstfour, []byte(ebmlHeader)) {
-		return defaultwebmreader(ctx, ra)
+	if bytes.Equal(firstfour, []byte(ebmlHeader)) || bytes.Equal(firstfour, []byte(movHeader)) {
+		return defaultvideoreader(ctx, ra)
 	}
 	return defaultimagereader(ctx, ra)
 }

@@ -9,30 +9,30 @@ import (
 	"time"
 )
 
-func TestCheckValidWebm_BadFormat(t *testing.T) {
+func TestCheckValidVideo_BadFormat(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
-			FormatName: "mp4",
+			FormatName: "exe",
 		},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_BadStreamCount(t *testing.T) {
+func TestCheckValidVideo_BadStreamCount(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
 			StreamCount: 0,
 		},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_BadDuration(t *testing.T) {
+func TestCheckValidVideo_BadDuration(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -40,12 +40,12 @@ func TestCheckValidWebm_BadDuration(t *testing.T) {
 			Duration:    "",
 		},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_LongDuration(t *testing.T) {
+func TestCheckValidVideo_LongDuration(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -53,12 +53,12 @@ func TestCheckValidWebm_LongDuration(t *testing.T) {
 			Duration:    "1000.0",
 		},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_BadVideoStream(t *testing.T) {
+func TestCheckValidVideo_BadVideoStream(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -70,12 +70,12 @@ func TestCheckValidWebm_BadVideoStream(t *testing.T) {
 			CodecName: "h264",
 		}},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_BadAudioStream(t *testing.T) {
+func TestCheckValidVideo_BadAudioStream(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -87,12 +87,12 @@ func TestCheckValidWebm_BadAudioStream(t *testing.T) {
 			CodecName: "mp3",
 		}},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_NoVideoStream(t *testing.T) {
+func TestCheckValidVideo_NoVideoStream(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -104,12 +104,12 @@ func TestCheckValidWebm_NoVideoStream(t *testing.T) {
 			CodecName: "vorbis",
 		}},
 	}
-	if err := checkValidWebm(&resp); err == nil {
+	if _, err := checkValidVideo(&resp); err == nil {
 		t.Fatal("expected an error")
 	}
 }
 
-func TestCheckValidWebm_MultipleVideoStream(t *testing.T) {
+func TestCheckValidVideo_MultipleVideoStream(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -124,12 +124,12 @@ func TestCheckValidWebm_MultipleVideoStream(t *testing.T) {
 			CodecName: "vp9",
 		}},
 	}
-	if err := checkValidWebm(&resp); err != nil {
+	if _, err := checkValidVideo(&resp); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestCheckValidWebm_VideoAndAudio(t *testing.T) {
+func TestCheckValidVideo_VideoAndAudio_Webm(t *testing.T) {
 	resp := probeResponse{
 		Format: probeFormat{
 			FormatName:  "matroska,webm",
@@ -144,8 +144,32 @@ func TestCheckValidWebm_VideoAndAudio(t *testing.T) {
 			CodecName: "opus",
 		}},
 	}
-	if err := checkValidWebm(&resp); err != nil {
+	if format, err := checkValidVideo(&resp); err != nil {
 		t.Fatal(err)
+	} else if ImageFormat(format) != DefaultWebmFormat {
+		t.Fatal("bad format", format, DefaultWebmFormat)
+	}
+}
+
+func TestCheckValidVideo_VideoAndAudio_Mp4(t *testing.T) {
+	resp := probeResponse{
+		Format: probeFormat{
+			FormatName:  "mov,mp4,m4a,3gp,3g2,mj2",
+			StreamCount: 2,
+			Duration:    "10.0",
+		},
+		Streams: []probeStream{{
+			CodecType: "video",
+			CodecName: "h264",
+		}, {
+			CodecType: "audio",
+			CodecName: "aac",
+		}},
+	}
+	if format, err := checkValidVideo(&resp); err != nil {
+		t.Fatal(err)
+	} else if ImageFormat(format) != DefaultMp4Format {
+		t.Fatal("bad format", format, DefaultMp4Format)
 	}
 }
 
