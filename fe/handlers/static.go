@@ -21,6 +21,7 @@ var picFileFormatExt = map[api.PicFile_Format]string{
 	api.PicFile_GIF:  ".gif",
 	api.PicFile_PNG:  ".png",
 	api.PicFile_WEBM: ".webm",
+	api.PicFile_MP4: ".mp4",
 }
 
 var picFileFormatTypes = map[string]api.PicFile_Format{
@@ -28,6 +29,7 @@ var picFileFormatTypes = map[string]api.PicFile_Format{
 	".gif":  api.PicFile_GIF,
 	".png":  api.PicFile_PNG,
 	".webm": api.PicFile_WEBM,
+	".mp4": api.PicFile_MP4,
 }
 
 func init() {

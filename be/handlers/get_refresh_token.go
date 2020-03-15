@@ -17,7 +17,7 @@ import (
 
 var (
 	authPwtDuration     = time.Hour * 365 * 15 // 15 years
-	authPwtSoftDuration = time.Hour * 24      // 1 day
+	authPwtSoftDuration = time.Hour * 24       // 1 day
 )
 
 var (

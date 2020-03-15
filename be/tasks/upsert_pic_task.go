@@ -204,13 +204,15 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		return sts
 	} else if dur != nil {
 		// TODO: test this check
-		if immime == schema.Pic_File_WEBM && conf.MaxWebmDuration != nil {
-			maxDur, err := ptypes.Duration(conf.MaxWebmDuration)
-			if err != nil {
-				return status.Internal(err, "can't parse max duration")
-			}
-			if *dur > maxDur {
-				return status.InvalidArgumentf(nil, "duration %v exceeds max %v", *dur, maxDur)
+		if immime == schema.Pic_File_WEBM || immime == schema.Pic_File_MP4 {
+			if conf.MaxVideoDuration != nil {
+				maxDur, err := ptypes.Duration(conf.MaxVideoDuration)
+				if err != nil {
+					return status.Internal(err, "can't parse max duration")
+				}
+				if *dur > maxDur {
+					return status.InvalidArgumentf(nil, "duration %v exceeds max %v", *dur, maxDur)
+				}
 			}
 		}
 		imanim = &schema.AnimationInfo{
@@ -458,6 +460,8 @@ func imageFormatToMime(f imaging.ImageFormat) (schema.Pic_File_Mime, status.S) {
 		return schema.Pic_File_PNG, nil
 	case f.IsWebm():
 		return schema.Pic_File_WEBM, nil
+	case f.IsMp4():
+		return schema.Pic_File_MP4, nil
 	default:
 		return schema.Pic_File_UNKNOWN, status.InvalidArgument(nil, "unknown image type", f)
 	}

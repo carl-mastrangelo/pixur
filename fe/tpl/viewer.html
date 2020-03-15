@@ -75,10 +75,8 @@
 {{- $pr := $pt.Params -}}
 <div class="viewer">
   <div class="pic">
-    {{if ne .Pic.File.Format.String `WEBM`}}
-    <img class="thepic" src="{{$pt.PicFile .Pic.File}}" />
-    {{else}}
-    <video
+    {{if eq .Pic.File.Format.String `WEBM`}}
+        <video
         class="thevideo"
         src="{{$pt.PicFile .Pic.File}}"
         loop
@@ -87,6 +85,18 @@
         controls>
       Your browser does not support the video tag.
     </video>
+    {{else if eq .Pic.File.Format.String `MP4`}}
+      <video
+        class="thevideo"
+        src="{{$pt.PicFile .Pic.File}}"
+        loop
+        muted
+        autoplay
+        controls>
+      Your browser does not support the video tag.
+    </video>
+    {{else}}
+    <img class="thepic" src="{{$pt.PicFile .Pic.File}}" />
     {{end}}
   </div>
   <div class="actionbar">

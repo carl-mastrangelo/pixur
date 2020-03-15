@@ -11,6 +11,7 @@ var picFileMimeExt = map[Pic_File_Mime]string{
 	Pic_File_GIF:  ".gif",
 	Pic_File_PNG:  ".png",
 	Pic_File_WEBM: ".webm",
+	Pic_File_MP4:  ".mp4",
 }
 
 var picFileMimeTypes = map[string]Pic_File_Mime{
@@ -18,6 +19,7 @@ var picFileMimeTypes = map[string]Pic_File_Mime{
 	".gif":  Pic_File_GIF,
 	".png":  Pic_File_PNG,
 	".webm": Pic_File_WEBM,
+	".mp4":  Pic_File_MP4,
 }
 
 func init() {

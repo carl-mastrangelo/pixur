@@ -46,6 +46,12 @@ func TestPicFilePath_webm(t *testing.T) {
 	}
 }
 
+func TestPicFilePath_mp4(t *testing.T) {
+	if have, want := mustPicFilePath(t, "foo", 17, Pic_File_MP4), "foo/g/g1.mp4"; have != want {
+		t.Error("have", have, "want", want)
+	}
+}
+
 func TestPicFilePath_png(t *testing.T) {
 	if have, want := mustPicFilePath(t, "foo", 17, Pic_File_PNG), "foo/g/g1.png"; have != want {
 		t.Error("have", have, "want", want)
@@ -79,6 +85,12 @@ func TestPicFileThumbnailPath_gif(t *testing.T) {
 
 func TestPicFileThumbnailPath_webm(t *testing.T) {
 	if have, want := mustPicFileThumbnailPath(t, "foo", 17, 2, Pic_File_WEBM), "foo/g/g12.webm"; have != want {
+		t.Error("have", have, "want", want)
+	}
+}
+
+func TestPicFileThumbnailPath_mp4(t *testing.T) {
+	if have, want := mustPicFileThumbnailPath(t, "foo", 17, 2, Pic_File_MP4), "foo/g/g12.mp4"; have != want {
 		t.Error("have", have, "want", want)
 	}
 }

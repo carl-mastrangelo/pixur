@@ -90,6 +90,7 @@ message Pic {
       GIF = 2;
       PNG = 3;
       WEBM = 4;
+      MP4 = 5;
     }
 
     Mime mime = 3;
@@ -101,7 +102,10 @@ message Pic {
     AnimationInfo animation_info = 8;
   }
 
+  // represents thumbnails for this pic
   repeated File thumbnail = 21;
+  // alternate but equivalent forms of this file.
+  repeated File derived = 23;
 }
 
 // A picture identifier
@@ -415,8 +419,8 @@ message Configuration {
   google.protobuf.Int64Value default_find_index_pics = 13;
   // the max number of index pics to return
   google.protobuf.Int64Value max_find_index_pics = 14;
-  // the max duration a WEBM pic can be
-  google.protobuf.Duration max_webm_duration = 15;
+  // the max duration a WEBM/MP4 pic can be
+  google.protobuf.Duration max_video_duration = 15;
   // allows users to reply to their own comments
   google.protobuf.BoolValue enable_pic_comment_self_reply = 16;
   // allows a single user to reply multiple times to one comment

@@ -42,8 +42,8 @@ message BackendConfiguration {
   google.protobuf.Int64Value default_find_index_pics = 13;
   // the max number of index pics to return
   google.protobuf.Int64Value max_find_index_pics = 14;
-  // the max duration a WEBM pic can be
-  google.protobuf.Duration max_webm_duration = 15;
+  // the max duration a WEBM/MP4 pic can be
+  google.protobuf.Duration max_video_duration = 15;
   // allows users to reply to their own comments
   google.protobuf.BoolValue enable_pic_comment_self_reply = 16;
   // allows a single user to reply multiple times to one comment
@@ -229,6 +229,7 @@ message PicFile {
     GIF = 2;
     PNG = 3;
     WEBM = 4;
+    MP4 = 5;
   }
   Format format = 2;
 
@@ -237,7 +238,7 @@ message PicFile {
   // height is the height of the pic file
   int32 height = 4;
 
-  // duration is present if the image is animated (GIF or WEBM).  Note that
+  // duration is present if the image is animated (GIF or WEBM or MP4).  Note that
   // GIFs duration is not well defined and is subject to reinterpretation.
   google.protobuf.Duration duration = 5;
 
