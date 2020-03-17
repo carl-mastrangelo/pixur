@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -50,8 +51,13 @@ func (im *ffmpegImage) Close() {
 }
 
 func (im *ffmpegImage) Dimensions() (width, height uint) {
-	rectangle := im.videoFrame.Bounds()
-	return uint(rectangle.Dx()), uint(rectangle.Dy())
+	for _, s := range im.probeResponse.Streams {
+		if s.Width > 0 || s.Height > 0 {
+			return uint(s.Width), uint(s.Height)
+		}
+	}
+	// this should be impossible since it previously validated.
+	panic("missing video")
 }
 
 func (im *ffmpegImage) Duration() (*time.Duration, status.S) {
@@ -60,6 +66,9 @@ func (im *ffmpegImage) Duration() (*time.Duration, status.S) {
 }
 
 func (im *ffmpegImage) videoFrameImage() (PixurImage, status.S) {
+	if im.videoFrame == nil {
+		return nil, status.InvalidArgument(nil, "can't get image frame")
+	}
 	if im.cachedVideoFrame == nil {
 		var buf bytes.Buffer
 		enc := png.Encoder{CompressionLevel: png.NoCompression}
@@ -89,6 +98,83 @@ func (im *ffmpegImage) Thumbnail() (PixurImage, status.S) {
 		return nil, sts
 	}
 	return im2.Thumbnail()
+}
+
+// ConvertVideo converts from a source video to a destination.  dstName has to be a string
+// because ffmpeg wants to seek the output MP4 file to move the atoms around (like qt-faststart
+// does).
+func ConvertVideo(
+	ctx context.Context, dstFmt ImageFormat, dst *os.File, r io.Reader) (
+	_ PixurImage, stscap status.S) {
+	if pos, err := dst.Seek(0, os.SEEK_CUR); err != nil {
+		return nil, status.Internal(err, "can't seek file")
+	} else if pos != 0 {
+		// We are going to overwrite it, so being anywhere but the start would be confusing.
+		return nil, status.InvalidArgument(err, "file pos must be at beginning")
+	}
+
+	args := []string{"-hide_banner", "-i", "-"}
+	switch {
+	case dstFmt.IsWebm():
+		args = append(args, "-codec:v", "libvpx", "-crf", "22", "-b:v", "1M")
+		// Normalize to even numbers because libvpx doesn't support odd dims.
+		args = append(args, "-vf", "pad=width=ceil(iw/2)*2:height=ceil(ih/2)*2")
+		args = append(args, "-codec:a", "libvorbis")
+		args = append(args, "-f", "webm")
+	case dstFmt.IsMp4():
+		args = append(args, "-codec:v", "libx264", "-crf", "24", "-b:v", "1M")
+		args = append(args, "-codec:a", "libmp3lame")
+		args = append(args, "-f", "mp4")
+	default:
+		return nil, status.InvalidArgument(nil, "unsupported file", dstFmt)
+	}
+	args = append(args, "-y", dst.Name())
+	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+
+	var errBuf bytes.Buffer
+	cmd.Stdin = r
+	cmd.Stderr = &errBuf
+
+	if err := cmd.Start(); err != nil {
+		return nil, status.Internal(err, "unable to start ffmpeg: "+errBuf.String())
+	}
+	kill := true
+	defer func() {
+		if !kill {
+			return
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't kill ffmpeg"))
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		return nil, status.Internal(err, "unable to wait on ffmpeg: "+errBuf.String())
+	}
+	kill = false
+
+	resp, probeSts := ffmpegProbe(ctx, dst)
+	if probeSts != nil {
+		return nil, probeSts
+	}
+	if _, err := dst.Seek(0, os.SEEK_SET); err != nil {
+		return nil, status.Internal(err, "can't seek file")
+	}
+
+	format, sts := checkValidVideo(resp)
+	if sts != nil {
+		return nil, sts
+	}
+	// duration was already checked in checkValidVideo
+	duration, _ := parseFfmpegDuration(resp.Format.Duration)
+
+	return &ffmpegImage{
+		ctx:           ctx,
+		format:        ImageFormat(format),
+		videoFrame:    nil,
+		duration:      duration,
+		probeResponse: resp,
+	}, nil
 }
 
 func (im *ffmpegImage) Write(io.Writer) status.S {
