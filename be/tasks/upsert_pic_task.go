@@ -314,7 +314,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 
 	twidth, theight := thumb.Dimensions()
 	p.Thumbnail = append(p.Thumbnail, &schema.Pic_File{
-		Index:         nextThumbnailIndex(p.Thumbnail),
+		Index:         nextPicFileIndex(p.Thumbnail, p.Derived),
 		Size:          thumbfi.Size(),
 		Mime:          imtmime,
 		Width:         int64(twidth),
@@ -360,7 +360,7 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 	}()
 
 	lastthumbnail := p.Thumbnail[len(p.Thumbnail)-1]
-	newthumbpath, sts := schema.PicFileThumbnailPath(
+	newthumbpath, sts := schema.PicFileDerivedPath(
 		t.PixPath, p.PicId, lastthumbnail.Index, lastthumbnail.Mime)
 	if sts != nil {
 		return sts
@@ -434,13 +434,15 @@ func confFileNameLen(conf *schema.Configuration) (int64, int64) {
 }
 
 // TODO: test
-func nextThumbnailIndex(pfs []*schema.Pic_File) int64 {
+func nextPicFileIndex(thumbs, derived []*schema.Pic_File) int64 {
 	used := make(map[int64]bool)
-	for _, pf := range pfs {
-		if used[pf.Index] {
-			panic("index already used")
+	for _, pfs := range [][]*schema.Pic_File{thumbs, derived} {
+		for _, pf := range pfs {
+			if used[pf.Index] {
+				panic("index already used")
+			}
+			used[pf.Index] = true
 		}
-		used[pf.Index] = true
 	}
 	for i := int64(0); ; i++ {
 		if !used[i] {

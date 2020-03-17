@@ -43,7 +43,7 @@ func TestHardDeleteWorkflow(t *testing.T) {
 		t.Error("expected at least one thumbnail")
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Error(sts)
 		} else if _, err := os.Stat(thumbpath); !os.IsNotExist(err) {
@@ -113,7 +113,7 @@ func TestHardDeleteFromSoftDeleted(t *testing.T) {
 		t.Error("expected at least one thumbnail")
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Error(sts)
 		} else if _, err := os.Stat(thumbpath); !os.IsNotExist(err) {

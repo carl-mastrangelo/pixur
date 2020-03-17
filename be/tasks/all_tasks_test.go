@@ -191,7 +191,7 @@ func (c *TestContainer) CreatePic() *TestPic {
 		c.T.Fatal(err)
 	}
 	defer f.Close()
-	thumbpath, sts := schema.PicFileThumbnailPath(
+	thumbpath, sts := schema.PicFileDerivedPath(
 		c.TempDir(), p.PicId, p.Thumbnail[0].Index, p.Thumbnail[0].Mime)
 	if sts != nil {
 		c.T.Fatal(sts)

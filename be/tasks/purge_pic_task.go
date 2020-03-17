@@ -154,7 +154,7 @@ func (t *PurgePicTask) Run(ctx context.Context) (stscap status.S) {
 	}
 
 	for _, th := range p.Thumbnail {
-		oldthumbpath, sts := schema.PicFileThumbnailPath(t.PixPath, p.PicId, th.Index, th.Mime)
+		oldthumbpath, sts := schema.PicFileDerivedPath(t.PixPath, p.PicId, th.Index, th.Mime)
 		if sts != nil {
 			defer status.ReplaceOrSuppress(&stscap, sts)
 		} else if err := t.Remove(oldthumbpath); err != nil {

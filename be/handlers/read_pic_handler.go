@@ -40,13 +40,13 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 	}
 
 	var picId schema.Varint
-	var picThumbnailIndex schema.Varint
+	var picDerivedIndex schema.Varint
 	n, err := picId.Decode(req.PicFileId)
 	if err != nil {
 		return nil, status.InvalidArgument(err, "can't decode pic id")
 	}
 	if len(req.PicFileId) != n {
-		if err := picThumbnailIndex.DecodeAll(req.PicFileId[n:]); err != nil {
+		if err := picDerivedIndex.DecodeAll(req.PicFileId[n:]); err != nil {
 			return nil, status.InvalidArgument(err, "can't decode pic index")
 		}
 	}
@@ -57,7 +57,7 @@ func (s *serv) handleLookupPicFile(ctx context.Context, req *api.LookupPicFileRe
 	}
 	var path string
 	if len(req.PicFileId) != n {
-		path, sts = schema.PicFileThumbnailPath(s.pixpath, int64(picId), int64(picThumbnailIndex), mime)
+		path, sts = schema.PicFileDerivedPath(s.pixpath, int64(picId), int64(picDerivedIndex), mime)
 	} else {
 		path, sts = schema.PicFilePath(s.pixpath, int64(picId), mime)
 	}
@@ -176,21 +176,21 @@ func (s *serv) handleReadPicFile(rps api.PixurService_ReadPicFileServer) status.
 			}
 
 			var picId schema.Varint
-			var picThumbnailIndex schema.Varint
+			var picDerivedIndex schema.Varint
 			n, err := picId.Decode(req.PicFileId)
 			if err != nil {
 				return status.InvalidArgument(err, "can't decode pic id")
 			}
 			if len(req.PicFileId) != n {
-				if err := picThumbnailIndex.DecodeAll(req.PicFileId[n:]); err != nil {
+				if err := picDerivedIndex.DecodeAll(req.PicFileId[n:]); err != nil {
 					return status.InvalidArgument(err, "can't decode pic index")
 				}
 			}
 
 			var path string
 			if len(req.PicFileId) != n {
-				path, sts = schema.PicFileThumbnailPath(
-					s.pixpath, int64(picId), int64(picThumbnailIndex), mime)
+				path, sts = schema.PicFileDerivedPath(
+					s.pixpath, int64(picId), int64(picDerivedIndex), mime)
 			} else {
 				path, sts = schema.PicFilePath(s.pixpath, int64(picId), mime)
 			}

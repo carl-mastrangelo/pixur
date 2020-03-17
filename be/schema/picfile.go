@@ -48,7 +48,7 @@ func PicFilePath(pixPath string, picId int64, mime Pic_File_Mime) (string, statu
 	return filepath.Join(PicBaseDir(pixPath, picId), Varint(picId).Encode()+ext), nil
 }
 
-func PicFileThumbnailPath(
+func PicFileDerivedPath(
 	pixPath string, picId, index int64, mime Pic_File_Mime) (string, status.S) {
 	ext, present := picFileMimeExt[mime]
 	if !present {

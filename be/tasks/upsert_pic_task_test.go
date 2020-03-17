@@ -461,7 +461,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Fatal(sts)
 		}
@@ -515,7 +515,7 @@ func TestUpsertPicTask_Md5PresentHardTempDeleted(t *testing.T) {
 		t.Error("Mising pic thumbnail(s)", p)
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Fatal(sts)
 		}
@@ -728,7 +728,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Fatal(sts)
 		}
@@ -779,7 +779,7 @@ func TestUpsertPicTask_DuplicateHardTempDeleted(t *testing.T) {
 		t.Error("Mising pic thumbnail(s)", p)
 	}
 	for _, th := range p.Pic.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.Pic.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Fatal(sts)
 		}
@@ -869,7 +869,7 @@ func TestUpsertPicTask_NewPic(t *testing.T) {
 		t.Error("Mising pic thumbnail(s)", p)
 	}
 	for _, th := range p.Thumbnail {
-		thumbpath, sts := schema.PicFileThumbnailPath(c.TempDir(), p.PicId, th.Index, th.Mime)
+		thumbpath, sts := schema.PicFileDerivedPath(c.TempDir(), p.PicId, th.Index, th.Mime)
 		if sts != nil {
 			t.Fatal(sts)
 		}
