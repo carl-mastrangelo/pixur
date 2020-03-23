@@ -274,6 +274,66 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}
 
+	destroyTempDerivedFile := true
+	var derivedFile *os.File
+	if immime == schema.Pic_File_WEBM || immime == schema.Pic_File_MP4 {
+		var deriveFormat imaging.ImageFormat
+		if immime == schema.Pic_File_WEBM {
+			deriveFormat = imaging.DefaultMp4Format
+		} else if immime == schema.Pic_File_MP4 {
+			deriveFormat = imaging.DefaultWebmFormat
+		}
+		var derived imaging.PixurImage
+		fd, cleanupDerived, sts := t.prepareFile(func(w io.Writer) status.S {
+			var sts status.S
+			derived, sts =
+				imaging.ConvertVideo(ctx, deriveFormat, w.(*os.File), io.NewSectionReader(f, 0, size))
+			if sts != nil {
+				return sts
+			}
+			return nil
+		})
+		if sts != nil {
+			return sts
+		}
+		derivedFile = fd
+		defer func() {
+			if destroyTempDerivedFile {
+				cleanupDerived(&stscap)
+			}
+		}()
+
+		derivedfi, err := derivedFile.Stat()
+		if err != nil {
+			return status.Internal(err, "unable to stat derived file")
+		}
+		imdmime, sts := imageFormatToMime(derived.Format())
+		if sts != nil {
+			return sts
+		}
+		var imdanim *schema.AnimationInfo
+		if dur, sts := derived.Duration(); sts != nil {
+			return sts
+		} else if dur != nil {
+			imdanim = &schema.AnimationInfo{
+				Duration: ptypes.DurationProto(*dur),
+			}
+		}
+
+		dwidth, dheight := derived.Dimensions()
+		p.Derived = append(p.Derived, &schema.Pic_File{
+			Index:         nextPicFileIndex(p.Thumbnail, p.Derived),
+			Size:          derivedfi.Size(),
+			Mime:          imdmime,
+			Width:         int64(dwidth),
+			Height:        int64(dheight),
+			AnimationInfo: imdanim,
+			CreatedTs:     nowts,
+			ModifiedTs:    nowts,
+		})
+
+	}
+
 	thumb, sts := im.Thumbnail()
 	if sts != nil {
 		return sts
@@ -389,11 +449,46 @@ func (t *UpsertPicTask) Run(ctx context.Context) (stscap status.S) {
 		}
 	}()
 
+	destroyNewDerived := true
+	if len(p.Derived) != 0 {
+		lastderived := p.Derived[len(p.Derived)-1]
+
+		newderivedpath, sts := schema.PicFileDerivedPath(
+			t.PixPath, p.PicId, lastderived.Index, lastderived.Mime)
+		if sts != nil {
+			return sts
+		}
+		destroyTempDerivedFile = false
+		if err := derivedFile.Close(); err != nil {
+			sts := status.Internal(err, "can't close", derivedFile.Name())
+			if err2 := t.Remove(derivedFile.Name()); err2 != nil {
+				sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", derivedFile.Name()))
+			}
+			return sts
+		}
+		if err := t.Rename(derivedFile.Name(), newderivedpath); err != nil {
+			sts := status.Internalf(err, "can't rename %v to %v", derivedFile.Name(), newderivedpath)
+			if err2 := t.Remove(derivedFile.Name()); err2 != nil {
+				sts = status.WithSuppressed(sts, status.Internal(err2, "can't remove", derivedFile.Name()))
+			}
+			return sts
+		}
+		defer func() {
+			if destroyNewDerived {
+				if err := t.Remove(newderivedpath); err != nil {
+					status.ReplaceOrSuppress(&stscap, status.Internal(err, "can't remove", newderivedpath))
+				}
+			}
+		}()
+
+	}
+
 	// Keep the files, even if commit fails.  It's possible the commit actually succeeded, in which
 	// case deleting the files would be corruption.  Better to have occasional bad files in the
 	// directory than data corruption.
 	destroyNewFile = false
 	destroyNewThumbnail = false
+	destroyNewDerived = false
 	if err := j.Commit(); err != nil {
 		return status.Internal(err, "can't commit")
 	}
