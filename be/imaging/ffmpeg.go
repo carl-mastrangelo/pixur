@@ -123,7 +123,8 @@ func ConvertVideo(
 		args = append(args, "-f", "webm")
 	case dstFmt.IsMp4():
 		args = append(args, "-codec:v", "libx264", "-crf", "24", "-b:v", "1M")
-		args = append(args, "-codec:a", "libmp3lame")
+		// The aac encoder is bad, but my ipad only seems to work with.   Maybe use libfaac2 later.
+		args = append(args, "-codec:a", "aac")
 		args = append(args, "-f", "mp4")
 	default:
 		return nil, status.InvalidArgument(nil, "unsupported file", dstFmt)
