@@ -155,6 +155,7 @@ message LookupPicDetailsRequest {
 
 message LookupPicDetailsResponse {
   Pic pic = 1;
+  repeated PicFile derived = 4;
   repeated PicTag pic_tag = 2;
   PicCommentTree pic_comment_tree = 3;
 }

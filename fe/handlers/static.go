@@ -16,12 +16,20 @@ import (
 	"pixur.org/pixur/api"
 )
 
+var picFileFormatMime = map[api.PicFile_Format]string{
+	api.PicFile_JPEG: "image/jpeg",
+	api.PicFile_GIF:  "image/gif",
+	api.PicFile_PNG:  "image/png",
+	api.PicFile_WEBM: "video/webm",
+	api.PicFile_MP4:  "video/mp4",
+}
+
 var picFileFormatExt = map[api.PicFile_Format]string{
 	api.PicFile_JPEG: ".jpg",
 	api.PicFile_GIF:  ".gif",
 	api.PicFile_PNG:  ".png",
 	api.PicFile_WEBM: ".webm",
-	api.PicFile_MP4: ".mp4",
+	api.PicFile_MP4:  ".mp4",
 }
 
 var picFileFormatTypes = map[string]api.PicFile_Format{
@@ -29,7 +37,7 @@ var picFileFormatTypes = map[string]api.PicFile_Format{
 	".gif":  api.PicFile_GIF,
 	".png":  api.PicFile_PNG,
 	".webm": api.PicFile_WEBM,
-	".mp4": api.PicFile_MP4,
+	".mp4":  api.PicFile_MP4,
 }
 
 func init() {

@@ -78,7 +78,6 @@ func apiPicAndThumbnail(src *schema.Pic) *api.PicAndThumbnail {
 	return &api.PicAndThumbnail{
 		Pic:       apiPic(src),
 		Thumbnail: apiPicFiles(nil, src.PicId, true, src.Thumbnail...),
-		Derived:   apiPicFiles(nil, src.PicId, false, src.Derived...),
 	}
 }
 

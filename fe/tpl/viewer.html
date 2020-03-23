@@ -19,7 +19,7 @@
     max-height: inherit;
   }
   
-    .viewer .pic video {
+  .viewer .pic video {
     max-height: inherit;
   }
 
@@ -76,25 +76,22 @@
 <div class="viewer">
   <div class="pic">
     {{if eq .Pic.File.Format.String `WEBM`}}
-        <video
-        class="thevideo"
-        src="{{$pt.PicFile .Pic.File}}"
-        loop
-        muted
-        autoplay
-        controls>
-      Your browser does not support the video tag.
+        <video class="thevideo" loop muted autoplay controls>
+          <source src="{{$pt.PicFile .Pic.File}}" type="{{$pr.Mime .Pic.File.Format}}" />
+          {{range .Derived}}
+            <source src="{{$pt.PicFile .}}" type="{{$pr.Mime .Format}}" />
+          {{end}}
+          Your browser does not support the video tag.
+        </video>
     </video>
     {{else if eq .Pic.File.Format.String `MP4`}}
-      <video
-        class="thevideo"
-        src="{{$pt.PicFile .Pic.File}}"
-        loop
-        muted
-        autoplay
-        controls>
-      Your browser does not support the video tag.
-    </video>
+        <video class="thevideo" loop muted autoplay controls>
+          <source src="{{$pt.PicFile .Pic.File}}" type="{{$pr.Mime .Pic.File.Format}}" />
+          {{range .Derived}}
+            <source src="{{$pt.PicFile .}}" type="{{$pr.Mime .Format}}" />
+          {{end}}
+          Your browser does not support the video tag.
+        </video>
     {{else}}
     <img class="thepic" src="{{$pt.PicFile .Pic.File}}" />
     {{end}}

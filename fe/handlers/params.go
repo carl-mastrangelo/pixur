@@ -135,6 +135,11 @@ func (p params) GetNewUserCapability(vals url.Values) (yes, no []api.Capability_
 	return p.parseCapsChange("newcap", vals)
 }
 
+func (p params) Mime(pf api.PicFile_Format) string {
+	// TODO: return some unknown type?
+	return picFileFormatMime[pf]
+}
+
 func (p params) parseCapsChange(prefix string, vals url.Values) (yes, no []api.Capability_Cap, e error) {
 	for k, v := range vals {
 		if strings.HasPrefix(k, prefix) {

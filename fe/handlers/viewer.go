@@ -55,6 +55,7 @@ type viewerData struct {
 	PicComment     *picComment
 	PicVote        *api.PicVote
 	PicTag         []*api.PicTag
+	Derived        []*api.PicFile
 	DeletionReason []viewerDataDeletionReason
 }
 
@@ -189,6 +190,7 @@ func (h *viewerHandler) static(w http.ResponseWriter, r *http.Request) {
 	data := viewerData{
 		paneData:   pd,
 		Pic:        details.Pic,
+		Derived:    details.Derived,
 		PicComment: root,
 		PicTag:     ([]*api.PicTag)(pts),
 		PicVote:    pv,

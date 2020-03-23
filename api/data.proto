@@ -170,7 +170,6 @@ message Pic {
 message PicAndThumbnail {
   Pic pic = 1;
   repeated PicFile thumbnail = 2;
-  repeated PicFile derived = 3;
 }
 
 message PicComment {

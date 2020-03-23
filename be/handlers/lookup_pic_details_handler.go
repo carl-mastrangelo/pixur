@@ -36,6 +36,7 @@ func (s *serv) handleLookupPicDetails(
 
 	return &api.LookupPicDetailsResponse{
 		Pic:            apiPic(task.Pic),
+		Derived:        apiPicFiles(nil, task.Pic.PicId, false, task.Pic.Derived...),
 		PicTag:         apiPicTags(nil, task.PicTags...),
 		PicCommentTree: apiPicCommentTree(nil, pcs...),
 	}, nil
