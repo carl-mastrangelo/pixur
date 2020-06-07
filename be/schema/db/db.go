@@ -29,11 +29,11 @@ type QuerierExecutorCommitter interface {
 	Executor
 }
 
-// Beginner begins transactions. Upon a successful call to Being(), callers should take care
+// Beginner begins transactions. Upon a successful call to Begin(), callers should take care
 // to either Commit() or Rollback() the QuerierExecutorCommitter.
 type Beginner interface {
 	// Begin begins a transaction
-	Begin(context.Context) (QuerierExecutorCommitter, error)
+	Begin(ctx context.Context, readonly bool) (QuerierExecutorCommitter, error)
 }
 
 // DB represents a database.  It is the entry point to creating transactions.

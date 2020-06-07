@@ -16,7 +16,7 @@ var _ sdb.DB = (fakeDB)(nil)
 
 type fakeDB chan struct{}
 
-func (db fakeDB) Begin(_ context.Context) (sdb.QuerierExecutorCommitter, error) {
+func (db fakeDB) Begin(_ context.Context, readonly bool) (sdb.QuerierExecutorCommitter, error) {
 	return db, nil
 }
 

@@ -36,8 +36,8 @@ func TestAllowedCodePointsExclusive(t *testing.T) {
 			reserved++
 		}
 	}
-	// Unicode 10.0 says it's this much
-	if have, want := reserved, 837775; have != want {
+	// Unicode 11.0 says it's this much
+	if have, want := reserved, 837091; have != want {
 		t.Error("have", have, "want", want)
 	}
 }

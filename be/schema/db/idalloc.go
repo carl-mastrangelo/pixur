@@ -127,7 +127,7 @@ func preallocateIds(ctx context.Context, beg Beginner, alloc *IdAlloc, adap DBAd
 		return nil
 	}
 	alloc.lock.Unlock()
-	qec, err := beg.Begin(ctx)
+	qec, err := beg.Begin(ctx, false)
 	if err != nil {
 		return status.From(err)
 	}
@@ -170,7 +170,7 @@ func allocId(ctx context.Context, beg Beginner, alloc *IdAlloc, adap DBAdapter) 
 	if sts := preallocateIds(ctx, beg, alloc, adap); sts != nil {
 		return 0, sts
 	}
-	qec, err := beg.Begin(ctx)
+	qec, err := beg.Begin(ctx, false)
 	if err != nil {
 		return 0, status.From(err)
 	}

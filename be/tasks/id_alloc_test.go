@@ -172,7 +172,7 @@ func TestAllocJobSerial(t *testing.T) {
 
 	alloc := new(db.IdAlloc)
 	d := c.DB()
-	j, err := d.Begin(c.Ctx)
+	j, err := d.Begin(c.Ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Error(err)
 	}
 
-	j1, err := d.Begin(c.Ctx)
+	j1, err := d.Begin(c.Ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestAllocMixed(t *testing.T) {
 		t.Error(err)
 	}
 
-	j2, err := d.Begin(c.Ctx)
+	j2, err := d.Begin(c.Ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}

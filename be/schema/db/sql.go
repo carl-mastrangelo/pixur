@@ -77,16 +77,17 @@ func (e *sqlError) CanRetry() bool {
 	return e.adap.RetryableErr(e.wrapped)
 }
 
-func (w *dbWrapper) Begin(ctx context.Context) (QuerierExecutorCommitter, error) {
-	return w.begin(ctx)
+func (w *dbWrapper) Begin(ctx context.Context, readonly bool) (QuerierExecutorCommitter, error) {
+	return w.begin(ctx, readonly)
 }
 
-func (w *dbWrapper) begin(ctx context.Context) (*txWrapper, status.S) {
+func (w *dbWrapper) begin(ctx context.Context, readonly bool) (*txWrapper, status.S) {
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, "SqlBeginTx").End()
 	}
 	tx, err := w.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
+		ReadOnly: readonly,
 	})
 	if err != nil {
 		return nil, status.Unknown(&sqlError{

@@ -702,6 +702,14 @@ type JobBeginner interface {
 }
 
 func NewJob(ctx context.Context, beg JobBeginner) (*Job, error) {
+	return newJob(ctx, beg, false)
+}
+
+func NewReadonlyJob(ctx context.Context, beg JobBeginner) (*Job, error) {
+	return newJob(ctx, beg, true)
+}
+
+func newJob(ctx context.Context, beg JobBeginner, readonly bool) (*Job, error) {
 	adap := beg.Adapter()
 	var alloc *db.IdAlloc
 	if all, ok := beg.(db.IdAllocatable); ok {
@@ -710,26 +718,28 @@ func NewJob(ctx context.Context, beg JobBeginner) (*Job, error) {
 			return nil, err
 		}
 	}
-	tx, err := beg.Begin(ctx)
+	tx, err := beg.Begin(ctx, readonly)
 	if err != nil {
 		return nil, err
 	}
 	j := &Job{
-		ctx:   ctx,
-		tx:    tx,
-		alloc: alloc,
-		adap:  adap,
+		ctx:      ctx,
+		tx:       tx,
+		alloc:    alloc,
+		adap:     adap,
+		readonly: readonly,
 	}
 	runtime.SetFinalizer(j, jobCloser)
 	return j, nil
 }
 
 type Job struct {
-	ctx   context.Context
-	tx    db.QuerierExecutorCommitter
-	adap  db.DBAdapter
-	alloc *db.IdAlloc
-	done  bool
+	ctx      context.Context
+	tx       db.QuerierExecutorCommitter
+	adap     db.DBAdapter
+	alloc    *db.IdAlloc
+	done     bool
+	readonly bool
 }
 
 func (j *Job) Commit() error {
