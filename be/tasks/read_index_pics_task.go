@@ -115,7 +115,7 @@ func getMaxConf(requestedMax int64, confDefault, confMax *wpb.Int64Value) (max, 
 
 func (t *ReadIndexPicsTask) Run(ctx context.Context) (stscap status.S) {
 	now := t.Now()
-	j, u, sts := authedJob(ctx, t.Beg, now)
+	j, u, sts := authedReadonlyJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}

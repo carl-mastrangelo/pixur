@@ -27,7 +27,7 @@ type LookupPicVoteTask struct {
 
 func (t *LookupPicVoteTask) Run(ctx context.Context) (stscap status.S) {
 	now := t.Now()
-	j, su, sts := authedJob(ctx, t.Beg, now)
+	j, su, sts := authedReadonlyJob(ctx, t.Beg, now)
 	if sts != nil {
 		return sts
 	}

@@ -16,29 +16,68 @@ const lastSeenUpdateThreshold = 24 * time.Hour
 
 func authedJob(ctx context.Context, beg tab.JobBeginner, now time.Time) (
 	_ *tab.Job, _ *schema.User, stscap status.S) {
-	j, err := tab.NewJob(ctx, beg)
-	if err != nil {
-		return nil, nil, status.Internal(err, "can't create job")
-	}
-	rollback := true
+	return authedJobInternal(ctx, beg, now, false)
+}
+
+func authedReadonlyJob(ctx context.Context, beg tab.JobBeginner, now time.Time) (
+	_ *tab.Job, _ *schema.User, stscap status.S) {
+	return authedJobInternal(ctx, beg, now, true)
+}
+
+func authedJobInternal(ctx context.Context, beg tab.JobBeginner, now time.Time, readonly bool) (
+	_ *tab.Job, _ *schema.User, stscap status.S) {
+
+	tok, tokPresent := UserTokenFromCtx(ctx)
+
+	var j *tab.Job
+	var err error
+	var rollback bool
+
 	defer func() {
-		if rollback {
+		if rollback && j != nil {
 			if sts := j.Rollback(); sts != nil {
 				status.ReplaceOrSuppress(&stscap, status.From(sts))
 			}
 		}
 	}()
 
-	tok, present := UserTokenFromCtx(ctx)
-	if !present {
-		rollback = false
-		return j, nil, nil
-	}
-	u, updated, sts := validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockNone, now)
-	if sts != nil {
-		return nil, nil, sts
-	}
-	if updated {
+	for {
+		if readonly {
+			j, err = tab.NewReadonlyJob(ctx, beg)
+		} else {
+			j, err = tab.NewJob(ctx, beg)
+		}
+		if err != nil {
+			return nil, nil, status.Internal(err, "can't create job")
+		}
+		rollback = true
+
+		if !tokPresent {
+			rollback = false
+			return j, nil, nil
+		}
+
+		u, updated, sts := validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockNone, now)
+		if sts != nil {
+			return nil, nil, sts
+		}
+		if !updated {
+			rollback = false
+			return j, u, nil
+		}
+
+		if readonly {
+			// need to upgrade the job to do the mutation.
+			rollback = false
+			if err := j.Rollback(); err != nil {
+				return nil, nil, status.Internal(err, "can't rollback")
+			}
+			if j, err = tab.NewJob(ctx, beg); err != nil {
+				return nil, nil, status.Internal(err, "can't create job")
+			}
+			rollback = true
+		}
+
 		u, updated, sts = validateAndUpdateUserAndToken(j, tok.UserId, tok.TokenId, db.LockWrite, now)
 		if sts != nil {
 			return nil, nil, sts
@@ -54,14 +93,7 @@ func authedJob(ctx context.Context, beg tab.JobBeginner, now time.Time) (
 			return nil, nil, status.Internal(err, "can't commit")
 		}
 		rollback = false
-		j, err = tab.NewJob(ctx, beg)
-		if err != nil {
-			return nil, nil, status.Internal(err, "can't create job")
-		}
-	} else {
-		rollback = false
 	}
-	return j, u, nil
 }
 
 func validateAndUpdateUserAndToken(j *tab.Job, userId, tokenId int64, lk db.Lock, now time.Time) (
