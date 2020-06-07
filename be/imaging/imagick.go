@@ -12,8 +12,6 @@ import (
 	// this is the only outside pixur package dependency.  Avoid depending too much on schema.
 	"pixur.org/pixur/be/status"
 
-	// unfortuantely, most of my machines are stuck on 6.8.x.x
-	// TODO: update this to v2 when possible.
 	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
