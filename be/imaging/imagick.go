@@ -14,7 +14,7 @@ import (
 
 	// unfortuantely, most of my machines are stuck on 6.8.x.x
 	// TODO: update this to v2 when possible.
-	"gopkg.in/gographics/imagick.v1/imagick"
+	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
 func init() {

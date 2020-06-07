@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	"gopkg.in/gographics/imagick.v1/imagick"
+	"gopkg.in/gographics/imagick.v2/imagick"
 )
 
 func TestReadImage_noImage(t *testing.T) {
